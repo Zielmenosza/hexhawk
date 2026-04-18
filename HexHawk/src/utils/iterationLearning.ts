@@ -525,3 +525,209 @@ export function aggregateWeightAdjustments(
 
   return result;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── WS11: Pattern Promotion, Regression Detection, Stability Scoring ──────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A pattern (rule, signature, heuristic) that can be promoted to higher
+ * priority when it repeatedly contributes to high-improvement iterations,
+ * or demoted when it contributes to negative/low iterations.
+ */
+export interface PatternPromotionRule {
+  patternId:        string;
+  /** Weighted benefit score across all LearningDecisions — higher = promote */
+  globalBenefitScore: number;
+  promotionCount:   number;
+  demotionCount:    number;
+  /** Whether the pattern is currently active (not suppressed) */
+  isActive:         boolean;
+  /** Conditions under which this pattern fires (human-readable description) */
+  conditions:       string;
+}
+
+/**
+ * Evaluate which patterns should be promoted or demoted based on the full
+ * history of LearningDecisions.
+ *
+ * A pattern is promoted when it appears in `reinforceSignals` of high-improvement
+ * decisions more than it appears in `deprioritise` of negative decisions.
+ */
+export function evaluatePatternPromotion(
+  decisions: LearningDecision[],
+  patterns: PatternPromotionRule[],
+): PatternPromotionRule[] {
+  // Build a benefit map: patternId → net benefit
+  const benefit = new Map<string, number>();
+
+  for (const dec of decisions) {
+    const levelMult = dec.improvementLevel === 'high' ? 2 :
+                      dec.improvementLevel === 'medium' ? 1 :
+                      dec.improvementLevel === 'low' ? -0.5 : -2;
+
+    for (const id of dec.reinforceSignals) {
+      benefit.set(id, (benefit.get(id) ?? 0) + Math.abs(levelMult) * (levelMult > 0 ? 1 : -1));
+    }
+    for (const id of dec.deprioritise) {
+      benefit.set(id, (benefit.get(id) ?? 0) - 1.5);
+    }
+    for (const id of dec.promote) {
+      benefit.set(id, (benefit.get(id) ?? 0) + 1.5);
+    }
+  }
+
+  return patterns.map(p => {
+    const delta = benefit.get(p.patternId) ?? 0;
+    const newScore = p.globalBenefitScore + delta;
+    const promoted = delta > 0;
+    const demoted  = delta < 0;
+
+    return {
+      ...p,
+      globalBenefitScore: newScore,
+      promotionCount: p.promotionCount + (promoted ? 1 : 0),
+      demotionCount:  p.demotionCount  + (demoted  ? 1 : 0),
+      // Suppress pattern if it has been demoted more than promoted by 3x
+      isActive: p.demotionCount + (demoted ? 1 : 0) < (p.promotionCount + (promoted ? 1 : 0)) * 3 + 1,
+    };
+  });
+}
+
+// ── Regression Detection ──────────────────────────────────────────────────────
+
+export type RegressionSeverity = 'critical' | 'major' | 'minor' | 'none';
+
+export interface RegressionDetectionResult {
+  patternId:            string;
+  regressionSeverity:   RegressionSeverity;
+  /** Number of binaries (or iterations) adversely affected */
+  affectedCount:        number;
+  /** Whether the system recommends rolling back this pattern */
+  rollbackRecommended:  boolean;
+  reason:               string;
+}
+
+/**
+ * Detect whether the current LearningDecision represents a regression
+ * relative to the historical average for any patterns involved.
+ *
+ * A regression is when a pattern that previously drove high-improvement
+ * iterations now drives negative/low-improvement ones.
+ */
+export function detectRegressions(
+  currentDecision: LearningDecision,
+  history: LearningDecision[],
+): RegressionDetectionResult[] {
+  const results: RegressionDetectionResult[] = [];
+
+  if (history.length < 2) return results; // need baseline
+
+  // Compute historical level distribution for each promoted pattern
+  const patternHistory = new Map<string, ImprovementLevel[]>();
+  for (const dec of history) {
+    for (const id of dec.reinforceSignals) {
+      const arr = patternHistory.get(id) ?? [];
+      arr.push(dec.improvementLevel);
+      patternHistory.set(id, arr);
+    }
+  }
+
+  // For each signal in current decision, check if it has degraded
+  for (const id of [...currentDecision.deprioritise, ...currentDecision.reinforceSignals]) {
+    const hist = patternHistory.get(id);
+    if (!hist || hist.length < 2) continue;
+
+    const highCount = hist.filter(l => l === 'high').length;
+    const highRate  = highCount / hist.length;
+
+    const isCurrentlyBad =
+      currentDecision.deprioritise.includes(id) ||
+      currentDecision.improvementLevel === 'negative';
+
+    if (highRate >= 0.6 && isCurrentlyBad) {
+      // Pattern was high-performing but now performing poorly
+      const severity: RegressionSeverity =
+        highRate >= 0.8 ? 'critical' :
+        highRate >= 0.6 ? 'major' : 'minor';
+
+      results.push({
+        patternId: id,
+        regressionSeverity: severity,
+        affectedCount: hist.length,
+        rollbackRecommended: severity === 'critical',
+        reason: `Pattern "${id}" achieved high improvement in ${(highRate * 100).toFixed(0)}% of past iterations but is now contributing to ${currentDecision.improvementLevel} improvement. Possible over-fitting or environmental change.`,
+      });
+    }
+  }
+
+  return results;
+}
+
+// ── Stability Scoring ─────────────────────────────────────────────────────────
+
+export interface StabilityScore {
+  /** Hash of the binary (or pattern group) being assessed */
+  binaryHash:           string;
+  /** Number of analysis runs observed */
+  runCount:             number;
+  /** Percentage of runs where the final classification was consistent (0–100) */
+  consistencyPct:       number;
+  /** Most frequent final classification */
+  lastClassification:   string;
+  /** Number of times the classification flipped between runs */
+  flipCount:            number;
+}
+
+/**
+ * Compute a stability score for a binary by comparing its finalAssessment
+ * across multiple LearningSession snapshots.
+ *
+ * `snapshots` here are lightweight records: each has the binary hash and
+ * the final improvement level of the last decision.
+ */
+export function computeStabilityScore(
+  snapshots: Array<{ binaryHash: string; finalLevel: ImprovementLevel; runId: string }>,
+): StabilityScore[] {
+  // Group by binaryHash
+  const groups = new Map<string, Array<{ finalLevel: ImprovementLevel; runId: string }>>();
+  for (const s of snapshots) {
+    const arr = groups.get(s.binaryHash) ?? [];
+    arr.push({ finalLevel: s.finalLevel, runId: s.runId });
+    groups.set(s.binaryHash, arr);
+  }
+
+  const results: StabilityScore[] = [];
+
+  for (const [binaryHash, runs] of groups.entries()) {
+    const levels = runs.map(r => r.finalLevel);
+
+    // Find modal classification
+    const freq = new Map<string, number>();
+    for (const l of levels) freq.set(l, (freq.get(l) ?? 0) + 1);
+    let modal = 'unknown';
+    let maxFreq = 0;
+    for (const [l, c] of freq.entries()) {
+      if (c > maxFreq) { maxFreq = c; modal = l; }
+    }
+
+    const consistencyPct = (maxFreq / levels.length) * 100;
+
+    // Count flips: consecutive runs with different classification
+    let flipCount = 0;
+    for (let i = 1; i < levels.length; i++) {
+      if (levels[i] !== levels[i - 1]) flipCount++;
+    }
+
+    results.push({
+      binaryHash,
+      runCount: runs.length,
+      consistencyPct: Math.round(consistencyPct),
+      lastClassification: modal,
+      flipCount,
+    });
+  }
+
+  return results;
+}
+

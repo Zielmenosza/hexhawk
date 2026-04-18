@@ -54,6 +54,7 @@ import StrikeView from './components/StrikeView';
 import EchoView from './components/EchoView';
 import NestView from './components/NestView';
 import OperatorConsole from './components/OperatorConsole';
+import WelcomeScreen, { shouldShowWelcome, markFirstRunComplete } from './components/WelcomeScreen';
 
 type AppTab =
   | 'metadata'
@@ -1000,6 +1001,7 @@ export default function App() {
   const [recentFiles, setRecentFiles] = useState<string[]>(
     () => JSON.parse(localStorage.getItem('hexhawk.recentFiles') ?? '[]')
   );
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => shouldShowWelcome());
   const [activeTab, setActiveTab] = useState<AppTab>(
     () => (localStorage.getItem('hexhawk.activeTab') as AppTab) ?? 'metadata'
   );
@@ -2493,6 +2495,21 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      {/* First-run welcome screen */}
+      {showWelcome && (
+        <WelcomeScreen
+          onDismiss={(permanent) => {
+            if (permanent) markFirstRunComplete();
+            setShowWelcome(false);
+          }}
+          onOpenFile={() => {
+            // reuse existing file-open logic if available
+            void openFileDialog({ multiple: false }).then((selected) => {
+              if (typeof selected === 'string') setBinaryPath(selected);
+            });
+          }}
+        />
+      )}
       {/* Global dialogs */}
       <JumpToAddressDialog
         open={showJumpDialog}

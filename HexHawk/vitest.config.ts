@@ -20,6 +20,7 @@ export default defineConfig({
     // Use jsdom for React component and hook tests; node for pure engine tests
     environmentMatchGlobs: [
       ['src/components/**/*.test.tsx', 'jsdom'],
+      ['src/components/__tests__/**/*.test.tsx', 'jsdom'],
       ['src/utils/__tests__/useVirtualList.test.ts', 'jsdom'],
       ['src/utils/__tests__/corpusManager.test.ts', 'jsdom'],
       ['src/utils/__tests__/benchmarkHarness.test.ts', 'jsdom'],
@@ -32,7 +33,7 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       include: [
         'src/utils/**/*.ts',
         'src/components/**/*.tsx',
@@ -44,6 +45,20 @@ export default defineConfig({
         'src/main.tsx',
         'src/App.tsx',
       ],
+      thresholds: {
+        // Critical engine paths — enforced on every CI run
+        'src/utils/correlationEngine.ts': { lines: 90, functions: 90, branches: 85 },
+        'src/utils/nestEngine.ts':        { lines: 85, functions: 85, branches: 80 },
+        'src/utils/talonEngine.ts':       { lines: 85, functions: 85, branches: 80 },
+        'src/utils/ssaTransform.ts':      { lines: 90, functions: 90, branches: 85 },
+        'src/utils/dataFlowPasses.ts':    { lines: 90, functions: 90, branches: 85 },
+        'src/utils/signatureEngine.ts':   { lines: 85, functions: 85, branches: 80 },
+        'src/utils/operatorConsole.ts':   { lines: 85, functions: 85, branches: 80 },
+        // Global floor
+        lines: 70,
+        functions: 70,
+        branches: 65,
+      },
     },
   },
 });

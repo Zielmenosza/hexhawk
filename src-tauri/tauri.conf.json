@@ -35,15 +35,27 @@
     "longDescription": "HexHawk is a desktop binary analysis tool with four intelligence engines: NEST convergence analysis, TALON decompilation, STRIKE behavioral analysis, and ECHO cross-binary correlation.",
     "copyright": "Copyright © 2026 HexHawk Team",
     "category": "DeveloperTool",
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "windows": {
       "wix": {
-        "language": "en-US"
+        "language": "en-US",
+        "template": null,
+        "fragmentPaths": [],
+        "componentGroupRefs": [],
+        "componentRefs": [],
+        "featureGroupRefs": [],
+        "featureRefs": []
       },
       "nsis": {
         "languages": ["English"],
-        "displayLanguageSelector": false
-      }
+        "displayLanguageSelector": false,
+        "installerIcon": null,
+        "headerImage": null,
+        "sidebarImage": null,
+        "installMode": "currentUser",
+        "shortcuts": true
+      },
+      "signCommand": null
     },
     "macOS": {
       "entitlements": null,
@@ -61,6 +73,16 @@
     }
   },
   "plugins": {
-    "dialog": {}
+    "dialog": {},
+    "updater": {
+      "pubkey": "",
+      "endpoints": [
+        "https://releases.hexhawk.app/{{target}}/{{arch}}/{{current_version}}"
+      ],
+      "dialog": true,
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }
