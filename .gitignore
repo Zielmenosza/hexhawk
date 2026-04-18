@@ -34,6 +34,9 @@ build/
 *.tmp
 *.bak
 nest_run_output.txt
+src-tauri/cargo_log.txt
+src-tauri/cargo_output.txt
+HexHawk/output.txt
 
 # NEST test sessions / analysis output
 nest_tests/
