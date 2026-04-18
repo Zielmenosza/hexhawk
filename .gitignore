@@ -1,0 +1,47 @@
+# Node
+node_modules/
+**/node_modules/
+package-lock.json
+npm-debug.log
+pnpm-lock.yaml
+
+# Rust
+/target/
+**/target/
+Cargo.lock
+
+# Tauri / frontend
+dist/
+**/dist/
+build/
+**/build/
+.vite/
+*.db
+
+# Yarn
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Logs and temp files
+*.log
+*.tmp
+*.bak
+nest_run_output.txt
+
+# NEST test sessions / analysis output
+nest_tests/
+
+# System
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

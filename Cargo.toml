@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = [
+    "plugin-api",
+    "plugins/byte_counter",
+    "src-tauri"
+]

@@ -1,0 +1,15 @@
+{
+  "name": "hexhawk-root",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "HexHawk",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node node_modules/@tauri-apps/cli/tauri.js dev",
+    "build": "yarn workspace hexhawk-ui build",
+    "tauri:dev": "node node_modules/@tauri-apps/cli/tauri.js dev",
+    "tauri:build": "node node_modules/@tauri-apps/cli/tauri.js build"
+  }
+}
