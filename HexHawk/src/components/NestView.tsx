@@ -98,7 +98,7 @@ import {
   type NestSessionResult,
   type NestPostProcessingResult,
 } from '../engines/nest/NestSessionRunner';
-
+import CorpusBenchmarkPanel from './CorpusBenchmarkPanel';
 
 
 // ── TrainingBinaryPicker ──────────────────────────────────────────────────────
@@ -2129,6 +2129,7 @@ const NestView: React.FC<NestViewProps> = ({
   const [trainingStats,  setTrainingStats]   = useState<TrainingStats | null>(null);
   const [trainingRecords,setTrainingRecords] = useState<TrainingRecord[]>([]);
   const [trainingHistoryVisible, setTrainingHistoryVisible] = useState(false);
+  const [corpusPanelVisible,     setCorpusPanelVisible]     = useState(false);
 
   // Keep disasm ref in sync with prop changes (new binary loaded)
   useEffect(() => {
@@ -2464,6 +2465,11 @@ const NestView: React.FC<NestViewProps> = ({
             onClick={() => setTrainingHistoryVisible(v => !v)}
           >📋</button>
           <button
+            className={`nest-btn-icon${corpusPanelVisible ? ' active' : ''}`}
+            title="Corpus &amp; Benchmarks"
+            onClick={() => setCorpusPanelVisible(v => !v)}
+          >📦</button>
+          <button
             className="nest-btn-icon"
             title="Configure NEST"
             onClick={() => setShowConfig(v => !v)}
@@ -2668,6 +2674,14 @@ const NestView: React.FC<NestViewProps> = ({
           records={trainingRecords}
           stats={trainingStats}
           onClose={() => setTrainingHistoryVisible(false)}
+        />
+      )}
+
+      {/* Corpus & Benchmark panel — overlay when toggled */}
+      {corpusPanelVisible && (
+        <CorpusBenchmarkPanel
+          binaryPath={binaryPath ?? null}
+          onClose={() => setCorpusPanelVisible(false)}
         />
       )}
 

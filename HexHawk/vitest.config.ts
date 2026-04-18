@@ -21,6 +21,8 @@ export default defineConfig({
     environmentMatchGlobs: [
       ['src/components/**/*.test.tsx', 'jsdom'],
       ['src/utils/__tests__/useVirtualList.test.ts', 'jsdom'],
+      ['src/utils/__tests__/corpusManager.test.ts', 'jsdom'],
+      ['src/utils/__tests__/benchmarkHarness.test.ts', 'jsdom'],
     ],
     environment: 'node',
     setupFiles: ['src/test/setup.ts'],
