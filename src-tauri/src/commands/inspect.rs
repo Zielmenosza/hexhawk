@@ -22,6 +22,54 @@ fn shannon_entropy(bytes: &[u8]) -> f64 {
         .sum()
 }
 
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::shannon_entropy;
+
+    #[test]
+    fn entropy_of_empty_bytes_is_zero() {
+        assert_eq!(shannon_entropy(b""), 0.0);
+    }
+
+    #[test]
+    fn entropy_of_uniform_bytes_is_zero() {
+        // All identical bytes → entropy = 0 (only one symbol)
+        let data = vec![0x41u8; 256];
+        assert_eq!(shannon_entropy(&data), 0.0);
+    }
+
+    #[test]
+    fn entropy_of_maximally_random_bytes_is_near_eight() {
+        // All 256 byte values each appearing once → entropy = 8.0
+        let data: Vec<u8> = (0u8..=255).collect();
+        let h = shannon_entropy(&data);
+        assert!((h - 8.0).abs() < 0.001, "Expected ~8.0, got {h}");
+    }
+
+    #[test]
+    fn entropy_of_two_symbols_is_one() {
+        // Equal mix of two byte values → H = 1.0
+        let data: Vec<u8> = (0..256).map(|i| if i % 2 == 0 { 0 } else { 1 }).collect();
+        let h = shannon_entropy(&data);
+        assert!((h - 1.0).abs() < 0.001, "Expected 1.0, got {h}");
+    }
+
+    #[test]
+    fn entropy_is_between_zero_and_eight() {
+        let data: Vec<u8> = (0u8..128).collect();
+        let h = shannon_entropy(&data);
+        assert!(h >= 0.0 && h <= 8.0);
+    }
+
+    #[test]
+    fn entropy_single_byte_is_zero() {
+        assert_eq!(shannon_entropy(&[0xAA]), 0.0);
+    }
+}
+
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ImportEntry {
     pub name: String,

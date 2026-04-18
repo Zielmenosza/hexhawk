@@ -119,3 +119,102 @@ fn find_strings_in_bytes(bytes: &[u8], min_length: usize, base_offset: u64) -> V
 
     matches
 }
+
+// ─── Tests ────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn read_hex_range_returns_requested_slice() {
+        let tmp = tempfile(b"ABCDEFGHIJ");
+        let result = read_hex_range(tmp.path().to_string_lossy().into_owned(), 2, 4).unwrap();
+        assert_eq!(result, b"CDEF");
+    }
+
+    #[test]
+    fn read_hex_range_clamps_to_file_end() {
+        let tmp = tempfile(b"HELLO");
+        let result = read_hex_range(tmp.path().to_string_lossy().into_owned(), 3, 100).unwrap();
+        assert_eq!(result, b"LO");
+    }
+
+    #[test]
+    fn read_hex_range_out_of_bounds_returns_empty() {
+        let tmp = tempfile(b"HELLO");
+        let result = read_hex_range(tmp.path().to_string_lossy().into_owned(), 100, 10).unwrap();
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn find_strings_in_bytes_finds_ascii() {
+        let data = b"\x00\x00Hello World\x00\x00";
+        let matches = find_strings_in_bytes(data, 4, 0);
+        assert_eq!(matches.len(), 1);
+        assert_eq!(matches[0].text, "Hello World");
+    }
+
+    #[test]
+    fn find_strings_in_bytes_respects_min_length() {
+        let data = b"\x00ABC\x00ABCDEFGH\x00";
+        let matches = find_strings_in_bytes(data, 5, 0);
+        // "ABC" is only 3 chars — should NOT appear
+        assert!(!matches.iter().any(|m| m.text == "ABC"));
+        // "ABCDEFGH" is 8 chars — should appear
+        assert!(matches.iter().any(|m| m.text == "ABCDEFGH"));
+    }
+
+    #[test]
+    fn find_strings_in_bytes_offset_is_correct() {
+        let data = b"\x00\x00\x00Hello\x00";
+        let matches = find_strings_in_bytes(data, 4, 100);
+        assert_eq!(matches[0].offset, 103); // base 100 + position 3
+    }
+
+    #[test]
+    fn find_strings_in_bytes_empty_input_returns_empty() {
+        let matches = find_strings_in_bytes(b"", 4, 0);
+        assert!(matches.is_empty());
+    }
+
+    #[test]
+    fn find_strings_in_bytes_no_strings_returns_empty() {
+        let data = vec![0x00u8, 0x01, 0x02, 0x80, 0xFF];
+        let matches = find_strings_in_bytes(&data, 4, 0);
+        assert!(matches.is_empty());
+    }
+
+    fn tempfile(content: &[u8]) -> TempFile {
+        TempFile::new(content)
+    }
+
+    /// Minimal temp-file helper that cleans up on drop.
+    struct TempFile {
+        path: std::path::PathBuf,
+    }
+
+    impl TempFile {
+        fn new(content: &[u8]) -> Self {
+            use std::io::Write;
+            let mut path = std::env::temp_dir();
+            path.push(format!("hexhawk_test_{}.bin", std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .subsec_nanos()));
+            let mut f = std::fs::File::create(&path).unwrap();
+            f.write_all(content).unwrap();
+            TempFile { path }
+        }
+
+        fn path(&self) -> &std::path::Path {
+            &self.path
+        }
+    }
+
+    impl Drop for TempFile {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}

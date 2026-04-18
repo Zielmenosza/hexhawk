@@ -716,8 +716,7 @@ pre {
 }
 
 .hex-viewer-scroll {
-  max-height: 56vh;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1rem;
   background: rgba(7, 12, 20, 0.95);
@@ -3225,8 +3224,8 @@ pre {
 
 .disassembly-scroll-enhanced {
   flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  min-height: 0;        /* prevents flex child from overflowing parent */
+  overflow: hidden;     /* react-window manages its own scroll */
   display: flex;
   flex-direction: column;
   background: #0f0f1e;

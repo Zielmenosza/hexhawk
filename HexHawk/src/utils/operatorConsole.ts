@@ -128,7 +128,9 @@ const INTENT_LABELS: Record<OperatorIntent, string> = {
   'general-analysis':  'General Analysis',
 };
 
-type WorkflowTemplate = Omit<ConsoleWorkflow, 'contextApplied' | 'intent' | 'intentLabel'> & {
+type WorkflowTemplate = {
+  title: string;
+  description: string;
   steps: Omit<ConsoleStep, 'id' | 'status'>[];
 };
 

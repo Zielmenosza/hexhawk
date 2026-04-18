@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import './styles.css';
@@ -9,6 +9,7 @@ import FunctionBrowser from './components/FunctionBrowser';
 import SmartSuggestions from './components/SmartSuggestions';
 import EnhancedInstructionRow from './components/EnhancedInstructionRow';
 import ReferenceStrengthBadge from './components/ReferenceStrengthBadge';
+import DisassemblyList from './components/DisassemblyList';
 
 // Phase 7 Pattern Intelligence Components
 import ThreatAssessment from './components/ThreatAssessment';
@@ -26,6 +27,7 @@ import { AnalysisGraph } from './components/AnalysisGraph';
 import { IntelligenceReport } from './components/IntelligenceReport';
 import { semanticSearch, getAllActiveIntents } from './utils/semanticSearch';
 import type { SemanticSearchResult } from './utils/semanticSearch';
+import { useVirtualList } from './utils/useVirtualList';
 import {
   generateAutoAnnotations,
   acceptAnnotation,
@@ -503,6 +505,109 @@ async function copyToClipboard(text: string): Promise<void> {
   }
 }
 
+// ─── Virtual HexViewer — module-level constants + row renderer ───────────────
+const HEX_ROW_SIZE = 16;
+const HEX_ROW_HEIGHT_PX = 28;
+
+function getHexHighlightColor(
+  value: number,
+  mode: 'none' | 'null' | 'printable' | 'entropy'
+): string | undefined {
+  if (mode === 'null' && value === 0) return 'rgba(244,67,54,0.35)';
+  if (mode === 'printable' && value >= 32 && value <= 126) return 'rgba(76,175,80,0.25)';
+  if (mode === 'entropy') {
+    if (value > 200 || (value > 100 && value < 150)) return 'rgba(156,39,176,0.3)';
+  }
+  return undefined;
+}
+
+interface HexRowItemData {
+  bytes: number[];
+  baseOffset: number;
+  selectedIndex: number | null;
+  highlightedRange: { start: number; end: number } | undefined;
+  searchResultsSet: Set<number>;
+  onSelectByte: (index: number) => void;
+  hexGrouping: 1 | 2 | 4 | 8;
+  hexHighlightMode: 'none' | 'null' | 'printable' | 'entropy';
+}
+
+interface HexRowProps extends HexRowItemData {
+  index: number;
+  style: React.CSSProperties;
+}
+
+const HexRow = React.memo(function HexRow({
+  index,
+  style,
+  bytes,
+  baseOffset,
+  selectedIndex,
+  highlightedRange,
+  searchResultsSet,
+  onSelectByte,
+  hexGrouping,
+  hexHighlightMode,
+}: HexRowProps) {
+
+  const rowStart = index * HEX_ROW_SIZE;
+  const rowBytes = bytes.slice(rowStart, rowStart + HEX_ROW_SIZE);
+  const offset = baseOffset + rowStart;
+  const rowEndOffset = offset + rowBytes.length;
+
+  const isRowHighlighted =
+    highlightedRange != null &&
+    offset < highlightedRange.end &&
+    rowEndOffset > highlightedRange.start;
+
+  const hexCells: React.ReactNode[] = [];
+  rowBytes.forEach((value, idx) => {
+    const byteIndex = rowStart + idx;
+    const cellOffset = baseOffset + byteIndex;
+    const isSelected = selectedIndex === byteIndex;
+    const isCellHighlighted =
+      highlightedRange != null &&
+      cellOffset >= highlightedRange.start &&
+      cellOffset < highlightedRange.end;
+    const isSearchResult = searchResultsSet.has(byteIndex);
+    const patternBg = getHexHighlightColor(value, hexHighlightMode);
+
+    hexCells.push(
+      <button
+        key={byteIndex}
+        type="button"
+        className={`hex-cell${isSelected ? ' selected' : ''}${isCellHighlighted ? ' highlighted' : ''}${isSearchResult ? ' search-result' : ''}`}
+        onClick={() => onSelectByte(byteIndex)}
+        title={`${formatHex(cellOffset)} = 0x${value.toString(16).padStart(2, '0').toUpperCase()}${isSearchResult ? ' (search match)' : ''}`}
+        style={patternBg ? { background: patternBg } : undefined}
+      >
+        {value.toString(16).padStart(2, '0').toUpperCase()}
+      </button>
+    );
+    if (hexGrouping > 1 && (idx + 1) % hexGrouping === 0 && idx + 1 < rowBytes.length) {
+      hexCells.push(
+        <span key={`sep-${byteIndex}`} style={{ display: 'inline-block', width: '4px' }} />
+      );
+    }
+  });
+
+  const ascii = rowBytes
+    .map((v) => (v >= 32 && v <= 126 ? String.fromCharCode(v) : '.'))
+    .join('');
+
+  return (
+    <div
+      style={style}
+      className={`hex-row${isRowHighlighted ? ' highlighted' : ''}`}
+      data-hex-offset={offset}
+    >
+      <div className="hex-offset">{offset.toString(16).padStart(8, '0').toUpperCase()}</div>
+      <div className="hex-row-cells">{hexCells}</div>
+      <div className="hex-ascii">{ascii}</div>
+    </div>
+  );
+});
+
 function HexViewer({
   bytes,
   title,
@@ -573,81 +678,39 @@ function HexViewer({
   // Convert search results to Set for O(1) lookups
   const searchResultsSet = React.useMemo(() => new Set(searchResults), [searchResults]);
 
-  // Memoize rows rendering for performance
-  const rows = React.useMemo(() => {
-    const renderedRows = [];
-    const rowSize = 16;
+  const rowCount = Math.ceil(bytes.length / HEX_ROW_SIZE);
+  const containerHeight = Math.min(
+    rowCount * HEX_ROW_HEIGHT_PX,
+    Math.round(window.innerHeight * 0.56)
+  );
 
-    // Helper: choose highlight color for a byte based on highlight mode
-    const getHighlightColor = (value: number, _idx: number): string | undefined => {
-      if (hexHighlightMode === 'null' && value === 0) return 'rgba(244,67,54,0.35)';
-      if (hexHighlightMode === 'printable' && value >= 32 && value <= 126) return 'rgba(76,175,80,0.25)';
-      if (hexHighlightMode === 'entropy') {
-        // High entropy bytes: near edges 0x00/0xFF = low, random-looking values = high
-        if (value > 200 || (value > 100 && value < 150)) return 'rgba(156,39,176,0.3)';
-      }
-      return undefined;
-    };
-    
-    for (let rowStart = 0; rowStart < bytes.length; rowStart += rowSize) {
-      const rowBytes = bytes.slice(rowStart, rowStart + rowSize);
-      const offset = baseOffset + rowStart;
-      const rowEndOffset = offset + rowBytes.length;
-      
-      const isRowHighlighted = highlightedRange && 
-        offset < highlightedRange.end && 
-        rowEndOffset > highlightedRange.start;
-      
-      const hexCells: React.ReactNode[] = [];
-      rowBytes.forEach((value, idx) => {
-        const index = rowStart + idx;
-        const cellOffset = baseOffset + index;
-        const isSelected = selectedIndex === index;
-        const isCellHighlighted = highlightedRange && 
-          cellOffset >= highlightedRange.start && 
-          cellOffset < highlightedRange.end;
-        const isSearchResult = searchResultsSet.has(index);
-        const patternBg = getHighlightColor(value, idx);
+  const { virtualItems, totalHeight, containerRef: hexContainerRef, scrollToIndex } = useVirtualList({
+    count: rowCount,
+    itemHeight: HEX_ROW_HEIGHT_PX,
+    overscan: 5,
+  });
 
-        hexCells.push(
-          <button
-            key={index}
-            type="button"
-            className={`hex-cell${isSelected ? ' selected' : ''}${isCellHighlighted ? ' highlighted' : ''}${isSearchResult ? ' search-result' : ''}`}
-            onClick={() => onSelectByte(index)}
-            title={`${formatHex(cellOffset)} = 0x${value.toString(16).padStart(2, '0').toUpperCase()}${isSearchResult ? ' (search match)' : ''}`}
-            style={patternBg ? { background: patternBg } : undefined}
-          >
-            {value.toString(16).padStart(2, '0').toUpperCase()}
-          </button>
-        );
-        // Insert group separator
-        if (hexGrouping > 1 && (idx + 1) % hexGrouping === 0 && idx + 1 < rowBytes.length) {
-          hexCells.push(
-            <span key={`sep-${index}`} style={{ display: 'inline-block', width: '4px' }} />
-          );
-        }
-      });
-      
-      const ascii = rowBytes
-        .map((value) => (value >= 32 && value <= 126 ? String.fromCharCode(value) : '.'))
-        .join('');
-
-      renderedRows.push(
-        <div 
-          key={rowStart} 
-          className={`hex-row${isRowHighlighted ? ' highlighted' : ''}`}
-          data-hex-offset={offset}
-        >
-          <div className="hex-offset">{offset.toString(16).padStart(8, '0').toUpperCase()}</div>
-          <div className="hex-row-cells">{hexCells}</div>
-          <div className="hex-ascii">{ascii}</div>
-        </div>
-      );
+  // Scroll to the row containing the selected byte when selection changes
+  React.useEffect(() => {
+    if (selectedIndex !== null) {
+      scrollToIndex(Math.floor(selectedIndex / HEX_ROW_SIZE));
     }
-    
-    return renderedRows;
-  }, [bytes, baseOffset, selectedIndex, highlightedRange, searchResultsSet, onSelectByte, hexGrouping, hexHighlightMode]);
+  }, [selectedIndex, scrollToIndex]);
+
+  // itemData for HexRow — stable object avoids prop-drilling into each row
+  const hexRowItemData = React.useMemo<HexRowItemData>(
+    () => ({
+      bytes,
+      baseOffset,
+      selectedIndex,
+      highlightedRange,
+      searchResultsSet,
+      onSelectByte,
+      hexGrouping,
+      hexHighlightMode,
+    }),
+    [bytes, baseOffset, selectedIndex, highlightedRange, searchResultsSet, onSelectByte, hexGrouping, hexHighlightMode]
+  );
 
   return (
     <div className="panel hex-viewer-enhanced-panel">
@@ -838,7 +901,22 @@ function HexViewer({
         </div>
       )}
 
-      <div className="hex-viewer-scroll">{rows}</div>
+      <div
+        ref={hexContainerRef}
+        className="hex-viewer-scroll"
+        style={{ height: containerHeight, overflowY: 'auto' }}
+      >
+        <div style={{ height: totalHeight, position: 'relative' }}>
+          {virtualItems.map(({ index, top }) => (
+            <HexRow
+              key={index}
+              index={index}
+              style={{ position: 'absolute', top, height: HEX_ROW_HEIGHT_PX, width: '100%' }}
+              {...hexRowItemData}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -3217,7 +3295,8 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="disassembly-scroll-enhanced">
-                    <div className="disassembly-header disassembly-line" style={{ position: 'sticky', top: 0, background: '#1a1a2e', zIndex: 5, padding: '0.5rem' }}>
+                    {/* Sticky column header — lives outside the virtual list */}
+                    <div className="disassembly-header disassembly-line" style={{ flexShrink: 0, background: '#1a1a2e', zIndex: 5, padding: '0.5rem' }}>
                       <span style={{ flex: '0 0 100px' }}>Address</span>
                       <span style={{ flex: '0 0 50px' }}>Refs</span>
                       <span style={{ flex: '0 0 60px' }}>Type</span>
@@ -3225,61 +3304,25 @@ export default function App() {
                       <span style={{ flex: '0 0 60px' }}>Pattern</span>
                       <span style={{ flex: '0 0 60px' }}>Loop</span>
                     </div>
-                    {disassembly.map((ins) => {
-                      const isHighlighted = highlightedDisasmRange && ins.address >= highlightedDisasmRange.start && ins.address < highlightedDisasmRange.end;
-                      const refStrength = disassemblyAnalysis.referenceStrength.get(ins.address);
-                      const pattern = disassemblyAnalysis.suspiciousPatterns.find((p) => p.address === ins.address);
-                      const isFuncStart = disassemblyAnalysis.functions.has(ins.address);
-                      const inLoop = disassemblyAnalysis.loops.some((l) => ins.address >= l.startAddress && ins.address <= l.endAddress);
-
-                      return (
-                        <div key={`disasm-${ins.address}`} className="disassembly-instruction" style={{ display: 'flex', flexDirection: 'column' }}>
-                          <EnhancedInstructionRow
-                            address={ins.address}
-                            mnemonic={ins.mnemonic}
-                            operands={ins.operands}
-                            refStrength={refStrength}
-                            pattern={pattern}
-                            isFunctionStart={isFuncStart}
-                            isInLoop={inLoop}
-                            selected={selectedDisasmAddress === ins.address}
-                            highlighted={isHighlighted || false}
-                            onSelect={() => {
-                              setSelectedDisasmAddress(ins.address);
-                              selectAddress(ins.address);
-                            }}
-                            onNavigateToFunction={() => {
-                              if (isFuncStart) {
-                                setSelectedFunction(ins.address);
-                              }
-                            }}
-                            onShowReferences={() => {
-                              setSelectedDisasmAddress(ins.address);
-                              setShowReferencesPanel(true);
-                            }}
-                          />
-                          {annotations.has(ins.address) && (
-                            <div style={{
-                              marginLeft: '108px',
-                              marginTop: '-2px',
-                              marginBottom: '2px',
-                              fontSize: '0.7rem',
-                              color: '#ffd54f',
-                              background: 'rgba(255,213,79,0.08)',
-                              border: '1px solid rgba(255,213,79,0.3)',
-                              borderRadius: '0.25rem',
-                              padding: '0.15rem 0.5rem',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.3rem',
-                            }}>
-                              <span>📝</span>
-                              <span>{annotations.get(ins.address)}</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                    {/* Virtualized instruction list — manages its own scroll */}
+                    <DisassemblyList
+                      disassembly={disassembly}
+                      highlightedDisasmRange={highlightedDisasmRange}
+                      disassemblyAnalysis={disassemblyAnalysis}
+                      selectedDisasmAddress={selectedDisasmAddress}
+                      annotations={annotations}
+                      onSelectInstruction={(address) => {
+                        setSelectedDisasmAddress(address);
+                        selectAddress(address);
+                      }}
+                      onNavigateToFunction={(address) => {
+                        setSelectedFunction(address);
+                      }}
+                      onShowReferences={(address) => {
+                        setSelectedDisasmAddress(address);
+                        setShowReferencesPanel(true);
+                      }}
+                    />
                   </div>
                 )}
 
