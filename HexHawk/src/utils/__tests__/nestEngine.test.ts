@@ -52,7 +52,7 @@ describe('finalizeSession', () => {
   });
 
   it('sets endTime on finalize', () => {
-    const result = finalizeSession(base, 'max-iterations');
+    const result = finalizeSession(base, 'max-reached');
     expect(result.endTime).not.toBeNull();
     expect(typeof result.endTime).toBe('number');
   });
@@ -109,10 +109,11 @@ describe('assessConvergence — minIterations guard', () => {
       confidenceThreshold: 85,
     });
 
-    // Mock the iteration snapshots — just needs .confidence and .verdict.classification
+    // Mock the iteration snapshots — just needs .confidence and .verdict fields
     const snap = (confidence: number) => ({
-      iterationNumber: 1,
-      status: 'complete' as const,
+      iteration: 1,
+      timestamp: Date.now(),
+      input: { filePath: 'x.exe', options: {} },
       verdict: {
         threatScore: 10,
         confidence,
@@ -131,18 +132,16 @@ describe('assessConvergence — minIterations guard', () => {
         alternatives: [],
       },
       confidence,
-      signals: [],
-      behaviors: [],
       delta: null,
       refinementPlan: null,
-      notes: [],
+      annotations: [],
       durationMs: 100,
     });
 
     const sessionWith3 = {
       ...session,
       iterations: [snap(88), snap(89), snap(90)],
-    };
+    } as unknown as NestSession;
 
     const highConfVerdict = {
       ...sessionWith3.iterations[2].verdict,

@@ -13,12 +13,16 @@
     "windows": [
       {
         "title": "HexHawk",
-        "width": 1200,
-        "height": 820
+        "width": 1280,
+        "height": 860,
+        "minWidth": 900,
+        "minHeight": 600,
+        "resizable": true,
+        "fullscreen": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: https://asset.localhost; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
   "bundle": {
@@ -26,7 +30,35 @@
     "targets": "all",
     "icon": [
       "icons/icon.ico"
-    ]
+    ],
+    "shortDescription": "Binary analysis and reverse engineering workbench",
+    "longDescription": "HexHawk is a desktop binary analysis tool with four intelligence engines: NEST convergence analysis, TALON decompilation, STRIKE behavioral analysis, and ECHO cross-binary correlation.",
+    "copyright": "Copyright © 2026 HexHawk Team",
+    "category": "DeveloperTool",
+    "createUpdaterArtifacts": false,
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "languages": ["English"],
+        "displayLanguageSelector": false
+      }
+    },
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": null,
+      "signingIdentity": null,
+      "providerShortName": null
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    }
   },
   "plugins": {
     "dialog": {}

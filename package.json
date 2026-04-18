@@ -10,6 +10,18 @@
     "dev": "node node_modules/@tauri-apps/cli/tauri.js dev",
     "build": "yarn workspace hexhawk-ui build",
     "tauri:dev": "node node_modules/@tauri-apps/cli/tauri.js dev",
-    "tauri:build": "node node_modules/@tauri-apps/cli/tauri.js build"
+    "tauri:build": "node node_modules/@tauri-apps/cli/tauri.js build",
+    "test": "yarn workspace hexhawk-ui test",
+    "test:coverage": "yarn workspace hexhawk-ui test:coverage",
+    "typecheck": "yarn workspace hexhawk-ui exec tsc --noEmit",
+    "lint:rust": "cargo clippy --workspace -- -D warnings",
+    "test:rust": "cargo test --workspace"
+  },
+  "dependencies": {
+    "react-virtualized-auto-sizer": "^2.0.3",
+    "react-window": "^2.2.7"
+  },
+  "devDependencies": {
+    "@types/react-window": "^2.0.0"
   }
 }
