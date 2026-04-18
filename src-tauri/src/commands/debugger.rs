@@ -20,7 +20,6 @@ use serde::{Deserialize, Serialize};
 // ── Shared types (all platforms) ─────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub enum DebugStatus {
     Starting,
     Paused,
@@ -352,7 +351,7 @@ mod win {
         let mut system_bp_hit = false; // First EXCEPTION_BREAKPOINT from loader
 
         // ── Initial debug event loop until first system breakpoint ────────────
-        let initial_ctx = loop {
+        let (initial_ctx, init_pending_pid, init_pending_tid) = loop {
             let mut evt: DEBUG_EVENT = unsafe { std::mem::zeroed() };
             let ok = unsafe { WaitForDebugEvent(&mut evt, 5000) };
             if ok == FALSE {
@@ -385,7 +384,7 @@ mod win {
                         system_bp_hit = true;
                         let thread = thread_handles.get(&evt.dwThreadId).copied().unwrap_or(main_thread);
                         if let Some(ctx) = unsafe { get_ctx(thread) } {
-                            break ctx;
+                            break (ctx, evt.dwProcessId, evt.dwThreadId);
                         }
                         // If we can't get context, continue
                         unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
@@ -444,6 +443,10 @@ mod win {
         let mut current_thread = main_thread;
         let mut status = DebugStatus::Paused;
         let mut last_event_str = "system-breakpoint".to_string();
+        // Track the process/thread IDs of the last unconfirmed debug event.
+        // ContinueDebugEvent MUST be called with these exact IDs before the next op.
+        let mut pending_event_pid: u32 = init_pending_pid;
+        let mut pending_event_tid: u32 = init_pending_tid;
 
         // ── Command loop ──────────────────────────────────────────────────────
 
@@ -455,7 +458,9 @@ mod win {
                              bp_originals: &mut HashMap<u64, u8>,
                              user_bps: &std::collections::HashSet<u64>,
                              step_count: &mut u32,
-                             exit_code: &mut Option<i32>|
+                             exit_code: &mut Option<i32>,
+                             pending_pid: &mut u32,
+                             pending_tid: &mut u32|
          -> Result<(CONTEXT, HANDLE, DebugStatus, String), String> {
             let timeout_ms = 10_000u32;
             loop {
@@ -477,9 +482,9 @@ mod win {
                             *step_count += 1;
                             let ctx = unsafe { get_ctx(thread) }
                                 .ok_or_else(|| "GetThreadContext failed".to_string())?;
-                            unsafe {
-                                ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
-                            }
+                            // Save pending event IDs — caller calls ContinueDebugEvent before next op.
+                            *pending_pid = evt.dwProcessId;
+                            *pending_tid = tid;
                             return Ok((ctx, thread, DebugStatus::Paused, "single-step".to_string()));
                         } else if code == EXCEPTION_BREAKPOINT {
                             // Restore original byte and rewind RIP
@@ -489,19 +494,18 @@ mod win {
                                 if let Some(mut ctx) = unsafe { get_ctx(thread) } {
                                     ctx.Rip -= 1;
                                     unsafe { set_ctx(thread, &ctx); }
-                                    // Re-arm the breakpoint via single-step then re-insert
+                                    // Preserve orig byte so re-set_breakpoint can re-arm
                                     if user_bps.contains(&addr) {
                                         bp_originals.insert(addr, orig);
                                     }
-                                    unsafe {
-                                        ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
-                                    }
+                                    // Save pending event IDs — caller calls ContinueDebugEvent
+                                    *pending_pid = evt.dwProcessId;
+                                    *pending_tid = tid;
                                     return Ok((ctx, thread, DebugStatus::Paused, format!("breakpoint@{:#x}", addr)));
                                 }
                             }
-                            unsafe {
-                                ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
-                            }
+                            // Unknown/system breakpoint — just continue
+                            unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
                         } else {
                             unsafe {
                                 ContinueDebugEvent(evt.dwProcessId, tid, DBG_EXCEPTION_NOT_HANDLED);
@@ -566,14 +570,13 @@ mod win {
                     let mut ctx = current_ctx;
                     ctx.EFlags |= 0x100; // TF
                     unsafe { set_ctx(current_thread, &ctx); }
-                    unsafe {
-                        let pid = pi.dwProcessId;
-                        ContinueDebugEvent(pid, pi.dwThreadId, DBG_CONTINUE);
-                    }
+                    // Resume from the last pending debug event
+                    unsafe { ContinueDebugEvent(pending_event_pid, pending_event_tid, DBG_CONTINUE); }
                     match wait_for_stop(
                         process, &thread_handles, main_thread,
                         &mut bp_originals, &user_bps,
                         &mut step_count, &mut exit_code,
+                        &mut pending_event_pid, &mut pending_event_tid,
                     ) {
                         Ok((ctx, thread, new_status, event)) => {
                             current_ctx = ctx;
@@ -602,13 +605,13 @@ mod win {
                         let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
                         continue;
                     }
-                    unsafe {
-                        ContinueDebugEvent(pi.dwProcessId, pi.dwThreadId, DBG_CONTINUE);
-                    }
+                    // Resume from the last pending debug event
+                    unsafe { ContinueDebugEvent(pending_event_pid, pending_event_tid, DBG_CONTINUE); }
                     match wait_for_stop(
                         process, &thread_handles, main_thread,
                         &mut bp_originals, &user_bps,
                         &mut step_count, &mut exit_code,
+                        &mut pending_event_pid, &mut pending_event_tid,
                     ) {
                         Ok((ctx, thread, new_status, event)) => {
                             current_ctx = ctx;
@@ -730,13 +733,13 @@ async fn send_cmd(
 #[tauri::command]
 pub async fn start_debug_session(
     path: String,
-    args: Vec<String>,
+    args: Option<Vec<String>>,
 ) -> Result<StartDebugResult, String> {
     #[cfg(target_os = "windows")]
     {
         let session_id = next_session_id();
         let (tx, rx) = tokio::sync::oneshot::channel();
-        win::start_session(path, args, session_id, tx);
+        win::start_session(path, args.unwrap_or_default(), session_id, tx);
         rx.await
             .map_err(|_| "Debug session thread terminated unexpectedly".to_string())?
     }
@@ -867,3 +870,152 @@ pub async fn debug_read_memory(
         Err("Debugger is only supported on Windows".to_string())
     }
 }
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn session_ids_increment_and_are_unique() {
+        let a = next_session_id();
+        let b = next_session_id();
+        let c = next_session_id();
+        assert!(b > a, "session IDs must be monotonically increasing");
+        assert!(c > b, "session IDs must be monotonically increasing");
+    }
+
+    #[test]
+    fn debug_snapshot_serializes_camel_case() {
+        let snap = DebugSnapshot {
+            session_id: 7,
+            status: DebugStatus::Paused,
+            registers: RegisterState::default(),
+            stack: vec![0xDEAD_BEEF_u64],
+            breakpoints: vec![0x0040_1000_u64],
+            step_count: 3,
+            exit_code: None,
+            last_event: "single-step".to_string(),
+        };
+        let json = serde_json::to_string(&snap).unwrap();
+        // Tauri v2 frontend expects camelCase keys
+        assert!(json.contains("\"sessionId\""), "sessionId must be camelCase");
+        assert!(json.contains("\"stepCount\""), "stepCount must be camelCase");
+        assert!(json.contains("\"lastEvent\""), "lastEvent must be camelCase");
+        assert!(json.contains("\"exitCode\""), "exitCode must be camelCase");
+        assert!(json.contains("\"Paused\""), "status must serialize as PascalCase 'Paused'");
+    }
+
+    #[test]
+    fn start_debug_result_serializes_camel_case() {
+        let snap = DebugSnapshot {
+            session_id: 1,
+            status: DebugStatus::Starting,
+            registers: RegisterState::default(),
+            stack: vec![],
+            breakpoints: vec![],
+            step_count: 0,
+            exit_code: None,
+            last_event: "starting".to_string(),
+        };
+        let result = StartDebugResult {
+            session_id: 1,
+            snapshot: snap,
+            arch: "x86-64".to_string(),
+            warnings: vec!["test-warning".to_string()],
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains("\"sessionId\""));
+        assert!(json.contains("x86-64"));
+        assert!(json.contains("test-warning"));
+    }
+
+    #[test]
+    fn debug_status_roundtrips_serde() {
+        for status in [
+            DebugStatus::Starting,
+            DebugStatus::Paused,
+            DebugStatus::Running,
+            DebugStatus::Exited,
+            DebugStatus::Error,
+        ] {
+            let json = serde_json::to_string(&status).unwrap();
+            let back: DebugStatus = serde_json::from_str(&json).unwrap();
+            assert_eq!(status, back);
+        }
+    }
+
+    #[test]
+    fn register_state_default_is_all_zeros() {
+        let regs = RegisterState::default();
+        assert_eq!(regs.rax, 0);
+        assert_eq!(regs.rip, 0);
+        assert_eq!(regs.eflags, 0);
+        assert_eq!(regs.cs, 0);
+    }
+
+    // ctx_to_regs tests require the Windows CONTEXT struct — Windows-only
+    #[cfg(target_os = "windows")]
+    mod win_tests {
+        use windows_sys::Win32::System::Diagnostics::Debug::CONTEXT;
+
+        fn ctx_to_regs(ctx: &CONTEXT) -> super::super::RegisterState {
+            super::super::RegisterState {
+                rax: ctx.Rax,
+                rbx: ctx.Rbx,
+                rcx: ctx.Rcx,
+                rdx: ctx.Rdx,
+                rsi: ctx.Rsi,
+                rdi: ctx.Rdi,
+                rsp: ctx.Rsp,
+                rbp: ctx.Rbp,
+                rip: ctx.Rip,
+                r8:  ctx.R8,
+                r9:  ctx.R9,
+                r10: ctx.R10,
+                r11: ctx.R11,
+                r12: ctx.R12,
+                r13: ctx.R13,
+                r14: ctx.R14,
+                r15: ctx.R15,
+                eflags: ctx.EFlags,
+                cs: ctx.SegCs as u16,
+                ss: ctx.SegSs as u16,
+            }
+        }
+
+        #[test]
+        fn ctx_to_regs_maps_all_gpr() {
+            let mut ctx: CONTEXT = unsafe { std::mem::zeroed() };
+            ctx.Rax = 0x0000_AAAA_0001_0001;
+            ctx.Rbx = 0x0000_BBBB_0002_0002;
+            ctx.Rip = 0x7FFD_DEAD_BEEF_0000;
+            ctx.Rsp = 0x0000_00CF_FFDF_F000;
+            ctx.EFlags = 0x00000202; // IF set
+            ctx.SegCs = 0x33;
+            ctx.SegSs = 0x2b;
+            let regs = ctx_to_regs(&ctx);
+            assert_eq!(regs.rax, 0x0000_AAAA_0001_0001);
+            assert_eq!(regs.rbx, 0x0000_BBBB_0002_0002);
+            assert_eq!(regs.rip, 0x7FFD_DEAD_BEEF_0000);
+            assert_eq!(regs.rsp, 0x0000_00CF_FFDF_F000);
+            assert_eq!(regs.eflags, 0x202);
+            assert_eq!(regs.cs, 0x33);
+            assert_eq!(regs.ss, 0x2b);
+        }
+
+        #[test]
+        fn ctx_to_regs_r8_through_r15() {
+            let mut ctx: CONTEXT = unsafe { std::mem::zeroed() };
+            ctx.R8  = 0x08_08_08_08;
+            ctx.R9  = 0x09_09_09_09;
+            ctx.R15 = 0x15_15_15_15;
+            let regs = ctx_to_regs(&ctx);
+            assert_eq!(regs.r8,  0x08_08_08_08);
+            assert_eq!(regs.r9,  0x09_09_09_09);
+            assert_eq!(regs.r15, 0x15_15_15_15);
+        }
+    }
+}
+

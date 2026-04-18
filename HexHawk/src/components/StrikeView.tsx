@@ -306,6 +306,7 @@ const StrikeView: React.FC<StrikeViewProps> = ({
     try {
       const result = await invoke<StartDebugResult>('start_debug_session', {
         path: binaryPath,
+        args: [],
       });
       setSessionId(result.sessionId);
       setArch(result.arch);
@@ -326,7 +327,7 @@ const StrikeView: React.FC<StrikeViewProps> = ({
     if (sessionId === null || !timeline) return;
     setLoading(true);
     try {
-      const snap = await invoke<DebugSnapshot>('step_debug', { sessionId });
+      const snap = await invoke<DebugSnapshot>('debug_step', { sessionId });
       setStatus(snap.status);
       setSnapshot(snap);
       const { timeline: updated } = appendStep(timeline, snap);
@@ -342,7 +343,7 @@ const StrikeView: React.FC<StrikeViewProps> = ({
     if (sessionId === null || !timeline) return;
     setLoading(true);
     try {
-      const snap = await invoke<DebugSnapshot>('continue_debug', { sessionId });
+      const snap = await invoke<DebugSnapshot>('debug_continue', { sessionId });
       setStatus(snap.status);
       setSnapshot(snap);
       const { timeline: updated } = appendStep(timeline, snap);
@@ -357,7 +358,7 @@ const StrikeView: React.FC<StrikeViewProps> = ({
   const handleStop = useCallback(async () => {
     if (sessionId === null) return;
     try {
-      await invoke('stop_debug', { sessionId });
+      await invoke('debug_stop', { sessionId });
     } catch (_) { /* ignore */ }
     setStatus('Exited');
     setSessionId(null);
@@ -368,7 +369,7 @@ const StrikeView: React.FC<StrikeViewProps> = ({
     const addr = parseInt(bpInput.trim(), 16);
     if (isNaN(addr)) { setError('Invalid address (use hex, e.g. 0x401000)'); return; }
     try {
-      await invoke('set_breakpoint', { sessionId, address: addr });
+      await invoke('debug_set_breakpoint', { sessionId, address: addr });
       setSnapshot(s => s ? { ...s, breakpoints: [...s.breakpoints, addr] } : s);
       setBpInput('');
     } catch (e) {
@@ -379,7 +380,7 @@ const StrikeView: React.FC<StrikeViewProps> = ({
   const handleRemoveBreakpoint = useCallback(async (addr: number) => {
     if (sessionId === null) return;
     try {
-      await invoke('remove_breakpoint', { sessionId, address: addr });
+      await invoke('debug_remove_breakpoint', { sessionId, address: addr });
       setSnapshot(s => s ? { ...s, breakpoints: s.breakpoints.filter(b => b !== addr) } : s);
     } catch (e) {
       setError(String(e));
