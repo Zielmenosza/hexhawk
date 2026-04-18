@@ -8,6 +8,7 @@ import {
   type IntentCategory,
 } from '../utils/talonEngine';
 import type { BehavioralTag } from '../utils/correlationEngine';
+import type { NaturalLoop, LoopClassification } from '../utils/cfgSignalExtractor';
 
 // ─── Prop Types ───────────────────────────────────────────────────────────────
 
@@ -83,6 +84,28 @@ const TAG_UNSAFE = new Set<BehavioralTag>([
   'code-injection', 'c2-communication', 'process-execution',
   'persistence', 'dynamic-resolution',
 ]);
+
+// ─── Loop classification helpers ──────────────────────────────────────────────
+
+function loopClassIcon(cls: LoopClassification): string {
+  switch (cls) {
+    case 'for':      return '↻';
+    case 'while':    return '⤾';
+    case 'do-while': return '⤿';
+    case 'infinite': return '∞';
+    default:         return '↺';
+  }
+}
+
+function loopClassLabel(cls: LoopClassification): string {
+  switch (cls) {
+    case 'for':      return 'for';
+    case 'while':    return 'while';
+    case 'do-while': return 'do-while';
+    case 'infinite': return 'infinite';
+    default:         return 'loop';
+  }
+}
 
 // ─── Syntax highlight ─────────────────────────────────────────────────────────
 
@@ -176,6 +199,12 @@ function IntentSidebar({ summary, onAddressClick }: {
         <div className="tln-sidebar-meta">
           Lifting: {summary.liftingCoverage}% · {summary.complexityScore} blocks
         </div>
+        {summary.ssaVarCount > 0 && (
+          <div className="tln-sidebar-meta">
+            SSA vars: {summary.ssaVarCount}
+            {summary.loopNestingDepth > 0 && ` · Loop depth: ${summary.loopNestingDepth}`}
+          </div>
+        )}
         {summary.uncertainStatements > 0 && (
           <div className="tln-sidebar-warn">
             {summary.uncertainStatements}/{summary.totalStatements} stmts uncertain
@@ -221,6 +250,33 @@ function IntentSidebar({ summary, onAddressClick }: {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Loop Structure */}
+      {summary.naturalLoops.length > 0 && (
+        <div className="tln-sidebar-section">
+          <div className="tln-sidebar-title">Loop Structure</div>
+          <div className="tln-sidebar-meta">
+            {summary.naturalLoops.length} loop{summary.naturalLoops.length !== 1 ? 's' : ''}
+            {summary.loopNestingDepth > 1 && ` · max depth ${summary.loopNestingDepth}`}
+          </div>
+          {summary.naturalLoops.map((loop: NaturalLoop, i: number) => (
+            <div
+              key={i}
+              className="tln-loop-item"
+              style={{ paddingLeft: `${(loop.depth - 1) * 12}px` }}
+              onClick={() => loop.headerAddress > 0 && onAddressClick(loop.headerAddress)}
+              title={`Back-edge: ${loop.backEdgeKey} · ${loop.body.size} block${loop.body.size !== 1 ? 's' : ''}`}
+            >
+              <span className="tln-loop-icon">{loopClassIcon(loop.classification)}</span>
+              <span className="tln-loop-cls">{loopClassLabel(loop.classification)}</span>
+              {loop.headerAddress > 0 && (
+                <span className="tln-loop-addr">{fmt(loop.headerAddress)}</span>
+              )}
+              <span className="tln-loop-size">{loop.body.size}b</span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -388,6 +444,9 @@ export default function TalonView({
         totalStatements: 0,
         complexityScore: 0,
         warningCount: 0,
+        ssaVarCount: 0,
+        loopNestingDepth: 0,
+        naturalLoops: [],
       },
     };
 

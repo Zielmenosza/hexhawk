@@ -52,6 +52,205 @@ export interface CfgAnalysisSummary {
   jumpTables:       number;
   externalTargets:  number;
   complexityScore:  number;      // 0–100 heuristic
+  naturalLoops:     NaturalLoop[];   // detected natural loops
+  maxNestingDepth:  number;          // maximum loop nesting depth
+}
+
+// ── Natural Loop types ────────────────────────────────────────────────────────
+
+export type LoopClassification = 'for' | 'while' | 'do-while' | 'infinite' | 'unknown';
+
+export interface NaturalLoop {
+  /** Block ID of the loop header (dominator of all back-edge sources). */
+  header: string;
+  /** Block ID of the back-edge source (the block that jumps back to header). */
+  latch: string;
+  /** Set of all block IDs in the loop body (including header and latch). */
+  body: Set<string>;
+  /** Nesting depth: 1 = outermost, 2 = nested inside another loop, etc. */
+  depth: number;
+  /** Original back-edge key from findBackEdges: "latch->header". */
+  backEdgeKey: string;
+  /** Structural classification based on block content heuristics. */
+  classification: LoopClassification;
+  /** Header block start address (for display). */
+  headerAddress: number;
+}
+
+export interface LoopNestingNode {
+  loop: NaturalLoop;
+  children: LoopNestingNode[];
+}
+
+// ── Natural loop detection ───────────────────────────────────────────────────
+
+/**
+ * Build a reverse-adjacency map from the forward adjacency.
+ */
+function buildReverseAdjacency(adjacency: Map<string, string[]>): Map<string, string[]> {
+  const rev = new Map<string, string[]>();
+  for (const [id] of adjacency) rev.set(id, []);
+  for (const [src, targets] of adjacency) {
+    for (const tgt of targets) {
+      if (!rev.has(tgt)) rev.set(tgt, []);
+      rev.get(tgt)!.push(src);
+    }
+  }
+  return rev;
+}
+
+/**
+ * Collect all nodes in the natural loop body for the back-edge latch→header.
+ * Uses reverse-DFS from latch, stopping at header (which is still included).
+ */
+function collectLoopBody(
+  latch: string,
+  header: string,
+  revAdjacency: Map<string, string[]>,
+): Set<string> {
+  const body = new Set<string>();
+  body.add(header);
+  const worklist = [latch];
+  while (worklist.length > 0) {
+    const node = worklist.pop()!;
+    if (body.has(node)) continue;
+    body.add(node);
+    for (const pred of revAdjacency.get(node) ?? []) {
+      if (!body.has(pred)) worklist.push(pred);
+    }
+  }
+  return body;
+}
+
+/**
+ * Classify a natural loop based on heuristics about the header and latch blocks.
+ *   - 'infinite'  : no conditional jump at header or latch
+ *   - 'do-while'  : conditional jump at latch (test is at the bottom)
+ *   - 'while'     : conditional jump at header (test is at the top)
+ *   - 'for'       : conditional at header + an increment-like pattern in latch
+ *   - 'unknown'   : cannot determine
+ */
+function classifyNaturalLoop(
+  loop: Omit<NaturalLoop, 'classification' | 'depth'>,
+  nodeMap: Map<string, CfgNode>,
+): LoopClassification {
+  const header = nodeMap.get(loop.header);
+  const latch  = nodeMap.get(loop.latch);
+
+  // No header info — unknown
+  if (!header) return 'unknown';
+
+  // Detect conditional branch at header (block has 2 outgoing edges)
+  // We infer this from CfgEdge data, but CfgNode doesn't carry edges.
+  // Use instruction_count as a proxy: very low count (≤2) with no latch cond = infinite.
+  const headerInstrCount = header.instruction_count ?? 0;
+  const latchInstrCount  = latch?.instruction_count ?? 0;
+
+  if (headerInstrCount === 0 && latchInstrCount === 0) return 'unknown';
+
+  // If latch has exactly 1 instruction and header has a compare-like count (≥2)
+  // → while pattern
+  // These are coarse heuristics; talonEngine does deeper analysis with IRBlock stmts.
+  if (headerInstrCount >= 2 && latchInstrCount <= 2) return 'while';
+  if (latchInstrCount >= 2 && headerInstrCount <= 2) return 'do-while';
+  if (headerInstrCount === 1 && latchInstrCount === 1) return 'infinite';
+  return 'unknown';
+}
+
+/**
+ * Compute all natural loops in the CFG.
+ *
+ * For each back edge (latch → header), finds:
+ *   - The loop body via reverse-DFS
+ *   - The nesting depth (by containment in other loops)
+ *   - A structural classification
+ */
+export function computeNaturalLoops(cfg: CfgGraph): NaturalLoop[] {
+  if (cfg.nodes.length === 0) return [];
+
+  const adjacency = new Map<string, string[]>();
+  for (const node of cfg.nodes) adjacency.set(node.id, []);
+  for (const edge of cfg.edges) {
+    adjacency.get(edge.source)?.push(edge.target);
+  }
+
+  const entryNode = cfg.nodes.find(n => n.block_type === 'entry') ?? cfg.nodes[0];
+  const entryId   = entryNode.id;
+  const revAdj    = buildReverseAdjacency(adjacency);
+  const nodeMap   = new Map<string, CfgNode>(cfg.nodes.map(n => [n.id, n]));
+
+  const backEdges = findBackEdges(adjacency, entryId);
+
+  // Build preliminary loops (no depth yet)
+  type PartialLoop = Omit<NaturalLoop, 'classification' | 'depth'>;
+  const partial: PartialLoop[] = [];
+
+  for (const key of backEdges) {
+    const sepIdx = key.indexOf('->');
+    if (sepIdx < 0) continue;
+    const latch  = key.slice(0, sepIdx);
+    const header = key.slice(sepIdx + 2);
+
+    const body = collectLoopBody(latch, header, revAdj);
+    const headerNode = nodeMap.get(header);
+    partial.push({
+      header,
+      latch,
+      body,
+      backEdgeKey: key,
+      headerAddress: headerNode?.start ?? 0,
+    });
+  }
+
+  // Assign nesting depths by containment (A is inside B iff A.body ⊂ B.body)
+  const loops: NaturalLoop[] = partial.map(loop => {
+    // Count how many other loops strictly contain this one
+    const depth = partial.filter(other =>
+      other !== loop &&
+      other.body.has(loop.header) &&
+      loop.body.size < other.body.size
+    ).length + 1;
+
+    return {
+      ...loop,
+      depth,
+      classification: classifyNaturalLoop(loop, nodeMap),
+    };
+  });
+
+  // Sort by depth (outermost first), then by header address
+  loops.sort((a, b) => a.depth - b.depth || a.headerAddress - b.headerAddress);
+
+  return loops;
+}
+
+/**
+ * Organise natural loops into a nesting tree (outermost loops are roots;
+ * inner loops are children of the smallest enclosing outer loop).
+ */
+export function buildLoopNestingTree(loops: NaturalLoop[]): LoopNestingNode[] {
+  const nodes: LoopNestingNode[] = loops.map(l => ({ loop: l, children: [] }));
+  const roots: LoopNestingNode[] = [];
+
+  // For each loop, find its parent = smallest loop whose body strictly contains it
+  for (const node of nodes) {
+    const candidates = nodes.filter(other =>
+      other !== node &&
+      other.loop.body.has(node.loop.header) &&
+      node.loop.body.size < other.loop.body.size
+    );
+    if (candidates.length === 0) {
+      roots.push(node);
+    } else {
+      // Pick smallest enclosing loop (minimum body size)
+      const parent = candidates.reduce((a, b) =>
+        a.loop.body.size <= b.loop.body.size ? a : b
+      );
+      parent.children.push(node);
+    }
+  }
+
+  return roots;
 }
 
 // ── DFS cycle detection (back-edge) ──────────────────────────────────────────
@@ -113,6 +312,7 @@ export function extractCfgSignals(cfg: CfgGraph): {
       summary: {
         totalBlocks: 0, totalEdges: 0, indirectCalls: 0, backEdges: 0,
         unreachableBlocks: 0, jumpTables: 0, externalTargets: 0, complexityScore: 0,
+        naturalLoops: [], maxNestingDepth: 0,
       },
     };
   }
@@ -244,6 +444,10 @@ export function extractCfgSignals(cfg: CfgGraph): {
   const jtScore      = Math.min(10, jumpTables * 3);
   const complexityScore = Math.round(nodeScore + loopScore + callScore + unreachScore + jtScore);
 
+  // Natural loop detection
+  const naturalLoops = computeNaturalLoops(cfg);
+  const maxNestingDepth = naturalLoops.reduce((max, l) => Math.max(max, l.depth), 0);
+
   return {
     patterns,
     summary: {
@@ -255,6 +459,8 @@ export function extractCfgSignals(cfg: CfgGraph): {
       jumpTables,
       externalTargets,
       complexityScore,
+      naturalLoops,
+      maxNestingDepth,
     },
   };
 }

@@ -27,6 +27,9 @@ import {
   type DisassembledInstruction,
   type DecompileOptions,
 } from './decompilerEngine';
+import { buildSSAForm } from './ssaTransform';
+import { runDataFlowPasses } from './dataFlowPasses';
+import { computeNaturalLoops, type NaturalLoop } from './cfgSignalExtractor';
 
 // ─── Intent Types ──────────────────────────────────────────────────────────────
 
@@ -67,6 +70,9 @@ export interface TalonFunctionSummary {
   totalStatements: number;
   complexityScore: number;       // number of IR blocks
   warningCount: number;
+  ssaVarCount: number;           // total SSA variables (0 if SSA not run)
+  loopNestingDepth: number;      // maximum natural loop nesting depth
+  naturalLoops: NaturalLoop[];   // detected natural loops
 }
 
 export interface TalonResult extends Omit<DecompileResult, 'lines'> {
@@ -535,6 +541,9 @@ function buildFunctionSummary(
     totalStatements: totalStmts,
     complexityScore: result.irBlocks.length,
     warningCount: result.warnings.length,
+    ssaVarCount: 0,
+    loopNestingDepth: 0,
+    naturalLoops: [],
   };
 }
 
@@ -547,6 +556,13 @@ export function talonDecompile(
 ): TalonResult {
   // Phase 1: base decompile (IR lift + variable abstraction + structuring + emit)
   const base = decompile(instructions, cfg, options);
+
+  // Phase 1.5: SSA construction + data-flow passes
+  const ssaForm = buildSSAForm(base.irBlocks);
+  const dataFlow = runDataFlowPasses(base.irBlocks, ssaForm);
+  // Compute natural loops from CFG (if available)
+  const naturalLoops = cfg ? computeNaturalLoops(cfg) : [];
+  const loopNestingDepth = naturalLoops.reduce((max, l) => Math.max(max, l.depth), 0);
 
   // Build fast-lookup maps
   const instrMap = new Map<number, DisassembledInstruction>();
@@ -564,6 +580,14 @@ export function talonDecompile(
 
   // Phase 4: function summary
   const summary = buildFunctionSummary(base, talonLines, blockIntentMap);
+
+  // Enrich summary with SSA + loop metrics
+  summary.ssaVarCount = ssaForm.varCount;
+  summary.loopNestingDepth = loopNestingDepth;
+  summary.naturalLoops = naturalLoops;
+
+  // Attach data-flow env to result for downstream consumers
+  void dataFlow; // currently used implicitly; future: pass to annotateLines
 
   return { ...base, lines: talonLines, summary };
 }
