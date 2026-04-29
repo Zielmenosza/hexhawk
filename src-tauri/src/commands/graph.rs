@@ -3,6 +3,8 @@ use capstone::arch::{self, ArchOperand, x86::X86OperandType};
 use serde::Serialize;
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
+use object::{Architecture, File as ObjectFile, Object};
+use memmap2::MmapOptions;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CfgNode {
@@ -73,24 +75,38 @@ fn x86_target_address(cs: &Capstone, ins: &Insn) -> Option<u64> {
 
 #[tauri::command]
 pub fn build_cfg(path: String, offset: usize, length: usize) -> Result<CfgGraph, String> {
-    let data = fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+    // Memory-map the file — no size limit
+    let file_handle = fs::File::open(&path)
+        .map_err(|e| format!("Failed to open file: {e}"))?;
+    let mmap = unsafe {
+        MmapOptions::new().map(&file_handle)
+            .map_err(|e| format!("Failed to mmap file: {e}"))?
+    };
+    let data: &[u8] = &mmap;
 
     if offset >= data.len() {
-        return Ok(CfgGraph {
-            nodes: vec![],
-            edges: vec![],
-        });
+        return Ok(CfgGraph { nodes: vec![], edges: vec![] });
     }
 
-    let end = std::cmp::min(offset + length, data.len());
+    let end   = std::cmp::min(offset + length, data.len());
     let slice = &data[offset..end];
 
-    let cs = Capstone::new()
-        .x86()
-        .mode(arch::x86::ArchMode::Mode64)
-        .detail(true)
-        .build()
-        .map_err(|e| format!("Failed to initialize Capstone: {}", e))?;
+    // Auto-detect architecture; fall back to x86-64
+    let detected_arch = ObjectFile::parse(data)
+        .map(|f| f.architecture())
+        .unwrap_or(Architecture::X86_64);
+
+    let cs = match detected_arch {
+        Architecture::I386 => Capstone::new()
+            .x86().mode(arch::x86::ArchMode::Mode32).detail(true).build(),
+        Architecture::Arm => Capstone::new()
+            .arm().mode(arch::arm::ArchMode::Arm).detail(true).build(),
+        Architecture::Aarch64 => Capstone::new()
+            .arm64().mode(arch::arm64::ArchMode::Arm).detail(true).build(),
+        // Default: x86-64 (covers X86_64 and any unsupported arch as fallback)
+        _ => Capstone::new()
+            .x86().mode(arch::x86::ArchMode::Mode64).detail(true).build(),
+    }.map_err(|e| format!("Failed to initialize Capstone: {e}"))?;
 
     let instructions = cs
         .disasm_all(slice, offset as u64)

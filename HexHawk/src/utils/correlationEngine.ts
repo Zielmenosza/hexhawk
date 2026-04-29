@@ -20,6 +20,8 @@ import type { SignatureMatch } from './signatureEngine';
 import type { TalonCorrelationSignal } from './talonEngine';
 import type { StrikeCorrelationSignal } from './strikeEngine';
 import type { EchoCorrelationSignal } from './echoEngine';
+import type { YaraRuleMatch } from './yaraEngine';
+import type { MythosCapabilityMatch } from './mythosEngine';
 
 // ─── Public Types ─────────────────────────────────────────────────────────────
 
@@ -32,10 +34,65 @@ export type BinaryClassification =
   | 'info-stealer'
   | 'rat'         // Remote access trojan
   | 'loader'
+  | 'wiper'        // File-destruction / wiper
   | 'likely-malware'
   | 'unknown';
 
 export type SignalSource = 'structure' | 'imports' | 'strings' | 'disassembly' | 'signatures';
+
+/**
+ * Evidence quality tier — used to weight confidence so that weak heuristic
+ * signals cannot inflate the score to the same level as runtime-confirmed or
+ * import-declared evidence.
+ *
+ *   DIRECT  — observed at runtime (STRIKE execution traces)  — highest trust
+ *   STRONG  — structural declarations / deep static analysis — medium trust
+ *   WEAK    — heuristic / observational                      — lowest trust
+ */
+export type EvidenceTier = 'DIRECT' | 'STRONG' | 'WEAK';
+
+/**
+ * Certainty level for a single finding — answers "how do we know this?".
+ *
+ *   observed  — directly present in the binary (import name, string, section)
+ *               Analyst can verify by opening the Hex/Strings/Metadata tab.
+ *   inferred  — derived by combining two or more observed facts
+ *               e.g. "packed" = high-entropy section + minimal imports
+ *               Correct most of the time but a single observed fact could be coincidental.
+ *   heuristic — pattern-matched; the rule is approximate and may produce false positives
+ *               e.g. tight-loop detection; requires human confirmation before acting.
+ */
+export type CertaintyLevel = 'observed' | 'inferred' | 'heuristic';
+
+/**
+ * Per-tier confidence contribution breakdown — attached to every
+ * BinaryVerdictResult so the UI and NEST iterations can show exactly
+ * which tier of evidence is driving the confidence number.
+ */
+export interface EvidenceTierBreakdown {
+  direct: { signalCount: number; contribution: number; signals: string[] };
+  strong: { signalCount: number; contribution: number; signals: string[] };
+  weak:   { signalCount: number; contribution: number; signals: string[] };
+  /** Confidence value computed from tier formula, before iteration dampening */
+  preDampenConfidence: number;
+}
+
+/**
+ * A navigable reference to a specific location in the binary that contributed
+ * to a signal.  Used by the UI to show "why this rule fired" and to let the
+ * analyst jump directly to the relevant code.
+ *
+ *   address === 0  → import-table entry (no runtime address); show as static badge
+ *   address > 0   → disassembly / function / pattern address; show as jump button
+ */
+export interface SignalLocation {
+  address: number;
+  kind: 'import' | 'string' | 'instruction' | 'function' | 'section' | 'pattern';
+  /** Short label shown on the chip: "WriteProcessMemory", "fn@0x401000", "$s1@0xABCD" */
+  label: string;
+  /** One-sentence context note shown on hover / in the expanded evidence panel */
+  context?: string;
+}
 
 export interface CorrelatedSignal {
   source: SignalSource;
@@ -43,6 +100,32 @@ export interface CorrelatedSignal {
   finding: string;      // human-readable description
   weight: number;       // 0–10 contribution to threat score
   corroboratedBy: string[];  // ids of other signals that strengthen this one
+  /** Evidence tier — populated by computeVerdict after all signals are collected */
+  tier?: EvidenceTier;
+  /**
+   * Certainty level — how the system knows this finding is true.
+   * Absent on legacy signals; present on all signals generated since Prompt 10.
+   *
+   *   'observed'  — fact directly present in the binary; high trust
+   *   'inferred'  — derived from combining 2+ observed facts; moderate trust
+   *   'heuristic' — pattern-matched rule; needs human confirmation
+   */
+  certainty?: CertaintyLevel;
+  /**
+   * Navigable code locations that triggered this signal.
+   * Populated for YARA (matched string offsets) and MYTHOS (imports, function
+   * addresses, pattern addresses).  Empty for legacy signals.
+   *
+   * UI use: render location chips in SignalRow; chips with address > 0
+   * are clickable → jumpToDisassembly(address).
+   */
+  locations?: SignalLocation[];
+  /**
+   * Full evidence sentences explaining WHY the signal fired.
+   * Populated for MYTHOS capability signals (one sentence per matched condition).
+   * Shown in the expandable "Why this fired" panel in BinaryVerdict.
+   */
+  evidence?: string[];
 }
 
 export interface WorkflowStep {
@@ -69,6 +152,23 @@ export interface BinaryVerdictResult {
   reasoningChain: ReasoningStage[];     // stage-by-stage reasoning breakdown
   contradictions: Contradiction[];      // conflicting evidence pairs
   alternatives: AlternativeHypothesis[];// alternative interpretations
+  /** Per-tier evidence quality breakdown — shows what drove confidence */
+  evidenceTierBreakdown?: EvidenceTierBreakdown;
+  /**
+   * Trusted Acceleration — uncertainty flags (Prompt 10).
+   *
+   * Lists things the system is NOT certain about.  Each flag is a
+   * human-readable sentence beginning with "Uncertain:" so the analyst
+   * always knows when a finding requires verification.
+   *
+   * Empty array = system has no active uncertainty flags for this verdict.
+   */
+  uncertaintyFlags: string[];
+  /**
+   * Signals whose `certainty` is 'heuristic' — pulled out for quick access
+   * so the UI can highlight them without filtering the full signals array.
+   */
+  heuristicSignalIds: string[];
 }
 
 export interface NegativeSignal {
@@ -142,6 +242,25 @@ export interface CorrelationInput {
   strikeSignals?: StrikeCorrelationSignal;
   /** Optional: from echoEngine.extractCorrelationSignals() */
   echoSignals?: EchoCorrelationSignal;
+  /**
+   * Optional: YARA rule matches from yaraEngine.runYaraRules() or matchRules().
+   * Each match is converted into a CorrelatedSignal in §16.5 of computeVerdict().
+   * Built-in rules run on the raw binary; passing results in here allows the
+   * UI/NEST layer to control when YARA scanning happens (e.g. only on iteration 1).
+   */
+  yaraMatches?: YaraRuleMatch[];
+  /**
+   * Optional: MYTHOS capability matches from mythosEngine.runMythosRules().
+   * Capabilities are higher-level than YARA patterns — each match represents a
+   * *behavioral capability* (process injection, C2 comms, file encryption, etc.)
+   * derived from combinations of imports, strings, patterns, and TALON/ECHO/YARA.
+   * Each match → one CorrelatedSignal in §16.6 of computeVerdict() with:
+   *   - id: 'mythos-<capability-id>'
+   *   - source: 'signatures'
+   *   - certainty: 'inferred' (derived from multi-evidence combination)
+   *   - finding text that includes the full evidence chain
+   */
+  mythosMatches?: MythosCapabilityMatch[];
   /**
    * Zero-based index of the current iteration in the NEST session.
    * When provided, the confidence score is dampened on early iterations to
@@ -222,6 +341,57 @@ const REGISTRY_IMPORTS = new Set([
   'RegCreateKeyEx', 'RegOpenKey', 'RegOpenKeyEx',
 ]);
 
+/**
+ * System-enumeration APIs: harvest host identity, hardware config, and process
+ * list — the passive reconnaissance phase of RATs and info-stealers.
+ */
+const SYSTEM_ENUM_IMPORTS = new Set([
+  'GetComputerNameA', 'GetComputerNameW', 'GetComputerNameExA', 'GetComputerNameExW',
+  'GetUserNameA', 'GetUserNameW',
+  'GetSystemInfo', 'GetNativeSystemInfo',
+  'GlobalMemoryStatusEx', 'GlobalMemoryStatus',
+  'GetVersionExA', 'GetVersionExW', 'RtlGetVersion',
+  'GetSystemMetrics',
+  'EnumProcesses', 'Process32First', 'Process32FirstW', 'Process32Next', 'Process32NextW',
+  'CreateToolhelp32Snapshot',
+]);
+
+/**
+ * System-shutdown APIs: ExitWindowsEx and NT equivalents — used by wipers to
+ * guarantee the machine reboots or shuts down after payload delivery.
+ */
+const SHUTDOWN_IMPORTS = new Set([
+  'ExitWindowsEx',
+  'InitiateSystemShutdownA', 'InitiateSystemShutdownW',
+  'InitiateSystemShutdownExA', 'InitiateSystemShutdownExW',
+  'NtShutdownSystem', 'ZwShutdownSystem',
+]);
+
+/**
+ * Thread-manipulation APIs: create, suspend, hijack, and resume threads in
+ * other processes — core primitives for process hollowing and injection.
+ */
+const THREADING_IMPORTS = new Set([
+  'CreateThread',
+  'SuspendThread', 'ResumeThread',
+  'SetThreadContext', 'GetThreadContext',
+  'TerminateThread', 'QueueUserAPC',
+]);
+
+/**
+ * Known SDK/runtime framework DLL name patterns.  When ≥ 40 % of all IAT
+ * entries come from these DLLs the binary is a framework-linked application
+ * (Qt, MSVC C++ runtime) and the large import count should NOT inflate the
+ * raw threat score.
+ */
+const FRAMEWORK_DLL_PATTERNS: RegExp[] = [
+  /^qt[0-9]/i,        // Qt5, Qt6 …
+  /^msvcp[0-9]/i,     // MSVCP140, MSVCP120 …
+  /^vcruntime[0-9]/i, // vcruntime140 …
+  /^msvcr[0-9]/i,     // msvcr120 …
+  /^mfc[0-9]/i,       // MFC DLLs
+];
+
 /** Shell/file-picker APIs — normal in any file-handling desktop app */
 const SHELL_BROWSE_IMPORTS = new Set([
   'SHBrowseForFolderA', 'SHBrowseForFolderW', 'SHGetPathFromIDListA', 'SHGetPathFromIDListW',
@@ -279,10 +449,15 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
   const entropyRelevantSections = input.sections.filter(s =>
     !RESOURCE_SECTIONS.has((s.name ?? '').toLowerCase())
   );
-  const highEntropyCount = entropyRelevantSections.filter(s => s.entropy >= 7.0).length;
-  const suspiciousEntropyCount = entropyRelevantSections.filter(s => s.entropy >= 6.0 && s.entropy < 7.0).length;
   const textSection = input.sections.find(s => s.name === '.text' || s.name === 'text');
   const dataSection = input.sections.find(s => s.name === '.data' || s.name === 'data');
+  // Exclude .text from generic high-entropy count when packed-text will fire — it is
+  // strictly more specific (weight 9) and double-counting inflates the threat score.
+  const textIsHighEntropy = !!(textSection && textSection.entropy >= 7.0);
+  const highEntropyCount = entropyRelevantSections.filter(
+    s => s.entropy >= 7.0 && !(textIsHighEntropy && (s.name === '.text' || s.name === 'text'))
+  ).length;
+  const suspiciousEntropyCount = entropyRelevantSections.filter(s => s.entropy >= 6.0 && s.entropy < 7.0).length;
 
   if (highEntropyCount > 0) {
     signals.push({
@@ -292,7 +467,9 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
       weight: highEntropyCount >= 2 ? 8 : 6,
       corroboratedBy: [],
     });
-  } else if (suspiciousEntropyCount > 0) {
+  } else if (suspiciousEntropyCount >= 2) {
+    // Require ≥ 2 sections with elevated entropy to suppress single-section noise.
+    // A lone section in the 6–7 range is common in benign compressed resources.
     signals.push({
       source: 'structure',
       id: 'elevated-entropy',
@@ -312,12 +489,38 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     });
   }
 
-  if (dataSection && dataSection.entropy >= 6.5) {
+  // Encrypted/compressed payload blob: non-.text section with near-maximum entropy
+  // (> 7.5) AND substantive size (> 64 KB).  This is a concrete maliciousness
+  // indicator distinct from the generic high-entropy signal — an encrypted 174 KB
+  // .data section at entropy 7.997 is essentially impossible without deliberate
+  // encryption.  .text sections are excluded (already covered by packed-text).
+  // Resource sections are excluded via entropyRelevantSections.
+  // Computed first so encrypted-data can be suppressed when this covers .data.
+  const encryptedBlobSection = entropyRelevantSections.find(
+    s => s.entropy > 7.5 && s.file_size > 65536 &&
+         s.name !== '.text' && s.name !== 'text',
+  );
+
+  // Suppress encrypted-data when encrypted-section already fires for .data —
+  // encrypted-section (entropy > 7.5, size > 64 KB) is strictly more specific.
+  const encryptedBlobCoversData = !!(encryptedBlobSection && dataSection &&
+    encryptedBlobSection.name === dataSection.name);
+  if (dataSection && dataSection.entropy >= 6.5 && !encryptedBlobCoversData) {
     signals.push({
       source: 'structure',
       id: 'encrypted-data',
       finding: '.data section has high entropy — possibly encrypted payload or config',
       weight: 5,
+      corroboratedBy: [],
+    });
+  }
+
+  if (encryptedBlobSection) {
+    signals.push({
+      source: 'structure',
+      id: 'encrypted-section',
+      finding: `Section '${encryptedBlobSection.name}' (${(encryptedBlobSection.file_size / 1024).toFixed(0)} KB) entropy ${encryptedBlobSection.entropy.toFixed(3)}/8.0 — near-maximum entropy blob strongly indicates an encrypted or compressed payload`,
+      weight: 9,
       corroboratedBy: [],
     });
   }
@@ -435,6 +638,57 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     });
   }
 
+  // System-enumeration imports: host identity + hardware harvest (RAT / info-stealer)
+  const systemEnumCount = countInSet(importNames, SYSTEM_ENUM_IMPORTS);
+  if (systemEnumCount >= 2) {
+    signals.push({
+      source: 'imports',
+      id: 'system-enum-imports',
+      finding: `${systemEnumCount} system-enumeration API(s): ${matchingNames(importNames, SYSTEM_ENUM_IMPORTS).join(', ')} — host fingerprinting / reconnaissance`,
+      weight: 3,
+      corroboratedBy: [],
+    });
+  }
+
+  // Shutdown imports: wiper / drastic-action pattern
+  const shutdownCount = countInSet(importNames, SHUTDOWN_IMPORTS);
+  if (shutdownCount > 0) {
+    signals.push({
+      source: 'imports',
+      id: 'shutdown-imports',
+      finding: `${shutdownCount} system-shutdown API(s): ${matchingNames(importNames, SHUTDOWN_IMPORTS).join(', ')} — wiper or forced-reboot pattern`,
+      weight: 7,
+      corroboratedBy: [],
+    });
+  }
+
+  // Thread-manipulation imports: process hollowing / injection primitives
+  const threadingCount = countInSet(importNames, THREADING_IMPORTS);
+  if (threadingCount >= 2) {
+    signals.push({
+      source: 'imports',
+      id: 'threading-imports',
+      finding: `${threadingCount} thread-manipulation API(s): ${matchingNames(importNames, THREADING_IMPORTS).join(', ')}`,
+      weight: 3,
+      corroboratedBy: [],
+    });
+  }
+
+  // Import-table anomaly: single-DLL IAT with high entropy = packer stub
+  // crackme_shroud imports only from KERNEL32; the stub-like IAT combined with
+  // high entropy strongly indicates a packer wrapping the real code.
+  const uniqueLibraries = new Set(input.imports.map(i => (i.library ?? '').toLowerCase()));
+  if (uniqueLibraries.size <= 1 && input.imports.length >= 1 && highEntropyCount > 0) {
+    const dllName = [...uniqueLibraries][0] ?? 'unknown';
+    signals.push({
+      source: 'imports',
+      id: 'import-table-anomaly',
+      finding: `IAT references only ${uniqueLibraries.size === 0 ? 'no DLLs' : `one DLL (${dllName})`} — single-library packer stub with ${highEntropyCount} high-entropy section(s)`,
+      weight: 8,
+      corroboratedBy: ['high-entropy'],
+    });
+  }
+
   // Very few imports with high entropy = packer
   if (input.imports.length > 0 && input.imports.length <= 5 && highEntropyCount > 0) {
     signals.push({
@@ -517,7 +771,85 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     });
   }
 
-  // ── 4. Disassembly signals ─────────────────────────────────────────────────
+  // ── 3b. Script / source-code signals ─────────────────────────────────────
+  // Fires for Python, PowerShell, shell scripts, and other text-based files
+  // that have no PE/ELF imports but whose source text reveals capabilities.
+  const fullText = texts.join('\n');
+
+  // Python dangerous built-ins
+  const pyDangerous = (fullText.match(/\b(exec|eval|compile|__import__|execfile|subprocess\.Popen|subprocess\.run|subprocess\.call|os\.system|os\.popen|pty\.spawn)\s*\(/g) || []).length;
+  if (pyDangerous > 0) {
+    signals.push({
+      source: 'strings',
+      id: 'script-dangerous-calls',
+      finding: `${pyDangerous} dangerous function call(s) in script (exec/eval/subprocess/os.system)`,
+      weight: 5 + Math.min(pyDangerous, 4),
+      corroboratedBy: [],
+    });
+  }
+
+  // Python network modules
+  const pyNetModules = ['socket', 'requests', 'urllib', 'http.client', 'ftplib', 'smtplib', 'imaplib', 'paramiko', 'scapy'];
+  const pyNetHits = pyNetModules.filter(m => fullText.includes(`import ${m}`) || fullText.includes(`from ${m}`));
+  if (pyNetHits.length > 0) {
+    signals.push({
+      source: 'strings',
+      id: 'script-network-modules',
+      finding: `Script imports network module(s): ${pyNetHits.join(', ')}`,
+      weight: 3 + Math.min(pyNetHits.length * 2, 6),
+      corroboratedBy: [],
+    });
+  }
+
+  // Python crypto/obfuscation modules
+  const pyCryptoModules = ['base64', 'binascii', 'hashlib', 'cryptography', 'Crypto', 'pycryptodome', 'nacl', 'hmac'];
+  const pyCryptoHits = pyCryptoModules.filter(m => fullText.includes(`import ${m}`) || fullText.includes(`from ${m}`));
+  if (pyCryptoHits.length > 0) {
+    signals.push({
+      source: 'strings',
+      id: 'script-crypto-modules',
+      finding: `Script imports crypto/encoding module(s): ${pyCryptoHits.join(', ')}`,
+      weight: 3 + Math.min(pyCryptoHits.length * 2, 5),
+      corroboratedBy: [],
+    });
+  }
+
+  // Python system/process manipulation modules
+  const pySysModules = ['ctypes', 'winreg', 'win32api', 'win32con', 'win32process', 'psutil', 'signal'];
+  const pySysHits = pySysModules.filter(m => fullText.includes(`import ${m}`) || fullText.includes(`from ${m}`));
+  if (pySysHits.length > 0) {
+    signals.push({
+      source: 'strings',
+      id: 'script-system-modules',
+      finding: `Script imports system/process module(s): ${pySysHits.join(', ')}`,
+      weight: 4 + Math.min(pySysHits.length * 2, 6),
+      corroboratedBy: [],
+    });
+  }
+
+  // PowerShell dangerous patterns
+  const psPatterns = (fullText.match(/\b(Invoke-Expression|IEX|Invoke-Command|Start-Process|DownloadString|DownloadFile|WebClient|Net\.WebClient|Reflection\.Assembly|FromBase64String|EncodedCommand|bypass|Hidden|NoProfile)\b/gi) || []).length;
+  if (psPatterns > 0) {
+    signals.push({
+      source: 'strings',
+      id: 'script-powershell-dangerous',
+      finding: `${psPatterns} dangerous PowerShell pattern(s) detected (Invoke-Expression, WebClient, encoded commands)`,
+      weight: 5 + Math.min(psPatterns, 5),
+      corroboratedBy: [],
+    });
+  }
+
+  // Shell script patterns (bash/sh)
+  const shPatterns = (fullText.match(/\b(curl|wget|nc\b|ncat|netcat|python -c|perl -e|ruby -e|bash -[ic]|sh -[ic]|chmod \+x|\/dev\/tcp\/|base64 -d)\b/gi) || []).length;
+  if (shPatterns > 0) {
+    signals.push({
+      source: 'strings',
+      id: 'script-shell-dangerous',
+      finding: `${shPatterns} suspicious shell command(s) detected (curl/wget/nc/base64 decode)`,
+      weight: 4 + Math.min(shPatterns, 4),
+      corroboratedBy: [],
+    });
+  }
   const criticalPatterns = input.patterns.filter(p => p.severity === 'critical');
   // Anti-analysis patterns: ONLY those with specific obfuscation-technique
   // descriptions in DISASSEMBLY patterns (not structure/import signals).
@@ -575,6 +907,25 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     });
   }
 
+  // Validation / gating logic: comparison-heavy regions or serial checks
+  // detected by the static analysis layer (App.tsx detectSuspiciousPatterns).
+  // Critical-severity validation regions indicate serial comparisons against
+  // constants — characteristic of license checks, auth gates, or anti-tamper
+  // routines that are prime targets for patching.
+  const validationPatterns = input.patterns.filter(p => p.type === 'validation');
+  if (validationPatterns.length > 0) {
+    const criticalValidation = validationPatterns.filter(p => p.severity === 'critical');
+    const weightBase = 4 + Math.min(validationPatterns.length, 3);
+    const weightBoost = criticalValidation.length > 0 ? 3 : 0;
+    signals.push({
+      source: 'disassembly',
+      id: 'validation-logic',
+      finding: `${validationPatterns.length} validation/gating logic region(s)${criticalValidation.length > 0 ? ` — ${criticalValidation.length} serial-comparison check(s) (likely auth/license gate)` : ''}`,
+      weight: weightBase + weightBoost,
+      corroboratedBy: [],
+    });
+  }
+
   // ── 5. Cross-signal corroboration ─────────────────────────────────────────
   const amplifiers: string[] = [];
   const dismissals: string[] = [];
@@ -596,6 +947,15 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
   if (hasNetworkSignal && hasInjectionSignal) {
     amplifiers.push('Network access + process injection: strong C2 dropper / RAT pattern');
     bumpWeights(signals, ['network-imports', 'injection-imports', 'embedded-urls', 'hardcoded-ips'], 3);
+    // Mark cross-signal corroboration so the UI can show the relationship
+    const networkSigs  = signals.filter(s => ['network-imports', 'embedded-urls', 'hardcoded-ips'].includes(s.id));
+    const injectionSig = signals.find(s => s.id === 'injection-imports');
+    if (injectionSig) {
+      for (const ns of networkSigs) {
+        if (!ns.corroboratedBy.includes('injection-imports')) ns.corroboratedBy.push('injection-imports');
+        if (!injectionSig.corroboratedBy.includes(ns.id))    injectionSig.corroboratedBy.push(ns.id);
+      }
+    }
   }
 
   if (hasCryptoSignal && hasFileSignal && hasNetworkSignal) {
@@ -624,6 +984,60 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
 
   if (!hasDangerousImports && !hasHighEntropy && input.imports.length > 10) {
     dismissals.push('No dangerous imports and normal entropy — likely clean or benign-complex');
+  }
+
+  // ── RAT-composite signal ────────────────────────────────────────────────────
+  // Fires when ≥ 3 of 5 RAT-characteristic signal categories co-occur.  Each
+  // category alone is ambiguous; their conjunction is highly specific to
+  // info-stealers and remote-access trojans.
+  //   1. network      — network-imports, embedded-urls, or hardcoded-ips
+  //   2. anti-debug   — antidebug-imports / talon-anti-debug / strike-anti-debug
+  //   3. system-enum  — system-enum-imports present
+  //   4. os-fingerprint — at least 2 system-enum APIs including GetVersionEx*
+  //                       or GlobalMemoryStatusEx
+  //   5. threading    — threading-imports present
+  const OS_FINGERPRINT = new Set(['GetVersionExA','GetVersionExW','RtlGetVersion','GlobalMemoryStatusEx','GlobalMemoryStatus']);
+  const ratHits = [
+    hasNetworkSignal,
+    signals.some(s => s.id === 'antidebug-imports' || s.id === 'talon-anti-debug' || s.id === 'strike-anti-debug'),
+    signals.some(s => s.id === 'system-enum-imports'),
+    systemEnumCount >= 1 && countInSet(importNames, OS_FINGERPRINT) > 0,
+    signals.some(s => s.id === 'threading-imports'),
+  ].filter(Boolean).length;
+
+  if (ratHits >= 3) {
+    const corrobIds = signals
+      .filter(s => ['network-imports','antidebug-imports','system-enum-imports','threading-imports'].includes(s.id))
+      .map(s => s.id);
+    signals.push({
+      source: 'imports',
+      id: 'rat-composite',
+      finding: `RAT/info-stealer composite: ${ratHits}/5 co-occurring characteristic signal categories (system-enum, OS-fingerprint, network, anti-debug, thread-manip) — high-specificity indicator`,
+      weight: 12,
+      corroboratedBy: corrobIds,
+    });
+    amplifiers.push('RAT composite: ≥3 RAT-characteristic signal families co-occurring — high specificity for info-stealer or remote-access trojan');
+    bumpWeights(signals, ['network-imports','antidebug-imports','system-enum-imports','threading-imports'], 2);
+  }
+
+  // ── Wiper-composite signal ──────────────────────────────────────────────────
+  // Fires when: cryptographic API(s) AND process-execution API(s) AND
+  // system-shutdown API(s) all co-occur.  BCryptDecrypt + CreateProcessA +
+  // ExitWindowsEx is the canonical wiper execution chain: decrypt payload,
+  // run it, then force a reboot to hinder recovery.
+  if (hasCryptoSignal && hasExecSignal(signals) && signals.some(s => s.id === 'shutdown-imports')) {
+    const corrobIds = signals
+      .filter(s => ['crypto-imports','exec-imports','shutdown-imports'].includes(s.id))
+      .map(s => s.id);
+    signals.push({
+      source: 'imports',
+      id: 'wiper-composite',
+      finding: 'Wiper-composite: cryptographic decryption + process-execution + system-shutdown APIs co-occur — canonical dropper/wiper execution chain',
+      weight: 11,
+      corroboratedBy: corrobIds,
+    });
+    amplifiers.push('Wiper composite: decrypt → execute → shutdown triad matches destructive dropper or wiper profile');
+    bumpWeights(signals, ['crypto-imports','exec-imports','shutdown-imports'], 3);
   }
 
   // ── 6. Negative signals (clean indicators that reduce threat score) ────────
@@ -672,6 +1086,26 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
       id: 'large-clean-import-table',
       finding: `${input.imports.length} imports, none dangerous — rich API surface of a benign app`,
       reduction: 12,
+    });
+  }
+
+  // Framework-import suppression: when ≥ 40 % of all IAT entries come from
+  // known SDK/runtime DLLs (Qt6, MSVC C++ runtime), the inflated import count
+  // reflects statically-linked framework code, not malicious capability.  This
+  // prevents the large-import heuristics from being fooled by Qt-based apps.
+  const frameworkImports = input.imports.filter(i =>
+    FRAMEWORK_DLL_PATTERNS.some(p => p.test(i.library ?? ''))
+  );
+  const frameworkFraction = input.imports.length > 0
+    ? frameworkImports.length / input.imports.length
+    : 0;
+  if (frameworkFraction >= 0.4 && frameworkImports.length >= 20) {
+    const frameworkPct = Math.round(frameworkFraction * 100);
+    const reduction    = Math.min(15, Math.round(frameworkFraction * 20));
+    negativeSignals.push({
+      id: 'framework-imports',
+      finding: `${frameworkPct}% of imports from known SDK/runtime DLLs (Qt6, MSVC C++ runtime) — large IAT is framework overhead, not malicious capability`,
+      reduction,
     });
   }
 
@@ -728,20 +1162,41 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
   const rawPct = Math.round((rawScore / maxPossible) * 100);
   const threatScore = Math.max(0, Math.min(100, rawPct - totalNegativeReduction));
 
-  // ── 8. Confidence ─────────────────────────────────────────────────────────
-  const sourceCount = new Set(signals.map(s => s.source)).size;
-  // Negative signals add confidence (we have more complete picture).
-  // A confirmed clean/benign profile has its own certainty boost — many
-  // independent clean indicators pointing the same way is just as strong an
-  // evidence chain as multiple threat signals.
-  let confidence = Math.min(100, Math.round(
-    20 +
-    sourceCount * 18 +
-    Math.min(signals.length, 6) * 5 +
-    amplifiers.length * 8 +
-    negativeSignals.length * 4 +
-    (isWin32StandardApp ? 8 : 0)
+  // ── 8. Evidence-tier confidence ───────────────────────────────────────────
+  //
+  // Confidence reflects evidence QUALITY, not signal count.
+  // Signals are bucketed into three tiers; each tier has a per-signal point
+  // value and a hard ceiling so that spam (e.g. many string matches) cannot
+  // push confidence to levels that only runtime-confirmed evidence warrants.
+  //
+  //   DIRECT  — STRIKE runtime execution traces   20 pts each, ≤ 40 total
+  //   STRONG  — imports, signatures, TALON/ECHO   10 pts each, ≤ 35 total
+  //   WEAK    — strings, entropy, heuristics       3 pts each, ≤ 10 total
+  //
+  // Cross-signal amplifiers (corroboration) and negative signals add smaller
+  // bonuses; they reward completeness rather than volume.
+  // TALON/STRIKE/ECHO sections (17–19) may still add small conditional bonuses
+  // to `confidence` after this point for specific high-quality conditions.
+
+  const directSigsBase = signals.filter(s => signalEvidenceTier(s) === 'DIRECT');
+  const strongSigsBase = signals.filter(s => signalEvidenceTier(s) === 'STRONG');
+  const weakSigsBase   = signals.filter(s => signalEvidenceTier(s) === 'WEAK');
+
+  const directContribBase = Math.min(directSigsBase.length * 20, 40);
+  const strongContribBase = Math.min(strongSigsBase.length * 10, 35);
+  const weakContribBase   = Math.min(weakSigsBase.length   *  3, 10);
+  const ampContribBase    = amplifiers.length * 6;
+  const negContribBase    = negativeSignals.length * 3;
+  const win32ContribBase  = isWin32StandardApp ? 8 : 0;
+
+  // `preDampenConfidence` is recorded for the breakdown output (computed again
+  // after all signals including TALON/STRIKE/ECHO at the end of computeVerdict).
+  let preDampenConfidence = Math.min(99, Math.round(
+    15 +
+    directContribBase + strongContribBase + weakContribBase +
+    ampContribBase + negContribBase + win32ContribBase
   ));
+  let confidence = preDampenConfidence;
 
   // ── Iteration dampening ───────────────────────────────────────────────────
   // On early iterations, high confidence reflects import-table signal DIVERSITY
@@ -776,6 +1231,7 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     hasMinimalImports: signals.some(s => s.id === 'minimal-imports'),
     hasAntiDebug: signals.some(s => s.id === 'antidebug-imports' || s.id === 'anti-analysis-patterns'),
     hasExec: hasExecSignal(signals),
+    hasWiperSignal: signals.some(s => s.id === 'wiper-composite'),
     signalCount: signals.length,
     negativesDominate,
     negativeSignalCount: negativeSignals.length,
@@ -886,6 +1342,23 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
   if (hasExecSignal(signals) && threatScore >= 20)                                behaviors.push('process-execution');
   if (hasCryptoSignal && hasFileSignal && !hasNetworkSignal)                      behaviors.push('data-encryption');
   if (negativeSignals.length >= 2 && behaviors.length === 0)                     behaviors.push('self-contained');
+  // Composite behavioral tags derived from rat/wiper composites
+  if (signals.some(s => s.id === 'rat-composite')) {
+    if (!behaviors.includes('c2-communication'))   behaviors.push('c2-communication');
+    if (!behaviors.includes('data-exfiltration'))  behaviors.push('data-exfiltration');
+    if (!behaviors.includes('anti-analysis'))      behaviors.push('anti-analysis');
+  }
+  if (signals.some(s => s.id === 'wiper-composite')) {
+    if (!behaviors.includes('file-destruction'))   behaviors.push('file-destruction');
+    if (!behaviors.includes('process-execution'))  behaviors.push('process-execution');
+    if (!behaviors.includes('code-decryption'))    behaviors.push('code-decryption');
+  }
+  if (signals.some(s => s.id === 'import-table-anomaly')) {
+    if (!behaviors.includes('code-decryption'))    behaviors.push('code-decryption');
+  }
+  if (signals.some(s => s.id === 'encrypted-section')) {
+    if (!behaviors.includes('code-decryption'))    behaviors.push('code-decryption');
+  }
 
   // ── 14. Three-stage reasoning chain ───────────────────────────────────────
   const reasoningChain: ReasoningStage[] = buildReasoningChain(
@@ -962,6 +1435,171 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
           corroboratedBy: [],
         });
       }
+    }
+  }
+
+  // ── 16.5. YARA rule signals ───────────────────────────────────────────────
+  // Each matching YARA rule becomes one CorrelatedSignal on source:'signatures'.
+  // Rules with a `threat_class` that matches an existing signal ID corroborate
+  // that signal (increasing its weight) rather than duplicating it.
+  // Rules without a match create a fresh signal so every YARA hit is traceable.
+  const SEVERITY_WEIGHT: Record<string, number> = {
+    critical: 9, high: 7, medium: 5, low: 3,
+  };
+  const THREAT_CLASS_TO_SIGNAL: Record<string, string> = {
+    packer:     'packer-stub',
+    ransomware: 'ransomware-composite',
+    injection:  'injection-imports',
+    'anti-debug': 'antidebug-imports',
+    c2:         'network-imports',
+    crypto:     'crypto-imports',
+    dropper:    'rat-composite',
+    persistence:'registry-imports',
+    rat:        'rat-composite',
+    cryptominer:'network-imports',
+  };
+
+  for (const ym of input.yaraMatches ?? []) {
+    const sigId = `yara-${ym.ruleName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const weight = Math.min(10,
+      ym.meta.weight ?? SEVERITY_WEIGHT[ym.meta.severity ?? ''] ?? 5,
+    );
+
+    // Build an offset list for the first 3 matched strings
+    const topOffsets = ym.matchedStrings
+      .slice(0, 3)
+      .map(ms => `${ms.identifier}@0x${ms.offset.toString(16).toUpperCase()}`)
+      .join(', ');
+    const locationHint = topOffsets ? ` [${topOffsets}]` : '';
+
+    const description = ym.meta.description ?? ym.ruleName;
+    const finding = `YARA/${ym.ruleName}: ${description}${locationHint}`;
+
+    // Propagate behavioral tags from meta.behaviors
+    if (ym.meta.behaviors) {
+      for (const b of ym.meta.behaviors) {
+        if (!behaviors.includes(b)) behaviors.push(b);
+      }
+    }
+
+    // Try to corroborate an existing signal matching this rule's threat_class
+    const corrobTargetId = THREAT_CLASS_TO_SIGNAL[ym.meta.threat_class ?? ''];
+    // Also check rule tags as fallback corroboration keys
+    const tagCorrobId = ym.tags.length > 0
+      ? THREAT_CLASS_TO_SIGNAL[ym.tags[0].toLowerCase().replace(/_/g, '-')] ?? null
+      : null;
+    const targetId = corrobTargetId ?? tagCorrobId ?? null;
+
+    const existing = targetId ? signals.find(s => s.id === targetId) : null;
+
+    if (existing) {
+      // Corroborate the existing signal and add a lighter YARA signal
+      if (!existing.corroboratedBy.includes(sigId)) {
+        existing.corroboratedBy.push(sigId);
+        existing.weight = Math.min(10, existing.weight + 1);
+      }
+      // Still emit the YARA signal separately so it's visible and traceable
+      if (!signals.some(s => s.id === sigId)) {
+        signals.push({
+          source:        'signatures',
+          id:            sigId,
+          finding,
+          weight:        Math.max(1, weight - 2),
+          corroboratedBy: [existing.id],
+          locations:     ym.matchedStrings.slice(0, 4).map(ms => ({
+            address: ms.offset,
+            kind:    'instruction' as const,
+            label:   `${ms.identifier}@0x${ms.offset.toString(16).toUpperCase()}`,
+            context: `Matched: ${ms.value} (${ms.length} bytes)`,
+          })),
+        });
+      }
+    } else {
+      // No existing signal to corroborate — create a new one
+      if (!signals.some(s => s.id === sigId)) {
+        signals.push({
+          source:        'signatures',
+          id:            sigId,
+          finding,
+          weight,
+          corroboratedBy: [],
+          locations:     ym.matchedStrings.slice(0, 4).map(ms => ({
+            address: ms.offset,
+            kind:    'instruction' as const,
+            label:   `${ms.identifier}@0x${ms.offset.toString(16).toUpperCase()}`,
+            context: `Matched: ${ms.value} (${ms.length} bytes)`,
+          })),
+        });
+      }
+    }
+  }
+
+  // ── 16.6. MYTHOS capability signals ────────────────────────────────────────
+  // Each MythosCapabilityMatch → one CorrelatedSignal on source:'signatures'.
+  // Capabilities that overlap with existing signals corroborate them (+1 weight).
+  // Each signal's finding includes the evidence chain and code locations so the
+  // analyst can trace exactly WHY the capability was detected.
+  for (const mc of input.mythosMatches ?? []) {
+    const sigId = `mythos-${mc.id}`;
+
+    // Build finding: capability name + evidence chain + top locations
+    const topLocs = mc.locations
+      .filter(l => l.address !== 0 || l.kind === 'import')
+      .slice(0, 3)
+      .map(l => l.label)
+      .join(', ');
+    const locText   = topLocs ? ` [${topLocs}]` : '';
+    const evText    = mc.evidence.slice(0, 3).join('; ');
+    const finding   = `MYTHOS/${mc.name}: ${mc.description}${locText} — ${evText}`;
+
+    // Weight: use the capability's own weight, scaled by confidence
+    const weight    = Math.round(mc.weight * (mc.confidence / 100));
+
+    // Look for an existing signal to corroborate based on capability namespace
+    const nsRoot    = mc.namespace.split('/')[0];
+    const MYTHOS_CORROBORATION: Record<string, string> = {
+      'host-interaction':  'injection-imports',
+      'anti-analysis':     'antidebug-imports',
+      'persistence':       'registry-imports',
+      'communication':     'network-imports',
+      'data-manipulation': 'crypto-imports',
+      'malware':           'ransomware-composite',
+      'credential-access': 'rat-composite',
+      'impact':            'wiper-imports',
+    };
+    const corrobTargetId = MYTHOS_CORROBORATION[nsRoot] ?? null;
+    const corrobTarget   = corrobTargetId ? signals.find(s => s.id === corrobTargetId) : null;
+
+    if (corrobTarget) {
+      if (!corrobTarget.corroboratedBy.includes(sigId)) {
+        corrobTarget.corroboratedBy.push(sigId);
+        corrobTarget.weight = Math.min(10, corrobTarget.weight + 1);
+      }
+    }
+
+    // Always emit the Mythos signal itself (never de-weight — capabilities are primary evidence)
+    if (!signals.some(s => s.id === sigId)) {
+      signals.push({
+        source:         'signatures',
+        id:             sigId,
+        finding,
+        weight:         Math.max(1, weight),
+        corroboratedBy: corrobTarget ? [corrobTarget.id] : [],
+        // Attach all navigable locations from the Mythos capability match
+        locations:      mc.locations.map(l => ({
+          address: l.address,
+          kind:    l.kind as SignalLocation['kind'],
+          label:   l.label,
+          context: l.context,
+        })),
+        // Full evidence chain so the UI can explain WHY this rule fired
+        evidence:       mc.evidence,
+      });
+    }
+
+    // Propagate behavioral tags
+    for (const b of mc.behaviors) {
+      if (!behaviors.includes(b)) behaviors.push(b);
     }
   }
 
@@ -1055,7 +1693,35 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     if (s.stepCount >= 10) {
       confidence = Math.min(99, confidence + 4);
     }
-  }
+    // RAT-composite corroboration: if runtime shows anti-debug + peb-walk +
+    // dynamic-api-resolution together, corroborate the static rat-composite
+    // signal (or create a runtime-only version if static analysis missed it).
+    if (s.hasAntiDebugProbe && s.hasPebWalk && s.hasDynamicApiResolution) {
+      const existing = signals.find(sig => sig.id === 'rat-composite');
+      if (existing) {
+        if (!existing.corroboratedBy.includes('strike-rat-runtime')) {
+          existing.corroboratedBy.push('strike-rat-runtime');
+          existing.weight = Math.min(10, existing.weight + 2);
+        }
+      } else {
+        signals.push({ source: 'disassembly', id: 'strike-rat-runtime', finding: 'STRIKE: runtime anti-debug probe + PEB walk + dynamic API resolution co-observed — covert RAT behavior pattern', weight: 10, corroboratedBy: [] });
+        if (!behaviors.includes('dynamic-resolution')) behaviors.push('dynamic-resolution');
+        if (!behaviors.includes('anti-analysis'))      behaviors.push('anti-analysis');
+      }
+    }
+    // Wiper-composite corroboration: unpacking + exception probe + ROP at runtime
+    // is consistent with a wiper that decrypts and self-executes its payload.
+    if ((s.hasUnpackingBehavior || s.hasRopActivity) && s.hasExceptionProbe) {
+      const existing = signals.find(sig => sig.id === 'wiper-composite');
+      if (existing) {
+        if (!existing.corroboratedBy.includes('strike-wiper-runtime')) {
+          existing.corroboratedBy.push('strike-wiper-runtime');
+          existing.weight = Math.min(10, existing.weight + 2);
+        }
+      }
+      if (!behaviors.includes('code-decryption')) behaviors.push('code-decryption');
+    }
+  } // end if (input.strikeSignals)
 
   // ── 19. ECHO fuzzy recognition signals ───────────────────────────────────
   if (input.echoSignals) {
@@ -1103,6 +1769,16 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     if (e.hasDynamicLoad) {
       if (!behaviors.includes('dynamic-resolution')) behaviors.push('dynamic-resolution');
     }
+    if (e.hasStringDecode) {
+      const existing = signals.find(sig => sig.id === 'echo-string-decode' || sig.id.includes('string-decode'));
+      if (existing) {
+        if (!existing.corroboratedBy.includes('echo-string-decode')) existing.corroboratedBy.push('echo-string-decode');
+        existing.weight = Math.min(10, existing.weight + 1);
+      } else {
+        signals.push({ source: 'disassembly', id: 'echo-string-decode', finding: 'ECHO: runtime string decode/deobfuscation pattern recognized (stack strings, XOR decode, or lookup-table decode)', weight: 6, corroboratedBy: [] });
+      }
+      if (!behaviors.includes('code-decryption')) behaviors.push('code-decryption');
+    }
     // High pattern diversity and average confidence → boost verdict confidence
     if (e.patternDiversity >= 4 && e.averageConfidence >= 70) {
       confidence = Math.min(99, confidence + 3);
@@ -1114,6 +1790,135 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     for (const tag of e.behavioralTags) {
       if (!behaviors.includes(tag)) behaviors.push(tag);
     }
+  }
+
+  // ── Evidence-tier breakdown (all signals, after TALON/STRIKE/ECHO) ─────────
+  // Recompute using the complete signal set so the breakdown reflects every
+  // signal source including TALON (§17), STRIKE (§18), and ECHO (§19).
+  const directAll = signals.filter(s => signalEvidenceTier(s) === 'DIRECT');
+  const strongAll = signals.filter(s => signalEvidenceTier(s) === 'STRONG');
+  const weakAll   = signals.filter(s => signalEvidenceTier(s) === 'WEAK');
+
+  const evidenceTierBreakdown: EvidenceTierBreakdown = {
+    direct: {
+      signalCount:  directAll.length,
+      contribution: Math.min(directAll.length * 20, 40),
+      signals:      directAll.map(s => s.id),
+    },
+    strong: {
+      signalCount:  strongAll.length,
+      contribution: Math.min(strongAll.length * 10, 35),
+      signals:      strongAll.map(s => s.id),
+    },
+    weak: {
+      signalCount:  weakAll.length,
+      contribution: Math.min(weakAll.length * 3, 10),
+      signals:      weakAll.map(s => s.id),
+    },
+    preDampenConfidence,
+  };
+
+  // Tag each signal with its evidence tier so downstream consumers can
+  // display tier-annotated signal lists without re-computing.
+  for (const sig of signals) {
+    sig.tier = signalEvidenceTier(sig);
+  }
+
+  // ── Certainty annotation (Prompt 10 — Trusted Acceleration) ──────────────
+  // Each signal receives a CertaintyLevel that answers "how do we know this?"
+  for (const sig of signals) {
+    if (sig.certainty != null) continue; // preserve if already set by caller
+
+    // DIRECT runtime evidence is always 'observed'
+    if (sig.id.startsWith('strike-')) {
+      sig.certainty = 'observed';
+      continue;
+    }
+
+    // Import-table entries and literal string finds are directly present in the binary
+    if (sig.source === 'imports' || sig.source === 'strings') {
+      sig.certainty = 'observed';
+      continue;
+    }
+
+    // Certain structure signals are direct measurements
+    if (sig.source === 'structure') {
+      const observed = ['high-entropy', 'elevated-entropy', 'minimal-imports', 'unusual-section-names', 'import-table-anomaly'];
+      sig.certainty = observed.includes(sig.id) ? 'observed' : 'inferred';
+      continue;
+    }
+
+    // YARA rules matched literal bytes or hex patterns — directly observed
+    if (sig.id.startsWith('yara-')) {
+      sig.certainty = 'observed';
+      continue;
+    }
+
+    // MYTHOS capability signals are derived from multiple evidence types — inferred
+    // (each is the conclusion of a boolean-AND/OR rule over imports+strings+patterns)
+    if (sig.id.startsWith('mythos-')) {
+      sig.certainty = 'inferred';
+      continue;
+    }
+
+    // TALON decompiler analysis: source-level derivation — inferred
+    if (sig.id.startsWith('talon-')) {
+      sig.certainty = 'inferred';
+      continue;
+    }
+
+    // Composites are always inferred (require multiple confirmed inputs)
+    if (sig.id.endsWith('-composite') || sig.source === 'signatures') {
+      sig.certainty = 'inferred';
+      continue;
+    }
+
+    // ECHO signals are fuzzy-matched — heuristic
+    if (sig.id.startsWith('echo-')) {
+      sig.certainty = 'heuristic';
+      continue;
+    }
+
+    // Disassembly pattern matches are heuristic by nature
+    sig.certainty = 'heuristic';
+  }
+
+  // ── Uncertainty flags (Prompt 10 — surface when system is guessing) ───────
+  const uncertaintyFlags: string[] = [];
+  const heuristicSignalIds: string[] = signals
+    .filter(s => s.certainty === 'heuristic')
+    .map(s => s.id);
+
+  if (signals.length < 3) {
+    uncertaintyFlags.push(
+      `Uncertain: only ${signals.length} signal(s) collected — verdict may change with additional analysis passes.`,
+    );
+  }
+
+  const heuristicFraction = signals.length > 0 ? heuristicSignalIds.length / signals.length : 0;
+  if (heuristicFraction > 0.6 && signals.length >= 3) {
+    uncertaintyFlags.push(
+      `Uncertain: ${Math.round(heuristicFraction * 100)}% of signals are heuristic (pattern-matched) — human verification is recommended before acting on this verdict.`,
+    );
+  }
+
+  const hasDirectEvidence = signals.some(s => s.id.startsWith('strike-'));
+  if (!hasDirectEvidence && signals.length > 0) {
+    uncertaintyFlags.push(
+      'Uncertain: no runtime execution evidence (STRIKE) was collected — static analysis only; behaviour could differ at runtime.',
+    );
+  }
+
+  if (contradictions.length > 2) {
+    uncertaintyFlags.push(
+      `Uncertain: ${contradictions.length} conflicting evidence pairs detected — verdict stability may be lower than confidence score suggests.`,
+    );
+  }
+
+  if (confidence < 50 && signals.length > 0) {
+    uncertaintyFlags.push(
+      `Uncertain: confidence is ${confidence}% — below the 50% threshold; more disassembly passes are recommended.`,
+    );
   }
 
   // ── 20. Alternative hypotheses ────────────────────────────────────────────
@@ -1138,7 +1943,55 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     reasoningChain,
     contradictions,
     alternatives,
+    evidenceTierBreakdown,
+    uncertaintyFlags,
+    heuristicSignalIds,
   };
+}
+
+// ─── Evidence-tier classifier ─────────────────────────────────────────────────
+
+/**
+ * Classify a correlated signal into an evidence tier.
+ *
+ *   DIRECT — observed during live execution (STRIKE runtime traces).
+ *            These are the most trustworthy signals: behaviour was confirmed
+ *            by actually running the binary under a debugger.
+ *
+ *   STRONG — structural declarations or deep static analysis: import table
+ *            entries (API capability declarations), known-pattern signature
+ *            matches, TALON decompiler-confirmed code patterns, ECHO injection/
+ *            crypto pattern matches, and corroborated multi-signal composites.
+ *            Control-flow–anomaly signals (anti-analysis, indirect calls,
+ *            critical disassembly patterns) also qualify.
+ *
+ *   WEAK   — heuristic / observational evidence: entropy measurements, string
+ *            content (URLs, base64, registry paths, PE names), tight-loop
+ *            counts, and ECHO string-decode observations.  Many of these fire
+ *            on benign binaries; they add colour but must not inflate confidence
+ *            on their own.
+ */
+export function signalEvidenceTier(signal: CorrelatedSignal): EvidenceTier {
+  // DIRECT — runtime execution evidence (STRIKE debugger traces)
+  if (signal.id.startsWith('strike-')) return 'DIRECT';
+
+  // STRONG — structural / declaration-level / deep-analysis signals
+  if (
+    signal.source === 'imports'                   ||  // declared API capabilities
+    signal.source === 'signatures'                ||  // known-pattern match
+    signal.id.startsWith('talon-')               ||  // decompiler-confirmed
+    signal.id.startsWith('yara-')                ||  // YARA rule: matched literal bytes
+    signal.id === 'echo-crypto'                  ||  // ECHO: crypto algorithm
+    signal.id === 'echo-injection'               ||  // ECHO: injection pattern
+    signal.id === 'critical-patterns'            ||  // disasm: critical severity
+    signal.id === 'anti-analysis-patterns'       ||  // disasm: anti-analysis
+    signal.id === 'indirect-calls'               ||  // disasm: CFG hiding
+    signal.id === 'validation-logic'             ||  // disasm: comparison/gating regions
+    signal.id.endsWith('-composite')                 // multi-signal corroborated
+  ) return 'STRONG';
+
+  // WEAK — heuristic / observational (strings, entropy, loose pattern counts)
+  return 'WEAK';
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -1177,6 +2030,7 @@ interface ClassifyInput {
   hasMinimalImports: boolean;
   hasAntiDebug: boolean;
   hasExec: boolean;
+  hasWiperSignal: boolean;
   signalCount: number;
   /** True when the negative signals dominate the picture (e.g., large clean GUI app) */
   negativesDominate: boolean;
@@ -1248,6 +2102,12 @@ function classify(c: ClassifyInput): BinaryClassification {
   // touches the registry for settings
   if (c.hasNetworkSignal && c.hasRegistrySignal && c.threatScore >= 35) return 'info-stealer';
 
+  // Wiper: file-destruction + shutdown + crypto, no network or injection
+  // (injection → dropper, network → could be ransomware if also file+crypto)
+  // The wiper-composite signal guards the entry condition.
+  if (c.hasWiperSignal && !c.hasInjectionSignal && !c.hasNetworkSignal && c.threatScore >= 35) return 'wiper';
+  if (c.hasWiperSignal && c.hasFileSignal && c.threatScore >= 45) return 'wiper';
+
   // Loader: minimal imports + high entropy + dynamic load
   if (c.hasMinimalImports && c.hasHighEntropy) return 'packer';
 
@@ -1269,6 +2129,7 @@ const CLASS_LABEL: Record<BinaryClassification, string> = {
   'info-stealer':  'Info Stealer',
   rat:             'RAT / Backdoor',
   loader:          'Loader',
+  wiper:           'Wiper',
   'likely-malware':'Likely Malware',
   unknown:         'Unknown',
 };
@@ -1497,6 +2358,7 @@ function buildReasoningChain(
     'info-stealer':    'Information stealer — collects and exfiltrates credentials or system data',
     rat:               'Remote Access Trojan (RAT) — full remote control backdoor with C2 connectivity',
     loader:            'Loader — loads and maps another module into memory',
+    wiper:             'Wiper — destroys or overwrites data; may corrupt filesystem or MBR',
     'likely-malware':  'Likely malware — score and signals strongly suggest malicious intent',
     unknown:           'Unknown / insufficient data for reliable classification',
   };

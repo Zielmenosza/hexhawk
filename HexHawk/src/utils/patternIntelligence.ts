@@ -341,7 +341,8 @@ function isControlFlowAnomaly(
  */
 function isReferenceChain(pattern: SuspiciousPattern, analysis: DisassemblyAnalysis): boolean {
   // Heuristic: instruction with many callers
-  const func = Array.from(analysis.functions.values()).find(
+  const functions = analysis.functions ? Array.from(analysis.functions.values()) : [];
+  const func = functions.find(
     (f) => pattern.address >= f.startAddress && pattern.address < f.endAddress
   );
   return func ? func.incomingCalls.size >= 3 : false;
@@ -446,6 +447,8 @@ export interface BinaryBehaviorProfile {
 export function calculateDetailedThreatScore(
   analysis: DisassemblyAnalysis
 ): ThreatScoreBreakdown {
+  const patterns = analysis.suspiciousPatterns ?? [];
+
   const byLevel: Record<ThreatLevel, number> = {
     critical: 0,
     high: 0,
@@ -465,7 +468,7 @@ export function calculateDetailedThreatScore(
   const reasoning: string[] = [];
   let totalScore = 0;
 
-  analysis.suspiciousPatterns.forEach((pattern) => {
+  patterns.forEach((pattern) => {
     const category = categorizePattern(pattern, analysis, []);
     const threatLevel = getThreatLevel(category);
     byLevel[threatLevel]++;
@@ -513,6 +516,7 @@ function calculateScoreConfidence(byLevel: Record<ThreatLevel, number>, score: n
  * Detect likely binary behaviors based on pattern distribution
  */
 export function detectLikelyBehaviors(analysis: DisassemblyAnalysis): LikelyBehavior[] {
+  const patterns = analysis.suspiciousPatterns ?? [];
   const behaviors: LikelyBehavior[] = [];
   const categoryCount: Record<PatternCategory, number> = {
     'stack-manipulation': 0,
@@ -524,7 +528,7 @@ export function detectLikelyBehaviors(analysis: DisassemblyAnalysis): LikelyBeha
   };
 
   // Count patterns by category
-  analysis.suspiciousPatterns.forEach((pattern) => {
+  patterns.forEach((pattern) => {
     const category = categorizePattern(pattern, analysis, []);
     categoryCount[category]++;
   });
@@ -569,6 +573,8 @@ export function detectLikelyBehaviors(analysis: DisassemblyAnalysis): LikelyBeha
 export function getObfuscationLevel(
   analysis: DisassemblyAnalysis
 ): 'low' | 'medium' | 'high' | 'extreme' {
+  const patterns = analysis.suspiciousPatterns ?? [];
+
   const categoryCount: Record<PatternCategory, number> = {
     'stack-manipulation': 0,
     'control-flow-anomaly': 0,
@@ -578,7 +584,7 @@ export function getObfuscationLevel(
     'performance-critical': 0,
   };
 
-  analysis.suspiciousPatterns.forEach((pattern) => {
+  patterns.forEach((pattern) => {
     const category = categorizePattern(pattern, analysis, []);
     categoryCount[category]++;
   });
@@ -587,7 +593,7 @@ export function getObfuscationLevel(
     categoryCount['stack-manipulation'] +
     categoryCount['control-flow-anomaly'] +
     categoryCount['data-obfuscation'];
-  const ratio = obfuscationPatterns / Math.max(1, analysis.suspiciousPatterns.length);
+  const ratio = obfuscationPatterns / Math.max(1, patterns.length);
 
   if (ratio >= 0.8) return 'extreme';
   if (ratio >= 0.5) return 'high';
@@ -599,6 +605,8 @@ export function getObfuscationLevel(
  * Estimate packed binary likelihood (0-100)
  */
 export function estimatePackedLikelihood(analysis: DisassemblyAnalysis): number {
+  const patterns = analysis.suspiciousPatterns ?? [];
+
   const categoryCount: Record<PatternCategory, number> = {
     'stack-manipulation': 0,
     'control-flow-anomaly': 0,
@@ -608,7 +616,7 @@ export function estimatePackedLikelihood(analysis: DisassemblyAnalysis): number 
     'performance-critical': 0,
   };
 
-  analysis.suspiciousPatterns.forEach((pattern) => {
+  patterns.forEach((pattern) => {
     const category = categorizePattern(pattern, analysis, []);
     categoryCount[category]++;
   });
@@ -625,9 +633,9 @@ export function estimatePackedLikelihood(analysis: DisassemblyAnalysis): number 
   score += categoryCount['anti-analysis'] * 15;
 
   // Few reference chains suggest code may be packed
-  const avgReferences = analysis.functions.size > 0
-    ? analysis.referenceStrength.size / analysis.functions.size
-    : 0;
+  const functionCount = analysis.functions?.size ?? 0;
+  const referenceCount = analysis.referenceStrength?.size ?? 0;
+  const avgReferences = functionCount > 0 ? referenceCount / functionCount : 0;
   if (avgReferences < 2) score += 15;
 
   return Math.min(100, score);
@@ -644,7 +652,7 @@ export function generateBinaryProfile(analysis: DisassemblyAnalysis): BinaryBeha
   const antiAnalysis = behaviors.includes('anti-analysis-measures');
 
   // Generate 3-sentence summary
-  const patternCount = analysis.suspiciousPatterns.length;
+  const patternCount = (analysis.suspiciousPatterns ?? []).length;
   let summary = '';
 
   if (patternCount === 0) {

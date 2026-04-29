@@ -130,6 +130,13 @@ export interface NestRunnerOptions {
    */
   getBoosts?:          (hash: string | null, signalIds: string[]) => LearningBoosts | null;
   /**
+   * Confidence floor for iteration 0 (0–100).
+   * When a binary is "owned" (previously analysed), pass the best recorded
+   * confidence so the session continues from that baseline instead of restarting
+   * from scratch. Subsequent iterations can only raise confidence from here.
+   */
+  seedConfidence?:     number;
+  /**
    * Return true to stop the loop early (checked before each iteration).
    * Wire this to a stopRef in the UI, or to a signal in the CLI.
    */
@@ -253,11 +260,16 @@ export class NestSessionRunner {
       iterationIndex:   iterIndex,
     };
 
-    // ── 6. Correlation pass + learning boosts ────────────────────────────────
+    // ── 6. Correlation pass + learning boosts + ownership floor ─────────────────
     const rawVerdict = runCorrelationPass(input);
     const hash       = metadata?.sha256 ?? null;
     const boosts     = opts.getBoosts?.(hash, rawVerdict.signals.map(s => s.id)) ?? null;
-    const verdict    = boosts ? applyLearningBoost(rawVerdict, boosts) : rawVerdict;
+    let verdict      = boosts ? applyLearningBoost(rawVerdict, boosts) : rawVerdict;
+    // If a seedConfidence floor is set (owned binary), ensure iteration 0 starts
+    // no lower than the previously achieved best confidence.
+    if (iterIndex === 0 && opts.seedConfidence && opts.seedConfidence > verdict.confidence) {
+      verdict = { ...verdict, confidence: opts.seedConfidence };
+    }
 
     // ── 7. Convergence evaluation ────────────────────────────────────────────
     const uncertainty = evaluateUncertainty(sess, verdict);
@@ -308,7 +320,7 @@ export class NestSessionRunner {
 
     // ── 9. Snapshot + meta-learning ──────────────────────────────────────────
     const prev      = sess.iterations[sess.iterations.length - 1] ?? null;
-    const snapshot  = buildIterationSnapshot(iterIndex, input, verdict, prev, plan, iterStart);
+    const snapshot  = buildIterationSnapshot(iterIndex, input, verdict, prev, plan, iterStart, sess.iterations);
     const decision  = buildLearningDecision(snapshot, prev, this.lsess);
     const updatedLS = applyDecisionToSession(this.lsess, decision);
     this.lsess      = updatedLS;

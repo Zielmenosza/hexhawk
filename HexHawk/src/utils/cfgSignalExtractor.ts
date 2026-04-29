@@ -14,6 +14,7 @@
  */
 
 import type { SuspiciousPattern } from '../App';
+import type { DomTree } from './ssaTransform';
 
 // ── Input type (mirrors CfgGraph from graph.rs) ───────────────────────────────
 
@@ -435,6 +436,104 @@ export function extractCfgSignals(cfg: CfgGraph): {
     }
   }
 
+  // 6. Opaque predicate: block with 2 conditional successors where both targets
+  //    have the same immediate post-dominator (join at the very next node).
+  //    This means the branch never actually diverges — one path is dead.
+  const nodeSuccMap = new Map<string, string[]>();
+  for (const edge of cfg.edges) {
+    const list = nodeSuccMap.get(edge.source) ?? [];
+    list.push(edge.target);
+    nodeSuccMap.set(edge.source, list);
+  }
+  for (const node of cfg.nodes) {
+    const succs = nodeSuccMap.get(node.id) ?? [];
+    if (succs.length !== 2) continue;
+    // If both successors have the same set of forward successors, it's opaque
+    const [s1, s2] = succs;
+    const s1Succs = (nodeSuccMap.get(s1) ?? []).sort().join(',');
+    const s2Succs = (nodeSuccMap.get(s2) ?? []).sort().join(',');
+    if (s1Succs === s2Succs && s1Succs.length > 0) {
+      const addr = node.start ?? 0;
+      patterns.push({
+        address:     addr,
+        type:        'opaque_predicate',
+        severity:    'warning',
+        description: `Opaque predicate at 0x${addr.toString(16).toUpperCase()} — both branch targets converge immediately, one path is never taken`,
+      });
+    }
+  }
+
+  // 7. Flattened control flow / dispatcher: block with ≥6 branch targets and
+  //    small instruction count — classic control-flow flattening dispatcher hub.
+  for (const node of cfg.nodes) {
+    const branchEdges = cfg.edges.filter(
+      e => e.source === node.id && e.kind === 'branch',
+    );
+    const instrCount = node.instruction_count ?? 0;
+    if (branchEdges.length >= 6 && instrCount <= 5) {
+      const addr = node.start ?? 0;
+      patterns.push({
+        address:     addr,
+        type:        'flattened_cf',
+        severity:    'critical',
+        description: `Dispatcher block at 0x${addr.toString(16).toUpperCase()} — ${branchEdges.length} branch targets with only ${instrCount} instruction(s) — probable control-flow flattening`,
+        relatedAddresses: branchEdges.map(e => {
+          const t = nodeMap.get(e.target);
+          return t?.start ?? 0;
+        }).filter(a => a > 0),
+      });
+    }
+  }
+
+  // 8. Anti-tamper: block that both reads a code-section region AND contains a
+  //    conditional branch — suggests a CRC/hash integrity check pattern.
+  //    Heuristic: node with ≥2 successors whose block_type is NOT 'loop'
+  //    and whose label contains 'crc', 'hash', 'check', 'verify', 'guard'.
+  for (const node of cfg.nodes) {
+    if (!node.label) continue;
+    const lbl = node.label.toLowerCase();
+    if (
+      (lbl.includes('crc') || lbl.includes('hash') || lbl.includes('check') ||
+       lbl.includes('verify') || lbl.includes('guard') || lbl.includes('integrity')) &&
+      (nodeSuccMap.get(node.id) ?? []).length >= 2
+    ) {
+      const addr = node.start ?? 0;
+      patterns.push({
+        address:     addr,
+        type:        'anti_tamper',
+        severity:    'critical',
+        description: `Anti-tamper check at 0x${addr.toString(16).toUpperCase()} — block labelled '${node.label}' with conditional branch suggests integrity verification`,
+      });
+    }
+  }
+
+  // 9. Self-modifying code: block that both writes to an address that overlaps
+  //    with a code-segment region. Detected by the presence of external nodes
+  //    whose label includes known SMC APIs (VirtualProtect + write combo).
+  const externalLabels = cfg.nodes
+    .filter(n => n.block_type === 'external' && n.label)
+    .map(n => n.label!.toLowerCase());
+  const hasSMCWrite = externalLabels.some(l =>
+    l.includes('virtualprotect') || l.includes('writeprocessmemory'),
+  );
+  const hasCodeAlloc = externalLabels.some(l =>
+    l.includes('virtualalloc') || l.includes('mmap') || l.includes('mprotect'),
+  );
+  if (hasSMCWrite && hasCodeAlloc) {
+    const smcNode = cfg.nodes.find(n =>
+      n.block_type === 'external' && n.label &&
+      (n.label.toLowerCase().includes('virtualprotect') ||
+       n.label.toLowerCase().includes('writeprocessmemory')),
+    );
+    const addr = smcNode?.start ?? 0;
+    patterns.push({
+      address:     addr,
+      type:        'self_modifying',
+      severity:    'critical',
+      description: `Self-modifying code indicators detected — VirtualProtect/WriteProcessMemory + allocation API combination suggests runtime code patching`,
+    });
+  }
+
   // ── Complexity score ─────────────────────────────────────────────────────────
   // Range 0–100; factors: nodes, back-edges, indirect calls, unreachable blocks
   const nodeScore    = Math.min(30, cfg.nodes.length * 0.5);
@@ -463,4 +562,178 @@ export function extractCfgSignals(cfg: CfgGraph): {
       maxNestingDepth,
     },
   };
+}
+
+// ── Dominator tree from CFG ──────────────────────────────────────────────────
+
+/**
+ * Build forward and post-dominator trees directly from a CfgGraph.
+ *
+ * Uses the Cooper, Harvey & Kennedy (2001) iterative algorithm — the same
+ * algorithm as ssaTransform.ts — but operates on CfgGraph edges so that a
+ * full IR decompilation is not required.
+ *
+ * RE concepts exposed:
+ *   - dominator:          every path from entry to B passes through D → D dom B
+ *   - immediate dominator: closest strict dominator of B
+ *   - post-dominator:     every path from B to exit passes through P → P pdom B
+ *   - dominator tree:     idom relationships visualised as a tree
+ *   - dominance frontier: DF(B) = set of join points at the boundary of B's dominance
+ */
+export function buildDomTreeFromCfg(cfg: CfgGraph): {
+  domTree: DomTree;
+  postDomTree: DomTree;
+} {
+  const nodeIds = cfg.nodes.map(n => n.id);
+  const entryId = (cfg.nodes.find(n => n.block_type === 'entry') ?? cfg.nodes[0])?.id ?? '';
+
+  // Build forward adjacency & predecessor maps
+  const successors   = new Map<string, string[]>();
+  const predecessors = new Map<string, string[]>();
+  for (const id of nodeIds) { successors.set(id, []); predecessors.set(id, []); }
+  for (const e of cfg.edges) {
+    successors.get(e.source)?.push(e.target);
+    if (!predecessors.has(e.target)) predecessors.set(e.target, []);
+    predecessors.get(e.target)!.push(e.source);
+  }
+
+  // Reverse adjacency for post-dominator computation.
+  // Post-dom = dominator in the REVERSED graph, starting from a virtual exit.
+  // In the reversed graph:
+  //   - original edge A→B becomes reversed edge B→A  (revSuccessors[B] includes A)
+  //   - virtual exit VE acts as the new "entry"; VE→exitNode for each real exit
+  const exitIds = cfg.nodes
+    .filter(n => n.block_type === 'external' || (successors.get(n.id)?.length === 0))
+    .map(n => n.id);
+  const VIRTUAL_EXIT = '__dom_virtual_exit__';
+  const revSuccessors   = new Map<string, string[]>();
+  const revPredecessors = new Map<string, string[]>();
+  for (const id of [...nodeIds, VIRTUAL_EXIT]) { revSuccessors.set(id, []); revPredecessors.set(id, []); }
+  // Reverse all original edges: A→B becomes B→A in reversed graph
+  for (const e of cfg.edges) {
+    revSuccessors.get(e.target)?.push(e.source);    // B→A: B's succ is A
+    revPredecessors.get(e.source)?.push(e.target);  // A's pred is B
+  }
+  // Add virtual exit edges: VE→exitNode in reversed graph
+  // (corresponds to original exitNode→VE which we add conceptually)
+  for (const exitId of exitIds) {
+    revSuccessors.get(VIRTUAL_EXIT)?.push(exitId);  // VE can reach exit nodes
+    revPredecessors.get(exitId)?.push(VIRTUAL_EXIT); // exit nodes have VE as predecessor
+  }
+
+  /**
+   * Core iterative dominator computation (Cooper et al.).
+   * @param entryId   start node for this graph direction
+   * @param succMap   adjacency (forward or reverse)
+   * @param predMap   predecessor map (forward or reverse)
+   * @param allIds    all node IDs to process
+   */
+  function computeIdom(
+    startId: string,
+    succMap: Map<string, string[]>,
+    predMap: Map<string, string[]>,
+    allIds: string[],
+  ): DomTree {
+    // RPO via iterative DFS (avoids stack overflow on large CFGs)
+    const rpo: string[] = [];
+    const visited = new Set<string>();
+    const stack = [startId];
+    const postOrder: string[] = [];
+    const onStack = new Set<string>();
+    const iterStack: Array<{ id: string; childIdx: number }> = [{ id: startId, childIdx: 0 }];
+    visited.add(startId);
+    while (iterStack.length > 0) {
+      const frame = iterStack[iterStack.length - 1];
+      const children = succMap.get(frame.id) ?? [];
+      if (frame.childIdx < children.length) {
+        const child = children[frame.childIdx++];
+        if (!visited.has(child)) {
+          visited.add(child);
+          iterStack.push({ id: child, childIdx: 0 });
+        }
+      } else {
+        postOrder.push(frame.id);
+        iterStack.pop();
+      }
+    }
+    for (let i = postOrder.length - 1; i >= 0; i--) rpo.push(postOrder[i]);
+    const rpoIdx = new Map<string, number>();
+    rpo.forEach((id, i) => rpoIdx.set(id, i));
+
+    // Cooper et al. intersect
+    const idom = new Map<string, string | null>();
+    idom.set(startId, null);
+    const intersect = (b1: string, b2: string): string => {
+      let f = b1, g = b2;
+      while (f !== g) {
+        while ((rpoIdx.get(f) ?? Infinity) > (rpoIdx.get(g) ?? Infinity)) {
+          f = idom.get(f) ?? f;
+        }
+        while ((rpoIdx.get(g) ?? Infinity) > (rpoIdx.get(f) ?? Infinity)) {
+          g = idom.get(g) ?? g;
+        }
+      }
+      return f;
+    };
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const b of rpo) {
+        if (b === startId) continue;
+        const preds = (predMap.get(b) ?? []).filter(p => idom.has(p));
+        if (preds.length === 0) continue;
+        let newIdom = preds[0];
+        for (const p of preds.slice(1)) newIdom = intersect(p, newIdom);
+        if (idom.get(b) !== newIdom) { idom.set(b, newIdom); changed = true; }
+      }
+    }
+
+    // Children map
+    const children = new Map<string, string[]>();
+    for (const id of allIds) children.set(id, []);
+    for (const [id, dom] of idom) {
+      if (dom !== null && children.has(dom)) children.get(dom)!.push(id);
+    }
+
+    // Dominance frontier
+    const df = new Map<string, Set<string>>();
+    for (const id of allIds) df.set(id, new Set());
+    for (const b of allIds) {
+      const preds = predMap.get(b) ?? [];
+      if (preds.length < 2) continue;
+      for (const p of preds) {
+        let runner = p;
+        const bIdom = idom.get(b);
+        while (runner !== bIdom && runner !== null && idom.has(runner)) {
+          df.get(runner)?.add(b);
+          const next = idom.get(runner);
+          if (next === runner || next === undefined) break;
+          runner = next ?? runner;
+        }
+      }
+    }
+
+    return { idom, children, df, rpo: rpo.filter(id => allIds.includes(id)) };
+  }
+
+  const domTree     = computeIdom(entryId, successors, predecessors, nodeIds);
+  const revAllIds   = [...nodeIds, VIRTUAL_EXIT];
+  const postDomFull = computeIdom(VIRTUAL_EXIT, revSuccessors, revPredecessors, revAllIds);
+
+  // Strip the virtual exit node from the post-dom tree output
+  postDomFull.idom.delete(VIRTUAL_EXIT);
+  postDomFull.children.delete(VIRTUAL_EXIT);
+  postDomFull.df.delete(VIRTUAL_EXIT);
+  const postDomTree: DomTree = {
+    idom:     postDomFull.idom,
+    children: new Map([...postDomFull.children].filter(([id]) => id !== VIRTUAL_EXIT)),
+    df:       postDomFull.df,
+    rpo:      postDomFull.rpo.filter(id => id !== VIRTUAL_EXIT),
+  };
+  // Fix roots: nodes whose idom was the virtual exit should now be null
+  for (const [id, dom] of postDomTree.idom) {
+    if (dom === VIRTUAL_EXIT) postDomTree.idom.set(id, null);
+  }
+
+  return { domTree, postDomTree };
 }

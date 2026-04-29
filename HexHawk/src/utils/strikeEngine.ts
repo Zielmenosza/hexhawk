@@ -86,6 +86,8 @@ export interface StrikeTimeline {
   startTime:     number;           // Date.now() at creation
 }
 
+export const MAX_STRIKE_TIMELINE_STEPS = 5000;
+
 // ── Pattern detection types ───────────────────────────────────────────────────
 
 export type PatternTag =
@@ -95,7 +97,13 @@ export type PatternTag =
   | 'rop-chain'
   | 'nop-sled'
   | 'anti-step'
-  | 'cpuid-check';
+  | 'cpuid-check'
+  // ── New signals (FLARE challenge analysis) ──────────────────────────────────
+  | 'anti-debug-probe'        // TF-flag trap, INT3 probe, or IsDebuggerPresent call
+  | 'self-modifying-code'     // Decoder/unpacker stub: RIP loops in small region then writes new code
+  | 'oep-transfer'            // Large RIP displacement after decoder stub — Original Entry Point handoff
+  | 'dynamic-api-resolution'  // Burst of indirect calls (GetProcAddress chain / shellcode import resolve)
+  | 'peb-walk';               // Direct Process Environment Block access (gs:0x60 / manual import walk)
 
 export interface StrikePattern {
   tag:         PatternTag;
@@ -109,17 +117,34 @@ export interface StrikePattern {
 // ── Correlation signal ────────────────────────────────────────────────────────
 
 export interface StrikeCorrelationSignal {
-  hasTimingCheck:    boolean;
-  hasExceptionProbe: boolean;
-  hasStackPivot:     boolean;
-  hasRopActivity:    boolean;
-  hasAntiStep:       boolean;
-  hasCpuidCheck:     boolean;
-  indirectJumpRatio: number;        // indirect jumps / total steps
-  detectedPatterns:  PatternTag[];
-  stepCount:         number;
-  behavioralTags:    BehavioralTag[];
-  riskScore:         number;        // 0–100
+  hasTimingCheck:          boolean;
+  hasExceptionProbe:       boolean;
+  hasStackPivot:           boolean;
+  hasRopActivity:          boolean;
+  hasAntiStep:             boolean;
+  hasCpuidCheck:           boolean;
+  // New signal fields
+  hasAntiDebugProbe:       boolean;  // TF probe / INT3 probe / IsDebuggerPresent
+  hasUnpackingBehavior:    boolean;  // self-modifying-code or oep-transfer
+  hasDynamicApiResolution: boolean;  // burst indirect calls / GetProcAddress chain
+  hasPebWalk:              boolean;  // direct PEB access
+  /**
+   * Runtime composite: anti-debug-probe + peb-walk + dynamic-api-resolution
+   * all observed in the same session.  Mirrors the static rat-composite signal
+   * from correlationEngine but derived purely from runtime execution evidence.
+   */
+  hasRatPattern:           boolean;
+  /**
+   * Runtime composite: unpacking behavior (self-modifying-code / oep-transfer)
+   * AND exception probe AND ROP activity observed together.  Consistent with
+   * a wiper that decrypts and self-executes a payload via ROP gadgets.
+   */
+  hasWiperPattern:         boolean;
+  indirectJumpRatio:       number;   // indirect jumps / total steps
+  detectedPatterns:        PatternTag[];
+  stepCount:               number;
+  behavioralTags:          BehavioralTag[];
+  riskScore:               number;   // 0–100
 }
 
 // ── Helper: jump classification ───────────────────────────────────────────────
@@ -216,13 +241,23 @@ export function appendStep(
     event:         snapshot.lastEvent,
   };
 
+  let nextSteps = [...timeline.steps, step];
+  if (nextSteps.length > MAX_STRIKE_TIMELINE_STEPS) {
+    // Keep only the most recent N steps to bound memory in long sessions.
+    nextSteps = nextSteps
+      .slice(nextSteps.length - MAX_STRIKE_TIMELINE_STEPS)
+      .map((s, i) => ({ ...s, index: i }));
+  }
+
+  const currentStep = nextSteps[nextSteps.length - 1];
+
   const updated: StrikeTimeline = {
     ...timeline,
-    steps:         [...timeline.steps, step],
-    playheadIndex: step.index,
+    steps:         nextSteps,
+    playheadIndex: currentStep.index,
   };
 
-  return { timeline: updated, step };
+  return { timeline: updated, step: currentStep };
 }
 
 export function seekTimeline(timeline: StrikeTimeline, index: number): StrikeTimeline {
@@ -266,9 +301,33 @@ const PATTERN_META: Record<PatternTag, { label: string; description: string }> =
     label:       'CPUID Hypervisor Check',
     description: 'CPUID executed — common in VM/sandbox and debugger detection',
   },
+  // ── New patterns ────────────────────────────────────────────────────────────
+  'anti-debug-probe': {
+    label:       'Anti-Debug Probe',
+    description: 'Trap-flag manipulation, INT3 software-breakpoint probe, or explicit debugger-presence check detected',
+  },
+  'self-modifying-code': {
+    label:       'Self-Modifying Code (Decoder Stub)',
+    description: 'RIP stayed in a tight loop (≤ 512-byte window) for 20+ steps — decoder or unpack stub active',
+  },
+  'oep-transfer': {
+    label:       'OEP Transfer (Unpack Handoff)',
+    description: 'RIP jumped > 256 KB after a decoder/loop phase — Original Entry Point transfer after unpacking',
+  },
+  'dynamic-api-resolution': {
+    label:       'Dynamic API Resolution',
+    description: '3+ indirect calls in a 20-step window — possible GetProcAddress chain or shellcode import resolver',
+  },
+  'peb-walk': {
+    label:       'PEB Walk (Manual Import Resolution)',
+    description: 'Direct access to the Process Environment Block (gs:0x60/fs:0x30) — manual import table walking',
+  },
 };
 
 // ── Pattern detection ─────────────────────────────────────────────────────────
+
+/** TF flag bit in EFLAGS — used for single-step trap detection. */
+const TF_BIT = 0x0100;
 
 export function detectPatterns(timeline: StrikeTimeline): StrikePattern[] {
   const steps = timeline.steps;
@@ -276,9 +335,12 @@ export function detectPatterns(timeline: StrikeTimeline): StrikePattern[] {
 
   const patterns: StrikePattern[] = [];
 
-  const rdtscSteps:     number[] = [];
-  const exceptionSteps: number[] = [];
-  const cpuidSteps:     number[] = [];
+  const rdtscSteps:        number[] = [];
+  const exceptionSteps:    number[] = [];
+  const cpuidSteps:        number[] = [];
+  const antiDebugSteps:    number[] = [];
+  const indirectCallSteps: number[] = [];
+  const pebWalkSteps:      number[] = [];
 
   let retStreak      = 0;
   let retStreakStart  = 0;
@@ -290,15 +352,82 @@ export function detectPatterns(timeline: StrikeTimeline): StrikePattern[] {
   let maxNopRun   = 0;
   let maxNopStart  = 0;
 
+  // ── Decoder stub / OEP tracking ─────────────────────────────────────────────
+  // Track a sliding window of RIP values to detect tight decoder loops
+  let loopWindowStart  = 0;
+  let loopWindowMin    = 0;
+  let loopWindowMax    = 0;
+  let loopLen          = 0;
+  let maxLoopLen       = 0;
+  let maxLoopFirst     = 0;
+  let maxLoopMinRip    = 0;
+  let postLoopJumpStep = -1;
+  let postLoopJumpDist = 0;
+  const LOOP_WINDOW_BYTES = 512;   // RIP range that qualifies as a tight loop
+  const LOOP_MIN_STEPS    = 20;    // minimum consecutive steps to declare decoder stub
+  const OEP_MIN_JUMP      = 0x4_0000; // 256 KB — minimum RIP displacement for OEP transfer
+
   for (let i = 0; i < steps.length; i++) {
-    const ev = steps[i].event.toLowerCase();
-    const d  = steps[i].delta;
+    const ev  = steps[i].event.toLowerCase();
+    const d   = steps[i].delta;
+    const rip = steps[i].snapshot.registers.rip;
 
     // ── Instruction-level event tags ────────────────────────────────────────
     if (ev.includes('rdtsc')) rdtscSteps.push(i);
     if (ev.includes('cpuid')) cpuidSteps.push(i);
     if (ev.includes('exception') || ev.includes('int3') || ev.includes('access violation')) {
       exceptionSteps.push(i);
+    }
+
+    // ── Anti-debug probe detection ──────────────────────────────────────────
+    // 1. Explicit API-level probe (event string)
+    if (
+      ev.includes('isdebuggerpresent')    ||
+      ev.includes('checkremotedebugger')  ||
+      ev.includes('ntqueryinformationprocess') ||
+      ev.includes('outputdebugstring')    ||
+      // Debug register access (DR0–DR3 = hardware breakpoint addresses)
+      ev.includes(' dr0') || ev.includes(' dr1') ||
+      ev.includes(' dr2') || ev.includes(' dr3')
+    ) {
+      antiDebugSteps.push(i);
+    }
+
+    // 2. TF-flag manipulation: TF transitions from clear → set (trap-flag probe setup)
+    if (d) {
+      const tfChange = d.flags.find(f => f.flag === 'TF');
+      if (tfChange && tfChange.prev === false && tfChange.curr === true) {
+        // TF just armed — single-step trap probe starting
+        antiDebugSteps.push(i);
+      }
+
+      // 3. TF armed + exception within 3 steps = single-step probe confirmed
+      const tfArmed = d.flags.find(f => f.flag === 'TF' && f.curr === true);
+      if (tfArmed) {
+        for (let j = i + 1; j <= Math.min(i + 3, steps.length - 1); j++) {
+          const fwdEv = steps[j].event.toLowerCase();
+          if (fwdEv.includes('exception') || fwdEv.includes('single step')) {
+            antiDebugSteps.push(i);
+            break;
+          }
+        }
+      }
+    }
+
+    // ── PEB walk detection ──────────────────────────────────────────────────
+    if (
+      ev.includes('gs:0x60') || ev.includes('gs:60')  ||
+      ev.includes('fs:0x30') || ev.includes('fs:30')  ||
+      ev.includes('peb')     || ev.includes('ldr')    ||
+      ev.includes('inloadordermodulelist')
+    ) {
+      pebWalkSteps.push(i);
+    }
+
+    // ── Indirect call burst (dynamic API resolution) ─────────────────────────
+    if (d && (d.jumpType === 'indirect') &&
+        (ev.includes('call') || ev.includes('jmp') || ev.includes('getprocaddress') || ev.includes('loadlibrary'))) {
+      indirectCallSteps.push(i);
     }
 
     if (d) {
@@ -336,6 +465,46 @@ export function detectPatterns(timeline: StrikeTimeline): StrikePattern[] {
         }
       } else {
         nopRun = 0;
+      }
+
+      // ── Decoder stub / OEP transfer tracking ─────────────────────────────
+      if (i === 0 || loopLen === 0) {
+        // Start a new window
+        loopWindowStart = i;
+        loopWindowMin   = rip;
+        loopWindowMax   = rip;
+        loopLen         = 1;
+      } else {
+        const prevMin = loopWindowMin;
+        const prevMax = loopWindowMax;
+        const newMin  = Math.min(prevMin, rip);
+        const newMax  = Math.max(prevMax, rip);
+
+        if (newMax - newMin <= LOOP_WINDOW_BYTES) {
+          // Still within the tight loop window
+          loopWindowMin = newMin;
+          loopWindowMax = newMax;
+          loopLen++;
+          if (loopLen > maxLoopLen) {
+            maxLoopLen   = loopLen;
+            maxLoopFirst = loopWindowStart;
+            maxLoopMinRip = loopWindowMin;
+          }
+        } else {
+          // RIP escaped the window
+          // Check if this escape is a large jump (OEP transfer candidate)
+          const jumpDist = Math.abs(rip - steps[i - 1].snapshot.registers.rip);
+          if (loopLen >= LOOP_MIN_STEPS && jumpDist >= OEP_MIN_JUMP) {
+            // Decoder loop followed by large displacement = OEP transfer
+            postLoopJumpStep = i;
+            postLoopJumpDist = jumpDist;
+          }
+          // Reset window
+          loopWindowStart = i;
+          loopWindowMin   = rip;
+          loopWindowMax   = rip;
+          loopLen         = 1;
+        }
       }
     }
   }
@@ -413,6 +582,83 @@ export function detectPatterns(timeline: StrikeTimeline): StrikePattern[] {
     });
   }
 
+  // ── Anti-debug probe ────────────────────────────────────────────────────────
+  if (antiDebugSteps.length >= 1) {
+    // Confidence scales with the number of distinct probe events observed
+    const conf = Math.min(95, 72 + antiDebugSteps.length * 6);
+    patterns.push({
+      tag:        'anti-debug-probe',
+      ...PATTERN_META['anti-debug-probe'],
+      confidence: conf,
+      firstStep:  antiDebugSteps[0],
+      stepSpan:   antiDebugSteps.length > 1
+        ? antiDebugSteps[antiDebugSteps.length - 1] - antiDebugSteps[0] + 1
+        : 1,
+    });
+  }
+
+  // ── Self-modifying code / decoder stub ───────────────────────────────────────
+  if (maxLoopLen >= LOOP_MIN_STEPS) {
+    const conf = Math.min(90, 55 + Math.floor(maxLoopLen / 5) * 5);
+    patterns.push({
+      tag:        'self-modifying-code',
+      ...PATTERN_META['self-modifying-code'],
+      confidence: conf,
+      firstStep:  maxLoopFirst,
+      stepSpan:   maxLoopLen,
+    });
+  }
+
+  // ── OEP transfer ─────────────────────────────────────────────────────────────
+  if (postLoopJumpStep >= 0) {
+    const megabytes = Math.round(postLoopJumpDist / 0x100000);
+    const conf = Math.min(92, 68 + Math.min(20, megabytes) * 2);
+    patterns.push({
+      tag:        'oep-transfer',
+      ...PATTERN_META['oep-transfer'],
+      confidence: conf,
+      firstStep:  postLoopJumpStep,
+      stepSpan:   1,
+    });
+  }
+
+  // ── Dynamic API resolution burst ─────────────────────────────────────────────
+  // Scan for 3+ indirect calls within any 20-step sliding window
+  for (let i = 0; i < indirectCallSteps.length; i++) {
+    const windowEnd = indirectCallSteps[i] + 20;
+    let count = 0;
+    let lastInWindow = indirectCallSteps[i];
+    for (let j = i; j < indirectCallSteps.length && indirectCallSteps[j] <= windowEnd; j++) {
+      count++;
+      lastInWindow = indirectCallSteps[j];
+    }
+    if (count >= 3) {
+      const conf = Math.min(90, 62 + count * 4);
+      patterns.push({
+        tag:        'dynamic-api-resolution',
+        ...PATTERN_META['dynamic-api-resolution'],
+        confidence: conf,
+        firstStep:  indirectCallSteps[i],
+        stepSpan:   lastInWindow - indirectCallSteps[i] + 1,
+      });
+      break; // one report per session — dedupe will keep highest
+    }
+  }
+
+  // ── PEB walk ──────────────────────────────────────────────────────────────────
+  if (pebWalkSteps.length >= 1) {
+    const conf = Math.min(88, 70 + pebWalkSteps.length * 6);
+    patterns.push({
+      tag:        'peb-walk',
+      ...PATTERN_META['peb-walk'],
+      confidence: conf,
+      firstStep:  pebWalkSteps[0],
+      stepSpan:   pebWalkSteps.length > 1
+        ? pebWalkSteps[pebWalkSteps.length - 1] - pebWalkSteps[0] + 1
+        : 1,
+    });
+  }
+
   // Deduplicate by tag — keep highest confidence per tag
   const byTag = new Map<PatternTag, StrikePattern>();
   for (const p of patterns) {
@@ -436,36 +682,84 @@ export function extractCorrelationSignals(
   const indirectRatio = steps.length > 0 ? indirectCount / steps.length : 0;
 
   const behavioralTags: BehavioralTag[] = [];
-  if (tags.has('timing-check') || tags.has('exception-probe') ||
-      tags.has('anti-step')    || tags.has('cpuid-check')) {
+  if (
+    tags.has('timing-check') || tags.has('exception-probe') ||
+    tags.has('anti-step')    || tags.has('cpuid-check')     ||
+    tags.has('anti-debug-probe')
+  ) {
     behavioralTags.push('anti-analysis');
   }
   if (tags.has('stack-pivot') || tags.has('rop-chain')) {
     behavioralTags.push('code-injection');
   }
+  if (tags.has('self-modifying-code') || tags.has('oep-transfer')) {
+    behavioralTags.push('code-decryption');
+  }
+  if (tags.has('dynamic-api-resolution') || tags.has('peb-walk')) {
+    behavioralTags.push('dynamic-resolution');
+  }
+
+  // ── Composite pattern detection ───────────────────────────────────────────────
+  // RAT pattern: anti-debug probe + PEB walk + dynamic API resolution — the
+  // runtime signature of a covertly operating remote-access trojan or
+  // info-stealer that hides its imports and evades debuggers.
+  const hasRatPattern =
+    tags.has('anti-debug-probe') &&
+    tags.has('peb-walk') &&
+    tags.has('dynamic-api-resolution');
+
+  if (hasRatPattern && !behavioralTags.includes('anti-analysis')) {
+    behavioralTags.push('anti-analysis');
+  }
+
+  // Wiper pattern: unpacking behavior (self-modifying / OEP transfer) AND
+  // exception probe AND ROP activity.  Indicates a binary that decrypts its
+  // real payload, redirects execution via ROP, and uses exception-handler
+  // manipulation to evade tracing.
+  const hasWiperPattern =
+    (tags.has('self-modifying-code') || tags.has('oep-transfer')) &&
+    tags.has('exception-probe') &&
+    tags.has('rop-chain');
+
+  if (hasWiperPattern && !behavioralTags.includes('code-decryption')) {
+    behavioralTags.push('code-decryption');
+  }
 
   let risk = 0;
-  if (tags.has('stack-pivot'))     risk += 30;
-  if (tags.has('rop-chain'))       risk += 25;
-  if (tags.has('timing-check'))    risk += 20;
-  if (tags.has('exception-probe')) risk += 15;
-  if (tags.has('anti-step'))       risk += 15;
-  if (tags.has('cpuid-check'))     risk += 10;
-  if (tags.has('nop-sled'))        risk += 10;
-  if (indirectRatio > 0.25)        risk += Math.round(indirectRatio * 25);
+  if (tags.has('stack-pivot'))            risk += 30;
+  if (tags.has('rop-chain'))              risk += 25;
+  if (tags.has('self-modifying-code'))    risk += 25;
+  if (tags.has('timing-check'))           risk += 20;
+  if (tags.has('anti-debug-probe'))       risk += 20;
+  if (tags.has('oep-transfer'))           risk += 20;
+  if (tags.has('dynamic-api-resolution')) risk += 18;
+  if (tags.has('exception-probe'))        risk += 15;
+  if (tags.has('anti-step'))              risk += 15;
+  if (tags.has('peb-walk'))               risk += 15;
+  if (tags.has('cpuid-check'))            risk += 10;
+  if (tags.has('nop-sled'))               risk += 10;
+  if (hasRatPattern)                      risk += 20;
+  if (hasWiperPattern)                    risk += 25;
+  if (indirectRatio > 0.25)               risk += Math.round(indirectRatio * 25);
   risk = Math.min(100, risk);
 
   return {
-    hasTimingCheck:    tags.has('timing-check'),
-    hasExceptionProbe: tags.has('exception-probe'),
-    hasStackPivot:     tags.has('stack-pivot'),
-    hasRopActivity:    tags.has('rop-chain'),
-    hasAntiStep:       tags.has('anti-step'),
-    hasCpuidCheck:     tags.has('cpuid-check'),
-    indirectJumpRatio: indirectRatio,
-    detectedPatterns:  Array.from(tags),
-    stepCount:         steps.length,
+    hasTimingCheck:          tags.has('timing-check'),
+    hasExceptionProbe:       tags.has('exception-probe'),
+    hasStackPivot:           tags.has('stack-pivot'),
+    hasRopActivity:          tags.has('rop-chain'),
+    hasAntiStep:             tags.has('anti-step'),
+    hasCpuidCheck:           tags.has('cpuid-check'),
+    hasAntiDebugProbe:       tags.has('anti-debug-probe'),
+    hasUnpackingBehavior:    tags.has('self-modifying-code') || tags.has('oep-transfer'),
+    hasDynamicApiResolution: tags.has('dynamic-api-resolution'),
+    hasPebWalk:              tags.has('peb-walk'),
+    hasRatPattern,
+    hasWiperPattern,
+    indirectJumpRatio:       indirectRatio,
+    detectedPatterns:        Array.from(tags),
+    stepCount:               steps.length,
     behavioralTags,
-    riskScore:         risk,
+    riskScore:               risk,
   };
 }

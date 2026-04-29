@@ -102,3 +102,17 @@ describe('useVirtualList — scrollToIndex', () => {
     }).not.toThrow();
   });
 });
+
+describe('useVirtualList — large list virtualization', () => {
+  it('renders ≤30 DOM slots for 10,000 instructions at DISASM_ROW_HEIGHT (44px)', () => {
+    // ResizeObserver stub fires with 600px container height.
+    // visible rows = floor(600 / 44) = 13; with overscan=5 → at most 13 + 2*5 = 23 items.
+    const { result } = renderHook(() =>
+      useVirtualList({ count: 10_000, itemHeight: 44, overscan: 5 }),
+    );
+    expect(result.current.virtualItems.length).toBeLessThanOrEqual(30);
+    expect(result.current.virtualItems.length).toBeGreaterThan(0);
+    // Total virtual height must span the full list so the scrollbar is correct.
+    expect(result.current.totalHeight).toBe(10_000 * 44);
+  });
+});

@@ -110,18 +110,105 @@ export type PseudoLine = {
   kind: PseudoLineKind;
 };
 
+// — Logic region detected in a basic block —
+export type LogicRegionKind =
+  | 'serial-comparison'   // same reg vs multiple constants — likely license/auth check
+  | 'validation-gate'     // dense cmp/test + conditional jump cluster
+  | 'protection-guard'    // cryptographic hash or checksum verification pattern
+  | 'loop-condition';     // back-edge loop with bounded comparison
+
+export type LogicRegion = {
+  /** Start address of the first instruction in the region */
+  address: number;
+  /** IR block that contains this region */
+  blockId: string;
+  /** Detected pattern category */
+  kind: LogicRegionKind;
+  /** Number of comparison instructions (cmp/test) in the cluster */
+  comparisonCount: number;
+  /** Estimated confidence 0–1 */
+  confidence: number;
+  /** Human-readable summary */
+  summary: string;
+  /** Addresses of the constituent cmp/test/jcc instructions */
+  relatedAddresses: number[];
+};
+
 export type DecompileResult = {
   functionName: string;
   startAddress: number;
   lines: PseudoLine[];
   varMap: Map<string, string>;   // IR key → friendly name
   irBlocks: IRBlock[];
+  /** Logic regions ranked by confidence (highest first) */
+  logicRegions: LogicRegion[];
   warnings: string[];
   instrCount: number;
+  cseRewriteCount?: number;
 };
 
 // ─────────────────────────────────────────────────────────
 // PHASE 1 — OPERAND PARSING
+// ─────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────
+// ARCHITECTURE DETECTION
+// ─────────────────────────────────────────────────────────
+
+export type Architecture = 'x86_64' | 'arm32' | 'aarch64';
+
+const _AARCH64_ONLY_MN = new Set([
+  'blr', 'br', 'adrp', 'adr', 'tbz', 'tbnz', 'csel', 'cset', 'csetm',
+  'cinc', 'cneg', 'csinc', 'csneg', 'csinv', 'ldar', 'ldxr', 'ldaxr',
+  'stlr', 'stxr', 'stlxr', 'prfm', 'hint',
+]);
+const _ARM32_ONLY_MN = new Set([
+  'bx', 'blx', 'stmfd', 'ldmfd', 'stmdb', 'ldmia', 'ldmdb', 'stmia',
+  'stmea', 'ldmea', 'vpush', 'vpop', 'vmov', 'vldm', 'vstm', 'bkpt',
+]);
+
+export function detectArch(instructions: DisassembledInstruction[]): Architecture {
+  if (instructions.length === 0) return 'x86_64';
+  const sample = instructions.slice(0, Math.min(30, instructions.length));
+  let x86 = 0, arm32 = 0, aarch64 = 0;
+
+  for (const ins of sample) {
+    const mn = ins.mnemonic.toLowerCase().trim();
+    const ops = ins.operands;
+    const opsL = ops.toLowerCase();
+
+    // ── AArch64 ────────────────────────────────────────
+    if (_AARCH64_ONLY_MN.has(mn)) { aarch64 += 4; continue; }
+    if (mn.startsWith('b.'))       { aarch64 += 4; continue; }  // b.eq, b.ne …
+    if (mn === 'cbz' || mn === 'cbnz') { aarch64 += 2; }        // also in Thumb-2, lower weight
+    // x0–x30, w0–w30, xzr, wzr, x29, x30
+    if (/\b[xw](?:[0-9]|[12][0-9]|30)\b/.test(ops) || /\bxzr\b|\bwzr\b/.test(opsL)) {
+      aarch64 += 3;
+    }
+    // stp/ldp appear in AArch64 (pair load/store)
+    if (mn === 'stp' || mn === 'ldp') { aarch64 += 3; }
+
+    // ── ARM32 ──────────────────────────────────────────
+    if (_ARM32_ONLY_MN.has(mn)) { arm32 += 4; continue; }
+    // beq, bne, blt … (without dot — ARM32 style)
+    if (/^b(?:eq|ne|lt|gt|le|ge|lo|hi|ls|hs|mi|pl|vs|vc|cs|cc|al)$/.test(mn)) { arm32 += 4; continue; }
+    // Register lists: {r4, lr}, {r0-r3}
+    if (/\{[^}]*(?:\blr\b|\bpc\b|\br[0-9]+)/.test(ops)) { arm32 += 3; }
+    // ARM immediate without registers matching x86 names
+    if (ops.includes('#') && /\br[0-9]+\b/.test(ops) && !/\b[xw][0-9]+\b/.test(ops)) { arm32 += 1; }
+
+    // ── x86_64 ─────────────────────────────────────────
+    if (/\br[abcds][px]\b|\brdi\b|\brsi\b|\br[89](?:d|b|w)?\b|\br1[0-5](?:d|b|w)?\b/.test(opsL)) {
+      x86 += 3;
+    }
+    if (/\be[abcds][px]\b|\bedi\b|\besi\b/.test(opsL)) { x86 += 2; }
+  }
+
+  if (aarch64 > x86 && aarch64 >= arm32) return 'aarch64';
+  if (arm32 > x86 && arm32 > aarch64)   return 'arm32';
+  return 'x86_64';
+}
+
 // ─────────────────────────────────────────────────────────
 
 const SIZE_PREFIXES: Record<string, MemSize> = {
@@ -399,11 +486,17 @@ function irValEqual(a: IRValue, b: IRValue): boolean {
 // ─────────────────────────────────────────────────────────
 
 // x86-64 System V argument registers (in order)
-const ARG_REGS_64 = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'];
+const ARG_REGS_64    = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'];
+// ARM32 argument registers
+const ARG_REGS_ARM32   = ['r0', 'r1', 'r2', 'r3'];
+// AArch64 argument registers
+const ARG_REGS_AARCH64 = ['x0', 'x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7'];
 // x86-32 arguments are on the stack at [ebp+8], [ebp+12], …
-const RETURN_REGS = new Set(['rax', 'eax', 'al', 'ax', 'rdx:rax']);
-const FRAME_REGS = new Set(['rbp', 'ebp']);
-const STACK_REGS = new Set(['rsp', 'esp']);
+const RETURN_REGS        = new Set(['rax', 'eax', 'al', 'ax', 'rdx:rax']);
+const RETURN_REGS_ARM32  = new Set(['r0']);
+const RETURN_REGS_AARCH64 = new Set(['x0', 'w0']);
+const FRAME_REGS = new Set(['rbp', 'ebp', 'r11', 'fp', 'x29']);
+const STACK_REGS = new Set(['rsp', 'esp', 'r13', 'sp']);
 
 export type VarMap = Map<string, string>;
 
@@ -420,7 +513,7 @@ function memKey(v: { base: string; offset: number }): string {
   return `mem:${v.base}:${v.offset}`;
 }
 
-function collectVars(stmts: IRStmt[]): VarCollector {
+function collectVars(stmts: IRStmt[], arch: Architecture = 'x86_64'): VarCollector {
   const col: VarCollector = {
     localsByOffset: new Map(),
     argsByOffset: new Map(),
@@ -451,7 +544,10 @@ function collectVars(stmts: IRStmt[]): VarCollector {
 
     // Detect assignment of arg registers to stack (function entry pattern)
     if (stmt.op === 'assign' && stmt.src.kind === 'reg') {
-      const idx = ARG_REGS_64.indexOf(stmt.src.name);
+      const argList = arch === 'arm32' ? ARG_REGS_ARM32
+                    : arch === 'aarch64' ? ARG_REGS_AARCH64
+                    : ARG_REGS_64;
+      const idx = argList.indexOf(stmt.src.name);
       if (idx >= 0 && !col.argRegs.has(stmt.src.name)) {
         col.argRegs.set(stmt.src.name, `param_${idx}`);
       }
@@ -461,8 +557,8 @@ function collectVars(stmts: IRStmt[]): VarCollector {
   return col;
 }
 
-function buildVarMap(stmts: IRStmt[]): VarMap {
-  const col = collectVars(stmts);
+function buildVarMap(stmts: IRStmt[], arch: Architecture = 'x86_64'): VarMap {
+  const col = collectVars(stmts, arch);
   const map: VarMap = new Map();
 
   for (const [offset, name] of col.localsByOffset) {
@@ -604,12 +700,487 @@ function renderStmt(stmt: IRStmt, varMap: VarMap): { text: string; uncertain?: b
 }
 
 // ─────────────────────────────────────────────────────────
+// ARM32 IR LIFTING
+// ─────────────────────────────────────────────────────────
+
+const ARM32_REG_ALIASES: Record<string, string> = {
+  fp: 'r11', ip: 'r12', sp: 'r13', lr: 'r14', pc: 'r15',
+};
+
+function normalizeARM32Reg(r: string): string {
+  const lo = r.toLowerCase().trim();
+  return ARM32_REG_ALIASES[lo] ?? lo;
+}
+
+function parseARM32Imm(s: string): number | null {
+  const t = s.trim().replace(/^#/, '');
+  if (/^-?0x[0-9a-fA-F]+$/.test(t)) return parseInt(t, 16);
+  if (/^-?\d+$/.test(t)) return parseInt(t, 10);
+  return null;
+}
+
+function parseARM32MemExpr(expr: string): IRValue {
+  const s = expr.replace(/!$/, '').trim();
+  const inner = s.startsWith('[')
+    ? s.slice(1, s.lastIndexOf(']')).trim()
+    : s;
+
+  // [base]
+  if (/^[a-zA-Z][a-zA-Z0-9]*$/.test(inner)) {
+    return { kind: 'mem', base: normalizeARM32Reg(inner), offset: 0, size: 'ptr' };
+  }
+  // [base, #imm]
+  const immM = inner.match(/^([a-zA-Z][a-zA-Z0-9]*),\s*#(-?(?:0x[0-9a-fA-F]+|\d+))$/i);
+  if (immM) {
+    const base = normalizeARM32Reg(immM[1]);
+    const raw = immM[2];
+    const offset = /^-?0x/.test(raw) ? parseInt(raw, 16) : parseInt(raw, 10);
+    return { kind: 'mem', base, offset, size: 'ptr' };
+  }
+  // [base, reg] or [base, reg, lsl #n]
+  const regM = inner.match(/^([a-zA-Z][a-zA-Z0-9]*),\s*([a-zA-Z][a-zA-Z0-9]*)(?:,\s*lsl\s*#(\d+))?$/i);
+  if (regM) {
+    const base = normalizeARM32Reg(regM[1]);
+    const index = normalizeARM32Reg(regM[2]);
+    const scale = regM[3] ? (1 << parseInt(regM[3], 10)) : 1;
+    return { kind: 'mem', base, index, scale, offset: 0, size: 'ptr' };
+  }
+  return { kind: 'expr', text: `*[${inner}]` };
+}
+
+function parseARM32Operand(raw: string): IRValue {
+  const s = raw.trim();
+  if (!s) return { kind: 'expr', text: '' };
+  if (s.startsWith('[')) {
+    // post-indexed: [base], #off — just use base for the memory ref
+    const closeBracket = s.indexOf(']');
+    return parseARM32MemExpr(s.slice(0, closeBracket + 1));
+  }
+  if (s.startsWith('#')) {
+    const v = parseARM32Imm(s);
+    return v !== null ? { kind: 'const', value: v } : { kind: 'expr', text: s };
+  }
+  // shifted register: r0, lsl #2 → use just the reg
+  const shiftM = s.match(/^([a-zA-Z][a-zA-Z0-9]*),\s*(?:lsl|lsr|asr|ror)\s*#\d+$/i);
+  if (shiftM) return { kind: 'reg', name: normalizeARM32Reg(shiftM[1]) };
+  if (/^[a-zA-Z][a-zA-Z0-9_]*$/.test(s)) return { kind: 'reg', name: normalizeARM32Reg(s) };
+  const v = parseARM32Imm(s);
+  if (v !== null) return { kind: 'const', value: v };
+  return { kind: 'expr', text: s };
+}
+
+/** Split by comma but skip commas inside [] or {} */
+function splitDepthAware(operands: string): string[] {
+  if (!operands.trim()) return [];
+  const result: string[] = [];
+  let depth = 0, current = '';
+  for (const ch of operands) {
+    if (ch === '[' || ch === '{') { depth++; current += ch; }
+    else if (ch === ']' || ch === '}') { depth--; current += ch; }
+    else if (ch === ',' && depth === 0) { result.push(current.trim()); current = ''; }
+    else { current += ch; }
+  }
+  if (current.trim()) result.push(current.trim());
+  return result;
+}
+
+const ARM32_BINOP_MAP: Record<string, string> = {
+  add: '+', adc: '+', sub: '-', sbc: '-', rsb: '-',
+  mul: '*', mla: '*', and: '&', orr: '|', eor: '^',
+  lsl: '<<', lsr: '>>', asr: '>>', ror: 'ror', bic: '&~',
+};
+
+const ARM32_COND_MAP: Record<string, string> = {
+  beq: '==', bne: '!=',
+  blt: '<',  ble: '<=', bgt: '>',  bge: '>=',
+  blo: '<(u)', bls: '<=(u)', bhi: '>(u)', bhs: '>=(u)',
+  bmi: '<', bpl: '>=', bvs: 'overflow', bvc: '!overflow',
+  bcs: '>=(u)', bcc: '<(u)', bal: 'true',
+};
+
+function liftInstructionARM32(ins: DisassembledInstruction, ctx: LiftContext): IRStmt {
+  const { address } = ins;
+  const mn = ins.mnemonic.toLowerCase().trim();
+  const rawOps = ins.operands;
+  const ops = splitDepthAware(rawOps);
+
+  if (mn === 'nop') return { op: 'nop', address };
+
+  // ── PROLOGUE / EPILOGUE ──────────────────────────────
+  if (mn === 'push' && /\blr\b/.test(rawOps)) return { op: 'prologue', address };
+  if ((mn === 'stmfd' || mn === 'stmdb') && rawOps.includes('sp') && /\blr\b/.test(rawOps)) {
+    return { op: 'prologue', address };
+  }
+  if (mn === 'pop' && /\bpc\b/.test(rawOps)) return { op: 'epilogue', address };
+  if ((mn === 'ldmfd' || mn === 'ldmia') && rawOps.includes('sp') && /\bpc\b/.test(rawOps)) {
+    return { op: 'epilogue', address };
+  }
+
+  // ── RETURN ─────────────────────────────────────────
+  if (mn === 'bx' && ops[0]?.toLowerCase() === 'lr') return { op: 'ret', address };
+  if (mn === 'mov' && ops[0]?.toLowerCase() === 'pc' && ops[1]?.toLowerCase() === 'lr') {
+    return { op: 'ret', address };
+  }
+
+  // ── CALL ───────────────────────────────────────────
+  if (mn === 'bl' || mn === 'blx') {
+    const target = ops[0] ? parseImmediateAddr(ops[0]) : null;
+    const name = target === null ? (ops[0] ?? undefined) : undefined;
+    return { op: 'call', address, target, name };
+  }
+
+  // ── UNCONDITIONAL BRANCH ────────────────────────────
+  if (mn === 'b') {
+    const target = ops[0] ? parseImmediateAddr(ops[0]) : null;
+    return { op: 'jmp', address, target };
+  }
+  if (mn === 'bx') {
+    return { op: 'jmp', address, target: null };
+  }
+
+  // ── CONDITIONAL BRANCH ─────────────────────────────
+  if (mn in ARM32_COND_MAP) {
+    const condSymbol = ARM32_COND_MAP[mn];
+    const trueTarget = ops[0] ? (parseImmediateAddr(ops[0]) ?? 0) : 0;
+    let cond: string;
+    if (ctx.lastCmpLeft && ctx.lastCmpRight) {
+      cond = `${renderValueRaw(ctx.lastCmpLeft)} ${condSymbol} ${renderValueRaw(ctx.lastCmpRight)}`;
+    } else if (ctx.lastTestLeft && ctx.lastTestRight && irValEqual(ctx.lastTestLeft, ctx.lastTestRight)) {
+      const sign = (condSymbol === '==' || condSymbol === '<0') ? '==' : '!=';
+      cond = `${renderValueRaw(ctx.lastTestLeft)} ${sign} 0`;
+    } else if (ctx.lastTestLeft) {
+      cond = `(${renderValueRaw(ctx.lastTestLeft)} & ${renderValueRaw(ctx.lastTestRight!)}) ${condSymbol} 0`;
+    } else {
+      cond = `? /* ${mn} */`;
+    }
+    return { op: 'cjmp', address, cond, trueTarget, falseTarget: ctx.nextAddress };
+  }
+
+  // ── CMP / TST ─────────────────────────────────────
+  if ((mn === 'cmp' || mn === 'cmn') && ops.length >= 2) {
+    return { op: 'cmp', address, left: parseARM32Operand(ops[0]), right: parseARM32Operand(ops[1]) };
+  }
+  if ((mn === 'tst' || mn === 'teq') && ops.length >= 2) {
+    return { op: 'test', address, left: parseARM32Operand(ops[0]), right: parseARM32Operand(ops[1]) };
+  }
+
+  // ── CBZ / CBNZ ─────────────────────────────────────
+  if (mn === 'cbz' && ops.length >= 2) {
+    const reg = parseARM32Operand(ops[0]);
+    const trueTarget = parseImmediateAddr(ops[1]) ?? 0;
+    return { op: 'cjmp', address, cond: `${renderValueRaw(reg)} == 0`, trueTarget, falseTarget: ctx.nextAddress };
+  }
+  if (mn === 'cbnz' && ops.length >= 2) {
+    const reg = parseARM32Operand(ops[0]);
+    const trueTarget = parseImmediateAddr(ops[1]) ?? 0;
+    return { op: 'cjmp', address, cond: `${renderValueRaw(reg)} != 0`, trueTarget, falseTarget: ctx.nextAddress };
+  }
+
+  // ── MOV / MVN / MOVT ───────────────────────────────
+  if ((mn === 'mov' || mn === 'movw') && ops.length >= 2) {
+    return { op: 'assign', address, dest: parseARM32Operand(ops[0]), src: parseARM32Operand(ops[1]) };
+  }
+  if (mn === 'mvn' && ops.length >= 2) {
+    return { op: 'uop', address, dest: parseARM32Operand(ops[0]), operator: '~', operand: parseARM32Operand(ops[1]) };
+  }
+  if (mn === 'movt' && ops.length >= 2) {
+    const dest = parseARM32Operand(ops[0]);
+    return { op: 'binop', address, dest, operator: '|', left: dest, right: parseARM32Operand(ops[1]) };
+  }
+
+  // ── LDR / STR ───────────────────────────────────────
+  if ((mn === 'ldr' || mn === 'ldrb' || mn === 'ldrh' || mn === 'ldrsb' || mn === 'ldrsh' || mn === 'ldrex') && ops.length >= 2) {
+    const dest = parseARM32Operand(ops[0]);
+    let src: IRValue;
+    if (ops[1].startsWith('=')) {
+      const v = parseARM32Imm(ops[1].slice(1));
+      src = v !== null ? { kind: 'const', value: v } : { kind: 'expr', text: ops[1] };
+    } else {
+      src = parseARM32Operand(ops[1]);
+    }
+    return { op: 'assign', address, dest, src };
+  }
+  if ((mn === 'str' || mn === 'strb' || mn === 'strh' || mn === 'strex') && ops.length >= 2) {
+    return { op: 'assign', address, dest: parseARM32Operand(ops[1]), src: parseARM32Operand(ops[0]) };
+  }
+
+  // ── BINARY OPS ──────────────────────────────────────
+  if (mn in ARM32_BINOP_MAP) {
+    if (ops.length >= 3) {
+      const dest = parseARM32Operand(ops[0]);
+      const left = parseARM32Operand(ops[1]);
+      const right = parseARM32Operand(ops[2].split(',')[0].trim());
+      return { op: 'binop', address, dest, operator: ARM32_BINOP_MAP[mn], left, right };
+    }
+    if (ops.length === 2) {
+      const dest = parseARM32Operand(ops[0]);
+      const right = parseARM32Operand(ops[1]);
+      return { op: 'binop', address, dest, operator: ARM32_BINOP_MAP[mn], left: dest, right };
+    }
+  }
+
+  return { op: 'unknown', address, raw: `${ins.mnemonic} ${rawOps}`.trim() };
+}
+
+// ─────────────────────────────────────────────────────────
+// AARCH64 IR LIFTING
+// ─────────────────────────────────────────────────────────
+
+const AARCH64_REG_ALIASES: Record<string, string> = { lr: 'x30', fp: 'x29' };
+
+function normalizeAArch64Reg(r: string): string {
+  const lo = r.toLowerCase().trim();
+  if (lo === 'xzr' || lo === 'wzr') return lo;
+  return AARCH64_REG_ALIASES[lo] ?? lo;
+}
+
+function parseAArch64Imm(s: string): number | null {
+  const t = s.trim().replace(/^#/, '').split(',')[0].trim();
+  if (/^-?0x[0-9a-fA-F]+$/.test(t)) return parseInt(t, 16);
+  if (/^-?\d+$/.test(t)) return parseInt(t, 10);
+  return null;
+}
+
+function parseAArch64MemExpr(raw: string): IRValue {
+  const s = raw.replace(/!$/, '').trim();
+  const inner = s.startsWith('[')
+    ? s.slice(1, s.lastIndexOf(']')).trim()
+    : s;
+  if (/^[a-zA-Z][a-zA-Z0-9]*$/.test(inner)) {
+    return { kind: 'mem', base: normalizeAArch64Reg(inner), offset: 0, size: 'ptr' };
+  }
+  const immM = inner.match(/^([a-zA-Z][a-zA-Z0-9]*),\s*#(-?(?:0x[0-9a-fA-F]+|\d+))$/i);
+  if (immM) {
+    const base = normalizeAArch64Reg(immM[1]);
+    const raw2 = immM[2];
+    const offset = /^-?0x/.test(raw2) ? parseInt(raw2, 16) : parseInt(raw2, 10);
+    return { kind: 'mem', base, offset, size: 'ptr' };
+  }
+  const regM = inner.match(/^([a-zA-Z][a-zA-Z0-9]*),\s*([a-zA-Z][a-zA-Z0-9]*)(?:,\s*(?:lsl|sxtw|uxtw|sxth|sxtb)\s*#(\d+))?$/i);
+  if (regM) {
+    const base = normalizeAArch64Reg(regM[1]);
+    const index = normalizeAArch64Reg(regM[2]);
+    const scale = regM[3] ? (1 << parseInt(regM[3], 10)) : 1;
+    return { kind: 'mem', base, index, scale, offset: 0, size: 'ptr' };
+  }
+  return { kind: 'expr', text: `*[${inner}]` };
+}
+
+function parseAArch64Operand(raw: string): IRValue {
+  const s = raw.trim();
+  if (!s) return { kind: 'expr', text: '' };
+  if (s.startsWith('[')) {
+    const closeBracket = s.lastIndexOf(']');
+    return parseAArch64MemExpr(s.slice(0, closeBracket + 1));
+  }
+  if (s.startsWith('#')) {
+    const v = parseAArch64Imm(s);
+    return v !== null ? { kind: 'const', value: v } : { kind: 'expr', text: s };
+  }
+  const lo = s.toLowerCase();
+  if (lo === 'xzr' || lo === 'wzr') return { kind: 'const', value: 0 };
+  if (/^[a-zA-Z][a-zA-Z0-9_]*$/.test(s)) return { kind: 'reg', name: normalizeAArch64Reg(s) };
+  const v = parseAArch64Imm(s);
+  if (v !== null) return { kind: 'const', value: v };
+  return { kind: 'expr', text: s };
+}
+
+const AARCH64_BINOP_MAP: Record<string, string> = {
+  add: '+', adds: '+', sub: '-', subs: '-', mul: '*',
+  and: '&', ands: '&', orr: '|', eor: '^',
+  lsl: '<<', lsr: '>>', asr: '>>', ror: 'ror', bic: '&~', orn: '|~',
+};
+
+const AARCH64_COND_MAP: Record<string, string> = {
+  'b.eq': '==', 'b.ne': '!=',
+  'b.lt': '<',  'b.le': '<=', 'b.gt': '>',  'b.ge': '>=',
+  'b.lo': '<(u)', 'b.ls': '<=(u)', 'b.hi': '>(u)', 'b.hs': '>=(u)',
+  'b.mi': '<', 'b.pl': '>=', 'b.vs': 'overflow', 'b.vc': '!overflow',
+  'b.cs': '>=(u)', 'b.cc': '<(u)', 'b.al': 'true',
+};
+
+function liftInstructionAArch64(ins: DisassembledInstruction, ctx: LiftContext): IRStmt {
+  const { address } = ins;
+  const mn = ins.mnemonic.toLowerCase().trim();
+  const rawOps = ins.operands;
+  const ops = splitDepthAware(rawOps);
+
+  if (mn === 'nop' || mn === 'isb' || mn === 'dsb' || mn === 'dmb') return { op: 'nop', address };
+
+  // ── PROLOGUE / EPILOGUE ──────────────────────────────
+  // stp x29, x30, [sp, #-N]!  → function frame setup
+  if (mn === 'stp' && /\bx29\b/.test(rawOps) && /\bx30\b/.test(rawOps) && rawOps.includes('sp')) {
+    return { op: 'prologue', address };
+  }
+  // ldp x29, x30, [sp] or [sp], #N → frame teardown
+  if (mn === 'ldp' && /\bx29\b/.test(rawOps) && /\bx30\b/.test(rawOps) && rawOps.includes('sp')) {
+    return { op: 'epilogue', address };
+  }
+
+  // ── RETURN ─────────────────────────────────────────
+  if (mn === 'ret') return { op: 'ret', address };
+
+  // ── CALL ───────────────────────────────────────────
+  if (mn === 'bl') {
+    const target = ops[0] ? parseImmediateAddr(ops[0]) : null;
+    const name = target === null ? (ops[0] ?? undefined) : undefined;
+    return { op: 'call', address, target, name };
+  }
+  if (mn === 'blr') {
+    return { op: 'call', address, target: null, name: ops[0] };
+  }
+  if (mn === 'svc') {
+    const svcNum = ops[0] ? (parseAArch64Imm(ops[0]) ?? 0) : 0;
+    return { op: 'call', address, target: null, name: `svc_0x${svcNum.toString(16)}` };
+  }
+
+  // ── UNCONDITIONAL BRANCH ────────────────────────────
+  if (mn === 'b') {
+    const target = ops[0] ? parseImmediateAddr(ops[0]) : null;
+    return { op: 'jmp', address, target };
+  }
+  if (mn === 'br') return { op: 'jmp', address, target: null };
+
+  // ── CONDITIONAL BRANCH (b.eq, b.ne, …) ──────────────
+  if (mn in AARCH64_COND_MAP) {
+    const condSymbol = AARCH64_COND_MAP[mn];
+    const trueTarget = ops[0] ? (parseImmediateAddr(ops[0]) ?? 0) : 0;
+    let cond: string;
+    if (ctx.lastCmpLeft && ctx.lastCmpRight) {
+      cond = `${renderValueRaw(ctx.lastCmpLeft)} ${condSymbol} ${renderValueRaw(ctx.lastCmpRight)}`;
+    } else if (ctx.lastTestLeft && ctx.lastTestRight && irValEqual(ctx.lastTestLeft, ctx.lastTestRight)) {
+      const sign = (condSymbol === '==' || condSymbol === '<0') ? '==' : '!=';
+      cond = `${renderValueRaw(ctx.lastTestLeft)} ${sign} 0`;
+    } else if (ctx.lastTestLeft) {
+      cond = `(${renderValueRaw(ctx.lastTestLeft)} & ${renderValueRaw(ctx.lastTestRight!)}) ${condSymbol} 0`;
+    } else {
+      cond = `? /* ${mn} */`;
+    }
+    return { op: 'cjmp', address, cond, trueTarget, falseTarget: ctx.nextAddress };
+  }
+
+  // ── CBZ / CBNZ ─────────────────────────────────────
+  if (mn === 'cbz' && ops.length >= 2) {
+    const reg = parseAArch64Operand(ops[0]);
+    const trueTarget = parseImmediateAddr(ops[1]) ?? 0;
+    return { op: 'cjmp', address, cond: `${renderValueRaw(reg)} == 0`, trueTarget, falseTarget: ctx.nextAddress };
+  }
+  if (mn === 'cbnz' && ops.length >= 2) {
+    const reg = parseAArch64Operand(ops[0]);
+    const trueTarget = parseImmediateAddr(ops[1]) ?? 0;
+    return { op: 'cjmp', address, cond: `${renderValueRaw(reg)} != 0`, trueTarget, falseTarget: ctx.nextAddress };
+  }
+
+  // ── TBZ / TBNZ ─────────────────────────────────────
+  if ((mn === 'tbz' || mn === 'tbnz') && ops.length >= 3) {
+    const reg = parseAArch64Operand(ops[0]);
+    const bit = parseAArch64Imm(ops[1]) ?? 0;
+    const mask = (1 << bit) >>> 0;
+    const trueTarget = parseImmediateAddr(ops[2]) ?? 0;
+    const eq = mn === 'tbz' ? '==' : '!=';
+    return { op: 'cjmp', address, cond: `(${renderValueRaw(reg)} & 0x${mask.toString(16)}) ${eq} 0`, trueTarget, falseTarget: ctx.nextAddress };
+  }
+
+  // ── CMP / TST ─────────────────────────────────────
+  if ((mn === 'cmp' || mn === 'cmn') && ops.length >= 2) {
+    return { op: 'cmp', address, left: parseAArch64Operand(ops[0]), right: parseAArch64Operand(ops[1]) };
+  }
+  if (mn === 'tst' && ops.length >= 2) {
+    return { op: 'test', address, left: parseAArch64Operand(ops[0]), right: parseAArch64Operand(ops[1]) };
+  }
+
+  // ── MOV / MOVZ / MOVK / MOVN ───────────────────────
+  if (mn === 'mov' && ops.length >= 2) {
+    return { op: 'assign', address, dest: parseAArch64Operand(ops[0]), src: parseAArch64Operand(ops[1]) };
+  }
+  if (mn === 'movz' && ops.length >= 2) {
+    const dest = parseAArch64Operand(ops[0]);
+    const v = parseAArch64Imm(ops[1]);
+    return { op: 'assign', address, dest, src: v !== null ? { kind: 'const', value: v } : { kind: 'expr', text: ops[1] } };
+  }
+  if (mn === 'movn' && ops.length >= 2) {
+    return { op: 'uop', address, dest: parseAArch64Operand(ops[0]), operator: '~', operand: parseAArch64Operand(ops[1]) };
+  }
+  if (mn === 'movk' && ops.length >= 2) {
+    const dest = parseAArch64Operand(ops[0]);
+    const v = parseAArch64Imm(ops[1]);
+    const src: IRValue = v !== null ? { kind: 'const', value: v } : { kind: 'expr', text: ops[1] };
+    return { op: 'binop', address, dest, operator: '|', left: dest, right: src };
+  }
+  if (mn === 'mvn' && ops.length >= 2) {
+    return { op: 'uop', address, dest: parseAArch64Operand(ops[0]), operator: '~', operand: parseAArch64Operand(ops[1]) };
+  }
+
+  // ── ADR / ADRP ─────────────────────────────────────
+  if ((mn === 'adr' || mn === 'adrp') && ops.length >= 2) {
+    const dest = parseAArch64Operand(ops[0]);
+    const v = parseImmediateAddr(ops[1]);
+    return { op: 'assign', address, dest, src: v !== null ? { kind: 'const', value: v } : { kind: 'expr', text: ops[1] } };
+  }
+
+  // ── LDR / STR and variants ─────────────────────────
+  const isLoad = /^(?:ldr|ldrb|ldrh|ldrsb|ldrsh|ldrsw|ldar|ldarb|ldarh|ldxr|ldaxr)$/.test(mn);
+  if (isLoad && ops.length >= 2) {
+    return { op: 'assign', address, dest: parseAArch64Operand(ops[0]), src: parseAArch64Operand(ops[1]) };
+  }
+  const isStore = /^(?:str|strb|strh|stlr|stlrb|stlrh|stxr|stlxr)$/.test(mn);
+  if (isStore && ops.length >= 2) {
+    return { op: 'assign', address, dest: parseAArch64Operand(ops[1]), src: parseAArch64Operand(ops[0]) };
+  }
+
+  // ── LDP / STP (pair) — non-frame pairs ─────────────
+  if (mn === 'ldp' && ops.length >= 3) {
+    // lift first register only; second is unknown (emit as best-effort)
+    return { op: 'assign', address, dest: parseAArch64Operand(ops[0]), src: parseAArch64Operand(ops[2]) };
+  }
+  if (mn === 'stp' && ops.length >= 3) {
+    return { op: 'assign', address, dest: parseAArch64Operand(ops[2]), src: parseAArch64Operand(ops[0]) };
+  }
+
+  // ── BINARY OPS (3-operand) ──────────────────────────
+  if (mn in AARCH64_BINOP_MAP) {
+    if (ops.length >= 3) {
+      const dest = parseAArch64Operand(ops[0]);
+      const left = parseAArch64Operand(ops[1]);
+      const right = parseAArch64Operand(ops[2].split(',')[0].trim());
+      return { op: 'binop', address, dest, operator: AARCH64_BINOP_MAP[mn], left, right };
+    }
+    if (ops.length === 2) {
+      const dest = parseAArch64Operand(ops[0]);
+      const right = parseAArch64Operand(ops[1]);
+      return { op: 'binop', address, dest, operator: AARCH64_BINOP_MAP[mn], left: dest, right };
+    }
+  }
+
+  // ── CSEL / CSET / CINC ─────────────────────────────
+  if ((mn === 'csel' || mn === 'csinc' || mn === 'csneg' || mn === 'csinv') && ops.length >= 3) {
+    const dest = parseAArch64Operand(ops[0]);
+    const src = parseAArch64Operand(ops[1]);
+    return { op: 'assign', address, dest, src };  // approximate; loses else-branch
+  }
+  if ((mn === 'cset' || mn === 'csetm' || mn === 'cinc' || mn === 'cneg') && ops.length >= 2) {
+    const dest = parseAArch64Operand(ops[0]);
+    return { op: 'assign', address, dest, src: { kind: 'expr', text: `cond_${ops[ops.length - 1]}` } };
+  }
+
+  // ── MRS (system register read) ──────────────────────
+  if (mn === 'mrs' && ops.length >= 2) {
+    const dest = parseAArch64Operand(ops[0]);
+    return { op: 'assign', address, dest, src: { kind: 'expr', text: ops[1] } };
+  }
+  if (mn === 'msr') return { op: 'nop', address };
+
+  return { op: 'unknown', address, raw: `${ins.mnemonic} ${rawOps}`.trim() };
+}
+
+// ─────────────────────────────────────────────────────────
 // PHASE 4 — BLOCK BUILDING
 // ─────────────────────────────────────────────────────────
 
 function buildIRBlocks(
   instructions: DisassembledInstruction[],
-  cfg: CfgGraph | null
+  cfg: CfgGraph | null,
+  arch: Architecture = 'x86_64'
 ): IRBlock[] {
   if (!instructions.length) return [];
 
@@ -670,7 +1241,9 @@ function buildIRBlocks(
       const ctx: LiftContext = {
         lastCmpLeft, lastCmpRight, lastTestLeft, lastTestRight, nextAddress: nextAddr
       };
-      const stmt = liftInstruction(ins, ctx);
+      const stmt = arch === 'arm32'   ? liftInstructionARM32(ins, ctx)
+                 : arch === 'aarch64' ? liftInstructionAArch64(ins, ctx)
+                 : liftInstruction(ins, ctx);
       stmts.push(stmt);
 
       // Update context
@@ -1002,6 +1575,143 @@ function collectAllStmts(blocks: IRBlock[]): IRStmt[] {
 }
 
 // ─────────────────────────────────────────────────────────
+// LOGIC REGION DETECTION
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Analyse lifted IR blocks to identify comparison-heavy and gating regions.
+ * Results are sorted by confidence descending so callers can prioritise.
+ *
+ * Detection rules:
+ *   1. Serial-comparison — same register compared against ≥3 distinct constants
+ *      in a single block (e.g. license key digit checks, opcode dispatch).
+ *   2. Validation-gate — ≥3 cmp/test statements in a block that ends with a
+ *      conditional jump; indicates a multi-condition input-validation check.
+ *   3. Protection-guard — block contains both cmp/test and a call plus a
+ *      conditional branch — suggests an integrity/anti-tamper check.
+ *   4. Loop-condition — back-edge block with a bounded cmp — marks loop bounds
+ *      that control algorithm termination.
+ */
+export function detectLogicRegions(irBlocks: IRBlock[]): LogicRegion[] {
+  const regions: LogicRegion[] = [];
+
+  for (const block of irBlocks) {
+    const cmpStmts  = block.stmts.filter(s => s.op === 'cmp' || s.op === 'test');
+    const cjmpStmts = block.stmts.filter(s => s.op === 'cjmp');
+    const callStmts = block.stmts.filter(s => s.op === 'call');
+
+    if (cmpStmts.length === 0) continue;
+
+    const relatedAddresses = [
+      ...cmpStmts.map(s => s.address),
+      ...cjmpStmts.map(s => s.address),
+    ];
+    const baseAddress = relatedAddresses.length > 0
+      ? Math.min(...relatedAddresses)
+      : block.start;
+
+    // ─ Rule 1: Serial-comparison — same base register vs ≥3 distinct constants ─
+    const lhsRegCounts = new Map<string, Set<number>>();
+    for (const s of cmpStmts) {
+      const stmt = s as Extract<IRStmt, { op: 'cmp' | 'test' }>;
+      if (stmt.left.kind === 'reg' && stmt.right.kind === 'const') {
+        const reg = stmt.left.name;
+        if (!lhsRegCounts.has(reg)) lhsRegCounts.set(reg, new Set());
+        lhsRegCounts.get(reg)!.add(stmt.right.value);
+      }
+    }
+    for (const [reg, constants] of lhsRegCounts) {
+      if (constants.size >= 3) {
+        const conf = Math.min(0.95, 0.55 + constants.size * 0.08);
+        regions.push({
+          address: baseAddress,
+          blockId: block.id,
+          kind: 'serial-comparison',
+          comparisonCount: cmpStmts.length,
+          confidence: conf,
+          summary: `Serial comparison: '${reg}' tested against ${constants.size} distinct constants — probable auth/license check or dispatch table`,
+          relatedAddresses,
+        });
+        break;
+      }
+    }
+
+    // ─ Rule 2: Validation-gate — ≥3 cmp/test with a trailing conditional jump ─
+    if (cmpStmts.length >= 3 && cjmpStmts.length >= 1) {
+      const conf = Math.min(0.90, 0.45 + cmpStmts.length * 0.10 + cjmpStmts.length * 0.05);
+      regions.push({
+        address: baseAddress,
+        blockId: block.id,
+        kind: 'validation-gate',
+        comparisonCount: cmpStmts.length,
+        confidence: conf,
+        summary: `Validation gate: ${cmpStmts.length} comparison(s) → ${cjmpStmts.length} conditional branch(es) — multi-condition input validation or protection check`,
+        relatedAddresses,
+      });
+    }
+
+    // ─ Rule 3: Protection-guard — cmp/test + call + conditional branch ─
+    if (cmpStmts.length >= 2 && callStmts.length >= 1 && cjmpStmts.length >= 1) {
+      const namedCalls = callStmts.filter(s => {
+        const c = s as Extract<IRStmt, { op: 'call' }>;
+        return c.name !== undefined || c.target !== null;
+      });
+      if (namedCalls.length > 0) {
+        const conf = Math.min(0.85, 0.50 + cmpStmts.length * 0.08);
+        regions.push({
+          address: baseAddress,
+          blockId: block.id,
+          kind: 'protection-guard',
+          comparisonCount: cmpStmts.length,
+          confidence: conf,
+          summary: `Protection guard: ${cmpStmts.length} comparison(s) + ${namedCalls.length} call(s) + conditional branch — possible integrity/anti-tamper check`,
+          relatedAddresses: [
+            ...relatedAddresses,
+            ...namedCalls.map(s => s.address),
+          ],
+        });
+      }
+    }
+
+    // ─ Rule 4: Loop-condition — back-edge block with bounded cmp ─
+    const isBackEdgeTarget = irBlocks.some(
+      b => b.allSuccessors.includes(block.id) && b.start > block.start
+    );
+    if (isBackEdgeTarget && cmpStmts.length >= 1 && cjmpStmts.length >= 1) {
+      const conf = Math.min(0.75, 0.40 + cmpStmts.length * 0.10);
+      regions.push({
+        address: baseAddress,
+        blockId: block.id,
+        kind: 'loop-condition',
+        comparisonCount: cmpStmts.length,
+        confidence: conf,
+        summary: `Loop condition: back-edge block with ${cmpStmts.length} bound comparison(s) — algorithm termination or iteration-count guard`,
+        relatedAddresses,
+      });
+    }
+  }
+
+  // Deduplicate: keep the highest-confidence region per block, except
+  // protection-guard which is orthogonal and should always be surfaced.
+  const blockBest = new Map<string, LogicRegion>();
+  for (const r of regions) {
+    const existing = blockBest.get(r.blockId);
+    if (!existing || r.confidence > existing.confidence) {
+      blockBest.set(r.blockId, r);
+    }
+  }
+  const deduplicated: LogicRegion[] = [];
+  for (const r of regions) {
+    const best = blockBest.get(r.blockId);
+    if (r === best || r.kind === 'protection-guard') {
+      deduplicated.push(r);
+    }
+  }
+
+  return deduplicated.sort((a, b) => b.confidence - a.confidence);
+}
+
+// ─────────────────────────────────────────────────────────
 // PUBLIC API
 // ─────────────────────────────────────────────────────────
 
@@ -1033,6 +1743,7 @@ export function decompile(
       lines: [{ indent: 0, text: '// No instructions in range', kind: 'comment' }],
       varMap: new Map(),
       irBlocks: [],
+      logicRegions: [],
       warnings: ['No instructions to decompile'],
       instrCount: 0,
     };
@@ -1042,7 +1753,8 @@ export function decompile(
   const funcName = options.functionName ?? `sub_${startAddress.toString(16)}`;
 
   // Phase 3+4: Build IR blocks
-  const irBlocks = buildIRBlocks(insns, cfg);
+  const arch = detectArch(insns);
+  const irBlocks = buildIRBlocks(insns, cfg, arch);
 
   if (!irBlocks.length) {
     return {
@@ -1051,6 +1763,7 @@ export function decompile(
       lines: [{ indent: 0, text: '// Could not build basic blocks', kind: 'comment' }],
       varMap: new Map(),
       irBlocks: [],
+      logicRegions: [],
       warnings: ['No basic blocks built'],
       instrCount: insns.length,
     };
@@ -1058,16 +1771,22 @@ export function decompile(
 
   // Phase 3: Build variable map
   const allStmts = collectAllStmts(irBlocks);
-  const varMap = buildVarMap(allStmts);
+  const varMap = buildVarMap(allStmts, arch);
 
-  // Detect return register
+  // Detect return register (arch-aware)
+  const retRegs = arch === 'arm32' ? RETURN_REGS_ARM32
+                : arch === 'aarch64' ? RETURN_REGS_AARCH64
+                : RETURN_REGS;
   const hasRetVal = allStmts.some(s =>
-    s.op === 'assign' && s.dest.kind === 'reg' && RETURN_REGS.has(s.dest.name)
+    s.op === 'assign' && s.dest.kind === 'reg' && retRegs.has((s.dest as { name: string }).name)
   );
 
-  // Build parameter list from detected arg regs / stack args
+  // Build parameter list from detected arg regs / stack args (arch-aware)
+  const argRegs = arch === 'arm32' ? ARG_REGS_ARM32
+                : arch === 'aarch64' ? ARG_REGS_AARCH64
+                : ARG_REGS_64;
   const paramNames: string[] = [];
-  for (const reg of ARG_REGS_64) {
+  for (const reg of argRegs) {
     if (varMap.has(`reg:${reg}`)) paramNames.push(varMap.get(`reg:${reg}`)!);
   }
   // Also check stack args
@@ -1137,5 +1856,125 @@ export function decompile(
 
   lines.push({ indent: 0, text: '}', kind: 'brace' });
 
-  return { functionName: funcName, startAddress, lines, varMap, irBlocks, warnings, instrCount: insns.length };
+  const logicRegions = detectLogicRegions(irBlocks);
+
+  // Run CSE pass on IR blocks to eliminate redundant computations
+  const { blocks: optimizedBlocks, rewriteCount: cseRewriteCount } = applyCSE(irBlocks);
+
+  return { functionName: funcName, startAddress, lines, varMap, irBlocks: optimizedBlocks, logicRegions, warnings, instrCount: insns.length, cseRewriteCount };
+}
+
+// ─────────────────────────────────────────────────────────
+// CSE — COMMON SUBEXPRESSION ELIMINATION PASS
+// ─────────────────────────────────────────────────────────
+
+/**
+ * Produce a canonical key for an IRValue suitable for CSE hashing.
+ * Two values with the same key are semantically equal and interchangeable.
+ * Memory accesses are excluded because they may alias.
+ */
+function cseValueKey(v: IRValue): string | null {
+  if (v.kind === 'reg')   return `r:${v.name}`;
+  if (v.kind === 'const') return `c:${v.value}`;
+  // Don't hash memory or expr — too imprecise for alias-free CSE
+  return null;
+}
+
+/**
+ * Produce a canonical key for a binary or unary IR expression.
+ * Returns null when the expression is not CSE-eligible.
+ *
+ * Commutative operators (+, *, &, |, ^) are normalised so that
+ * `a + b` and `b + a` yield the same key.
+ */
+function cseExprKey(stmt: IRStmt): string | null {
+  if (stmt.op === 'binop') {
+    const lk = cseValueKey(stmt.left);
+    const rk = cseValueKey(stmt.right);
+    if (!lk || !rk) return null;
+    const op = stmt.operator;
+    const COMMUTATIVE = new Set(['+', '*', '&', '|', '^']);
+    // Normalise commutative operand order for stable keys
+    const [a, b] = COMMUTATIVE.has(op) && lk > rk ? [rk, lk] : [lk, rk];
+    return `binop:${op}:${a}:${b}`;
+  }
+  if (stmt.op === 'uop') {
+    const ok = cseValueKey(stmt.operand);
+    if (!ok) return null;
+    return `uop:${stmt.operator}:${ok}`;
+  }
+  return null;
+}
+
+/**
+ * Apply a single-pass Common Subexpression Elimination over IR blocks.
+ *
+ * Algorithm (global, flow-insensitive):
+ *   1. Walk all blocks in their existing order.
+ *   2. For each binop/uop, compute `exprKey(stmt)`.
+ *   3. If this key was seen before and the destination register still holds
+ *      that value (checked by tracking which registers have been modified),
+ *      replace the stmt with `assign dest ← firstDest`.
+ *   4. If this is the *first* time we see the key, record (key → destReg).
+ *
+ * Conservative: any intervening store to either operand register (or the result
+ * register itself) invalidates the cached expression, preventing stale values.
+ */
+export function applyCSE(blocks: IRBlock[]): { blocks: IRBlock[]; rewriteCount: number } {
+  // exprKey → { destReg: string, destValue: IRValue }
+  const available = new Map<string, { destValue: IRValue; destReg: string }>();
+
+  /** Remove all cached expressions whose result register or operands include modifiedReg. */
+  function invalidate(modifiedReg: string): void {
+    for (const [k, v] of available) {
+      if (
+        v.destReg === modifiedReg ||
+        k.includes(`:r:${modifiedReg}`) ||
+        k.includes(`r:${modifiedReg}:`)
+      ) {
+        available.delete(k);
+      }
+    }
+  }
+
+  let rewriteCount = 0;
+
+  const resultBlocks = blocks.map(block => {
+    const newStmts: IRStmt[] = block.stmts.map(stmt => {
+      const key = cseExprKey(stmt);
+      const destValue = 'dest' in stmt ? (stmt as { dest: IRValue }).dest : null;
+
+      if (key) {
+        const found = available.get(key);
+        if (found) {
+          // Replace with a cheap register copy
+          const replacement: IRStmt = {
+            op: 'assign',
+            address: stmt.address,
+            dest: (stmt as { dest: IRValue }).dest,
+            src: found.destValue,
+          };
+          rewriteCount++;
+          // If the result dest overwrites another register, invalidate it too
+          if (destValue?.kind === 'reg') invalidate(destValue.name);
+          return replacement;
+        }
+        // First occurrence — invalidate the dest register FIRST (so stale entries
+        // referring to it as a result holder are removed), then record fresh entry.
+        if (destValue?.kind === 'reg') {
+          invalidate(destValue.name);
+          available.set(key, { destValue, destReg: destValue.name });
+        }
+      } else {
+        // Non-CSE statement: invalidate any cached results affected by this write
+        if (destValue?.kind === 'reg') invalidate(destValue.name);
+      }
+
+      return stmt;
+    });
+
+    return { ...block, stmts: newStmts };
+  });
+
+  return { blocks: resultBlocks, rewriteCount };
 }

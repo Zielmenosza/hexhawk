@@ -85,10 +85,45 @@ const GP_REGS = new Set([
   'ah','bh','ch','dh',
 ]);
 
-/** Extract variable base name from an IRValue if it is trackable. */
+/**
+ * Normalize x86-64 sub-register names to their 64-bit canonical form.
+ *
+ * In x86-64, writing eax zero-extends to rax, and reading al reads from rax.
+ * Tracking sub-registers as separate SSA variables produces phantom defs/uses
+ * that break copy-propagation and MBA pattern matching (e.g., a `mov eax, 0`
+ * followed by `test al, al` appears as two unrelated variables instead of one).
+ *
+ * Note: ah/bh/ch/dh write bits 8–15 only; we map them to the full 64-bit
+ * register for simplicity — the loss of precision is acceptable for the
+ * decompiler's pattern-matching purposes.
+ */
+const ALIAS_TO_64: Readonly<Record<string, string>> = {
+  // 32-bit zero-extending forms
+  eax: 'rax', ebx: 'rbx', ecx: 'rcx', edx: 'rdx',
+  esi: 'rsi', edi: 'rdi', ebp: 'rbp', esp: 'rsp',
+  r8d: 'r8',  r9d: 'r9',  r10d: 'r10', r11d: 'r11',
+  r12d: 'r12', r13d: 'r13', r14d: 'r14', r15d: 'r15',
+  // 16-bit partial forms
+  ax: 'rax', bx: 'rbx', cx: 'rcx', dx: 'rdx',
+  si: 'rsi', di: 'rdi', bp: 'rbp', sp: 'rsp',
+  r8w: 'r8',  r9w: 'r9',  r10w: 'r10', r11w: 'r11',
+  r12w: 'r12', r13w: 'r13', r14w: 'r14', r15w: 'r15',
+  // 8-bit low forms
+  al: 'rax', bl: 'rbx', cl: 'rcx', dl: 'rdx',
+  sil: 'rsi', dil: 'rdi', bpl: 'rbp', spl: 'rsp',
+  r8b: 'r8',  r9b: 'r9',  r10b: 'r10', r11b: 'r11',
+  r12b: 'r12', r13b: 'r13', r14b: 'r14', r15b: 'r15',
+  // 8-bit high forms (bits 8–15 only; mapped conservatively to full reg)
+  ah: 'rax', bh: 'rbx', ch: 'rcx', dh: 'rdx',
+};
+
+/** Extract variable base name from an IRValue if it is trackable.
+ *  Sub-register names (eax, al, …) are normalized to their 64-bit root. */
 function varKey(v: IRValue): string | null {
   if (v.kind === 'reg') {
-    return GP_REGS.has(v.name) ? v.name : null;
+    // Normalize sub-register → canonical 64-bit name first
+    const canonical = ALIAS_TO_64[v.name] ?? (GP_REGS.has(v.name) ? v.name : null);
+    return canonical;
   }
   if (v.kind === 'mem' && (v.base === 'rbp' || v.base === 'rsp') &&
       v.index === undefined && typeof v.offset === 'number') {
@@ -557,4 +592,100 @@ export function ssaVersionStats(ssaForm: SSAForm): Array<{ base: string; version
   return Array.from(maxVersion.entries())
     .map(([base, versions]) => ({ base, versions }))
     .sort((a, b) => b.versions - a.versions);
+}
+
+// ── Post-Dominator Tree ───────────────────────────────────────────────────────
+
+/**
+ * Compute the post-dominator tree for a set of IR blocks.
+ *
+ * A node X post-dominates node Y if every path from Y to any exit node passes
+ * through X. This is the dual of the forward dominator tree and is computed by:
+ *   1. Reversing all CFG edges.
+ *   2. Adding a virtual super-exit node that has edges from every true exit block.
+ *   3. Running the same Cooper et al. iterative algorithm used for forward doms.
+ *
+ * @param blocks   All IR blocks in the function.
+ * @param exitIds  Block IDs considered function exits (blocks containing `ret`).
+ *                 If empty, blocks with no successors are treated as exits.
+ * @returns A DomTree in post-dominator form (idom = immediate post-dominator).
+ */
+export function computePostDominators(blocks: IRBlock[], exitIds?: string[]): DomTree {
+  if (blocks.length === 0) {
+    return { idom: new Map(), children: new Map(), df: new Map(), rpo: [] };
+  }
+
+  // Determine exit blocks
+  let exits: string[];
+  if (exitIds && exitIds.length > 0) {
+    exits = exitIds;
+  } else {
+    // Blocks with no successors are exits
+    exits = blocks
+      .filter(b => b.allSuccessors.length === 0 ||
+                   b.stmts.some(s => s.op === 'ret'))
+      .map(b => b.id);
+    if (exits.length === 0) exits = [blocks[blocks.length - 1].id];
+  }
+
+  // Virtual super-exit node
+  const SUPER_EXIT = '__post_dom_exit__';
+
+  // Build reversed blocks: edges go from successors to predecessors
+  // Plus virtual edges: SUPER_EXIT → each exit block (reversed: exits → SUPER_EXIT)
+  const reverseSuccMap = new Map<string, string[]>();
+  reverseSuccMap.set(SUPER_EXIT, []);
+
+  for (const b of blocks) {
+    if (!reverseSuccMap.has(b.id)) reverseSuccMap.set(b.id, []);
+  }
+
+  // In the reversed CFG, each original edge (A→B) becomes (B→A)
+  for (const b of blocks) {
+    for (const succ of b.allSuccessors) {
+      const entry = reverseSuccMap.get(succ) ?? [];
+      entry.push(b.id);
+      reverseSuccMap.set(succ, entry);
+    }
+  }
+
+  // Add edges: exit blocks → SUPER_EXIT (in reversed graph: SUPER_EXIT has exits as successors)
+  reverseSuccMap.set(SUPER_EXIT, exits);
+
+  // Build IRBlock-like structures for the reversed graph
+  const reverseBlocks: IRBlock[] = [
+    {
+      id: SUPER_EXIT,
+      start: 0, end: 0, stmts: [],
+      allSuccessors: exits,
+      successors: exits,
+      blockType: 'entry',
+    },
+    ...blocks.map(b => ({
+      ...b,
+      allSuccessors: reverseSuccMap.get(b.id) ?? [],
+      successors: reverseSuccMap.get(b.id) ?? [],
+    })),
+  ];
+
+  // Run forward dominator computation on the reversed CFG (= post-dominator)
+  const idomRaw = computeDominators(reverseBlocks, SUPER_EXIT);
+
+  // Remove the super-exit node from results
+  idomRaw.delete(SUPER_EXIT);
+  // Remap super-exit references to null (post-dom of exit blocks = null)
+  const idom = new Map<string, string | null>();
+  for (const [id, dom] of idomRaw) {
+    if (id === SUPER_EXIT) continue;
+    idom.set(id, dom === SUPER_EXIT ? null : (dom ?? null));
+  }
+
+  const children = buildDomChildren(idom);
+  const df = computeDominanceFrontier(reverseBlocks, idomRaw);
+
+  // RPO on reversed graph (without super-exit)
+  const rpoFull = computeRPO(reverseBlocks, SUPER_EXIT);
+  const rpo = rpoFull.filter(id => id !== SUPER_EXIT);
+
+  return { idom, children, df, rpo };
 }

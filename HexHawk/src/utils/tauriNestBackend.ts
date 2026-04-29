@@ -11,18 +11,35 @@ import { invoke } from '@tauri-apps/api/core';
 import type { NestBackend, DisassemblyResult } from './nestBackend';
 import type { FileMetadata } from '../App';
 import type { CfgGraph } from './cfgSignalExtractor';
+import { sanitizeBridgePath, sanitizeRange } from './tauriGuards';
 
 export class TauriNestBackend implements NestBackend {
   disassembleRange(path: string, offset: number, length: number): Promise<DisassemblyResult> {
-    return invoke<DisassemblyResult>('disassemble_file_range', { path, offset, length });
+    const safePath = sanitizeBridgePath(path);
+    const safeRange = sanitizeRange(offset, length);
+    return invoke<DisassemblyResult>('disassemble_file_range', { path: safePath, offset: safeRange.offset, length: safeRange.length });
   }
 
   buildCfg(path: string, offset: number, length: number): Promise<CfgGraph> {
-    return invoke<CfgGraph>('build_cfg', { path, offset, length });
+    const safePath = sanitizeBridgePath(path);
+    const safeRange = sanitizeRange(offset, length);
+    return invoke<CfgGraph>('build_cfg', { path: safePath, offset: safeRange.offset, length: safeRange.length });
   }
 
   inspectMetadata(path: string): Promise<FileMetadata> {
-    return invoke<FileMetadata>('inspect_file_metadata', { path });
+    const safePath = sanitizeBridgePath(path);
+    return invoke<FileMetadata>('inspect_file_metadata', { path: safePath });
+  }
+
+  async extractStrings(path: string): Promise<string[]> {
+    const safePath = sanitizeBridgePath(path);
+    const r = await invoke<{ ascii: string[]; unicode: string[]; urls: string[]; paths: string[]; api_names: string[] }>('extract_strings', { path: safePath });
+    return Array.from(new Set([...r.ascii, ...r.unicode, ...r.urls, ...r.paths, ...r.api_names]));
+  }
+
+  identifyFormat(path: string): Promise<{ format: string; magic_hex: string; file_size: number; entropy_header_4kb: number }> {
+    const safePath = sanitizeBridgePath(path);
+    return invoke('identify_format', { path: safePath });
   }
 }
 

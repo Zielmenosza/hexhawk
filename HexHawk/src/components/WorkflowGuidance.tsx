@@ -129,6 +129,7 @@ const WorkflowGuidance = React.memo(function WorkflowGuidance({
 }: WorkflowGuidanceProps) {
   const steps = generateWorkflowSteps(analysis);
   const [expandedStep, setExpandedStep] = React.useState<number | null>(null);
+  const primaryAddress = analysis.suspiciousPatterns?.[0]?.address;
 
   return (
     <div className="workflow-guidance">
@@ -176,8 +177,14 @@ const WorkflowGuidance = React.memo(function WorkflowGuidance({
                   {step.action && (
                     <div className="step-action">
                       <button
-                        className="action-button"
+                        className="action-button workflow-action wf-action"
+                        data-address={typeof primaryAddress === 'number' ? primaryAddress : undefined}
                         style={{ borderColor: style.color, color: style.color }}
+                        onClick={() => {
+                          if (typeof primaryAddress === 'number' && onNavigateToAddress) {
+                            onNavigateToAddress(primaryAddress);
+                          }
+                        }}
                       >
                         {step.action}
                       </button>

@@ -8,10 +8,14 @@
  *   npm run nest -- <path-to-binary>
  *   npx tsx scripts/run-nest.ts <path-to-binary>
  *
- * Outputs to stdout and writes three artifact files next to the binary:
- *   <binary>.nest.session.log    — human-readable iteration log
- *   <binary>.nest.result.json    — final session result
- *   <binary>.nest.iterations.json — per-iteration data
+ * Outputs to stdout and writes artifacts to <repo>/nest_tests/<binary-name>/:
+ *   session.log                  — human-readable iteration log
+ *   result.json                  — legacy final session summary
+ *   iterations.json              — legacy per-iteration summary
+ *   evidence_bundle/*.json       — typed NEST evidence bundle files
+ *
+ * The typed evidence bundle is validated before finalization and re-validated
+ * after disk write via read-back parsing.
  *
  * Prerequisites:
  *   1. Build the Rust nest_cli binary:
@@ -47,6 +51,12 @@ import { fileURLToPath } from 'node:url';
 import { NestSessionRunner, type NestIterationResult } from '../src/utils/nestRunner.js';
 import { DEFAULT_NEST_CONFIG, type NestConfig } from '../src/utils/nestEngine.js';
 import type { NestBackend, DisassemblyResult } from '../src/utils/nestBackend.js';
+import {
+  buildNestEvidenceBundleFromSession,
+  toNestEvidenceFileMap,
+  validateBuiltNestEvidenceBundle,
+  parseNestEvidenceFileMap,
+} from '../src/utils/nestEvidenceIntegration.js';
 import type { FileMetadata } from '../src/App.js';
 import type { CfgGraph } from '../src/utils/cfgSignalExtractor.js';
 
@@ -105,6 +115,30 @@ class ChildProcessNestBackend implements NestBackend {
   async inspectMetadata(p: string): Promise<FileMetadata> {
     return callCli(this.nestCli, 'inspect', p) as FileMetadata;
   }
+
+  async extractStrings(p: string): Promise<string[]> {
+    const result = callCli(this.nestCli, 'strings', p) as {
+      ascii: string[];
+      unicode: string[];
+      urls: string[];
+      paths: string[];
+      api_names: string[];
+      total: number;
+    };
+    // Merge all categories into one deduped list for NEST signal scoring
+    const all = new Set([
+      ...result.ascii,
+      ...result.unicode,
+      ...result.urls,
+      ...result.paths,
+      ...result.api_names,
+    ]);
+    return Array.from(all);
+  }
+
+  async identifyFormat(p: string): Promise<{ format: string; magic_hex: string; file_size: number; entropy_header_4kb: number }> {
+    return callCli(this.nestCli, 'identify', p) as ReturnType<NestBackend['identifyFormat']> extends Promise<infer T> ? T : never;
+  }
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -114,6 +148,10 @@ function log(msg: string) { process.stdout.write(msg + '\n'); }
 function confidenceBar(c: number, width = 20): string {
   const filled = Math.round((c / 100) * width);
   return '[' + '█'.repeat(filled) + '░'.repeat(width - filled) + ']';
+}
+
+function readJson(p: string): unknown {
+  return JSON.parse(fs.readFileSync(p, 'utf8')) as unknown;
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
@@ -141,8 +179,21 @@ async function main() {
   log(`  Backend: ${nestCli}`);
   log('');
 
+  // ── Step 0: Identify format (works on any file, no parse needed) ────────
+  log('[ 0/4 ] Identifying file format...');
+  let formatHint = 'unknown';
+  try {
+    const ident = await backend.identifyFormat(binaryPath);
+    formatHint = ident.format;
+    log(`         Format  : ${ident.format}  [magic: ${ident.magic_hex}]`);
+    log(`         Size    : ${(ident.file_size / 1024 / 1024).toFixed(2)} MB`);
+    log(`         Header entropy (4 KB): ${ident.entropy_header_4kb.toFixed(3)}`);
+  } catch (e) {
+    log(`         Warning: identify failed (${String(e)})`);
+  }
+
   // ── Step 1: Inspect metadata ─────────────────────────────────────────────
-  log('[ 1/3 ] Inspecting file metadata...');
+  log('[ 1/4 ] Inspecting file metadata...');
   let metadata: FileMetadata | null = null;
   try {
     metadata = await backend.inspectMetadata(binaryPath);
@@ -151,10 +202,25 @@ async function main() {
     log(`         Imports: ${metadata.imports_count}   Exports: ${metadata.exports_count}`);
   } catch (e) {
     log(`         Warning: metadata inspection failed (${String(e)})`);
+    log(`         Continuing with format-only analysis (format: ${formatHint})`);
+  }
+
+  // ── Step 1b: Extract strings (works on any format) ───────────────────────
+  log('[ 1b/4] Extracting strings...');
+  let extractedStrings: string[] = [];
+  try {
+    extractedStrings = await backend.extractStrings(binaryPath);
+    log(`         ${extractedStrings.length} unique strings extracted`);
+    if (process.env['NEST_VERBOSE']) {
+      const sample = extractedStrings.slice(0, 20);
+      log(`         Sample: ${sample.join(' | ')}`);
+    }
+  } catch (e) {
+    log(`         Warning: string extraction failed (${String(e)})`);
   }
 
   // ── Step 2: Initial disassembly ──────────────────────────────────────────
-  log('[ 2/3 ] Disassembling entry region...');
+  log('[ 2/4 ] Disassembling entry region...');
   // Use the .text section file offset when available, otherwise fall back to
   // offset 0.  Disassembling from 0 on a PE reads the MZ/PE header (not code)
   // and produces very few useful instructions.
@@ -173,7 +239,7 @@ async function main() {
   }
 
   // ── Step 3: Run NEST session ─────────────────────────────────────────────
-  log('[ 3/3 ] Starting NEST session...');
+  log('[ 3/4 ] Starting NEST session...');
   log('');
   log('  Iter  Confidence         Loss    Contradictions  Verdict');
   log('  ────  ─────────────────  ──────  ──────────────  ──────────────────');
@@ -202,7 +268,7 @@ async function main() {
     initialDisassembly,
     initialOffset,
     initialLength,
-    strings:             [],
+    strings:             extractedStrings.map(s => ({ text: s })),
     disassemblyAnalysis: {
       functions:           new Map(),
       suspiciousPatterns:  [],
@@ -317,15 +383,79 @@ async function main() {
   const logPath  = path.join(outDir, 'session.log');
   const resPath  = path.join(outDir, 'result.json');
   const iterPath = path.join(outDir, 'iterations.json');
+  const evidenceDir = path.join(outDir, 'evidence_bundle');
 
   fs.writeFileSync(logPath,  sessionLog,                          'utf8');
   fs.writeFileSync(resPath,  JSON.stringify(resultJson,  null, 2), 'utf8');
   fs.writeFileSync(iterPath, JSON.stringify(iterationsJson, null, 2), 'utf8');
 
+  if (!metadata?.sha256 || !metadata.file_size) {
+    throw new Error('Cannot emit typed evidence bundle: metadata.sha256 and metadata.file_size are required.');
+  }
+
+  const evidenceBundle = buildNestEvidenceBundleFromSession({
+    binaryPath,
+    binarySha256: metadata.sha256,
+    fileSizeBytes: metadata.file_size,
+    format: metadata.file_type || formatHint,
+    architecture: metadata.architecture || 'unknown',
+    session,
+    summary,
+    actorId: 'system:run-nest',
+    actorType: 'system',
+    engineBuildId: '1.0.0+run-nest-local',
+    gyreBuildId: '1.0.0+run-nest-local',
+    gyreSchemaVersion: '1.0.0',
+    policyVersion: 'local-policy-1',
+    executionMode: 'cli',
+    exportMode: 'local-tauri',
+  });
+
+  const preWriteValidation = validateBuiltNestEvidenceBundle(evidenceBundle);
+  if (!preWriteValidation.ok) {
+    const sample = preWriteValidation.issues
+      .slice(0, 8)
+      .map((i) => `${i.path}: ${i.code} (${i.message})`)
+      .join('; ');
+    throw new Error(`Evidence bundle validation failed before write (${preWriteValidation.issues.length} issue(s)): ${sample}`);
+  }
+
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  const fileMap = toNestEvidenceFileMap(evidenceBundle);
+  for (const [name, value] of Object.entries(fileMap)) {
+    fs.writeFileSync(path.join(evidenceDir, name), JSON.stringify(value, null, 2), 'utf8');
+  }
+
+  const loadedFiles: Record<string, unknown> = {
+    'manifest.json': readJson(path.join(evidenceDir, 'manifest.json')),
+    'binary_identity.json': readJson(path.join(evidenceDir, 'binary_identity.json')),
+    'session.json': readJson(path.join(evidenceDir, 'session.json')),
+    'iterations.json': readJson(path.join(evidenceDir, 'iterations.json')),
+    'deltas.json': readJson(path.join(evidenceDir, 'deltas.json')),
+    'final_verdict_snapshot.json': readJson(path.join(evidenceDir, 'final_verdict_snapshot.json')),
+    'audit_refs.json': readJson(path.join(evidenceDir, 'audit_refs.json')),
+  };
+
+  const runtimeProofPath = path.join(evidenceDir, 'runtime_proof.json');
+  if (fs.existsSync(runtimeProofPath)) {
+    loadedFiles['runtime_proof.json'] = readJson(runtimeProofPath);
+  }
+
+  const readBackValidation = parseNestEvidenceFileMap(loadedFiles);
+  if (!readBackValidation.ok) {
+    const sample = readBackValidation.issues
+      .slice(0, 8)
+      .map((i) => `${i.path}: ${i.code} (${i.message})`)
+      .join('; ');
+    throw new Error(`Evidence bundle read-back validation failed (${readBackValidation.issues.length} issue(s)): ${sample}`);
+  }
+
   log('  Artifacts written:');
   log(`    ${logPath}`);
   log(`    ${resPath}`);
   log(`    ${iterPath}`);
+  log(`    ${evidenceDir}`);
+  log('  Evidence bundle status: validated pre-write and post-read-back');
   log('');
 }
 

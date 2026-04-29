@@ -28,7 +28,7 @@ import {
   type DecompileOptions,
 } from './decompilerEngine';
 import { buildSSAForm } from './ssaTransform';
-import { runDataFlowPasses } from './dataFlowPasses';
+import { runDataFlowPasses, mbaDensity } from './dataFlowPasses';
 import { computeNaturalLoops, type NaturalLoop } from './cfgSignalExtractor';
 
 // ─── Intent Types ──────────────────────────────────────────────────────────────
@@ -91,7 +91,15 @@ const ANTI_DEBUG_APIS = new Set([
 
 const CRYPTO_APIS = new Set([
   'CryptEncrypt', 'CryptDecrypt', 'CryptGenRandom', 'CryptHashData',
+  'CryptAcquireContext', 'CryptAcquireContextA', 'CryptAcquireContextW',
+  'CryptImportKey', 'CryptExportKey', 'CryptGetKeyParam', 'CryptSetKeyParam',
+  'CryptCreateHash', 'CryptDestroyHash', 'CryptDestroyKey', 'CryptReleaseContext',
   'BCryptEncrypt', 'BCryptDecrypt', 'BCryptGenRandom', 'BCryptHashData',
+  'BCryptOpenAlgorithmProvider', 'BCryptCloseAlgorithmProvider',
+  'BCryptGenerateSymmetricKey', 'BCryptDestroyKey',
+  'BCryptCreateHash', 'BCryptFinishHash', 'BCryptDestroyHash',
+  'BCryptSetProperty', 'BCryptGetProperty',
+  'BCryptImportKey', 'BCryptImportKeyPair', 'BCryptExportKey',
   'MD5Update', 'MD5Final', 'SHA1Update', 'SHA1Final',
   'EVP_EncryptInit', 'EVP_DecryptInit', 'RC4', 'AES',
 ]);
@@ -116,9 +124,53 @@ const STRING_APIS = new Set([
 ]);
 
 const INJECT_APIS = new Set([
-  'WriteProcessMemory', 'CreateRemoteThread', 'NtCreateThreadEx',
-  'RtlCreateUserThread', 'OpenProcess', 'SetWindowsHookEx',
-  'VirtualAllocEx', 'NtWriteVirtualMemory', 'QueueUserAPC',
+  'WriteProcessMemory', 'ReadProcessMemory',
+  'CreateRemoteThread', 'NtCreateThreadEx', 'RtlCreateUserThread',
+  'OpenProcess', 'SetWindowsHookEx', 'QueueUserAPC',
+  'VirtualAllocEx', 'NtAllocateVirtualMemory', 'NtWriteVirtualMemory',
+  'GetThreadContext', 'SetThreadContext',
+  'Wow64GetThreadContext', 'Wow64SetThreadContext',
+  'ResumeThread', 'SuspendThread', 'NtResumeThread', 'NtSuspendThread',
+]);
+
+// Wiper / forced-shutdown APIs — rare in legitimate software
+const WIPER_APIS = new Set([
+  'ExitWindowsEx', 'InitiateSystemShutdownA', 'InitiateSystemShutdownW',
+  'InitiateSystemShutdownExA', 'InitiateSystemShutdownExW',
+  'InitiateShutdownW', 'NtShutdownSystem',
+]);
+
+// Embedded resource extraction — loading payloads from .rsrc
+const RESOURCE_APIS = new Set([
+  'FindResourceA', 'FindResourceW', 'FindResourceExA', 'FindResourceExW',
+  'LoadResource', 'LockResource', 'SizeofResource',
+]);
+
+// Host / OS fingerprinting APIs
+const SYSINFO_APIS = new Set([
+  'GetComputerNameA', 'GetComputerNameW', 'GetComputerNameExA', 'GetComputerNameExW',
+  'GetUserNameA', 'GetUserNameW', 'GetUserNameExA', 'GetUserNameExW',
+  'GetSystemInfo', 'GetNativeSystemInfo', 'GlobalMemoryStatusEx',
+  'GetVersionExA', 'GetVersionExW', 'RtlGetVersion',
+  'EnumProcesses', 'Process32FirstW', 'Process32NextW', 'Process32First', 'Process32Next',
+  'GetAdaptersInfo', 'GetAdaptersAddresses',
+]);
+
+// Memory-protection changes — used in shellcode staging and hollowing
+const MEMORY_PROTECT_APIS = new Set([
+  'VirtualProtect', 'VirtualProtectEx', 'NtProtectVirtualMemory',
+]);
+
+// Concurrency primitives — reveal multi-threaded C2 / RAT architecture
+const CONCURRENCY_APIS = new Set([
+  'AcquireSRWLockExclusive', 'AcquireSRWLockShared',
+  'ReleaseSRWLockExclusive', 'ReleaseSRWLockShared',
+  'SleepConditionVariableSRW', 'SleepConditionVariableCS',
+  'WakeAllConditionVariable', 'WakeConditionVariable',
+  'InitializeSRWLock', 'InitializeConditionVariable',
+  'EnterCriticalSection', 'LeaveCriticalSection',
+  'WaitForSingleObject', 'WaitForMultipleObjects',
+  'CreateMutexA', 'CreateMutexW', 'CreateEventA', 'CreateEventW',
 ]);
 
 const NETWORK_APIS = new Set([
@@ -166,17 +218,22 @@ interface CallIntentInfo {
 }
 
 function detectCallIntent(name: string): CallIntentInfo | null {
-  if (ANTI_DEBUG_APIS.has(name))   return { label: `Anti-debug: ${name}`,        confidence: 96, category: 'security', tag: 'anti-analysis' };
-  if (INJECT_APIS.has(name))       return { label: `Process injection: ${name}`,  confidence: 96, category: 'security', tag: 'code-injection' };
-  if (CRYPTO_APIS.has(name))       return { label: `Crypto: ${name}`,             confidence: 94, category: 'security', tag: 'data-encryption' };
-  if (NETWORK_APIS.has(name))      return { label: `Network I/O: ${name}`,        confidence: 93, category: 'io',       tag: 'c2-communication' };
-  if (EXEC_APIS.has(name))         return { label: `Process exec: ${name}`,       confidence: 94, category: 'io',       tag: 'process-execution' };
-  if (REG_APIS.has(name))          return { label: `Registry write: ${name}`,     confidence: 91, category: 'io',       tag: 'persistence' };
-  if (FILE_APIS.has(name))         return { label: `File I/O: ${name}`,           confidence: 92, category: 'io' };
-  if (DYNAMIC_LOAD_APIS.has(name)) return { label: `Dynamic resolve: ${name}`,   confidence: 90, category: 'security', tag: 'dynamic-resolution' };
-  if (ALLOC_APIS.has(name))        return { label: `Memory alloc: ${name}`,       confidence: 90, category: 'memory' };
-  if (FREE_APIS.has(name))         return { label: `Memory free: ${name}`,        confidence: 90, category: 'memory' };
-  if (STRING_APIS.has(name))       return { label: `String op: ${name}`,          confidence: 89, category: 'memory' };
+  if (ANTI_DEBUG_APIS.has(name))       return { label: `Anti-debug: ${name}`,              confidence: 96, category: 'security', tag: 'anti-analysis' };
+  if (INJECT_APIS.has(name))           return { label: `Process injection: ${name}`,        confidence: 96, category: 'security', tag: 'code-injection' };
+  if (WIPER_APIS.has(name))            return { label: `Wiper/shutdown: ${name}`,           confidence: 95, category: 'security', tag: 'file-destruction' };
+  if (RESOURCE_APIS.has(name))         return { label: `Embedded payload extraction: ${name}`, confidence: 90, category: 'security', tag: 'code-decryption' };
+  if (SYSINFO_APIS.has(name))          return { label: `Host fingerprint: ${name}`,         confidence: 88, category: 'security', tag: 'data-exfiltration' };
+  if (MEMORY_PROTECT_APIS.has(name))   return { label: `Memory protect change: ${name}`,   confidence: 89, category: 'security', tag: 'code-injection' };
+  if (CONCURRENCY_APIS.has(name))      return { label: `Thread synchronization: ${name}`,  confidence: 82, category: 'api' };
+  if (CRYPTO_APIS.has(name))           return { label: `Crypto: ${name}`,                  confidence: 94, category: 'security', tag: 'data-encryption' };
+  if (NETWORK_APIS.has(name))          return { label: `Network I/O: ${name}`,             confidence: 93, category: 'io',       tag: 'c2-communication' };
+  if (EXEC_APIS.has(name))             return { label: `Process exec: ${name}`,            confidence: 94, category: 'io',       tag: 'process-execution' };
+  if (REG_APIS.has(name))              return { label: `Registry write: ${name}`,          confidence: 91, category: 'io',       tag: 'persistence' };
+  if (FILE_APIS.has(name))             return { label: `File I/O: ${name}`,                confidence: 92, category: 'io' };
+  if (DYNAMIC_LOAD_APIS.has(name))     return { label: `Dynamic resolve: ${name}`,         confidence: 90, category: 'security', tag: 'dynamic-resolution' };
+  if (ALLOC_APIS.has(name))            return { label: `Memory alloc: ${name}`,            confidence: 90, category: 'memory' };
+  if (FREE_APIS.has(name))             return { label: `Memory free: ${name}`,             confidence: 90, category: 'memory' };
+  if (STRING_APIS.has(name))           return { label: `String op: ${name}`,               confidence: 89, category: 'memory' };
   return null;
 }
 
@@ -206,6 +263,28 @@ function detectBlockIntent(
     if (mn === 'sysenter' || mn === 'syscall') {
       return { label: 'Direct syscall (OS bypass)', confidence: 87, category: 'security', address: stmt.address, blockId: block.id };
     }
+    // Port I/O — VM / hypervisor detection (rare in user-mode; high confidence)
+    if (mn === 'in' || mn === 'out') {
+      return { label: 'Port I/O instruction (VM/hypervisor detect)', confidence: 89, category: 'security', address: stmt.address, blockId: block.id };
+    }
+    // ── ARM32 anti-analysis ──────────────────────────────────────────────────
+    if (mn === 'bkpt') {
+      return { label: 'BKPT breakpoint probe (ARM32 anti-debug)', confidence: 93, category: 'security', address: stmt.address, blockId: block.id };
+    }
+    // ── AArch64 anti-analysis ────────────────────────────────────────────────
+    if (mn === 'brk') {
+      return { label: 'BRK breakpoint probe (AArch64 anti-debug)', confidence: 93, category: 'security', address: stmt.address, blockId: block.id };
+    }
+    if (mn === 'mrs' && /cntvct_el0|cntpct_el0|pmccntr_el0/i.test(ins.operands)) {
+      return { label: 'AArch64 timing counter read (anti-debug)', confidence: 94, category: 'security', address: stmt.address, blockId: block.id };
+    }
+    // ARM function prologue patterns  (push {r4-r7, lr} / stp x29, x30, [sp, #-N]!)
+    if (mn === 'push' && /\blr\b/.test(ins.operands)) {
+      return { label: 'ARM32 function prologue (push {rN..lr})', confidence: 88, category: 'control', address: stmt.address, blockId: block.id };
+    }
+    if (mn === 'stp' && /\bx29\b/.test(ins.operands) && /\bx30\b/.test(ins.operands) && ins.operands.includes('sp')) {
+      return { label: 'AArch64 function prologue (stp x29,x30,[sp,#-N]!)', confidence: 90, category: 'control', address: stmt.address, blockId: block.id };
+    }
     if (mn.startsWith('rep') && (mn.includes('movs') || mn.includes('stos'))) {
       return {
         label: mn.includes('stos') ? 'Memory zero-fill (rep stosb/q)' : 'Memory block copy (rep movs)',
@@ -215,6 +294,16 @@ function detectBlockIntent(
     if (mn === 'repne' && mn.includes('scas')) {
       return { label: 'String scan / strlen pattern (repne scasb)', confidence: 94, category: 'memory', address: stmt.address, blockId: block.id };
     }
+    // PEB access via GS-relative load — anti-debug, process info, OS version
+    if ((mn === 'mov' || mn === 'movzx') && ins.operands.toLowerCase().includes('gs:')) {
+      return { label: 'GS-relative load — PEB / TEB access (anti-debug or host-fingerprint)', confidence: 88, category: 'security', address: stmt.address, blockId: block.id };
+    }
+  }
+
+  // 1b. Packed-stub / import-thunk detection: block is all jmp with no side-effectful ops
+  const nonJmpOps = stmts.filter(s => s.op !== 'jmp' && s.op !== 'nop' && s.op !== 'unknown');
+  if (stmts.length >= 1 && nonJmpOps.length === 0) {
+    return { label: 'Packed stub / import thunk (no substantive ops — decompilation skipped)', confidence: 45, category: 'control', address: block.start, blockId: block.id };
   }
 
   // 2. Call-based intents
@@ -255,6 +344,16 @@ function detectBlockIntent(
     return { label: 'Error / INVALID_HANDLE check', confidence: 78, category: 'control', address: block.start, blockId: block.id };
   }
 
+  // 4b. NTSTATUS / HRESULT success check (cmp reg, STATUS_SUCCESS=0 or HR_S_OK=0x00000000
+  //     after a call — distinguishes BCrypt/NT error handling from plain null checks)
+  const hasBCryptCall = stmts.some(s => s.op === 'call' && s.name && s.name.startsWith('BCrypt'));
+  const hasNtCall     = stmts.some(s => s.op === 'call' && s.name &&
+    (s.name.startsWith('Nt') || s.name.startsWith('Zw') || s.name.startsWith('Rtl')));
+  const hasZeroCmp    = stmts.some(s => s.op === 'cmp' && s.right.kind === 'const' && s.right.value === 0);
+  if ((hasBCryptCall || hasNtCall) && hasZeroCmp && hasCjmp) {
+    return { label: 'NTSTATUS/HRESULT success check (STATUS_SUCCESS == 0)', confidence: 84, category: 'control', address: block.start, blockId: block.id };
+  }
+
   // 5. Bounds check (two cmp statements)
   if (stmts.filter(s => s.op === 'cmp').length >= 2 && hasCjmp) {
     return { label: 'Bounds / range check', confidence: 74, category: 'control', address: block.start, blockId: block.id };
@@ -279,7 +378,57 @@ function detectBlockIntent(
     }
   }
 
+  // 8. MBA obfuscation — high ratio of bitwise ops mixed with arithmetic
+  const mba = mbaDensity(block);
+  const binopCount = stmts.filter(s => s.op === 'binop').length;
+  if (mba >= 0.5 && binopCount >= 4) {
+    const pct = Math.round(mba * 100);
+    return {
+      label: `MBA obfuscation — ${pct}% bitwise ops (${binopCount} binops)`,
+      confidence: Math.min(92, Math.round(58 + mba * 34)),
+      category: 'security',
+      address: block.start,
+      blockId: block.id,
+    };
+  }
+
   return null;
+}
+
+// ─── Condition Canonicalization ───────────────────────────────────────────────
+
+/**
+ * Simplify a condition string extracted from a decompiled `if`/`while` line.
+ *
+ * Applies algebraic and logical tautology reductions that are safe on
+ * string-level pseudo-code: double negation, XOR-0, OR-0, logical idempotence.
+ * Only rewrites patterns that are unambiguous at the text level — no type
+ * inference or alias analysis required.
+ *
+ * Pure function: returns a new string, never mutates input.
+ */
+function canonicalizeCondition(cond: string): string {
+  let s = cond;
+  // ~~x → x (double logical negation)
+  s = s.replace(/!!([^!])/g, '$1');
+  // !(!expr) → expr
+  s = s.replace(/!\((!?)([^)]+)\)/g, (_m, bang, inner) => bang ? inner : `!(${inner})`);
+  // x ^ 0 → x (bitwise XOR with zero is identity)
+  s = s.replace(/\b(\w+)\s*\^\s*0\b/g, '$1');
+  s = s.replace(/\b0\s*\^\s*(\w+)\b/g, '$1');
+  // x | 0 → x
+  s = s.replace(/\b(\w+)\s*\|\s*0\b/g, '$1');
+  s = s.replace(/\b0\s*\|\s*(\w+)\b/g, '$1');
+  // Logical idempotence: x && x → x, x || x → x
+  s = s.replace(/\b(\w+)\s*&&\s*\1\b/g, '$1');
+  s = s.replace(/\b(\w+)\s*\|\|\s*\1\b/g, '$1');
+  // Absorb: expr || true → true,  true || expr → true
+  s = s.replace(/\S+\s*\|\|\s*true\b/, 'true');
+  s = s.replace(/\btrue\s*\|\|\s*\S+/, 'true');
+  // Absorb: expr && false → false,  false && expr → false
+  s = s.replace(/\S+\s*&&\s*false\b/, 'false');
+  s = s.replace(/\bfalse\s*&&\s*\S+/, 'false');
+  return s.trim();
 }
 
 // ─── Control Line Intent (from text analysis) ─────────────────────────────────
@@ -291,7 +440,8 @@ function analyzeControlLine(text: string, address: number): TalonIntent | null {
   if (!isIf && !isWhile) return null;
 
   const condMatch = text.match(/(?:if|while)\s*\((.+)\)\s*\{/);
-  const cond = condMatch?.[1] ?? '';
+  const rawCond = condMatch?.[1] ?? '';
+  const cond = canonicalizeCondition(rawCond);
 
   if (isWhile) {
     if (/[<>]=?\s*/.test(cond) && !/==/.test(cond)) {
@@ -379,23 +529,27 @@ function annotateLines(
   const addrToStmt = buildAddrToStmt(irBlocks);
   // Supress duplicate intents: track which intent labels we've already emitted
   const emittedIntents = new Set<string>();
+  // Track which blocks have already had their block-level intent emitted
+  const emittedBlockIntents = new Set<string>();
 
   const result: TalonLine[] = [];
 
   for (const line of lines) {
     // ── Intent injection for control flow lines ──────────────────────────────
-    if (line.kind === 'control' && line.address !== undefined) {
+    const isAnnotatable = (line.kind === 'control' || line.kind === 'stmt' || line.kind === 'uncertain') && line.address !== undefined;
+    if (isAnnotatable) {
       let intent: TalonIntent | null = null;
 
       // Priority 1: block-level structural intent (known API, raw asm pattern)
-      const blockId = addrToBlock.get(line.address);
-      if (blockId) {
+      const blockId = addrToBlock.get(line.address!);
+      if (blockId && !emittedBlockIntents.has(blockId)) {
         intent = blockIntentMap.get(blockId) ?? null;
+        if (intent) emittedBlockIntents.add(blockId);
       }
 
-      // Priority 2: control line text analysis (if/while condition)
-      if (!intent) {
-        intent = analyzeControlLine(line.text, line.address);
+      // Priority 2: control line text analysis (if/while condition) — only for control lines
+      if (!intent && line.kind === 'control') {
+        intent = analyzeControlLine(line.text, line.address!);
       }
 
       if (intent) {
@@ -501,16 +655,16 @@ function buildFunctionSummary(
   const tagSet = new Set<BehavioralTag>();
   for (const intent of allIntents) {
     const lbl = intent.label.toLowerCase();
-    if (lbl.includes('anti-debug') || lbl.includes('rdtsc') || lbl.includes('cpuid') || lbl.includes('int3')) {
+    if (lbl.includes('anti-debug') || lbl.includes('rdtsc') || lbl.includes('cpuid') || lbl.includes('int3') || lbl.includes('peb') || lbl.includes('nt global') || lbl.includes('gs-relative') || lbl.includes('port i/o')) {
       tagSet.add('anti-analysis');
     }
     if (lbl.includes('crypto') || lbl.includes('encrypt') || lbl.includes('bcrypt') || lbl.includes('crypt')) {
       tagSet.add('data-encryption');
     }
-    if (lbl.includes('decrypt') || lbl.includes('unpack')) {
+    if (lbl.includes('decrypt') || lbl.includes('unpack') || lbl.includes('embedded payload')) {
       tagSet.add('code-decryption');
     }
-    if (lbl.includes('inject') || lbl.includes('writepro') || lbl.includes('remote')) {
+    if (lbl.includes('inject') || lbl.includes('writepro') || lbl.includes('remote') || lbl.includes('getthreadcontext') || lbl.includes('setthreadcontext') || lbl.includes('memory protect')) {
       tagSet.add('code-injection');
     }
     if (lbl.includes('network') || lbl.includes('connect') || lbl.includes('send') || lbl.includes('recv') || lbl.includes('winhttp') || lbl.includes('internet')) {
@@ -525,8 +679,14 @@ function buildFunctionSummary(
     if (lbl.includes('dynamic resolve') || lbl.includes('getprocaddress') || lbl.includes('loadlibrary')) {
       tagSet.add('dynamic-resolution');
     }
-    if (lbl.includes('file i/o')) {
+    if (lbl.includes('file i/o') || lbl.includes('host fingerprint') || lbl.includes('system enumeration')) {
       tagSet.add('data-exfiltration');
+    }
+    if (lbl.includes('wiper') || lbl.includes('shutdown') || lbl.includes('exitwindows') || lbl.includes('initiateshutdown')) {
+      tagSet.add('file-destruction');
+    }
+    if (lbl.includes('mba obfuscation') || lbl.includes('mixed boolean') || lbl.includes('packed stub')) {
+      tagSet.add('anti-analysis');
     }
   }
 
@@ -590,6 +750,32 @@ export function talonDecompile(
   void dataFlow; // currently used implicitly; future: pass to annotateLines
 
   return { ...base, lines: talonLines, summary };
+}
+
+// ─── LLM Refinement Bridge ────────────────────────────────────────────────────
+
+export type { LLMPassConfig, LLMPassResult, LLMFetchFn } from './talonLLMPass';
+
+/**
+ * Apply the optional LLM decompilation refinement pass to an existing TalonResult.
+ *
+ * - Disabled by default; only runs when `config` is supplied.
+ * - Never mutates or blocks the synchronous decompile result.
+ * - Any LLM failure is silently captured in `LLMPassResult.errorMessage`.
+ *
+ * Typical call site (TalonView useEffect):
+ *   const llmResult = await talonRefineWithLLM(result, { endpointUrl, modelName });
+ */
+export async function talonRefineWithLLM(
+  result: TalonResult,
+  config: import('./talonLLMPass').LLMPassConfig,
+  fetchFn?: import('./talonLLMPass').LLMFetchFn,
+): Promise<TalonResult> {
+  const { runLLMPass, applyLLMRenames } = await import('./talonLLMPass');
+  const llmResult = await runLLMPass(result.summary, result.lines, config, fetchFn);
+  if (!llmResult.used) return result;
+  const refinedLines = applyLLMRenames(result.lines, llmResult);
+  return { ...result, lines: refinedLines };
 }
 
 // ─── Correlation Bridge ────────────────────────────────────────────────────────

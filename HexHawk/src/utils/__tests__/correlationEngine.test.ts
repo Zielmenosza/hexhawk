@@ -177,3 +177,54 @@ describe('computeVerdict — result shape', () => {
     expect(dampened.confidence).toBeLessThanOrEqual(undampened.confidence);
   });
 });
+
+// ── Wiper classification (RE gap fix) ────────────────────────────────────────
+
+describe('computeVerdict — wiper classification', () => {
+  it('classifies wiper-composite pattern as wiper (no injection, no network)', () => {
+    // ExitWindowsEx + WriteFile + crypto without network → wiper
+    const result = computeVerdict({
+      ...minimal(),
+      sections: [{ name: '.text', entropy: 7.2, file_size: 4096 }],
+      imports: [
+        { name: 'ExitWindowsEx',   library: 'USER32' },
+        { name: 'CryptEncrypt',    library: 'ADVAPI32' },
+        { name: 'WriteFile',       library: 'KERNEL32' },
+        { name: 'CreateProcess',   library: 'KERNEL32' },
+      ],
+    });
+    expect(result.classification).toBe('wiper');
+  });
+
+  it('does NOT classify as wiper when injection signals are present', () => {
+    // With injection, dropper or rat should win
+    const result = computeVerdict({
+      ...minimal(),
+      imports: [
+        { name: 'ExitWindowsEx',      library: 'USER32' },
+        { name: 'CryptEncrypt',       library: 'ADVAPI32' },
+        { name: 'WriteProcessMemory', library: 'KERNEL32' },
+        { name: 'CreateRemoteThread', library: 'KERNEL32' },
+        { name: 'VirtualAllocEx',     library: 'KERNEL32' },
+        { name: 'CreateProcess',      library: 'KERNEL32' },
+      ],
+    });
+    expect(result.classification).not.toBe('wiper');
+  });
+
+  it('includes wiper in CLASS_LABEL coverage via verdict summary field', () => {
+    // Smoke test: classification string must not be undefined or throw
+    const result = computeVerdict({
+      ...minimal(),
+      imports: [
+        { name: 'ExitWindowsEx', library: 'USER32' },
+        { name: 'CryptEncrypt',  library: 'ADVAPI32' },
+        { name: 'WriteFile',     library: 'KERNEL32' },
+        { name: 'CreateProcess', library: 'KERNEL32' },
+      ],
+      sections: [{ name: '.text', entropy: 7.2, file_size: 4096 }],
+    });
+    expect(typeof result.summary).toBe('string');
+    expect(result.summary.length).toBeGreaterThan(0);
+  });
+});

@@ -13,7 +13,7 @@
  *   - learningStore (persisted per binary hash)
  */
 
-import type { NestIterationSnapshot } from './nestEngine';
+import type { NestIterationSnapshot, TrainingRecord } from './nestEngine';
 import type { CorrelatedSignal } from './correlationEngine';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -636,7 +636,7 @@ export function detectRegressions(
   // For each signal in current decision, check if it has degraded
   for (const id of [...currentDecision.deprioritise, ...currentDecision.reinforceSignals]) {
     const hist = patternHistory.get(id);
-    if (!hist || hist.length < 2) continue;
+    if (!hist || hist.length < 4) continue;
 
     const highCount = hist.filter(l => l === 'high').length;
     const highRate  = highCount / hist.length;
@@ -729,5 +729,83 @@ export function computeStabilityScore(
   }
 
   return results;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── Corpus-level Signal Promotion ────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Examine training records from a full corpus run and promote signal IDs that
+ * appear consistently in high-stability, ground-truth-correct verdicts across
+ * multiple distinct binaries into new PatternPromotionRule entries.
+ *
+ * A signal is considered "recurring" when it appears in the signalIds of
+ * at least `minBinaryCount` records that satisfy ALL of:
+ *   (a) groundTruthMatch === true
+ *   (b) verdictStability >= minStability
+ *
+ * Signals already tracked in `existing` are never duplicated.
+ * The function never mutates correlationEngine — it is purely observational.
+ *
+ * Determinism guarantee: given identical `records`, `existing`, and threshold
+ * arguments the output is always the same set in the same order.
+ *
+ * @param records         Output from nestEngine.runTrainingLoop().
+ * @param existing        Current PatternPromotionRule store (for dedup).
+ * @param minBinaryCount  Minimum distinct qualifying binaries (default 2).
+ * @param minStability    Minimum verdictStability threshold (default 0.75).
+ * @returns               New PatternPromotionRule entries ready to be merged
+ *                        into the pattern store — highest benefit score first.
+ */
+export function promoteRecurringSignals(
+  records: TrainingRecord[],
+  existing: PatternPromotionRule[] = [],
+  minBinaryCount = 2,
+  minStability = 0.75,
+): PatternPromotionRule[] {
+  // Only consider records where the engine was both correct and stable
+  const qualifying = records.filter(
+    r => r.groundTruthMatch && r.verdictStability >= minStability,
+  );
+
+  // Count distinct binaries each signal ID appeared in (deduplicated per binary)
+  const signalBinaryCount = new Map<string, number>();
+  for (const record of qualifying) {
+    const seen = new Set<string>();
+    for (const id of record.signalIds) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        signalBinaryCount.set(id, (signalBinaryCount.get(id) ?? 0) + 1);
+      }
+    }
+  }
+
+  const existingIds = new Set(existing.map(p => p.patternId));
+  const promoted: PatternPromotionRule[] = [];
+
+  for (const [signalId, count] of signalBinaryCount.entries()) {
+    if (count < minBinaryCount) continue;
+    if (existingIds.has(signalId)) continue;
+
+    promoted.push({
+      patternId: signalId,
+      // Initial benefit score proportional to how widely the signal recurred
+      globalBenefitScore: count * 2,
+      promotionCount: 1,
+      demotionCount: 0,
+      isActive: true,
+      conditions: `Recurring signal across ${count} stable, correct-verdict training binaries`,
+    });
+  }
+
+  // Deterministic output order: highest benefit score first, then alphabetical
+  promoted.sort(
+    (a, b) =>
+      b.globalBenefitScore - a.globalBenefitScore ||
+      a.patternId.localeCompare(b.patternId),
+  );
+
+  return promoted;
 }
 

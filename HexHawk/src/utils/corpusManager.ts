@@ -22,7 +22,7 @@ const MAX_ENTRIES   = 500;
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** User-supplied label for the binary's ground-truth class. */
-export type CorpusLabel = 'clean' | 'malicious' | 'unknown';
+export type CorpusLabel = 'clean' | 'malicious' | 'unknown' | 'challenge';
 
 /** Tags the user assigns to a corpus entry for filtering. */
 export type CorpusTag =
@@ -262,7 +262,7 @@ export function queryCorpus(filter?: CorpusFilter): CorpusEntry[] {
  */
 export function getCorpusStats(): CorpusStats {
   const entries = loadStore().entries;
-  const byGroundTruth: Record<CorpusLabel, number> = { clean: 0, malicious: 0, unknown: 0 };
+  const byGroundTruth: Record<CorpusLabel, number> = { clean: 0, malicious: 0, unknown: 0, challenge: 0 };
   const byClassification: Partial<Record<BinaryClassification, number>> = {};
   let totalConfidence = 0;
   let withResults = 0;
@@ -330,4 +330,125 @@ export function importCorpus(json: string): number {
  */
 export function clearCorpus(): void {
   saveStore(emptyStore());
+}
+
+// ── Directory Ingestion ────────────────────────────────────────────────────────
+
+/**
+ * Upper-case ingestion labels used in external directory manifests.
+ * Maps to the internal CorpusLabel used throughout the engine.
+ *   CLEAN      → 'clean'
+ *   SUSPICIOUS → 'unknown'  (ambiguous polarity — could be clean or malicious)
+ *   MALICIOUS  → 'malicious'
+ */
+export type IngestLabel = 'CLEAN' | 'SUSPICIOUS' | 'MALICIOUS' | 'CHALLENGE';
+
+/** One entry in a directory ingest manifest. */
+export interface DirectoryIngestEntry {
+  /** Absolute path to the binary on disk. */
+  path: string;
+  /** Pre-computed SHA-256 hash (primary key). */
+  sha256: string;
+  /** Analyst-assigned label. */
+  label: IngestLabel;
+  /** Optional more specific expected NEST classification. */
+  expectedClassification?: BinaryClassification;
+  /** Optional corpus tags. */
+  tags?: CorpusTag[];
+  /** Optional freeform analyst notes. */
+  notes?: string;
+}
+
+/** A manifest describing a directory of labelled binaries. */
+export interface DirectoryIngestManifest {
+  /** Human-readable name for this corpus snapshot (used for display and dedup). */
+  name: string;
+  entries: DirectoryIngestEntry[];
+}
+
+/** Result summary returned by ingestDirectory(). */
+export interface IngestResult {
+  /** Number of net-new entries added to the corpus. */
+  added: number;
+  /** Number of existing entries whose metadata was updated. */
+  updated: number;
+  /** Number of entries skipped due to missing required fields. */
+  skipped: number;
+  /** Validation errors, one per malformed entry. */
+  errors: Array<{ path: string; reason: string }>;
+  /** All entries successfully ingested (added or updated), in manifest order. */
+  entries: CorpusEntry[];
+}
+
+function ingestLabelToCorpusLabel(l: IngestLabel): CorpusLabel {
+  if (l === 'CLEAN')     return 'clean';
+  if (l === 'MALICIOUS') return 'malicious';
+  if (l === 'CHALLENGE') return 'challenge';
+  return 'unknown'; // SUSPICIOUS
+}
+
+/**
+ * Bulk-ingest a directory manifest into the corpus.
+ *
+ * Entries are deduplicated by SHA-256.  Existing entries keep their NEST
+ * summary but have their path/label/tags updated.
+ *
+ * The operation is deterministic: given the same manifest the result is
+ * always the same regardless of how many times it is called.
+ *
+ * @returns IngestResult summarising what was added / updated / skipped.
+ */
+export function ingestDirectory(manifest: DirectoryIngestManifest): IngestResult {
+  const result: IngestResult = { added: 0, updated: 0, skipped: 0, errors: [], entries: [] };
+  const store = loadStore();
+  const now = new Date().toISOString();
+
+  for (const raw of manifest.entries) {
+    if (!raw.sha256 || typeof raw.sha256 !== 'string') {
+      result.errors.push({ path: raw.path ?? '(unknown)', reason: 'Missing or invalid sha256' });
+      result.skipped++;
+      continue;
+    }
+    if (!raw.path || typeof raw.path !== 'string') {
+      result.errors.push({ path: raw.sha256, reason: 'Missing path' });
+      result.skipped++;
+      continue;
+    }
+
+    const groundTruth = ingestLabelToCorpusLabel(raw.label);
+    const existing = store.entries.find(e => e.sha256 === raw.sha256);
+
+    if (existing) {
+      existing.binaryPath = raw.path;
+      existing.label = labelFromPath(raw.path);
+      existing.groundTruth = groundTruth;
+      existing.expectedClassification = raw.expectedClassification ?? existing.expectedClassification;
+      existing.tags = raw.tags ?? existing.tags;
+      existing.notes = raw.notes ?? existing.notes;
+      existing.updatedAt = now;
+      result.updated++;
+      result.entries.push(existing);
+    } else {
+      const entry: CorpusEntry = {
+        sha256: raw.sha256,
+        binaryPath: raw.path,
+        label: labelFromPath(raw.path),
+        groundTruth,
+        expectedClassification: raw.expectedClassification ?? null,
+        tags: raw.tags ?? [],
+        addedAt: now,
+        updatedAt: now,
+        lastNestSummary: null,
+        lastSessionId: null,
+        notes: raw.notes ?? '',
+      };
+      store.entries.push(entry);
+      result.added++;
+      result.entries.push(entry);
+    }
+  }
+
+  evictOldest(store);
+  saveStore(store);
+  return result;
 }

@@ -12,6 +12,7 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { sanitizeAddress, sanitizeBridgePath, sanitizeHexOrDecAddress } from '../utils/tauriGuards';
 
 // ── Types mirroring Rust structs ──────────────────────────────────────────────
 
@@ -286,8 +287,9 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
   const handleStart = async () => {
     if (!binaryPath) { setError('No binary loaded — open a file first'); return; }
     await withLoading(async () => {
+      const safePath = sanitizeBridgePath(binaryPath, 'debug binary path');
       const result = await invoke<StartDebugResult>('start_debug_session', {
-        path: binaryPath,
+        path: safePath,
         args: [],
       });
       setSessionId(result.sessionId);
@@ -330,10 +332,13 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
   const handleAddBreakpoint = async () => {
     if (sessionId === null) return;
     const raw = newBpInput.trim();
-    const addr = raw.startsWith('0x') || raw.startsWith('0X')
-      ? parseInt(raw, 16)
-      : parseInt(raw, 10);
-    if (isNaN(addr)) { setError(`Invalid address: ${raw}`); return; }
+    let addr: number;
+    try {
+      addr = sanitizeHexOrDecAddress(raw, 'breakpoint address');
+    } catch (e) {
+      setError(String(e));
+      return;
+    }
     setNewBpInput('');
     await withLoading(async () => {
       const snap = await invoke<DebugSnapshot>('debug_set_breakpoint', { sessionId, address: addr });
@@ -344,14 +349,15 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
   const handleRemoveBreakpoint = async (addr: number) => {
     if (sessionId === null) return;
     await withLoading(async () => {
-      const snap = await invoke<DebugSnapshot>('debug_remove_breakpoint', { sessionId, address: addr });
+      const safeAddr = sanitizeAddress(addr, 'breakpoint address');
+      const snap = await invoke<DebugSnapshot>('debug_remove_breakpoint', { sessionId, address: safeAddr });
       applySnapshot(snap);
     });
   };
 
   const handleReadMemory = async () => {
     if (sessionId === null || !session) return;
-    const addr = session.registers.rip;
+    const addr = sanitizeAddress(session.registers.rip, 'memory address');
     await withLoading(async () => {
       const bytes = await invoke<number[]>('debug_read_memory', { sessionId, address: addr, size: 64 });
       setMemoryBytes(bytes);

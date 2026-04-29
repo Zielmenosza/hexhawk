@@ -9,7 +9,7 @@
  *   DISASM_ROW_HEIGHT                          — base instruction row
  *   DISASM_ROW_HEIGHT + DISASM_ANNOTATION_HEIGHT — row with inline annotation
  */
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import EnhancedInstructionRow from './EnhancedInstructionRow';
 import { useVirtualList } from '../utils/useVirtualList';
 import type {
@@ -32,6 +32,18 @@ interface DisassemblyListProps {
   onSelectInstruction: (address: number) => void;
   onNavigateToFunction: (address: number) => void;
   onShowReferences: (address: number) => void;
+  /** True when the backend has more instructions beyond the currently loaded chunk. */
+  hasMore?: boolean;
+  /** Called when the user scrolls near the end of the loaded instructions. */
+  onLoadMore?: () => void;
+  /** True while a load-more request is in flight. */
+  isLoadingMore?: boolean;
+  /** Queue an inverted-jump patch for the instruction at this address. */
+  onInvertJump?: (address: number) => void;
+  /** Queue a NOP-sled patch: replace `count` bytes at `address` with 0x90. */
+  onNopOut?: (address: number, count: number) => void;
+  /** Set of instruction addresses that have a pending patch. */
+  patchedAddresses?: Set<number>;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -44,6 +56,12 @@ const DisassemblyList: React.FC<DisassemblyListProps> = ({
   onSelectInstruction,
   onNavigateToFunction,
   onShowReferences,
+  hasMore = false,
+  onLoadMore,
+  isLoadingMore = false,
+  onInvertJump,
+  onNopOut,
+  patchedAddresses,
 }) => {
   // Pre-build Map from address → SuspiciousPattern for O(1) row lookups
   const patternsMap = useMemo<Map<number, SuspiciousPattern>>(() => {
@@ -75,6 +93,21 @@ const DisassemblyList: React.FC<DisassemblyListProps> = ({
     const idx = disassembly.findIndex((ins) => ins.address === selectedDisasmAddress);
     if (idx >= 0) scrollToIndex(idx);
   }, [selectedDisasmAddress, disassembly, scrollToIndex]);
+
+  // Incremental loading: fire onLoadMore once when the user scrolls within
+  // 20 rows of the end of the currently-loaded instructions.
+  const loadTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (!hasMore || !onLoadMore || isLoadingMore || virtualItems.length === 0) return;
+    const lastVisible = virtualItems[virtualItems.length - 1];
+    const nearEnd = lastVisible.index >= disassembly.length - 20;
+    if (nearEnd && !loadTriggeredRef.current) {
+      loadTriggeredRef.current = true;
+      onLoadMore();
+    } else if (!nearEnd) {
+      loadTriggeredRef.current = false;
+    }
+  }, [virtualItems, disassembly.length, hasMore, onLoadMore, isLoadingMore]);
 
   return (
     <div
@@ -122,11 +155,14 @@ const DisassemblyList: React.FC<DisassemblyListProps> = ({
                 isInLoop={inLoop}
                 selected={selectedDisasmAddress === ins.address}
                 highlighted={isHighlighted}
+                isPatched={patchedAddresses?.has(ins.address) ?? false}
                 onSelect={() => onSelectInstruction(ins.address)}
                 onNavigateToFunction={() => {
                   if (isFuncStart) onNavigateToFunction(ins.address);
                 }}
                 onShowReferences={() => onShowReferences(ins.address)}
+                onInvertJump={onInvertJump ? () => onInvertJump(ins.address) : undefined}
+                onNopOut={onNopOut ? (count: number) => onNopOut(ins.address, count) : undefined}
               />
               {annotation && (
                 <div
@@ -152,6 +188,24 @@ const DisassemblyList: React.FC<DisassemblyListProps> = ({
             </div>
           );
         })}
+        {isLoadingMore && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: DISASM_ROW_HEIGHT,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#888',
+              fontSize: '0.75rem',
+            }}
+          >
+            Loading…
+          </div>
+        )}
       </div>
     </div>
   );

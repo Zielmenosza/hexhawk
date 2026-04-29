@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import {
   talonDecompile,
+  talonRefineWithLLM,
   type TalonResult,
   type TalonLine,
   type TalonFunctionSummary,
@@ -9,6 +11,11 @@ import {
 } from '../utils/talonEngine';
 import type { BehavioralTag } from '../utils/correlationEngine';
 import type { NaturalLoop, LoopClassification } from '../utils/cfgSignalExtractor';
+import SettingsPanel, {
+  DEFAULT_LLM_SETTINGS,
+  settingsToConfig,
+  type LLMSettings,
+} from './SettingsPanel';
 
 // ─── Prop Types ───────────────────────────────────────────────────────────────
 
@@ -30,6 +37,9 @@ type FunctionMetadata = {
   callCount: number;
   hasLoops: boolean;
   complexity: number;
+  callingConvention?: string;
+  isThunk?: boolean;
+  thunkTarget?: number;
 };
 
 interface Props {
@@ -64,6 +74,53 @@ function catIcon(cat: IntentCategory): string {
     case 'api':        return '⊞';
     default:           return '·';
   }
+}
+
+// ─── Prototype header builder ──────────────────────────────────────────────
+// Infers argument arity from the argument registers used in the function body.
+// Scans the first 30 instructions looking for reads of calling-convention arg
+// registers before they are written. Returns a C-style prototype comment.
+
+const ARG_REGS_FASTCALL = ['rcx', 'rdx', 'r8', 'r9'];   // Windows x64
+const ARG_REGS_CDECL    = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'];  // System V x64
+
+function buildPrototypeHeader(
+  fn: FunctionMetadata,
+  funcAddr: number,
+  disassembly: { address: number; mnemonic: string; operands: string }[],
+): string {
+  const name = `func_0x${funcAddr.toString(16).toUpperCase()}`;
+  if (fn.isThunk) {
+    const tgt = fn.thunkTarget !== undefined ? `0x${fn.thunkTarget.toString(16).toUpperCase()}` : '?';
+    return `/* thunk → ${tgt} */`;
+  }
+  const cc = fn.callingConvention ?? 'unknown';
+  const argRegs = cc === 'fastcall' ? ARG_REGS_FASTCALL : ARG_REGS_CDECL;
+  // Scan first 30 instructions of this function for arg register reads
+  const written = new Set<string>();
+  const argsUsed = new Set<number>(); // indices into argRegs
+  const funcInstrs = disassembly.filter(
+    i => i.address >= fn.startAddress && i.address < fn.endAddress
+  ).slice(0, 30);
+  for (const instr of funcInstrs) {
+    const ops = instr.operands.toLowerCase();
+    // Skip writes to arg regs (first operand of mov/lea)
+    const isWrite = /^(mov|lea|xor|sub|add|push|pop)/.test(instr.mnemonic.toLowerCase());
+    for (let ai = 0; ai < argRegs.length; ai++) {
+      const reg = argRegs[ai];
+      if (!written.has(reg) && ops.includes(reg)) {
+        // If it's a write to a register (dst), mark as written
+        if (isWrite && ops.startsWith(reg)) {
+          written.add(reg);
+        } else {
+          argsUsed.add(ai);
+        }
+      }
+    }
+  }
+  const arity = argsUsed.size > 0 ? Math.max(...argsUsed) + 1 : 0;
+  const params = arity === 0 ? 'void' : Array.from({ length: arity }, (_, i) => `param_${i}`).join(', ');
+  return `/* ${cc} ${name}(${params}) */`;
 }
 
 const TAG_LABELS: Partial<Record<BehavioralTag, string>> = {
@@ -407,6 +464,17 @@ export default function TalonView({
 }: Props) {
   const [selectedFuncAddr, setSelectedFuncAddr] = useState<number | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [llmSettings, setLlmSettings] = useState<LLMSettings>(DEFAULT_LLM_SETTINGS);
+  const [llmRefined, setLlmRefined] = useState<TalonResult | null>(null);
+  const [llmLoading, setLlmLoading] = useState(false);
+  const [llmError, setLlmError] = useState<string | null>(null);
+  const [hasStoredApiKey, setHasStoredApiKey] = useState<Record<'open_ai' | 'anthropic' | 'ollama', boolean>>({
+    open_ai: false,
+    anthropic: false,
+    ollama: true,
+  });
+  const [sessionTokensUsed, setSessionTokensUsed] = useState(0);
 
   // Auto-select function containing currentAddress
   useEffect(() => {
@@ -433,6 +501,7 @@ export default function TalonView({
       irBlocks: [],
       warnings: [],
       instrCount: 0,
+      logicRegions: [],
       summary: {
         name: 'sub_unknown',
         startAddress: 0,
@@ -464,14 +533,197 @@ export default function TalonView({
     }
   }, [disassembly, cfg, selectedFuncAddr, functions]);
 
+  useEffect(() => {
+    setLlmRefined(null);
+    setLlmError(null);
+  }, [result]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      invoke<boolean>('has_llm_provider_key', { provider: 'open_ai', keyAlias: llmSettings.keyAlias || undefined }).catch(() => false),
+      invoke<boolean>('has_llm_provider_key', { provider: 'anthropic', keyAlias: llmSettings.keyAlias || undefined }).catch(() => false),
+    ])
+      .then(([openAi, anthropic]) => {
+        if (!cancelled) {
+          setHasStoredApiKey({
+            open_ai: openAi,
+            anthropic,
+            ollama: true,
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [llmSettings.keyAlias]);
+
+  const handleRunLlmRefinement = useCallback(() => {
+    setLlmRefined(null);
+    setLlmError(null);
+    if (!llmSettings.enabled || !result.instrCount || llmLoading) return;
+    if (!llmSettings.providerEnabled[llmSettings.provider]) {
+      setLlmError(`LLM request blocked: provider ${llmSettings.provider} is disabled.`);
+      return;
+    }
+    if (!llmSettings.featureEnabled[llmSettings.action]) {
+      setLlmError(`LLM request blocked: feature ${llmSettings.action} is disabled.`);
+      return;
+    }
+    if (!llmSettings.privacyDisclosureAccepted) {
+      setLlmError('LLM request blocked: privacy disclosure acknowledgement is required.');
+      return;
+    }
+
+    const approved = window.confirm(
+      [
+        'Send TALON prompt to LLM endpoint?',
+        `Provider: ${llmSettings.provider}`,
+        `Endpoint: ${llmSettings.endpointUrl || 'unset'}`,
+        `Model: ${llmSettings.modelName || 'unset'}`,
+        `Token budget/request: ${llmSettings.tokenBudget}`,
+        `Session token usage: ${sessionTokensUsed}/${llmSettings.sessionTokenCap}`,
+        `Prompt scope: current decompiled function (${result.lines.length} lines)`
+      ].join('\n'),
+    );
+
+    if (!approved) {
+      setLlmError('LLM request cancelled: user approval not granted.');
+      return;
+    }
+
+    setLlmLoading(true);
+
+    talonRefineWithLLM(result, {
+      ...settingsToConfig(llmSettings),
+      sessionTokensUsed,
+      approvalGranted: approved,
+    })
+      .then(refined => {
+        setLlmRefined(refined);
+        const promptChars = result.lines.map(line => line.text).join('\n').length;
+        const tokenEstimate = Math.ceil(promptChars / 4);
+        setSessionTokensUsed(prev => prev + tokenEstimate);
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setLlmError(msg);
+      })
+      .finally(() => {
+        setLlmLoading(false);
+      });
+  }, [llmLoading, llmSettings, result, sessionTokensUsed]);
+
+  const handleSaveApiKey = useCallback(() => {
+    const apiKey = llmSettings.apiKey.trim();
+    if (llmSettings.provider === 'ollama') {
+      setLlmError('Local Ollama does not require API key storage.');
+      return;
+    }
+    if (!apiKey) {
+      setLlmError('Enter an API key first, then click Save key securely.');
+      return;
+    }
+    invoke<void>('store_llm_provider_key', {
+      request: {
+        provider: llmSettings.provider,
+        keyAlias: llmSettings.keyAlias || undefined,
+        apiKey,
+      },
+    })
+      .then(() => {
+        setHasStoredApiKey(prev => ({ ...prev, [llmSettings.provider]: true }));
+        setLlmSettings(prev => ({ ...prev, apiKey: '' }));
+        setLlmError(null);
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setLlmError(msg);
+      });
+  }, [llmSettings.apiKey, llmSettings.keyAlias, llmSettings.provider]);
+
+  const handleClearApiKey = useCallback(() => {
+    if (llmSettings.provider === 'ollama') {
+      setLlmError('No stored API key is used for local Ollama.');
+      return;
+    }
+    invoke<void>('clear_llm_provider_key', {
+      provider: llmSettings.provider,
+      keyAlias: llmSettings.keyAlias || undefined,
+    })
+      .then(() => {
+        setHasStoredApiKey(prev => ({ ...prev, [llmSettings.provider]: false }));
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setLlmError(msg);
+      });
+  }, [llmSettings.keyAlias, llmSettings.provider]);
+
+  const handleTestProvider = useCallback(() => {
+    const approved = window.confirm(
+      [
+        'Run provider connectivity/key test?',
+        `Provider: ${llmSettings.provider}`,
+        `Endpoint: ${llmSettings.endpointUrl || 'unset'}`,
+        'A tiny test prompt will be sent only after this confirmation.'
+      ].join('\n'),
+    );
+    if (!approved) return;
+
+    setLlmLoading(true);
+    invoke('llm_query', {
+      request: {
+        provider: llmSettings.provider,
+        action: 'signal_explainer',
+        endpointUrl: llmSettings.endpointUrl,
+        modelName: llmSettings.modelName,
+        prompt: 'Respond with {"status":"ok"}',
+        contextBlocks: [],
+        timeoutMs: 8000,
+        maxPromptChars: 1000,
+        maxContextChars: 0,
+        tokenBudget: Math.min(512, llmSettings.tokenBudget),
+        approvalGranted: true,
+        allowRemoteEndpoint: llmSettings.allowRemoteEndpoints,
+        allowAgentTools: false,
+        keyAlias: llmSettings.keyAlias || undefined,
+      },
+    })
+      .then(() => {
+        setLlmError('Provider test succeeded.');
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        setLlmError(`Provider test failed: ${msg}`);
+      })
+      .finally(() => {
+        setLlmLoading(false);
+      });
+  }, [llmSettings]);
+
   const handleLineClick = useCallback((addr: number) => {
     onAddressSelect(addr);
   }, [onAddressSelect]);
 
-  const { summary } = result;
+  // Use LLM-refined lines when available; fall back to TALON output
+  const displayResult = llmRefined ?? result;
+  const { summary } = displayResult;
   const statsText = result.instrCount > 0
-    ? `${result.instrCount} instr · ${result.irBlocks.length} blocks · ${summary.overallConfidence}% conf`
+    ? `${result.instrCount} instr · ${result.irBlocks.length} blocks · ${summary.overallConfidence}% conf${result.cseRewriteCount ? ` · ${result.cseRewriteCount} CSE` : ''}`
     : '';
+
+  const llmRunBlockedReason = !llmSettings.enabled
+    ? 'Enable the LLM decompilation pass first.'
+    : !result.instrCount
+      ? 'Run TALON on a function before requesting LLM refinement.'
+      : !llmSettings.providerEnabled[llmSettings.provider]
+        ? `Provider ${llmSettings.provider} is disabled in provider availability.`
+        : !llmSettings.featureEnabled[llmSettings.action]
+          ? `Active AI action ${llmSettings.action} is disabled in feature toggles.`
+          : !llmSettings.privacyDisclosureAccepted
+            ? 'Accept the privacy disclosure before sending model requests.'
+            : null;
 
   return (
     <div className="tln-root">
@@ -492,6 +744,33 @@ export default function TalonView({
           {statsText && <span className="tln-stats">{statsText}</span>}
           <button
             type="button"
+            className="tln-toggle-btn"
+            onClick={handleRunLlmRefinement}
+            disabled={Boolean(llmRunBlockedReason) || llmLoading}
+            title={llmRunBlockedReason ?? 'Run LLM refinement now'}
+          >
+            Run LLM
+          </button>
+          {llmLoading && (
+            <span className="tln-llm-loading" title="LLM refinement running…">⟳ LLM</span>
+          )}
+          {!llmLoading && llmRefined && (
+            <span className="tln-llm-badge" title="LLM-refined variable names applied">✦ LLM</span>
+          )}
+          {!llmLoading && llmError && (
+            <span className="tln-llm-error" title={llmError}>⚠ LLM</span>
+          )}
+          <button
+            type="button"
+            className={`tln-toggle-btn${showSettings ? ' active' : ''}`}
+            onClick={() => setShowSettings(v => !v)}
+            title="LLM decompilation settings"
+            aria-pressed={showSettings}
+          >
+            ⚙ LLM
+          </button>
+          <button
+            type="button"
             className={`tln-toggle-btn${showSidebar ? ' active' : ''}`}
             onClick={() => setShowSidebar(v => !v)}
             title="Toggle analysis sidebar"
@@ -500,6 +779,20 @@ export default function TalonView({
           </button>
         </div>
       </div>
+
+      {/* ── LLM Settings Panel ── */}
+      {showSettings && (
+        <SettingsPanel
+          settings={llmSettings}
+          onChange={setLlmSettings}
+          onClose={() => setShowSettings(false)}
+          hasStoredApiKey={hasStoredApiKey}
+          onSaveApiKey={handleSaveApiKey}
+          onClearApiKey={handleClearApiKey}
+          onTestApiKey={handleTestProvider}
+          llmError={llmError}
+        />
+      )}
 
       {/* ── Warnings ── */}
       {result.warnings.length > 0 && (
@@ -513,8 +806,17 @@ export default function TalonView({
       {/* ── Body ── */}
       <div className="tln-body">
         <div className="tln-code-pane">
+          {selectedFuncAddr !== null && functions.get(selectedFuncAddr) && (
+            <div style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: '#7a9fbf', padding: '0.35rem 0.7rem 0', userSelect: 'text' }}>
+              {buildPrototypeHeader(
+                functions.get(selectedFuncAddr)!,
+                selectedFuncAddr,
+                disassembly,
+              )}
+            </div>
+          )}
           <TalonCodeDisplay
-            lines={result.lines}
+            lines={displayResult.lines}
             selectedAddress={currentAddress}
             onLineClick={handleLineClick}
           />

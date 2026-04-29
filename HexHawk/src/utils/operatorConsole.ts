@@ -40,6 +40,13 @@ export type StepStatus = 'pending' | 'active' | 'done' | 'skipped';
 export type StepPriority = 'critical' | 'high' | 'medium' | 'low';
 export type ExecutionMode = 'guide-only' | 'guided-navigation' | 'auto-run';
 
+/**
+ * OutputMode controls what the analyst sees, independent of navigation behavior:
+ *   • 'explain' — full reasoning narrative + context hints per step (default)
+ *   • 'act'     — compact action list: step + tool + "Go" button; no prose
+ */
+export type OutputMode = 'explain' | 'act';
+
 export interface ConsoleStep {
   id: string;
   stepNumber: number;

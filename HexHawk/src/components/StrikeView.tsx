@@ -13,6 +13,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 import type {
   DebugSnapshot,
   RegisterState,
@@ -36,6 +37,7 @@ import {
   type PatternTag,
   type StrikePattern,
 } from '../utils/strikeEngine';
+import { sanitizeAddress, sanitizeBridgePath, sanitizeHexOrDecAddress, clampInt } from '../utils/tauriGuards';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -67,13 +69,18 @@ const STATUS_COLORS: Record<DebugStatus, string> = {
 };
 
 const PATTERN_COLORS: Record<PatternTag, string> = {
-  'timing-check':    '#ff9800',
-  'exception-probe': '#e91e63',
-  'stack-pivot':     '#f44336',
-  'rop-chain':       '#9c27b0',
-  'nop-sled':        '#607d8b',
-  'anti-step':       '#ff5722',
-  'cpuid-check':     '#795548',
+  'timing-check':           '#ff9800',
+  'exception-probe':        '#e91e63',
+  'stack-pivot':            '#f44336',
+  'rop-chain':              '#9c27b0',
+  'nop-sled':               '#607d8b',
+  'anti-step':              '#ff5722',
+  'cpuid-check':            '#795548',
+  'anti-debug-probe':       '#f06292',
+  'self-modifying-code':    '#ff7043',
+  'oep-transfer':           '#ab47bc',
+  'dynamic-api-resolution': '#26a69a',
+  'peb-walk':               '#8d6e63',
 };
 
 const JUMP_LABELS: Record<string, string> = {
@@ -289,6 +296,7 @@ const StrikeView: React.FC<StrikeViewProps> = ({
   const [arch,     setArch]       = useState<string>('x86_64');
   const [error,    setError]      = useState<string | null>(null);
   const [bpInput,  setBpInput]    = useState<string>('');
+  const [pidInput, setPidInput]   = useState<string>('');
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [loading,  setLoading]    = useState(false);
 
@@ -299,13 +307,39 @@ const StrikeView: React.FC<StrikeViewProps> = ({
     if (step) setSnapshot(step.snapshot);
   }, []);
 
+  // Subscribe to real-time 'strike-snapshot' events emitted by the debug thread
+  // (fired on every Step / StepOver / Continue stop).
+  useEffect(() => {
+    let disposed = false;
+    let unlisten: (() => void) | undefined;
+    listen<DebugSnapshot>('strike-snapshot', event => {
+      const snap = event.payload;
+      setStatus(snap.status);
+      setSnapshot(snap);
+      setTimeline(tl => tl ? appendStep(tl, snap).timeline : null);
+    }).then(fn => {
+      if (disposed) {
+        fn();
+        return;
+      }
+      unlisten = fn;
+    }).catch(() => {
+      // no-op on listener registration failure
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, []);
+
   const handleLoad = useCallback(async () => {
     if (!binaryPath) { setError('No binary loaded'); return; }
     setError(null);
     setLoading(true);
     try {
+      const safePath = sanitizeBridgePath(binaryPath, 'debug binary path');
       const result = await invoke<StartDebugResult>('start_debug_session', {
-        path: binaryPath,
+        path: safePath,
         args: [],
       });
       setSessionId(result.sessionId);
@@ -322,6 +356,64 @@ const StrikeView: React.FC<StrikeViewProps> = ({
       setLoading(false);
     }
   }, [binaryPath]);
+
+  const handleStepOver = useCallback(async () => {
+    if (sessionId === null || !timeline) return;
+    setLoading(true);
+    try {
+      const snap = await invoke<DebugSnapshot>('debug_step_over', { sessionId });
+      setStatus(snap.status);
+      setSnapshot(snap);
+      const { timeline: updated } = appendStep(timeline, snap);
+      setTimeline(updated);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId, timeline]);
+
+  const handleStepOut = useCallback(async () => {
+    if (sessionId === null || !timeline) return;
+    setLoading(true);
+    try {
+      const snap = await invoke<DebugSnapshot>('debug_step_out', { sessionId });
+      setStatus(snap.status);
+      setSnapshot(snap);
+      const { timeline: updated } = appendStep(timeline, snap);
+      setTimeline(updated);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }, [sessionId, timeline]);
+
+  const handleAttach = useCallback(async () => {
+    const pid = Number.parseInt(pidInput.trim(), 10);
+    if (!Number.isInteger(pid)) { setError('Invalid PID (must be a positive integer)'); return; }
+    const safePid = clampInt(pid, 1, 0x7FFFFFFF, 'PID');
+    const confirmed = window.confirm(`Attach debugger to PID ${safePid}?`);
+    if (!confirmed) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await invoke<StartDebugResult>('debug_attach', { pid: safePid });
+      setSessionId(result.sessionId);
+      setArch(result.arch);
+      setStatus(result.snapshot.status);
+      setSnapshot(result.snapshot);
+      const tl = createTimeline(result.sessionId);
+      const { timeline: tl2 } = appendStep(tl, result.snapshot);
+      setTimeline(tl2);
+      setPidInput('');
+    } catch (e) {
+      setError(String(e));
+      setStatus('Error');
+    } finally {
+      setLoading(false);
+    }
+  }, [pidInput]);
 
   const handleStep = useCallback(async () => {
     if (sessionId === null || !timeline) return;
@@ -357,6 +449,8 @@ const StrikeView: React.FC<StrikeViewProps> = ({
 
   const handleStop = useCallback(async () => {
     if (sessionId === null) return;
+    const confirmed = window.confirm('Stop the active debug session?');
+    if (!confirmed) return;
     try {
       await invoke('debug_stop', { sessionId });
     } catch (_) { /* ignore */ }
@@ -366,11 +460,16 @@ const StrikeView: React.FC<StrikeViewProps> = ({
 
   const handleAddBreakpoint = useCallback(async () => {
     if (sessionId === null || !bpInput.trim()) return;
-    const addr = parseInt(bpInput.trim(), 16);
-    if (isNaN(addr)) { setError('Invalid address (use hex, e.g. 0x401000)'); return; }
+    let safeAddr: number;
     try {
-      await invoke('debug_set_breakpoint', { sessionId, address: addr });
-      setSnapshot(s => s ? { ...s, breakpoints: [...s.breakpoints, addr] } : s);
+      safeAddr = sanitizeHexOrDecAddress(bpInput, 'breakpoint address');
+    } catch (e) {
+      setError(String(e));
+      return;
+    }
+    try {
+      await invoke('debug_set_breakpoint', { sessionId, address: safeAddr });
+      setSnapshot(s => s ? { ...s, breakpoints: [...s.breakpoints, safeAddr] } : s);
       setBpInput('');
     } catch (e) {
       setError(String(e));
@@ -380,8 +479,9 @@ const StrikeView: React.FC<StrikeViewProps> = ({
   const handleRemoveBreakpoint = useCallback(async (addr: number) => {
     if (sessionId === null) return;
     try {
-      await invoke('debug_remove_breakpoint', { sessionId, address: addr });
-      setSnapshot(s => s ? { ...s, breakpoints: s.breakpoints.filter(b => b !== addr) } : s);
+      const safeAddr = sanitizeAddress(addr, 'breakpoint address');
+      await invoke('debug_remove_breakpoint', { sessionId, address: safeAddr });
+      setSnapshot(s => s ? { ...s, breakpoints: s.breakpoints.filter(b => b !== safeAddr) } : s);
     } catch (e) {
       setError(String(e));
     }
@@ -437,6 +537,12 @@ const StrikeView: React.FC<StrikeViewProps> = ({
         <button className="stk-btn" onClick={handleStep} disabled={!canStep}>
           ⬥ Step
         </button>
+        <button className="stk-btn" onClick={handleStepOver} disabled={!canStep}>
+          ⇥ Step Over
+        </button>
+        <button className="stk-btn" onClick={handleStepOut} disabled={!canStep}>
+          ⇤ Step Out
+        </button>
         <button className="stk-btn" onClick={handleContinue} disabled={!canContinue}>
           ▶ Continue
         </button>
@@ -478,6 +584,24 @@ const StrikeView: React.FC<StrikeViewProps> = ({
             disabled={sessionId === null}
           >
             + BP
+          </button>
+        </div>
+
+        <div className="stk-bp-input">
+          <input
+            className="stk-bp-field"
+            value={pidInput}
+            onChange={e => setPidInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAttach()}
+            placeholder="Attach to PID"
+            spellCheck={false}
+          />
+          <button
+            className="stk-btn stk-btn--bp"
+            onClick={handleAttach}
+            disabled={loading}
+          >
+            ⚡ Attach
           </button>
         </div>
       </div>

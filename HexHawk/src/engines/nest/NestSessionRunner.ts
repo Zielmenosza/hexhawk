@@ -187,6 +187,16 @@ export interface NestSessionRunnerOptions {
   echoHints?:           string[];
   strategyReliability?: Partial<Record<StrategyClass, number>>;
   /**
+   * Confidence floor for iteration 0 (0–100).
+   * Pass `learningRecord.bestConfidence` to resume from the owned baseline.
+   */
+  seedConfidence?:      number;
+  /**
+   * Compute learning-based confidence boosts for a verdict.
+   * Wire to `getLearningBoosts` from learningStore for full ownership continuity.
+   */
+  getBoosts?:           (hash: string | null, signalIds: string[]) => import('../../utils/learningStore').LearningBoosts | null;
+  /**
    * Called after every completed iteration.
    * For UI streaming: update React state here.
    * For CLI: log progress here.
@@ -240,8 +250,10 @@ export class NestSessionRunner {
       strikeSignals:       opts.strikeSignals,
       echoHints:           opts.echoHints ?? [],
       strategyReliability: opts.strategyReliability ?? {},
+      seedConfidence:      opts.seedConfidence,
+      getBoosts:           opts.getBoosts,
       shouldStop:          opts.shouldStop,
-      // getBoosts is not passed — post-processing reads from learningStore directly
+      // onIteration is not forwarded — we intercept in step() to attach postProcessing
     };
     this.core = new CoreRunner(coreOpts);
   }

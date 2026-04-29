@@ -14,6 +14,12 @@ interface EnhancedInstructionRowProps {
   onSelect: () => void;
   onNavigateToFunction?: (address: number) => void;
   onShowReferences?: () => void;
+  /** Queue an inverted-jump patch (only shown for conditional jumps). */
+  onInvertJump?: () => void;
+  /** Queue a NOP sled for `byteLength` bytes. */
+  onNopOut?: (byteLength: number) => void;
+  /** True when one or more pending patches target this address. */
+  isPatched?: boolean;
 }
 
 const EnhancedInstructionRow: React.FC<EnhancedInstructionRowProps> = React.memo(
@@ -30,6 +36,9 @@ const EnhancedInstructionRow: React.FC<EnhancedInstructionRowProps> = React.memo
     onSelect,
     onNavigateToFunction,
     onShowReferences,
+    onInvertJump,
+    onNopOut,
+    isPatched = false,
   }) => {
     const formatHex = (num: number) => `0x${num.toString(16).toUpperCase().padStart(8, '0')}`;
 
@@ -63,7 +72,7 @@ const EnhancedInstructionRow: React.FC<EnhancedInstructionRowProps> = React.memo
 
     return (
       <div
-        className={`disassembly-row-enhanced ${selected ? 'selected' : ''} ${highlighted ? 'highlighted' : ''} ${isFunctionStart ? 'function-start' : ''} ${isInLoop ? 'in-loop' : ''}`}
+        className={`disassembly-row-enhanced ${selected ? 'selected' : ''} ${highlighted ? 'highlighted' : ''} ${isFunctionStart ? 'function-start' : ''} ${isInLoop ? 'in-loop' : ''} ${isPatched ? 'patched' : ''}`}
         onClick={onSelect}
       >
         {/* Address column */}
@@ -139,6 +148,36 @@ const EnhancedInstructionRow: React.FC<EnhancedInstructionRowProps> = React.memo
             </button>
           )}
         </div>
+
+        {/* Patch action buttons (Milestone 2) */}
+        {(onInvertJump || onNopOut) && (
+          <div className="instr-patch-actions">
+            {onInvertJump && (instrType.type === 'JCOND') && (
+              <button
+                className="instr-patch-btn invert"
+                onClick={(e) => { e.stopPropagation(); onInvertJump(); }}
+                title="Invert this conditional jump"
+              >
+                ⇄ invert
+              </button>
+            )}
+            {onNopOut && (
+              <button
+                className="instr-patch-btn nop"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Estimate byte length from mnemonic + operands string length (rough heuristic)
+                  // Typical x86 instructions: 1-6 bytes; default to 2 for simplicity
+                  const byteLen = mnemonic.length <= 3 ? 1 : mnemonic.startsWith('j') ? 2 : 3;
+                  onNopOut(byteLen);
+                }}
+                title="Replace with NOP"
+              >
+                NOP
+              </button>
+            )}
+          </div>
+        )}
       </div>
     );
   }

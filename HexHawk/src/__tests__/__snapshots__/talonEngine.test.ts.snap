@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`talonDecompile — snapshot > inject function intent-comment texts match snapshot 1`] = `
+[
+  "// ── ⚠ Process injection: VirtualAllocEx (96%) ──",
+  "// ← ⚠ Process injection: VirtualAllocEx (96%)",
+  "// ← ⚠ Process injection: WriteProcessMemory (96%)",
+  "// ← ⚠ Process injection: CreateRemoteThread (96%)",
+]
+`;
+
+exports[`talonDecompile — snapshot > minimal function line texts match snapshot 1`] = `
+[
+  "// sub_1000  [5 instructions]",
+  "function sub_1000() {",
+  "",
+  "eax = 0;",
+  "return;",
+  "}",
+]
+`;
+
+exports[`talonDecompile — snapshot > minimal function summary fields match snapshot 1`] = `
+{
+  "behavioralTags": [],
+  "complexityScore": 1,
+  "liftingCoverage": 100,
+  "loopNestingDepth": 0,
+  "naturalLoops": [],
+}
+`;

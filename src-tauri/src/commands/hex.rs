@@ -1,4 +1,5 @@
-use std::fs;
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
 
 #[derive(Debug, serde::Serialize)]
 pub struct StringMatch {
@@ -7,29 +8,61 @@ pub struct StringMatch {
     pub text: String,
 }
 
+/// Returns the total size of `path` in bytes without reading its contents.
 #[tauri::command]
-pub fn read_hex_range(path: String, offset: usize, length: usize) -> Result<Vec<u8>, String> {
-    let data = fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+pub fn get_file_size(path: String) -> Result<u64, String> {
+    let meta = std::fs::metadata(&path).map_err(|e| format!("Failed to stat file: {}", e))?;
+    Ok(meta.len())
+}
 
-    if offset >= data.len() {
+/// Read `length` bytes from `path` starting at `offset`.
+/// Uses seek-based I/O — no full-file read, works for files of any size.
+#[tauri::command]
+pub fn read_hex_range(path: String, offset: u64, length: usize) -> Result<Vec<u8>, String> {
+    let mut file = File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
+    let file_len = file
+        .seek(SeekFrom::End(0))
+        .map_err(|e| format!("Failed to seek to end: {}", e))?;
+
+    if offset >= file_len {
         return Ok(vec![]);
     }
 
-    let end = std::cmp::min(offset + length, data.len());
-    Ok(data[offset..end].to_vec())
+    file.seek(SeekFrom::Start(offset))
+        .map_err(|e| format!("Failed to seek to offset: {}", e))?;
+
+    let to_read = ((file_len - offset) as usize).min(length);
+    let mut buf = vec![0u8; to_read];
+    file.read_exact(&mut buf)
+        .map_err(|e| format!("Failed to read bytes: {}", e))?;
+
+    Ok(buf)
 }
 
 #[tauri::command]
-pub fn find_strings(path: String, offset: usize, length: usize, min_length: usize) -> Result<Vec<StringMatch>, String> {
-    let data = fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+#[allow(non_snake_case)]
+pub fn find_strings(path: String, offset: usize, length: usize, minLength: usize) -> Result<Vec<StringMatch>, String> {
+    let min_length = minLength;
+    let mut file = File::open(&path).map_err(|e| format!("Failed to open file: {}", e))?;
+    let file_len = file
+        .seek(SeekFrom::End(0))
+        .map_err(|e| format!("Failed to seek: {}", e))? as usize;
 
-    if offset >= data.len() {
+    let start = offset.min(file_len);
+    let end   = (offset + length).min(file_len);
+    if start >= end {
         return Ok(vec![]);
     }
 
-    let end = std::cmp::min(offset + length, data.len());
-    let slice = &data[offset..end];
-    Ok(find_strings_in_bytes(slice, min_length, offset as u64))
+    file.seek(SeekFrom::Start(start as u64))
+        .map_err(|e| format!("Failed to seek to offset: {}", e))?;
+
+    let to_read = end - start;
+    let mut data = vec![0u8; to_read];
+    file.read_exact(&mut data)
+        .map_err(|e| format!("Failed to read bytes: {}", e))?;
+
+    Ok(find_strings_in_bytes(&data, min_length, start as u64))
 }
 
 fn find_strings_in_bytes(bytes: &[u8], min_length: usize, base_offset: u64) -> Vec<StringMatch> {

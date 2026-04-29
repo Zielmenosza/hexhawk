@@ -292,7 +292,7 @@ export const TEST_SUBJECT_SUITE: TestSubject[] = [
     label: 'mstsc.exe',
     path: 'C:\\Windows\\System32\\mstsc.exe',
     format: 'exe',
-    sizeBytes: 534_528,
+    sizeBytes: 1_384_448,
     description:
       'Remote Desktop Client — richer API surface with TLS, certificate, network, and UI patterns. ' +
       'Network imports alongside GUI create a more ambiguous signal profile than notepad.',

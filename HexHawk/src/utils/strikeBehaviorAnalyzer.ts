@@ -79,11 +79,11 @@ export interface BehavioralAnomalyReport {
 // ─── Run Diffing ──────────────────────────────────────────────────────────────
 
 export function diffRuns(a: StrikeRun, b: StrikeRun): RunDiff {
-  const ripSetA = new Map(a.steps.map((s, i) => [s.rip, { step: s, index: i }]));
-  const ripSetB = new Map(b.steps.map((s, i) => [s.rip, { step: s, index: i }]));
+  const ripSetA = new Map(a.steps.map((s, i) => [s.snapshot.registers.rip, { step: s, index: i }]));
+  const ripSetB = new Map(b.steps.map((s, i) => [s.snapshot.registers.rip, { step: s, index: i }]));
 
-  const stepsOnlyInA = a.steps.filter(s => !ripSetB.has(s.rip));
-  const stepsOnlyInB = b.steps.filter(s => !ripSetA.has(s.rip));
+  const stepsOnlyInA = a.steps.filter(s => !ripSetB.has(s.snapshot.registers.rip));
+  const stepsOnlyInB = b.steps.filter(s => !ripSetA.has(s.snapshot.registers.rip));
 
   const changedSteps: RunDiff['changedSteps'] = [];
 
@@ -98,8 +98,8 @@ export function diffRuns(a: StrikeRun, b: StrikeRun): RunDiff {
 
     const allKeys = new Set([...Object.keys(regsA), ...Object.keys(regsB)]) as Set<RegKey>;
     for (const reg of allKeys) {
-      const vA = (regsA as Record<string, number>)[reg] ?? 0;
-      const vB = (regsB as Record<string, number>)[reg] ?? 0;
+      const vA = (regsA as unknown as Record<string, number>)[reg] ?? 0;
+      const vB = (regsB as unknown as Record<string, number>)[reg] ?? 0;
       if (vA !== vB) {
         regChanges.push({ reg, valueInA: vA, valueInB: vB });
       }

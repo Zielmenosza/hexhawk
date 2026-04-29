@@ -12,6 +12,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   summarizeSession,
+  computeWorkSaved,
   DEFAULT_NEST_CONFIG,
   type NestConfig,
   type NestSession,
@@ -28,6 +29,7 @@ import {
 } from '../utils/strategyEngine';
 import {
   getLearningRecord,
+  getLearningBoosts,
   getEchoEnhancements,
   getStrategyReliability,
   type BinaryLearningRecord,
@@ -67,6 +69,8 @@ import type {
   DisassembledInstruction,
   DisassemblyAnalysis,
 } from '../App';
+import { WorkSavedPanel } from './WorkSavedPanel';
+import type { BinaryVerdictResult } from '../utils/correlationEngine';
 import type { StrikeCorrelationSignal } from '../utils/strikeEngine';
 import {
   CURATED_TRAINING_BINARIES,
@@ -722,6 +726,8 @@ interface NestViewProps {
   onAddressSelect:      (addr: number) => void;
   /** Called when user picks a training binary from the picker — parent should set binary path */
   onLoadTrainingBinary?: (path: string) => void;
+  /** Called when a NEST session completes — provides the final enriched verdict */
+  onNestComplete?: (verdict: BinaryVerdictResult) => void;
 }
 
 // ── Helper: format ms ─────────────────────────────────────────────────────────
@@ -2074,6 +2080,7 @@ function LearningSessionPanel({ session }: { session: LearningSession }) {
 
 const NestView: React.FC<NestViewProps> = ({
   onLoadTrainingBinary,
+  onNestComplete,
   binaryPath,
   metadata,
   disassembly: initialDisassembly,
@@ -2172,7 +2179,9 @@ const NestView: React.FC<NestViewProps> = ({
     lengthRef.current = runner.currentLength;
 
     // Stream iteration state into React UI
-    setSession({ ...step.session });
+    // Keep status='running' while the loop continues (the runner's internal
+    // session starts as 'idle' and is only finalized when shouldContinue=false)
+    setSession(step.shouldContinue ? { ...step.session, status: 'running' } : { ...step.session });
     setSelectedIter(step.snapshot.iteration);
     learningSessionRef.current = step.learningSession;
     setLearningSession({ ...step.learningSession });
@@ -2198,6 +2207,11 @@ const NestView: React.FC<NestViewProps> = ({
         if (pp.healResult.changed) setConfig(pp.healedConfig);
         setTrainingRecords(pp.trainingRecords);
         setTrainingStats(pp.trainingStats);
+      }
+
+      // Propagate NEST-enriched verdict to the parent (Verdict panel)
+      if (step.session.finalVerdict) {
+        onNestComplete?.(step.session.finalVerdict);
       }
 
       return false; // stop
@@ -2229,6 +2243,13 @@ const NestView: React.FC<NestViewProps> = ({
       strikeSignals,
       echoHints:           echoHintsRef.current,
       strategyReliability: strategyReliabilityRef.current,
+      // Apply ownership: start from the best previously achieved confidence
+      // and use stored learning patterns as confidence boosts each iteration.
+      seedConfidence:      learningRecord?.bestConfidence ?? 0,
+      getBoosts: (hash, signalIds) => {
+        const b = getLearningBoosts(hash ?? undefined, signalIds);
+        return b.confidenceBonus > 0 ? b : null;
+      },
       shouldStop:          () => stopRef.current,
     });
 
@@ -2444,6 +2465,11 @@ const NestView: React.FC<NestViewProps> = ({
           {session && (
             <span className={`nest-status-badge status-${session.status}`}>
               {session.status.replace('-', ' ').toUpperCase()}
+            </span>
+          )}
+          {!session && learningRecord && learningRecord.sessionCount > 0 && (
+            <span className="nest-owned-badge" title={`${learningRecord.sessionCount} previous session(s) — resuming from ${learningRecord.bestConfidence}%`}>
+              📌 Owned · {learningRecord.bestConfidence}%
             </span>
           )}
         </div>
@@ -2662,6 +2688,25 @@ const NestView: React.FC<NestViewProps> = ({
           </span>
         )}
       </div>
+
+      {/* Progress bar — visible while session is active */}
+      {session && !isDone && (
+        <div className="nest-progress-wrap">
+          <div className="nest-progress-label">
+            <span>
+              {isRunning ? 'Running iteration…' : session.status === 'paused' ? 'Paused' : 'Ready'}
+              {iters.length > 0 && ` — iteration ${iters.length} of ${config.maxIterations}`}
+            </span>
+            <span>{iters.length > 0 ? `${Math.round(iters[iters.length - 1]?.confidence ?? 0)}% confidence` : ''}</span>
+          </div>
+          <div className="nest-progress-bar">
+            <div
+              className="nest-progress-fill"
+              style={{ width: `${Math.min(100, (iters.length / config.maxIterations) * 100)}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Error banner */}
       {error && (
@@ -2892,6 +2937,11 @@ const NestView: React.FC<NestViewProps> = ({
                         <div key={sig.id} className="nest-signal-row">
                           <span className="nest-signal-id">{sig.id}</span>
                           <span className="nest-signal-weight">w{sig.weight}</span>
+                          {sig.tier && (
+                            <span className={`nest-signal-tier nest-tier-${sig.tier.toLowerCase()}`}>
+                              {sig.tier}
+                            </span>
+                          )}
                           {sig.corroboratedBy.length > 0 && (
                             <span className="nest-signal-corr">
                               ✓ {sig.corroboratedBy.join(', ')}
@@ -2907,6 +2957,58 @@ const NestView: React.FC<NestViewProps> = ({
                     </div>
                   </div>
                 )}
+
+                {/* Evidence-tier confidence breakdown */}
+                {selectedSnap.verdict.evidenceTierBreakdown && (() => {
+                  const etb = selectedSnap.verdict.evidenceTierBreakdown!;
+                  const total = etb.direct.contribution + etb.strong.contribution + etb.weak.contribution;
+                  const tierRows: Array<{ label: string; key: keyof typeof etb; color: string; cap: number }> = [
+                    { label: 'DIRECT',  key: 'direct', color: '#4ade80', cap: 40 },
+                    { label: 'STRONG',  key: 'strong', color: '#60a5fa', cap: 35 },
+                    { label: 'WEAK',    key: 'weak',   color: '#a3a3a3', cap: 10 },
+                  ];
+                  return (
+                    <div className="nest-section">
+                      <div className="nest-section-title">Confidence Tier Breakdown</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem', marginTop: '0.4rem' }}>
+                        {tierRows.map(({ label, key, color, cap }) => {
+                          const row = etb[key] as { signalCount: number; contribution: number; signals: string[] };
+                          const pct = cap > 0 ? (row.contribution / cap) * 100 : 0;
+                          return (
+                            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.78rem' }}>
+                              <span style={{
+                                minWidth: '52px', fontWeight: 700, fontSize: '0.7rem',
+                                color, fontFamily: 'monospace', letterSpacing: '0.04em',
+                              }}>{label}</span>
+                              <div style={{
+                                flex: 1, height: '6px', background: '#2a2a2a',
+                                borderRadius: '3px', overflow: 'hidden',
+                              }}>
+                                <div style={{
+                                  width: `${pct}%`, height: '100%',
+                                  background: color, borderRadius: '3px',
+                                  opacity: row.signalCount === 0 ? 0.2 : 1,
+                                }} />
+                              </div>
+                              <span style={{ minWidth: '36px', textAlign: 'right', color, fontWeight: 600 }}>
+                                {row.contribution}<span style={{ color: '#555', fontWeight: 400 }}>/{cap}</span>
+                              </span>
+                              <span style={{ color: '#666', minWidth: '70px' }}>
+                                {row.signalCount} signal{row.signalCount !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        <div style={{ fontSize: '0.72rem', color: '#555', borderTop: '1px solid #2a2a2a', paddingTop: '0.3rem', marginTop: '0.1rem' }}>
+                          Tier contribution: {total} pts
+                          {etb.preDampenConfidence !== selectedSnap.confidence && (
+                            <span> · pre-dampen {etb.preDampenConfidence}%</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Strategy Plan */}
                 {(currentStrategyPlan || selectedSnap.refinementPlan) && (() => {
@@ -3020,6 +3122,10 @@ const NestView: React.FC<NestViewProps> = ({
         <div className="nest-summary-wrap">
           <SummaryPanel summary={summary} />
           {dominance && <DominanceBanner assessment={dominance} />}
+          {session && (() => {
+            const wsm = computeWorkSaved(session);
+            return wsm.computedAtIteration > 0 ? <WorkSavedPanel metrics={wsm} /> : null;
+          })()}
         </div>
       )}
     </div>

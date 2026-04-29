@@ -24,6 +24,60 @@ interface Props {
   fileType?: string;
 }
 
+// ─── IOC Extraction ──────────────────────────────────────────────────────────
+
+interface IocEntry {
+  type: 'domain' | 'ip' | 'url' | 'filepath' | 'registry' | 'api' | 'hash' | 'string';
+  value: string;
+  confidence: 'high' | 'medium' | 'low';
+  context: string;
+}
+
+const URL_RE    = /https?:\/\/[^\s"'<>]{4,}/gi;
+const IP_RE     = /\b(?:\d{1,3}\.){3}\d{1,3}\b/g;
+const DOMAIN_RE = /\b(?:[a-z0-9-]{1,63}\.)+(?:com|net|org|io|ru|cn|top|xyz|info|biz|onion)\b/gi;
+const PATH_RE   = /(?:[A-Za-z]:\\|\/)[^\s"'<>]{6,}/g;
+const REG_RE    = /(?:HKEY_|HKLM|HKCU|HKU)[\\][^\s"'<>]{4,}/gi;
+
+function extractIocs(verdict: BinaryVerdictResult): IocEntry[] {
+  const iocs: IocEntry[] = [];
+  const seen = new Set<string>();
+
+  function add(ioc: IocEntry) {
+    const key = `${ioc.type}:${ioc.value}`;
+    if (!seen.has(key)) { seen.add(key); iocs.push(ioc); }
+  }
+
+  // Extract from signal findings and evidence
+  const texts: Array<{ text: string; context: string }> = [];
+  for (const sig of verdict.signals) {
+    texts.push({ text: sig.finding, context: `signal:${sig.id}` });
+    for (const ev of sig.evidence ?? []) texts.push({ text: ev, context: `evidence:${sig.id}` });
+  }
+
+  for (const { text, context } of texts) {
+    for (const m of text.matchAll(URL_RE))    add({ type: 'url',      value: m[0], confidence: 'high',   context });
+    for (const m of text.matchAll(IP_RE))     add({ type: 'ip',       value: m[0], confidence: 'medium', context });
+    for (const m of text.matchAll(DOMAIN_RE)) add({ type: 'domain',   value: m[0], confidence: 'medium', context });
+    for (const m of text.matchAll(PATH_RE))   add({ type: 'filepath', value: m[0], confidence: 'low',    context });
+    for (const m of text.matchAll(REG_RE))    add({ type: 'registry', value: m[0], confidence: 'high',   context });
+  }
+
+  // Extract API names from Mythos/imports signals
+  for (const sig of verdict.signals) {
+    if ((sig.source as string) === 'mythos' && sig.evidence) {
+      for (const ev of sig.evidence) {
+        const apiMatch = ev.match(/^import:\s*(.+)$/i);
+        if (apiMatch) {
+          add({ type: 'api', value: apiMatch[1].trim(), confidence: 'high', context: `mythos:${sig.id}` });
+        }
+      }
+    }
+  }
+
+  return iocs;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const THREAT_COLORS: Record<string, string> = {
@@ -342,6 +396,17 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
     downloadText(md, 'hexhawk-report.md', 'text/markdown');
   };
 
+  const handleExportIocs = () => {
+    const iocs = extractIocs(verdict);
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      binary: binaryPath?.split(/[\\/]/).pop() ?? 'unknown',
+      iocCount: iocs.length,
+      iocs,
+    };
+    downloadText(JSON.stringify(payload, null, 2), 'hexhawk-iocs.json', 'application/json');
+  };
+
   const handleCopy = async () => {
     const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType });
     await navigator.clipboard.writeText(md);
@@ -357,6 +422,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
         <div className="report-actions">
           <button className="report-btn" onClick={handleDownloadJSON}>↓ JSON</button>
           <button className="report-btn" onClick={handleDownloadMarkdown}>↓ Markdown</button>
+          <button className="report-btn" onClick={handleExportIocs}>↓ IOCs</button>
           <button className="report-btn" onClick={handleCopy}>
             {copied ? '✓ Copied' : '⎘ Copy'}
           </button>

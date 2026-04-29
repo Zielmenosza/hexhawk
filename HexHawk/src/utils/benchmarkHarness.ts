@@ -521,3 +521,51 @@ export function compareBenchmarkRuns(
 export function clearBenchmarkHistory(): void {
   saveStore(emptyStore());
 }
+
+// ── Accuracy Timeline ──────────────────────────────────────────────────────────
+
+/**
+ * A single point on the corpus accuracy timeline.
+ * One snapshot is produced per completed benchmark run, allowing % correct
+ * verdicts to be tracked across successive runs as the corpus and engine evolve.
+ */
+export interface CorpusAccuracySnapshot {
+  /** Benchmark run ID. */
+  runId: string;
+  /** Human-readable run name. */
+  runName: string;
+  /** ISO-8601 timestamp when the run completed. */
+  completedAt: string;
+  /** Fraction of corpus entries where the verdict matched ground truth (0–1). */
+  passRate: number;
+  /** Macro-averaged F1 across all classifications, or null if not computable. */
+  macroF1: number | null;
+  /** Total number of entries evaluated in this run. */
+  totalEntries: number;
+  /** Absolute count of entries that passed. */
+  passed: number;
+}
+
+/**
+ * Return a chronologically-sorted timeline of accuracy snapshots derived from
+ * all completed benchmark runs in localStorage.
+ *
+ * Each snapshot captures the % correct verdicts (passRate) and macro-F1 for
+ * one run, enabling regression / improvement detection across runs over time.
+ * Pending, running, or aborted runs are excluded.
+ */
+export function getAccuracyTimeline(): CorpusAccuracySnapshot[] {
+  return loadStore()
+    .runs
+    .filter(r => r.status === 'complete' && r.summary !== null && r.completedAt !== null)
+    .map(r => ({
+      runId:        r.id,
+      runName:      r.name,
+      completedAt:  r.completedAt!,
+      passRate:     r.summary!.passRate,
+      macroF1:      r.summary!.macroF1,
+      totalEntries: r.summary!.totalEntries,
+      passed:       r.summary!.passed,
+    }))
+    .sort((a, b) => a.completedAt.localeCompare(b.completedAt));
+}

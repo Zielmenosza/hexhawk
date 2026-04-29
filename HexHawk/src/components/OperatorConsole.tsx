@@ -8,6 +8,7 @@ import {
   type ConsoleStep,
   type StepStatus,
   type ExecutionMode,
+  type OutputMode,
   type BinaryContext,
   type ConsoleTab,
 } from '../utils/operatorConsole';
@@ -21,6 +22,12 @@ interface OperatorConsoleProps {
   onNavigateTab: (tab: ConsoleTab) => void;
   /** Binary context from the currently loaded file */
   context: BinaryContext;
+  /** Max queries per session; undefined = unlimited */
+  queryLimit?: number;
+  /** How many queries have been used this session */
+  queriesUsed?: number;
+  /** Called each time a workflow is generated */
+  onQueryUsed?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,6 +51,7 @@ const STATUS_ICONS: Record<StepStatus, string> = {
 interface StepCardProps {
   step: ConsoleStep;
   mode: ExecutionMode;
+  outputMode: OutputMode;
   isActive: boolean;
   onActivate: () => void;
   onNavigate: (tab: ConsoleTab) => void;
@@ -51,7 +59,7 @@ interface StepCardProps {
   onMarkSkipped: () => void;
 }
 
-function StepCard({ step, mode, isActive, onActivate, onNavigate, onMarkDone, onMarkSkipped }: StepCardProps) {
+function StepCard({ step, mode, outputMode, isActive, onActivate, onNavigate, onMarkDone, onMarkSkipped }: StepCardProps) {
   const isDone = step.status === 'done';
   const isSkipped = step.status === 'skipped';
   const isFinished = isDone || isSkipped;
@@ -63,6 +71,39 @@ function StepCard({ step, mode, isActive, onActivate, onNavigate, onMarkDone, on
     onActivate();
   }
 
+  // ── Act mode: compact card (no prose, no context hint) ─────────────────
+  if (outputMode === 'act') {
+    return (
+      <div
+        className={`oc-step oc-step--act${isActive ? ' oc-step--active' : ''}${isFinished ? ' oc-step--finished' : ''}`}
+        data-priority={step.priority}
+      >
+        <span className="oc-step-num">{STATUS_ICONS[step.status]}</span>
+        <span className="oc-step-act-label">{step.stepNumber}. {step.action}</span>
+        <span className="oc-step-tool oc-step-tool--act">{step.tool}</span>
+        {!isFinished && step.tab && mode !== 'guide-only' && (
+          <button className="oc-btn oc-btn-primary oc-btn--compact" onClick={handleNavigate}>
+            Go →
+          </button>
+        )}
+        {!isFinished && (!step.tab || mode === 'guide-only') && (
+          <button className="oc-btn oc-btn-ghost oc-btn--compact" onClick={onActivate}>
+            Start
+          </button>
+        )}
+        {isActive && !isFinished && (
+          <>
+            <button className="oc-btn oc-btn-success oc-btn--compact" onClick={onMarkDone}>✓</button>
+            <button className="oc-btn oc-btn-muted oc-btn--compact" onClick={onMarkSkipped}>⊘</button>
+          </>
+        )}
+        {isDone && <span className="oc-step-done-badge">✓</span>}
+        {isSkipped && <span className="oc-step-skipped-badge">⊘</span>}
+      </div>
+    );
+  }
+
+  // ── Explain mode: full card (current behavior) ─────────────────────────
   return (
     <div
       className={`oc-step${isActive ? ' oc-step--active' : ''}${isFinished ? ' oc-step--finished' : ''}`}
@@ -135,10 +176,12 @@ const QUICK_INTENTS: Array<{ label: string; prompt: string }> = [
 // Main component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function OperatorConsole({ onNavigateTab, context }: OperatorConsoleProps) {
+export default function OperatorConsole({ onNavigateTab, context, queryLimit, queriesUsed = 0, onQueryUsed }: OperatorConsoleProps) {
   const [prompt, setPrompt] = useState('');
+  const queryLimitReached = queryLimit !== undefined && queriesUsed >= queryLimit;
   const [workflow, setWorkflow] = useState<ConsoleWorkflow | null>(null);
   const [mode, setMode] = useState<ExecutionMode>('guided-navigation');
+  const [outputMode, setOutputMode] = useState<OutputMode>('explain');
   const [activeStepId, setActiveStepId] = useState<string | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -151,18 +194,22 @@ export default function OperatorConsole({ onNavigateTab, context }: OperatorCons
   const previewIntent = prompt.trim().length > 0 ? classifyIntent(prompt) : null;
 
   const handleGenerate = useCallback((overridePrompt?: string) => {
+    if (queryLimit !== undefined && queriesUsed >= queryLimit) return;
     const p = overridePrompt ?? prompt;
     const wf = generateWorkflow(p, context);
     setWorkflow(wf);
     setActiveStepId(wf.steps[0]?.id ?? null);
-  }, [prompt, context]);
+    onQueryUsed?.();
+  }, [prompt, context, queryLimit, queriesUsed, onQueryUsed]);
 
   const handleQuickIntent = useCallback((p: string) => {
+    if (queryLimit !== undefined && queriesUsed >= queryLimit) return;
     setPrompt(p);
     const wf = generateWorkflow(p, context);
     setWorkflow(wf);
     setActiveStepId(wf.steps[0]?.id ?? null);
-  }, [context]);
+    onQueryUsed?.();
+  }, [context, queryLimit, queriesUsed, onQueryUsed]);
 
   const handleStepStatus = useCallback((id: string, status: StepStatus) => {
     setWorkflow(prev => {
@@ -219,7 +266,15 @@ export default function OperatorConsole({ onNavigateTab, context }: OperatorCons
           </div>
         )}
 
-        <div className="oc-input-row">
+        {queryLimit !== undefined && (
+          <div className={`oc-query-limit-banner ${queryLimitReached ? 'oc-query-limit-banner--exhausted' : ''}`}>
+            {queryLimitReached
+              ? `Query limit reached (${queryLimit}/${queryLimit}). Upgrade to PRO for unlimited queries.`
+              : `Free tier: ${queriesUsed} / ${queryLimit} queries used this session.`}
+          </div>
+        )}
+
+        <div className="oc-input-row" style={queryLimitReached ? { opacity: 0.4, pointerEvents: 'none' } : undefined}>
           <textarea
             ref={inputRef}
             className="oc-input"
@@ -325,16 +380,32 @@ export default function OperatorConsole({ onNavigateTab, context }: OperatorCons
                                                'Auto-run'}
                 </button>
               ))}
+              <span className="oc-mode-sep">|</span>
+              <span className="oc-mode-label">Output:</span>
+              {(['explain', 'act'] as OutputMode[]).map(om => (
+                <button
+                  key={om}
+                  className={`oc-mode-btn${outputMode === om ? ' oc-mode-btn--active' : ''}`}
+                  onClick={() => setOutputMode(om)}
+                  title={
+                    om === 'explain' ? 'Full reasoning — narrative, context hints, and explanations' :
+                                       'Compact action list — step + tool + Go button only'
+                  }
+                >
+                  {om === 'explain' ? 'Explain' : 'Act'}
+                </button>
+              ))}
             </div>
           </div>
 
           {/* Step list */}
-          <div className="oc-steps">
+          <div className={`oc-steps${outputMode === 'act' ? ' oc-steps--act' : ''}`}>
             {workflow.steps.map(step => (
               <StepCard
                 key={step.id}
                 step={step}
                 mode={mode}
+                outputMode={outputMode}
                 isActive={activeStepId === step.id}
                 onActivate={() => setActiveStepId(step.id)}
                 onNavigate={handleNavigate}

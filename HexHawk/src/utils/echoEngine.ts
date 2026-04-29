@@ -34,7 +34,8 @@ export type EchoCategory =
   | 'compiler-runtime'
   | 'dynamic-load'
   | 'persistence'
-  | 'encoding';
+  | 'encoding'
+  | 'string-decode';
 
 export const ECHO_CATEGORY_LABELS: Record<EchoCategory, string> = {
   'libc-memory':      'Memory Operations',
@@ -52,6 +53,7 @@ export const ECHO_CATEGORY_LABELS: Record<EchoCategory, string> = {
   'dynamic-load':     'Dynamic Loading',
   'persistence':      'Persistence',
   'encoding':         'Encoding / Obfuscation',
+  'string-decode':    'String Decode / Deobfuscation',
 };
 
 export const ECHO_CATEGORY_COLORS: Record<EchoCategory, string> = {
@@ -70,6 +72,7 @@ export const ECHO_CATEGORY_COLORS: Record<EchoCategory, string> = {
   'dynamic-load':     '#9c27b0',
   'persistence':      '#c62828',
   'encoding':         '#ff7043',
+  'string-decode':    '#e040fb',
 };
 
 // ── Echo pattern types ────────────────────────────────────────────────────────
@@ -131,6 +134,7 @@ export interface EchoCorrelationSignal {
   hasCompilerArtifacts:   boolean;
   hasDynamicLoad:         boolean;
   hasPersistence:         boolean;
+  hasStringDecode:        boolean;
   topMatchNames:          string[];   // top 5 display names
   averageConfidence:      number;
   patternDiversity:       number;     // unique category count
@@ -442,6 +446,166 @@ export const ECHO_DB: EchoPattern[] = [
     'RC4 PRGA inner loop — i/j update and swap pattern',
     false
   ),
+
+  // ── Crypto — FLARE-derived ────────────────────────────────────────────────
+
+  ep('echo-aes-sbox-sub',
+    'aes_subbytes',           'AES SubBytes S-box Lookup',
+    'crypto-cipher',
+    ['movzx %r, %sz [%addr + %r]', '??', 'movzx %r, %sz [%addr + %r]', '??',
+     'movzx %r, %sz [%addr + %r]', 'xor %r, %r'],
+    0.60, 83, ['code-decryption'],
+    'AES SubBytes: multiple MOVZX table lookups into the Rijndael S-box followed by XOR mixing',
+    false,
+    { importNames:     ['AES_encrypt', 'AES_decrypt', 'BCryptEncrypt', 'BCryptDecrypt',
+                        'CryptEncrypt', 'CryptDecrypt'],
+      stringFragments: ['aes', 'rijndael', 'sbox', 'AES-'] }
+  ),
+
+  ep('echo-aes-keyschedule',
+    'aes_keyschedule',        'AES Key Expansion (SubWord + RotWord)',
+    'crypto-cipher',
+    ['movzx %r, %sz [%addr + %r]', 'ror %r, %imm', '??', 'xor %r, %r', '??',
+     'xor %r, %sz [%r + %imm]', '??', 'mov %sz [%r + %imm], %r'],
+    0.50, 80, ['code-decryption'],
+    'AES key schedule: SubWord (S-box lookup), RotWord (ROR 8), Rcon XOR',
+    false,
+    { importNames:     ['AES_set_encrypt_key', 'AES_set_decrypt_key', 'BCryptGenerateSymmetricKey'],
+      stringFragments: ['aes', 'key', 'expand', 'schedule'] }
+  ),
+
+  ep('echo-chacha20-qr',
+    'chacha20_quarter_round',  'ChaCha20 Quarter-Round',
+    'crypto-cipher',
+    ['add %r, %r', 'xor %r, %r', 'rol %r, %imm',
+     'add %r, %r', 'xor %r, %r', 'rol %r, %imm',
+     'add %r, %r', 'xor %r, %r', 'rol %r, %imm',
+     'add %r, %r', 'xor %r, %r', 'rol %r, %imm'],
+    0.70, 90, ['code-decryption'],
+    'ChaCha20 quarter-round: four consecutive add→xor→rol chains',
+    false,
+    { stringFragments: ['chacha', 'chacha20', 'salsa', 'expand 32-byte k'] }
+  ),
+
+  ep('echo-tea-round',
+    'tea_round',               'TEA / XTEA Round',
+    'crypto-cipher',
+    ['shl %r, %imm', '??', 'add %r, %r', 'xor %r, %r',
+     'shr %r, %imm', '??', 'add %r, %r', 'xor %r, %r', 'add %r, %r'],
+    0.58, 78, ['code-decryption'],
+    'TEA/XTEA round: dual shl+shr Feistel structure with delta-key addition',
+    false,
+    { stringFragments: ['tea', 'xtea', 'xxtea', 'delta', 'feistel'] }
+  ),
+
+  ep('echo-galois-lfsr',
+    'galois_lfsr',             'Galois LFSR Feedback',
+    'crypto-hash',
+    ['shr %r, %imm', '??', 'jnc', '??', 'xor %r, %imm', '??', 'dec %r', '??', 'jnz'],
+    0.60, 72, [],
+    'Galois-form LFSR: conditional polynomial XOR on carry-out of right-shift',
+    false,
+    { stringFragments: ['lfsr', 'polynomial', 'feedback', 'prng', 'crc'] }
+  ),
+
+  // ── String decode — FLARE-derived ─────────────────────────────────────────
+
+  ep('echo-stack-string',
+    'stack_string_build',      'Stack String Construction',
+    'string-decode',
+    ['mov %sz [%r + %imm], %imm', 'mov %sz [%r + %imm], %imm',
+     'mov %sz [%r + %imm], %imm', 'mov %sz [%r + %imm], %imm',
+     'mov %sz [%r + %imm], %imm', 'mov %sz [%r + %imm], %imm'],
+    0.80, 74, ['code-decryption'],
+    'Consecutive immediate-to-stack byte writes — string assembled on stack to avoid IAT/data-section scanning',
+    false,
+    { stringFragments: ['cmd', 'http', 'exe', 'dll', 'reg', 'run'] }
+  ),
+
+  ep('echo-xor-counter-key',
+    'xor_counter_decode',      'XOR Counter-Keyed String Decode',
+    'string-decode',
+    ['movzx %r, %sz [%r + %r]', 'xor %r, %r', '??', 'mov %sz [%r + %r], %r',
+     'inc %r', 'cmp %r, %imm', '??', 'jb'],
+    0.55, 79, ['code-decryption'],
+    'XOR decode loop where the loop counter contributes to the key — common FLARE obfuscation',
+    false
+  ),
+
+  ep('echo-lookup-table-decode',
+    'table_decode',            'Lookup-Table String Decode',
+    'string-decode',
+    ['and %r, %imm', 'movzx %r, %sz [%addr + %r]', '??',
+     'shl %r, %imm', '??', 'or %r, %r', '??', 'inc %r'],
+    0.52, 72, ['code-decryption'],
+    'Custom decode-table lookup: mask bits, index table, accumulate — covers custom base64 alphabets and substitution ciphers',
+    false,
+    { stringFragments: ['ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
+                        'decode', 'charset', 'alphabet', 'table'] }
+  ),
+
+  ep('echo-wide-xor-decode',
+    'wide_string_xor',         'Wide-String XOR Decode',
+    'string-decode',
+    ['movzx %r, %sz [%r + %r]', 'xor %r, %imm', 'mov %sz [%r + %r], %r',
+     '??', 'add %r, %imm', '??', 'jl'],
+    0.60, 75, ['code-decryption'],
+    'UTF-16 / wide-character XOR decode loop — decodes wchar_t strings at runtime',
+    false
+  ),
+
+  // ── Network — FLARE-derived ───────────────────────────────────────────────
+
+  ep('echo-dns-exfil',
+    'dns_tunnel',              'DNS Tunneling / TXT Record Exfil',
+    'network-io',
+    ['??', 'push %imm', '??', 'push %r', '??', 'call',
+     '??', 'test %r, %r', '??', 'jnz', '??', 'mov %r, %sz [%r + %imm]'],
+    0.48, 72, ['c2-communication', 'data-exfiltration'],
+    'DnsQuery call with TXT record type and result pointer dereference — DNS tunnel or C2 over DNS',
+    false,
+    { importNames:     ['DnsQuery_A', 'DnsQuery_W', 'DnsQueryEx', 'DnsRecordListFree',
+                        'DnsNameCompare_A', 'GetAddrInfoExW'],
+      stringFragments: ['_dns.', '.txt', 'TXT', 'dns', 'tunnel'] }
+  ),
+
+  ep('echo-ssl-schannel',
+    'ssl_schannel',            'SChannel / TLS Handshake',
+    'network-io',
+    ['??', 'call', '??', 'test %r, %r', '??', 'jne',
+     '??', 'call', '??', 'cmp %r, %imm', '??', 'je'],
+    0.48, 72, ['c2-communication'],
+    'SChannel SSPI TLS handshake: AcquireCredentialsHandle → InitializeSecurityContext chain',
+    false,
+    { importNames:     ['AcquireCredentialsHandleA', 'AcquireCredentialsHandleW',
+                        'InitializeSecurityContextA', 'InitializeSecurityContextW',
+                        'EncryptMessage', 'DecryptMessage', 'FreeCredentialsHandle',
+                        'SslStreamToContext'] }
+  ),
+
+  ep('echo-http-beacon',
+    'http_beacon',             'Periodic HTTP Beacon',
+    'network-io',
+    ['push %imm', '??', 'call', '??', 'call', '??', 'test %r, %r', '??', 'call', '??', 'jmp'],
+    0.48, 65, ['c2-communication'],
+    'Sleep + HTTP open/request/send loop — periodic C2 beacon pattern',
+    false,
+    { importNames:     ['Sleep', 'WinHttpSendRequest', 'WinHttpOpenRequest',
+                        'HttpSendRequestA', 'HttpSendRequestW', 'InternetOpenUrlA'],
+      stringFragments: ['beacon', 'sleep', 'interval', 'check-in', 'callback'] }
+  ),
+
+  ep('echo-icmp-tunnel',
+    'icmp_tunnel',             'ICMP Echo Tunnel',
+    'network-io',
+    ['??', 'call', '??', 'test %r, %r', '??', 'lea %r, [%r + %imm]',
+     '??', 'call', '??', 'test %r, %r'],
+    0.50, 70, ['c2-communication', 'data-exfiltration'],
+    'IcmpCreateFile + IcmpSendEcho sequence — covert channel over ICMP echo',
+    false,
+    { importNames:     ['IcmpCreateFile', 'IcmpSendEcho', 'IcmpSendEcho2',
+                        'Icmp6CreateFile', 'Icmp6SendEcho2'] }
+  ),
 ];
 
 // ── Normalization helpers ─────────────────────────────────────────────────────
@@ -671,6 +835,7 @@ export function extractCorrelationSignals(result: EchoScanResult): EchoCorrelati
     hasCompilerArtifacts: cats.has('compiler-runtime'),
     hasDynamicLoad:      cats.has('dynamic-load'),
     hasPersistence:      cats.has('persistence'),
+    hasStringDecode:     cats.has('string-decode'),
     topMatchNames,
     averageConfidence:   avg,
     patternDiversity:    cats.size,

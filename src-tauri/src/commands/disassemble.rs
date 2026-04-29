@@ -1,6 +1,7 @@
 use capstone::prelude::*;
 use object::{Architecture, File as ObjectFile, Object};
 use std::fs;
+use memmap2::MmapOptions;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct DisassembledInstruction {
@@ -47,6 +48,10 @@ pub struct DisassemblyResult {
     pub arch: String,
     pub is_fallback: bool,
     pub instructions: Vec<DisassembledInstruction>,
+    /// True when more instructions exist beyond the returned chunk.
+    pub has_more: bool,
+    /// File byte offset to pass as `offset` for the next chunk (0 when `has_more` is false).
+    pub next_byte_offset: u64,
 }
 
 #[tauri::command]
@@ -54,15 +59,31 @@ pub fn disassemble_file_range(
     path: String,
     offset: usize,
     length: usize,
+    // Maximum number of instructions to return per call. Defaults to 256 when None.
+    max_instructions: Option<u64>,
 ) -> Result<DisassemblyResult, String> {
-    let data = fs::read(&path).map_err(|e| format!("Failed to read file: {}", e))?;
+    // Memory-map the file — no size limit, OS handles paging
+    let file_handle = fs::File::open(&path)
+        .map_err(|e| format!("Failed to open file: {e}"))?;
+    let mmap = unsafe {
+        MmapOptions::new().map(&file_handle)
+            .map_err(|e| format!("Failed to mmap file: {e}"))?
+    };
+    let data: &[u8] = &mmap;
 
     if offset >= data.len() {
-        return Ok(DisassemblyResult { arch: "unknown".into(), is_fallback: false, instructions: vec![] });
+        return Ok(DisassemblyResult {
+            arch: "unknown".into(),
+            is_fallback: false,
+            instructions: vec![],
+            has_more: false,
+            next_byte_offset: 0,
+        });
     }
 
     let end = std::cmp::min(offset + length, data.len());
     let slice = &data[offset..end];
+    let end_file_offset = end as u64;
 
     // Auto-detect architecture from file header; fall back to x86-64
     let detected_arch = ObjectFile::parse(&*data)
@@ -71,11 +92,26 @@ pub fn disassemble_file_range(
 
     let (cs, arch_name, is_fallback) = capstone_for_arch(detected_arch)?;
 
-    let instructions = cs
-        .disasm_all(slice, offset as u64)
+    let limit = max_instructions.unwrap_or(256) as usize;
+
+    // Disassemble up to `limit` instructions.  disasm_count is cheaper than
+    // disasm_all because Capstone stops after reaching the requested count.
+    let insns = cs
+        .disasm_count(slice, offset as u64, limit)
         .map_err(|e| format!("Failed to disassemble: {}", e))?;
 
-    let result = instructions
+    // Determine the file byte offset immediately after the last returned instruction.
+    // `ins.address()` equals `offset as u64 + local_offset_within_slice`, so it
+    // already encodes the file position.
+    let next_byte_offset = insns
+        .iter()
+        .last()
+        .map(|ins| ins.address() + ins.bytes().len() as u64)
+        .unwrap_or(end_file_offset);
+
+    let has_more = next_byte_offset < end_file_offset;
+
+    let result: Vec<DisassembledInstruction> = insns
         .iter()
         .map(|ins| DisassembledInstruction {
             address: ins.address(),
@@ -88,6 +124,8 @@ pub fn disassemble_file_range(
         arch: arch_name.to_string(),
         is_fallback,
         instructions: result,
+        has_more,
+        next_byte_offset,
     })
 }
 

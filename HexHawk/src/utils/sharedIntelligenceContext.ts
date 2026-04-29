@@ -175,10 +175,10 @@ function computeConfirmedThreats(ctx: SharedIntelligenceContext): ConfirmedThrea
       } else {
         threats.set(id, {
           id,
-          label: sig.label,
+          label: sig.finding,
           confirmedByEngines: ['nest'],
           maxConfidence: sig.weight * 10,
-          rationale: `NEST detected "${sig.label}"`,
+          rationale: `NEST detected "${sig.finding}"`,
         });
       }
     }
@@ -198,10 +198,10 @@ function computeConfirmedThreats(ctx: SharedIntelligenceContext): ConfirmedThrea
       } else {
         threats.set(id, {
           id,
-          label: sig.label,
+          label: sig.finding,
           confirmedByEngines: ['strike'],
           maxConfidence: sig.weight * 10,
-          rationale: `STRIKE detected "${sig.label}" at runtime`,
+          rationale: `STRIKE detected "${sig.finding}" at runtime`,
         });
       }
     }

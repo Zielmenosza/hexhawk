@@ -8,7 +8,7 @@
  *   - Export / import corpus as JSON
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   addToCorpus,
   removeFromCorpus,
@@ -60,6 +60,16 @@ function AddEntryForm({ binaryPath, onAdded }: AddEntryFormProps) {
   const [expectedClass, setExpectedClass] = useState('');
   const [notes, setNotes] = useState('');
   const [added, setAdded] = useState(false);
+  const addedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (addedTimerRef.current) {
+        clearTimeout(addedTimerRef.current);
+        addedTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleAdd = useCallback(() => {
     if (!binaryPath) return;
@@ -77,7 +87,13 @@ function AddEntryForm({ binaryPath, onAdded }: AddEntryFormProps) {
     });
     setAdded(true);
     onAdded();
-    setTimeout(() => setAdded(false), 2000);
+    if (addedTimerRef.current) {
+      clearTimeout(addedTimerRef.current);
+    }
+    addedTimerRef.current = setTimeout(() => {
+      setAdded(false);
+      addedTimerRef.current = null;
+    }, 2000);
   }, [binaryPath, groundTruth, expectedClass, notes, onAdded]);
 
   return (
@@ -98,6 +114,7 @@ function AddEntryForm({ binaryPath, onAdded }: AddEntryFormProps) {
           <option value="clean">Clean</option>
           <option value="malicious">Malicious</option>
           <option value="unknown">Unknown</option>
+          <option value="challenge">Challenge</option>
         </select>
       </div>
       <div className="cbp-add-row">
@@ -265,6 +282,16 @@ interface ExportImportProps {
 function ExportImportControls({ onImported }: ExportImportProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+        successTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const handleExport = useCallback(() => {
     const json = exportCorpus();
@@ -291,7 +318,13 @@ function ExportImportControls({ onImported }: ExportImportProps) {
           setSuccess(`Imported ${count} entries.`);
           setError(null);
           onImported();
-          setTimeout(() => setSuccess(null), 3000);
+          if (successTimerRef.current) {
+            clearTimeout(successTimerRef.current);
+          }
+          successTimerRef.current = setTimeout(() => {
+            setSuccess(null);
+            successTimerRef.current = null;
+          }, 3000);
         } catch (err) {
           setError(err instanceof Error ? err.message : String(err));
         }
@@ -381,6 +414,10 @@ export default function CorpusBenchmarkPanel({ binaryPath, onClose }: CorpusBenc
               <div className="cbp-stat">
                 <span className="cbp-stat-lbl cbp-gt-malicious">Malicious</span>
                 <span className="cbp-stat-val">{stats.byGroundTruth.malicious}</span>
+              </div>
+              <div className="cbp-stat">
+                <span className="cbp-stat-lbl cbp-gt-challenge">Challenge</span>
+                <span className="cbp-stat-val">{stats.byGroundTruth.challenge}</span>
               </div>
               <div className="cbp-stat">
                 <span className="cbp-stat-lbl">With NEST</span>

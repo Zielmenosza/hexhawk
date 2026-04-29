@@ -97,7 +97,7 @@ export function detectSwitchPatterns(
 ): SwitchStatement[] {
   const switches: SwitchStatement[] = [];
 
-  for (let i = 0; i < lines.length - 2; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const ln = lines[i];
     if (!ln.text) continue;
 
