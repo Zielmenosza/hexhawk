@@ -96,6 +96,9 @@ export function getPanelFidelityForView(
     sandbox: browserMode ? 'simulation' : 'real-backend',
     debugger: browserMode ? 'simulation' : 'real-backend',
     diff: browserMode ? 'simulation' : 'real-backend',
+    talon: browserMode ? 'simulation' : 'real-backend',
+    agent: browserMode ? 'simulation' : 'real-backend',
+    repl: browserMode ? 'simulation' : 'real-backend',
     plugins: browserMode ? 'simulation' : 'real-backend',
     help: 'ui-only',
     about: 'ui-only',
@@ -107,6 +110,12 @@ export function getPanelFidelityForView(
   }
 
   if (source === 'ui-only') {
+    if (activeView === 'load') {
+      return {
+        source,
+        detail: 'Load view is UI-only path entry. Backend analysis starts when you run Inspect/Hex/Strings/Disassembly actions.',
+      };
+    }
     return {
       source,
       detail: 'Panel is purely client-side UI and does not call analysis backends.',

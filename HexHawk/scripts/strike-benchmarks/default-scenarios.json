@@ -1,0 +1,66 @@
+[
+  {
+    "id": "decoder-loop-oep",
+    "name": "Decoder Loop with OEP Transfer",
+    "description": "Simulates tight decode loop activity and a large handoff jump to a new entry point.",
+    "steps": [
+      { "rip": 4198400, "event": "step" },
+      { "rip": 4198432, "event": "rdtsc" },
+      { "rip": 4198434, "event": "step" },
+      { "rip": 4198436, "event": "step" },
+      { "rip": 4198432, "event": "step" },
+      { "rip": 4198434, "event": "rdtsc" },
+      { "rip": 4198436, "event": "step" },
+      { "rip": 4198432, "event": "step" },
+      { "rip": 4198434, "event": "step" },
+      { "rip": 4198436, "event": "step" },
+      { "rip": 4198432, "event": "step" },
+      { "rip": 4198434, "event": "step" },
+      { "rip": 4198436, "event": "step" },
+      { "rip": 4198432, "event": "step" },
+      { "rip": 4198434, "event": "step" },
+      { "rip": 4198436, "event": "step" },
+      { "rip": 4198432, "event": "step" },
+      { "rip": 4198434, "event": "step" },
+      { "rip": 4198436, "event": "step" },
+      { "rip": 4198432, "event": "step" },
+      { "rip": 4198434, "event": "step" },
+      { "rip": 4198436, "event": "step" },
+      { "rip": 4198432, "event": "step" },
+      { "rip": 4198434, "event": "step" },
+      { "rip": 4198436, "event": "step" },
+      { "rip": 8392704, "event": "jmp handoff" },
+      { "rip": 8392706, "event": "step" },
+      { "rip": 8392708, "event": "step" }
+    ],
+    "expectations": {
+      "requiredPatternTags": ["timing-check", "self-modifying-code", "oep-transfer"],
+      "expectedFinalCallDepth": 0,
+      "minHotBlockPct": 60,
+      "expectedLoop": { "periodLen": 3, "minIterations": 5 },
+      "minRiskScore": 50
+    }
+  },
+  {
+    "id": "nested-calls-and-resolution",
+    "name": "Nested Calls with Dynamic API Resolution",
+    "description": "Simulates nested calls followed by dynamic API resolution and anti-debug activity.",
+    "steps": [
+      { "rip": 5242880, "event": "step" },
+      { "rip": 6291456, "event": " call " },
+      { "rip": 7340032, "event": " call " },
+      { "rip": 6291472, "event": " ret" },
+      { "rip": 5242896, "event": " ret" },
+      { "rip": 9437184, "event": "getprocaddress call" },
+      { "rip": 10616832, "event": "loadlibrary call" },
+      { "rip": 11796480, "event": "jmp call" },
+      { "rip": 11796496, "event": "gs:0x60 peb walk" },
+      { "rip": 11796512, "event": "IsDebuggerPresent" }
+    ],
+    "expectations": {
+      "requiredPatternTags": ["dynamic-api-resolution", "peb-walk", "anti-debug-probe"],
+      "expectedFinalCallDepth": 0,
+      "minRiskScore": 45
+    }
+  }
+]

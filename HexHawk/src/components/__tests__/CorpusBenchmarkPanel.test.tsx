@@ -76,7 +76,7 @@ describe('CorpusBenchmarkPanel timer cleanup', () => {
       onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null;
       readAsText(_file: Blob) {
         if (this.onload) {
-          this.onload.call(this as unknown as FileReader, new ProgressEvent('load'));
+          this.onload.call(this as unknown as FileReader, new ProgressEvent('load') as unknown as ProgressEvent<FileReader>);
         }
       }
     }

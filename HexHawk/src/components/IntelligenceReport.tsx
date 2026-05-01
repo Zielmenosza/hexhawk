@@ -5,7 +5,7 @@
  * Supports downloading as JSON or Markdown.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type {
   BinaryVerdictResult,
   ReasoningStage,
@@ -23,6 +23,37 @@ interface Props {
   architecture?: string;
   fileType?: string;
 }
+
+export interface ReportSnapshot {
+  id: string;
+  generatedAt: string;
+  binaryPath?: string;
+  binaryName: string;
+  binarySize?: number;
+  architecture?: string;
+  fileType?: string;
+  classification: BinaryVerdictResult['classification'];
+  threatScore: number;
+  confidence: number;
+  signalCount: number;
+  iocCount: number;
+  behaviors: BehavioralTag[];
+  summary: string;
+  notes?: string;
+}
+
+export interface ReportComparison {
+  classificationChanged: boolean;
+  threatScoreDelta: number;
+  confidenceDelta: number;
+  signalCountDelta: number;
+  iocCountDelta: number;
+  behaviorsAdded: BehavioralTag[];
+  behaviorsRemoved: BehavioralTag[];
+}
+
+export const REPORT_SNAPSHOTS_STORAGE_KEY = 'hexhawk.reportSnapshots';
+const MAX_REPORT_SNAPSHOTS = 12;
 
 // ─── IOC Extraction ──────────────────────────────────────────────────────────
 
@@ -246,6 +277,81 @@ function formatMarkdown(verdict: BinaryVerdictResult, meta: Props): string {
   return lines.join('\n');
 }
 
+function binaryNameFromPath(binaryPath?: string): string {
+  return binaryPath?.split(/[\\/]/).pop() ?? 'unknown';
+}
+
+export function createReportSnapshot(verdict: BinaryVerdictResult, meta: Props): ReportSnapshot {
+  return {
+    id: `${Date.now()}-${verdict.classification}-${verdict.threatScore}-${verdict.signalCount}`,
+    generatedAt: new Date().toISOString(),
+    binaryPath: meta.binaryPath,
+    binaryName: binaryNameFromPath(meta.binaryPath),
+    binarySize: meta.binarySize,
+    architecture: meta.architecture,
+    fileType: meta.fileType,
+    classification: verdict.classification,
+    threatScore: verdict.threatScore,
+    confidence: verdict.confidence,
+    signalCount: verdict.signalCount,
+    iocCount: extractIocs(verdict).length,
+    behaviors: verdict.behaviors,
+    summary: verdict.summary,
+  };
+}
+
+export function compareReportSnapshots(current: ReportSnapshot, baseline: ReportSnapshot): ReportComparison {
+  const currentBehaviors = new Set(current.behaviors);
+  const baselineBehaviors = new Set(baseline.behaviors);
+
+  return {
+    classificationChanged: current.classification !== baseline.classification,
+    threatScoreDelta: current.threatScore - baseline.threatScore,
+    confidenceDelta: current.confidence - baseline.confidence,
+    signalCountDelta: current.signalCount - baseline.signalCount,
+    iocCountDelta: current.iocCount - baseline.iocCount,
+    behaviorsAdded: current.behaviors.filter(behavior => !baselineBehaviors.has(behavior)),
+    behaviorsRemoved: baseline.behaviors.filter(behavior => !currentBehaviors.has(behavior)),
+  };
+}
+
+function loadStoredSnapshots(): ReportSnapshot[] {
+  if (typeof window === 'undefined') {
+    return [];
+  }
+
+  try {
+    const raw = window.localStorage.getItem(REPORT_SNAPSHOTS_STORAGE_KEY);
+    if (!raw) {
+      return [];
+    }
+
+    const parsed = JSON.parse(raw) as ReportSnapshot[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistSnapshots(snapshots: ReportSnapshot[]): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(REPORT_SNAPSHOTS_STORAGE_KEY, JSON.stringify(snapshots));
+  } catch {
+    // Ignore local persistence failures so reporting remains usable.
+  }
+}
+
+function formatDelta(value: number): string {
+  if (value > 0) {
+    return `+${value}`;
+  }
+  return `${value}`;
+}
+
 function downloadText(content: string, filename: string, mimeType: string) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -256,6 +362,52 @@ function downloadText(content: string, filename: string, mimeType: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export function formatDiffMarkdown(
+  comparison: ReportComparison,
+  current: ReportSnapshot,
+  baseline: ReportSnapshot,
+): string {
+  const lines: string[] = [];
+  lines.push(`# Snapshot Comparison — ${current.binaryName}`);
+  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push('');
+  lines.push('## Baseline Snapshot');
+  lines.push(`- **Saved:** ${new Date(baseline.generatedAt).toLocaleString()}`);
+  lines.push(`- **Classification:** ${baseline.classification}`);
+  lines.push(`- **Threat Score:** ${baseline.threatScore}`);
+  lines.push(`- **Confidence:** ${baseline.confidence}%`);
+  if (baseline.notes) lines.push(`- **Analyst Notes:** ${baseline.notes}`);
+  lines.push('');
+  lines.push('## Current Report');
+  lines.push(`- **Generated:** ${new Date(current.generatedAt).toLocaleString()}`);
+  lines.push(`- **Classification:** ${current.classification}`);
+  lines.push(`- **Threat Score:** ${current.threatScore}`);
+  lines.push(`- **Confidence:** ${current.confidence}%`);
+  if (current.notes) lines.push(`- **Analyst Notes:** ${current.notes}`);
+  lines.push('');
+  lines.push('## Delta');
+  lines.push(`| Metric | Baseline | Current | Delta |`);
+  lines.push(`|--------|----------|---------|-------|`);
+  lines.push(`| Threat Score | ${baseline.threatScore} | ${current.threatScore} | ${formatDelta(comparison.threatScoreDelta)} |`);
+  lines.push(`| Confidence | ${baseline.confidence}% | ${current.confidence}% | ${formatDelta(comparison.confidenceDelta)} |`);
+  lines.push(`| Signals | ${baseline.signalCount} | ${current.signalCount} | ${formatDelta(comparison.signalCountDelta)} |`);
+  lines.push(`| IOCs | ${baseline.iocCount} | ${current.iocCount} | ${formatDelta(comparison.iocCountDelta)} |`);
+  lines.push('');
+  if (comparison.classificationChanged) {
+    lines.push(`**Classification drift:** ${baseline.classification} → ${current.classification}`);
+    lines.push('');
+  }
+  if (comparison.behaviorsAdded.length > 0) {
+    lines.push(`**Behaviors added:** ${comparison.behaviorsAdded.join(', ')}`);
+    lines.push('');
+  }
+  if (comparison.behaviorsRemoved.length > 0) {
+    lines.push(`**Behaviors removed:** ${comparison.behaviorsRemoved.join(', ')}`);
+    lines.push('');
+  }
+  return lines.join('\n');
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -354,6 +506,9 @@ function AlternativesList({ alternatives }: { alternatives: AlternativeHypothesi
 
 export function IntelligenceReport({ verdict, binaryPath, binarySize, architecture, fileType }: Props) {
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [snapshots, setSnapshots] = useState<ReportSnapshot[]>(() => loadStoredSnapshots());
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('');
 
   if (!verdict) {
     return (
@@ -369,6 +524,32 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
 
   const verdictColor = THREAT_COLORS[verdict.classification] ?? '#888';
   const scoreColor = threatScoreColor(verdict.threatScore);
+  const currentSnapshot = useMemo(
+    () => createReportSnapshot(verdict, { verdict, binaryPath, binarySize, architecture, fileType }),
+    [verdict, binaryPath, binarySize, architecture, fileType],
+  );
+  const relevantSnapshots = useMemo(
+    () => snapshots.filter(snapshot => snapshot.binaryPath === binaryPath || snapshot.binaryName === currentSnapshot.binaryName),
+    [snapshots, binaryPath, currentSnapshot.binaryName],
+  );
+  const selectedSnapshot = useMemo(
+    () => relevantSnapshots.find(snapshot => snapshot.id === selectedSnapshotId) ?? relevantSnapshots[0] ?? null,
+    [relevantSnapshots, selectedSnapshotId],
+  );
+  const comparison = useMemo(
+    () => (selectedSnapshot ? compareReportSnapshots(currentSnapshot, selectedSnapshot) : null),
+    [currentSnapshot, selectedSnapshot],
+  );
+
+  useEffect(() => {
+    if (!selectedSnapshotId && relevantSnapshots.length > 0) {
+      setSelectedSnapshotId(relevantSnapshots[0].id);
+    }
+  }, [relevantSnapshots, selectedSnapshotId]);
+
+  useEffect(() => {
+    persistSnapshots(snapshots);
+  }, [snapshots]);
 
   const handleDownloadJSON = () => {
     const report = {
@@ -414,6 +595,49 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleSaveSnapshot = () => {
+    const snapshot = createReportSnapshot(verdict, { verdict, binaryPath, binarySize, architecture, fileType });
+    setSnapshots(prev => {
+      const filtered = prev.filter(existing => !(
+        existing.binaryPath === snapshot.binaryPath
+        && existing.classification === snapshot.classification
+        && existing.threatScore === snapshot.threatScore
+        && existing.confidence === snapshot.confidence
+        && existing.signalCount === snapshot.signalCount
+        && existing.iocCount === snapshot.iocCount
+        && existing.summary === snapshot.summary
+      ));
+      return [snapshot, ...filtered].slice(0, MAX_REPORT_SNAPSHOTS);
+    });
+    setSelectedSnapshotId(snapshot.id);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleUpdateNote = (id: string, notes: string) => {
+    setSnapshots(prev => prev.map(s => s.id === id ? { ...s, notes } : s));
+  };
+
+  const handleExportDiffMarkdown = () => {
+    if (!comparison || !selectedSnapshot) return;
+    const md = formatDiffMarkdown(comparison, currentSnapshot, selectedSnapshot);
+    const safeName = currentSnapshot.binaryName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    downloadText(md, `hexhawk-diff-${safeName}.md`, 'text/markdown');
+  };
+
+  const handleExportDiffJson = () => {
+    if (!comparison || !selectedSnapshot) return;
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      binaryName: currentSnapshot.binaryName,
+      current: currentSnapshot,
+      baseline: selectedSnapshot,
+      comparison,
+    };
+    const safeName = currentSnapshot.binaryName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    downloadText(JSON.stringify(payload, null, 2), `hexhawk-diff-${safeName}.json`, 'application/json');
+  };
+
   return (
     <div className="intelligence-report">
       {/* ── Header ──────────────────────────────────────────────── */}
@@ -423,6 +647,9 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
           <button className="report-btn" onClick={handleDownloadJSON}>↓ JSON</button>
           <button className="report-btn" onClick={handleDownloadMarkdown}>↓ Markdown</button>
           <button className="report-btn" onClick={handleExportIocs}>↓ IOCs</button>
+          <button className="report-btn" onClick={handleSaveSnapshot}>
+            {saved ? '✓ Saved' : '☆ Save Snapshot'}
+          </button>
           <button className="report-btn" onClick={handleCopy}>
             {copied ? '✓ Copied' : '⎘ Copy'}
           </button>
@@ -456,6 +683,92 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
           {architecture && <span><span className="meta-label">Arch:</span> {architecture}</span>}
           {fileType && <span><span className="meta-label">Type:</span> {fileType}</span>}
           {binarySize && <span><span className="meta-label">Size:</span> {binarySize.toLocaleString()} bytes</span>}
+        </div>
+      )}
+
+      {relevantSnapshots.length > 0 && (
+        <div className="report-section">
+          <div className="report-section-title">
+            Saved Snapshots
+            <span className="section-count">{relevantSnapshots.length}</span>
+          </div>
+          <div className="report-snapshot-list">
+            {relevantSnapshots.map(snapshot => (
+              <div
+                key={snapshot.id}
+                className={`report-snapshot-item${snapshot.id === selectedSnapshot?.id ? ' active' : ''}`}
+              >
+                <button
+                  className="report-snapshot-item-btn"
+                  onClick={() => setSelectedSnapshotId(snapshot.id)}
+                  type="button"
+                >
+                  <span className="report-snapshot-score">{snapshot.threatScore}</span>
+                  <span className="report-snapshot-meta">
+                    <strong>{snapshot.classification}</strong>
+                    <span>{new Date(snapshot.generatedAt).toLocaleString()}</span>
+                  </span>
+                </button>
+                <textarea
+                  className="report-snapshot-notes"
+                  placeholder="Analyst notes…"
+                  value={snapshot.notes ?? ''}
+                  rows={1}
+                  onChange={(e) => handleUpdateNote(snapshot.id, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {selectedSnapshot && comparison && (
+        <div className="report-section">
+          <div className="report-section-title">Snapshot Comparison</div>
+          <div className="report-compare-card">
+            <div className="report-compare-header">
+              <div>
+                Comparing current report against snapshot from {new Date(selectedSnapshot.generatedAt).toLocaleString()}
+              </div>
+              <div className="report-compare-subtitle">{selectedSnapshot.binaryName}</div>
+              <div className="report-compare-export-actions">
+                <button className="report-btn report-btn--sm" type="button" onClick={handleExportDiffMarkdown}>↓ Diff MD</button>
+                <button className="report-btn report-btn--sm" type="button" onClick={handleExportDiffJson}>↓ Diff JSON</button>
+              </div>
+            </div>
+            <div className="report-compare-grid">
+              <div className="report-compare-metric">
+                <span className="report-compare-label">Threat score delta</span>
+                <strong>{formatDelta(comparison.threatScoreDelta)}</strong>
+              </div>
+              <div className="report-compare-metric">
+                <span className="report-compare-label">Confidence delta</span>
+                <strong>{formatDelta(comparison.confidenceDelta)}</strong>
+              </div>
+              <div className="report-compare-metric">
+                <span className="report-compare-label">Signal delta</span>
+                <strong>{formatDelta(comparison.signalCountDelta)}</strong>
+              </div>
+              <div className="report-compare-metric">
+                <span className="report-compare-label">IOC delta</span>
+                <strong>{formatDelta(comparison.iocCountDelta)}</strong>
+              </div>
+            </div>
+            <div className="report-compare-summary">
+              <div>
+                <span className="report-compare-label">Classification drift</span>
+                <strong>{comparison.classificationChanged ? `${selectedSnapshot.classification} → ${currentSnapshot.classification}` : 'unchanged'}</strong>
+              </div>
+              <div>
+                <span className="report-compare-label">Behaviors added</span>
+                <strong>{comparison.behaviorsAdded.length > 0 ? comparison.behaviorsAdded.join(', ') : 'none'}</strong>
+              </div>
+              <div>
+                <span className="report-compare-label">Behaviors removed</span>
+                <strong>{comparison.behaviorsRemoved.length > 0 ? comparison.behaviorsRemoved.join(', ') : 'none'}</strong>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

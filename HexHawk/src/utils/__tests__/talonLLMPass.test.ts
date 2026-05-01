@@ -60,7 +60,7 @@ function makeSummary(overrides: Partial<TalonFunctionSummary> = {}): TalonFuncti
 
 function makeLine(
   text:            string,
-  kind:            TalonLine['kind'] = 'statement',
+  kind:            TalonLine['kind'] = 'stmt',
   lineConfidence = 80,
   indent         = 0,
 ): TalonLine {
@@ -98,9 +98,9 @@ describe('buildLLMPrompt', () => {
   it('includes behavioral tags and function address in the prompt header', () => {
     const summary = makeSummary();
     const lines: TalonLine[] = [
-      makeLine('rax₀ = IsDebuggerPresent();', 'statement', 90),
+      makeLine('rax₀ = IsDebuggerPresent();', 'stmt',    90),
       makeLine('if (rax₀ != 0) {',           'control',   85),
-      makeLine('  rax₁ = CryptEncrypt();',    'statement', 35),  // uncertain
+      makeLine('  rax₁ = CryptEncrypt();',    'stmt',      35),  // uncertain
     ];
 
     const prompt = buildLLMPrompt(summary, lines);
@@ -116,8 +116,8 @@ describe('buildLLMPrompt', () => {
   it('marks uncertain lines (lineConfidence < 58) with /* ?? */ annotation', () => {
     const summary = makeSummary({ uncertainStatements: 1 });
     const lines: TalonLine[] = [
-      makeLine('rax₂ = unknown_api();', 'statement', 40),  // uncertain
-      makeLine('return rax₂;',          'statement', 90),  // certain
+      makeLine('rax₂ = unknown_api();', 'stmt', 40),  // uncertain
+      makeLine('return rax₂;',          'stmt', 90),  // certain
     ];
 
     const prompt = buildLLMPrompt(summary, lines);
@@ -140,7 +140,7 @@ describe('buildLLMPrompt', () => {
   it('respects maxLines to cap prompt size', () => {
     const summary  = makeSummary();
     const manyLines = Array.from({ length: 200 }, (_, i) =>
-      makeLine(`var_${i} = ${i};`, 'statement', 80),
+      makeLine(`var_${i} = ${i};`, 'stmt', 80),
     );
 
     const full     = buildLLMPrompt(summary, manyLines, 200);

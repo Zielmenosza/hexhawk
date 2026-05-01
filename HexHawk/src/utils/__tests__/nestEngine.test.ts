@@ -95,6 +95,8 @@ describe('assessConvergence — minIterations guard', () => {
       reasoningChain: [],
       contradictions: [],
       alternatives: [],
+      uncertaintyFlags: [],
+      heuristicSignalIds: [],
     };
     const result = assessConvergence(session, fakeVerdict);
     expect(result.hasConverged).toBe(false);
@@ -130,6 +132,8 @@ describe('assessConvergence — minIterations guard', () => {
         reasoningChain: [],
         contradictions: [],
         alternatives: [],
+        uncertaintyFlags: [],
+        heuristicSignalIds: [],
       },
       confidence,
       delta: null,
@@ -175,6 +179,8 @@ describe('assessConvergence — no-data guard', () => {
       reasoningChain: [],
       contradictions: [],
       alternatives: [],
+      uncertaintyFlags: [],
+      heuristicSignalIds: [],
     };
     const result = assessConvergence(session, emptyVerdict);
     expect(result.reason).toBe('no-data');

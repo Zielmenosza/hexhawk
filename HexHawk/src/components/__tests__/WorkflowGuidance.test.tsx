@@ -13,18 +13,11 @@ import type { DisassemblyAnalysis } from '../../App';
 
 function makeAnalysis(overrides: Partial<DisassemblyAnalysis> = {}): DisassemblyAnalysis {
   return {
-    totalInstructions: 200,
-    uniqueMnemonics: 42,
-    callCount: 8,
-    jumpCount: 12,
-    indirectCalls: 2,
-    stackOps: 25,
-    nopCount: 3,
-    privilegedOps: 0,
-    suspiciousPatterns: [],
-    functionBoundaries: [],
+    functions: new Map(),
     loops: [],
-    dataReferences: [],
+    suspiciousPatterns: [],
+    referenceStrength: new Map(),
+    blockAnalysis: new Map(),
     ...overrides,
   };
 }
@@ -41,7 +34,7 @@ describe('WorkflowGuidance', () => {
     const analysis = makeAnalysis({
       suspiciousPatterns: [
         { type: 'packed', address: 0x1000, description: 'High entropy section', severity: 'high', confidence: 90 },
-      ] as DisassemblyAnalysis['suspiciousPatterns'],
+      ] as unknown as DisassemblyAnalysis['suspiciousPatterns'],
     });
     render(<WorkflowGuidance analysis={analysis} />);
     const html = document.body.innerHTML.toLowerCase();
@@ -54,7 +47,7 @@ describe('WorkflowGuidance', () => {
     const analysis = makeAnalysis({
       suspiciousPatterns: [
         { type: 'anti-debug', address: 0x2000, description: 'IsDebuggerPresent call', severity: 'critical', confidence: 95 },
-      ] as DisassemblyAnalysis['suspiciousPatterns'],
+      ] as unknown as DisassemblyAnalysis['suspiciousPatterns'],
     });
     render(<WorkflowGuidance analysis={analysis} onNavigateToAddress={onNavigateToAddress} />);
     // Find any clickable action links
@@ -72,7 +65,7 @@ describe('WorkflowGuidance', () => {
         { type: 'anti-debug', address: 0x1000, description: 'RDTSC check', severity: 'critical', confidence: 95 },
         { type: 'network', address: 0x2000, description: 'WSAStartup call', severity: 'high', confidence: 88 },
         { type: 'injection', address: 0x3000, description: 'VirtualAllocEx', severity: 'high', confidence: 92 },
-      ] as DisassemblyAnalysis['suspiciousPatterns'],
+      ] as unknown as DisassemblyAnalysis['suspiciousPatterns'],
     });
     const { container } = render(<WorkflowGuidance analysis={analysis} />);
     // Component should render at least one workflow element

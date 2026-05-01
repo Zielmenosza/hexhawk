@@ -5,7 +5,8 @@ export type AnalystAction =
   | 'aerie_mode'
   | 'talon_narrate'
   | 'crest_narration'
-  | 'binary_diff_insight';
+  | 'binary_diff_insight'
+  | 'self_heal';
 
 export interface AnalystAssistRequest {
   action: AnalystAction;
@@ -60,4 +61,8 @@ export function runCrestNarration(request: Omit<AnalystAssistRequest, 'action'>)
 
 export function runBinaryDiffInsight(request: Omit<AnalystAssistRequest, 'action'>) {
   return runAnalystAssist({ ...request, action: 'binary_diff_insight' });
+}
+
+export function runSelfHeal(request: Omit<AnalystAssistRequest, 'action'>) {
+  return runAnalystAssist({ ...request, action: 'self_heal' });
 }

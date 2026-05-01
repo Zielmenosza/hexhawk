@@ -29,6 +29,14 @@
     "active": true,
     "targets": "all",
     "icon": [
+      "icons/16x16.png",
+      "icons/24x24.png",
+      "icons/32x32.png",
+      "icons/48x48.png",
+      "icons/64x64.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/256x256.png",
       "icons/icon.ico"
     ],
     "shortDescription": "Binary analysis and reverse engineering workbench",
@@ -45,15 +53,6 @@
         "componentRefs": [],
         "featureGroupRefs": [],
         "featureRefs": []
-      },
-      "nsis": {
-        "languages": ["English"],
-        "displayLanguageSelector": false,
-        "installerIcon": null,
-        "headerImage": null,
-        "sidebarImage": null,
-        "installMode": "currentUser",
-        "shortcuts": true
       },
       "signCommand": null
     },
@@ -73,7 +72,7 @@
     }
   },
   "plugins": {
-    "dialog": {},
+    "dialog": null,
     "updater": {
       "pubkey": "",
       "endpoints": [

@@ -763,3 +763,150 @@ export function extractCorrelationSignals(
     riskScore:               risk,
   };
 }
+
+// ── Call Stack Reconstruction ─────────────────────────────────────────────────
+
+export interface CallFrame {
+  /** Address of the call instruction that entered this frame. */
+  callSite:      number;
+  /** Address of the function that was called (RIP at first step inside callee). */
+  calleeAddress: number;
+  /** Expected return address (instruction after the call). */
+  returnAddress: number;
+  /** Nesting depth (0 = outermost). */
+  depth:         number;
+}
+
+/**
+ * Walk the timeline and reconstruct a virtual call stack from call/ret events.
+ * Returns the inferred stack at the current playhead position, or the full
+ * history of frames seen if playheadIndex is −1.
+ */
+export function buildCallStack(timeline: StrikeTimeline): CallFrame[] {
+  const stack: CallFrame[] = [];
+  const steps = timeline.playheadIndex >= 0
+    ? timeline.steps.slice(0, timeline.playheadIndex + 1)
+    : timeline.steps;
+
+  for (const step of steps) {
+    const d = step.delta;
+    if (!d) continue;
+
+    if (d.jumpType === 'call') {
+      stack.push({
+        callSite:      d.prevRip,
+        calleeAddress: d.rip,
+        returnAddress: d.prevRip + (d.ripOffset < 0 ? 0 : d.ripOffset <= 15 ? d.ripOffset : 5),
+        depth:         stack.length,
+      });
+    } else if (d.jumpType === 'ret') {
+      stack.pop();
+    }
+  }
+
+  return stack;
+}
+
+// ── Hot-Block Profiling ───────────────────────────────────────────────────────
+
+export interface HotBlock {
+  /** Representative RIP address for this block bucket. */
+  address: number;
+  /** Number of steps that executed in this bucket. */
+  count:   number;
+  /** Percentage of total steps in this block. */
+  pct:     number;
+}
+
+/**
+ * Bucket RIP addresses into `blockSize`-byte windows and count visits.
+ * Returns blocks sorted by count descending (hottest first).
+ */
+export function computeHotBlocks(
+  timeline: StrikeTimeline,
+  blockSize = 64,
+): HotBlock[] {
+  const steps = timeline.playheadIndex >= 0
+    ? timeline.steps.slice(0, timeline.playheadIndex + 1)
+    : timeline.steps;
+
+  const counts = new Map<number, number>();
+  for (const step of steps) {
+    const bucket = Math.floor(step.snapshot.registers.rip / blockSize) * blockSize;
+    counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
+  }
+
+  const total = steps.length || 1;
+  return [...counts.entries()]
+    .map(([address, count]) => ({ address, count, pct: Math.round((count / total) * 1000) / 10 }))
+    .sort((a, b) => b.count - a.count);
+}
+
+// ── Execution Loop Detection ──────────────────────────────────────────────────
+
+export interface ExecutionLoop {
+  /** Index in timeline.steps where the first iteration begins. */
+  startStep:  number;
+  /** Number of steps per single loop iteration. */
+  periodLen:  number;
+  /** Number of detected iterations. */
+  iterations: number;
+  /** RIP addresses of the first iteration (representative addresses). */
+  addresses:  number[];
+}
+
+/**
+ * Detect repeated sequences of RIP values in the timeline using a sliding
+ * window autocorrelation.  Useful for identifying tight loops, decode stubs,
+ * or repeated function calls.
+ *
+ * Only windows where `iterations >= minIterations` are reported.
+ */
+export function detectExecutionLoops(
+  timeline: StrikeTimeline,
+  maxPeriod   = 32,
+  minIterations = 3,
+): ExecutionLoop[] {
+  const steps = timeline.playheadIndex >= 0
+    ? timeline.steps.slice(0, timeline.playheadIndex + 1)
+    : timeline.steps;
+
+  const rips = steps.map(s => s.snapshot.registers.rip);
+  const results: ExecutionLoop[] = [];
+  const reported = new Set<string>();
+
+  for (let period = 2; period <= maxPeriod; period++) {
+    let i = 0;
+    while (i + period < rips.length) {
+      // Count how many consecutive iterations match at this period
+      let iters = 1;
+      while (i + (iters + 1) * period <= rips.length) {
+        let match = true;
+        for (let k = 0; k < period; k++) {
+          if (rips[i + k] !== rips[i + iters * period + k]) { match = false; break; }
+        }
+        if (!match) break;
+        iters++;
+      }
+
+      if (iters >= minIterations) {
+        const key = `${i}:${period}`;
+        if (!reported.has(key)) {
+          reported.add(key);
+          results.push({
+            startStep:  i,
+            periodLen:  period,
+            iterations: iters,
+            addresses:  rips.slice(i, i + period),
+          });
+        }
+        i += iters * period; // skip past this loop
+      } else {
+        i++;
+      }
+    }
+  }
+
+  // Sort: most iterations first, break ties by earlier start step
+  return results.sort((a, b) => b.iterations - a.iterations || a.startStep - b.startStep);
+}

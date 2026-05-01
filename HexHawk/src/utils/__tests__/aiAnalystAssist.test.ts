@@ -25,6 +25,7 @@ import {
   runTalonNarrate,
   runCrestNarration,
   runBinaryDiffInsight,
+  runSelfHeal,
   type AnalystAssistRequest,
   type AnalystAssistResponse,
 } from '../aiAnalystAssist';
@@ -222,6 +223,17 @@ describe('runBinaryDiffInsight', () => {
 
     const [, args] = mockInvoke.mock.calls[0] as [string, { request: AnalystAssistRequest }];
     expect(args.request.action).toBe('binary_diff_insight');
+  });
+});
+
+describe('runSelfHeal', () => {
+  it('calls invoke with action=self_heal', async () => {
+    mockInvoke.mockResolvedValueOnce(makeResponse('self_heal'));
+
+    await runSelfHeal(BASE_REQUEST);
+
+    const [, args] = mockInvoke.mock.calls[0] as [string, { request: AnalystAssistRequest }];
+    expect(args.request.action).toBe('self_heal');
   });
 });
 

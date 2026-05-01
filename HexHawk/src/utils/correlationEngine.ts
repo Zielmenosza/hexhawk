@@ -38,7 +38,7 @@ export type BinaryClassification =
   | 'likely-malware'
   | 'unknown';
 
-export type SignalSource = 'structure' | 'imports' | 'strings' | 'disassembly' | 'signatures';
+export type SignalSource = 'structure' | 'imports' | 'strings' | 'disassembly' | 'signatures' | 'agent';
 
 /**
  * Evidence quality tier — used to weight confidence so that weak heuristic
@@ -269,6 +269,20 @@ export interface CorrelationInput {
    * Omit (or undefined) to skip dampening — used by standalone / UI calls.
    */
   iterationIndex?: number;
+  /**
+   * Optional: analyst-approved signals injected by an external AI agent via
+   * the MCP `inject_agent_signal` tool.  These signals carry source:'agent'
+   * and certainty:'heuristic' unless overridden by the agent's own value.
+   *
+   * Signals in this list have already passed the human approval gate in the
+   * HexHawk UI; they are treated as trusted analyst input at this point.
+   */
+  agentSignals?: Array<{
+    id: string;
+    finding: string;
+    weight: number;
+    certainty?: 'observed' | 'inferred' | 'heuristic';
+  }>;
 }
 
 // ─── Dangerous Import Sets ────────────────────────────────────────────────────
@@ -289,12 +303,34 @@ const INJECTION_IMPORTS = new Set([
 ]);
 
 const NETWORK_IMPORTS = new Set([
+  // WinINet / WinHTTP / URLMon APIs
   'InternetOpen', 'InternetConnect', 'HttpSendRequest', 'URLDownloadToFile',
-  'WSAStartup', 'connect', 'send', 'recv', 'WinHttpOpen', 'WinHttpConnect',
+  'WinHttpOpen', 'WinHttpConnect', 'WinHttpSendRequest', 'WinHttpReceiveResponse',
+  // Winsock 2 core APIs — WSASocketW/A omitted from many older lists but equally significant
+  'WSAStartup', 'WSACleanup', 'WSASocketA', 'WSASocketW', 'WSAIoctl', 'WSAPoll',
+  'connect', 'send', 'recv', 'sendto', 'recvfrom',
+  'socket', 'bind', 'listen', 'accept', 'closesocket', 'ioctlsocket',
+  'setsockopt', 'getsockopt', 'getpeername', 'getsockname',
+  // DNS / name resolution APIs
+  'getaddrinfo', 'GetAddrInfoW', 'getnameinfo', 'GetNameInfoW',
+  'freeaddrinfo', 'FreeAddrInfoW',
+  'gethostbyname', 'gethostbyaddr',
 ]);
 
 const CRYPTO_IMPORTS = new Set([
-  'CryptEncrypt', 'CryptDecrypt', 'CryptGenRandom', 'BCryptEncrypt', 'BCryptDecrypt',
+  // Classic CryptoAPI
+  'CryptEncrypt', 'CryptDecrypt', 'CryptGenRandom', 'CryptAcquireContext',
+  'CryptCreateHash', 'CryptHashData', 'CryptGetHashParam', 'CryptDeriveKey',
+  'CryptImportKey', 'CryptExportKey', 'CryptSetKeyParam',
+  // Modern CNG / BCrypt family — all indicate deliberate crypto usage
+  'BCryptOpenAlgorithmProvider', 'BCryptCloseAlgorithmProvider',
+  'BCryptCreateHash', 'BCryptHashData', 'BCryptFinishHash', 'BCryptDestroyHash',
+  'BCryptGenerateSymmetricKey', 'BCryptImportKey', 'BCryptImportKeyPair',
+  'BCryptExportKey', 'BCryptDestroyKey',
+  'BCryptEncrypt', 'BCryptDecrypt',
+  'BCryptSetProperty', 'BCryptGetProperty',
+  'BCryptDeriveKey', 'BCryptKeyDerivation',
+  'BCryptGenRandom', 'BCryptSignHash', 'BCryptVerifySignature',
 ]);
 
 const FILE_IMPORTS = new Set([
@@ -372,10 +408,19 @@ const SHUTDOWN_IMPORTS = new Set([
  * other processes — core primitives for process hollowing and injection.
  */
 const THREADING_IMPORTS = new Set([
-  'CreateThread',
-  'SuspendThread', 'ResumeThread',
-  'SetThreadContext', 'GetThreadContext',
-  'TerminateThread', 'QueueUserAPC',
+  // Classic thread lifecycle
+  'CreateThread', 'CreateRemoteThread', 'CreateRemoteThreadEx',
+  'SuspendThread', 'ResumeThread', 'TerminateThread',
+  // Thread context hijack (classic injection primitive)
+  'SetThreadContext', 'GetThreadContext', 'Wow64SetThreadContext', 'Wow64GetThreadContext',
+  // APC injection
+  'QueueUserAPC', 'NtQueueApcThread',
+  // SRW locks (used by modern multi-threaded malware C++ toolkits)
+  'InitializeSRWLock', 'AcquireSRWLockExclusive', 'AcquireSRWLockShared',
+  'ReleaseSRWLockExclusive', 'ReleaseSRWLockShared', 'TryAcquireSRWLockExclusive',
+  // Condition variables (co-occur with SRW in multi-threaded RAT frameworks)
+  'InitializeConditionVariable', 'SleepConditionVariableSRW', 'SleepConditionVariableCS',
+  'WakeAllConditionVariable', 'WakeConditionVariable',
 ]);
 
 /**
@@ -850,6 +895,33 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
       corroboratedBy: [],
     });
   }
+  // ── 3c. Embedded-runtime / bundled-interpreter signal ─────────────────────
+  // PyInstaller and similar tools (cx_Freeze, Nuitka, py2exe) produce executables
+  // with an embedded Python interpreter + bytecode + all imported modules.  The
+  // resulting binary has an extremely large string catalog: the module source paths,
+  // class/function names, and constant strings from every bundled library are all
+  // present as ASCII strings in the binary.  A unique-string count above 80,000
+  // is essentially impossible for a natively compiled binary — it is a reliable
+  // fingerprint of a PyInstaller-style bundle or similarly embedded runtime.
+  // Weight 10 → contributes strongly to the "packer" verdict profile.
+  if (input.strings.length > 80_000) {
+    signals.push({
+      source: 'strings',
+      id: 'embedded-runtime-bundle',
+      finding: `${input.strings.length.toLocaleString()} unique strings extracted — consistent with a PyInstaller / cx_Freeze / Nuitka bundled executable embedding a full Python (or other) interpreter runtime`,
+      weight: 10,
+      corroboratedBy: [],
+    });
+  } else if (input.strings.length > 30_000) {
+    signals.push({
+      source: 'strings',
+      id: 'large-string-catalog',
+      finding: `${input.strings.length.toLocaleString()} unique strings — unusually large string catalog; may contain embedded scripting runtime or extensive static data`,
+      weight: 5,
+      corroboratedBy: [],
+    });
+  }
+
   const criticalPatterns = input.patterns.filter(p => p.severity === 'critical');
   // Anti-analysis patterns: ONLY those with specific obfuscation-technique
   // descriptions in DISASSEMBLY patterns (not structure/import signals).
@@ -1232,6 +1304,8 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     hasAntiDebug: signals.some(s => s.id === 'antidebug-imports' || s.id === 'anti-analysis-patterns'),
     hasExec: hasExecSignal(signals),
     hasWiperSignal: signals.some(s => s.id === 'wiper-composite'),
+    hasEmbeddedRuntime: signals.some(s => s.id === 'embedded-runtime-bundle'),
+    hasRatComposite: signals.some(s => s.id === 'rat-composite'),
     signalCount: signals.length,
     negativesDominate,
     negativeSignalCount: negativeSignals.length,
@@ -1927,6 +2001,21 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     hasFileSignal, hasRegistrySignal, threatScore, confidence
   });
 
+  // ── 21. Agent-injected signals (analyst-approved, source:'agent') ─────────
+  if (input.agentSignals && input.agentSignals.length > 0) {
+    for (const ag of input.agentSignals) {
+      signals.push({
+        source: 'agent',
+        id: ag.id,
+        finding: ag.finding,
+        weight: Math.max(0, Math.min(10, ag.weight)),
+        corroboratedBy: [],
+        certainty: ag.certainty ?? 'heuristic',
+        tier: ag.weight >= 7 ? 'DIRECT' : ag.weight >= 4 ? 'STRONG' : 'WEAK',
+      });
+    }
+  }
+
   return {
     classification,
     threatScore,
@@ -2031,6 +2120,10 @@ interface ClassifyInput {
   hasAntiDebug: boolean;
   hasExec: boolean;
   hasWiperSignal: boolean;
+  /** True when string count signals an embedded runtime bundle (PyInstaller, etc.) */
+  hasEmbeddedRuntime: boolean;
+  /** True when the rat-composite signal fired (≥3/5 RAT-characteristic categories) */
+  hasRatComposite: boolean;
   signalCount: number;
   /** True when the negative signals dominate the picture (e.g., large clean GUI app) */
   negativesDominate: boolean;
@@ -2078,6 +2171,11 @@ function classify(c: ClassifyInput): BinaryClassification {
 
   // RAT: injection + network
   if (c.hasInjectionSignal && c.hasNetworkSignal && c.threatScore >= 30) return 'rat';
+  // rat-composite fires when ≥3/5 RAT-characteristic signal families co-occur
+  // (system-enum, OS-fingerprint, network, anti-debug, thread-manip).
+  // This catches modern RATs that use SRW locks and WSA sockets but omit
+  // classic injection APIs (VirtualAllocEx, WriteProcessMemory).
+  if (c.hasRatComposite && c.hasNetworkSignal && c.threatScore >= 30) return 'rat';
 
   // Dropper: downloads/extracts a payload and executes it.
   //
@@ -2110,6 +2208,9 @@ function classify(c: ClassifyInput): BinaryClassification {
 
   // Loader: minimal imports + high entropy + dynamic load
   if (c.hasMinimalImports && c.hasHighEntropy) return 'packer';
+
+  // PyInstaller / bundled runtime: large string catalog signals embedded interpreter
+  if (c.hasEmbeddedRuntime) return 'packer';
 
   // Packer: high entropy, few imports
   if (c.hasHighEntropy && !c.hasDangerousImports) return 'packer';

@@ -34,6 +34,21 @@ jobs:
         env:
           VITEST_ENV: node
 
+      - name: Build challenge-derived STRIKE fixtures
+        run: yarn workspace hexhawk-ui strike:fixtures
+
+      - name: STRIKE benchmark drift gate
+        run: yarn workspace hexhawk-ui strike:benchmark --stability-runs 3 --max-score-drop 5
+
+      - name: Upload STRIKE benchmark report
+        uses: actions/upload-artifact@v4
+        with:
+          name: strike-benchmark-report
+          path: |
+            nest_tests/strike_benchmarks/latest.json
+            nest_tests/strike_benchmarks/latest.md
+          if-no-files-found: warn
+
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:

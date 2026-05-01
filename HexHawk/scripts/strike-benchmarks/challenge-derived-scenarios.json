@@ -1,0 +1,886 @@
+[
+  {
+    "id": "challenge-1-drillbabydrill",
+    "name": "Challenge Replay - 1 - DrillBabyDrill",
+    "description": "Derived from real NEST session logs (1 - DrillBabyDrill), verdict=suspicious, confidence=16, iterations=2, stop=max-iterations",
+    "source": {
+      "challenge": "1 - DrillBabyDrill",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\1 - DrillBabyDrill",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\1 - DrillBabyDrill\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\1 - DrillBabyDrill\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4658060,
+        "event": "step"
+      },
+      {
+        "rip": 4658062,
+        "event": "step"
+      },
+      {
+        "rip": 4658068,
+        "event": "call local"
+      },
+      {
+        "rip": 4658070,
+        "event": "step"
+      },
+      {
+        "rip": 4658074,
+        "event": "ret local"
+      },
+      {
+        "rip": 4658078,
+        "event": "step"
+      },
+      {
+        "rip": 4658082,
+        "event": "step"
+      },
+      {
+        "rip": 4658086,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "forbiddenPatternTags": [
+        "dynamic-api-resolution",
+        "self-modifying-code",
+        "oep-transfer",
+        "anti-debug-probe",
+        "rop-chain"
+      ],
+      "maxRiskScore": 15
+    }
+  },
+  {
+    "id": "challenge-10000",
+    "name": "Challenge Replay - 10000",
+    "description": "Derived from real NEST session logs (10000), verdict=dropper, confidence=25, iterations=5, stop=plateau",
+    "source": {
+      "challenge": "10000",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\9 - 10000\\10000.exe",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\10000\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\10000\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4787121,
+        "event": "step"
+      },
+      {
+        "rip": 5114801,
+        "event": "getprocaddress call"
+      },
+      {
+        "rip": 5450673,
+        "event": "loadlibrary call"
+      },
+      {
+        "rip": 5782449,
+        "event": "jmp resolver"
+      },
+      {
+        "rip": 5782465,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "requiredPatternTags": [
+        "dynamic-api-resolution"
+      ],
+      "minRiskScore": 20
+    }
+  },
+  {
+    "id": "challenge-4-unholydragon",
+    "name": "Challenge Replay - 4 - UnholyDragon",
+    "description": "Derived from real NEST session logs (4 - UnholyDragon), verdict=suspicious, confidence=16, iterations=2, stop=max-iterations",
+    "source": {
+      "challenge": "4 - UnholyDragon",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\4 - UnholyDragon",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\4 - UnholyDragon\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\4 - UnholyDragon\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 5046783,
+        "event": "step"
+      },
+      {
+        "rip": 5046785,
+        "event": "step"
+      },
+      {
+        "rip": 5046791,
+        "event": "call local"
+      },
+      {
+        "rip": 5046793,
+        "event": "step"
+      },
+      {
+        "rip": 5046797,
+        "event": "ret local"
+      },
+      {
+        "rip": 5046801,
+        "event": "step"
+      },
+      {
+        "rip": 5046805,
+        "event": "step"
+      },
+      {
+        "rip": 5046809,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "forbiddenPatternTags": [
+        "dynamic-api-resolution",
+        "self-modifying-code",
+        "oep-transfer",
+        "anti-debug-probe",
+        "rop-chain"
+      ],
+      "maxRiskScore": 15
+    }
+  },
+  {
+    "id": "challenge-chat-client",
+    "name": "Challenge Replay - chat_client",
+    "description": "Derived from real NEST session logs (chat_client), verdict=dropper, confidence=41, iterations=5, stop=plateau",
+    "source": {
+      "challenge": "chat_client",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\6 - Chain of Demands\\chat_client",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\chat_client\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\chat_client\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4221586,
+        "event": "step"
+      },
+      {
+        "rip": 4549266,
+        "event": "getprocaddress call"
+      },
+      {
+        "rip": 4885138,
+        "event": "loadlibrary call"
+      },
+      {
+        "rip": 5216914,
+        "event": "jmp resolver"
+      },
+      {
+        "rip": 5216930,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "requiredPatternTags": [
+        "dynamic-api-resolution"
+      ],
+      "minRiskScore": 20
+    }
+  },
+  {
+    "id": "challenge-crackme-shroud",
+    "name": "Challenge Replay - crackme_shroud",
+    "description": "Derived from real NEST session logs (crackme_shroud), verdict=dropper, confidence=99, iterations=4, stop=confidence-threshold",
+    "source": {
+      "challenge": "crackme_shroud",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\crackme_shroud.exe",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\crackme_shroud\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\crackme_shroud\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4669806,
+        "event": "step"
+      },
+      {
+        "rip": 4997486,
+        "event": "getprocaddress call"
+      },
+      {
+        "rip": 5333358,
+        "event": "loadlibrary call"
+      },
+      {
+        "rip": 5665134,
+        "event": "jmp resolver"
+      },
+      {
+        "rip": 5665150,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "requiredPatternTags": [
+        "dynamic-api-resolution"
+      ],
+      "minRiskScore": 30
+    }
+  },
+  {
+    "id": "challenge-drillbabydrill",
+    "name": "Challenge Replay - DrillBabyDrill",
+    "description": "Derived from real NEST session logs (DrillBabyDrill), verdict=suspicious, confidence=10, iterations=2, stop=max-iterations",
+    "source": {
+      "challenge": "DrillBabyDrill",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\1 - DrillBabyDrill\\DrillBabyDrill.py",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\DrillBabyDrill\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\DrillBabyDrill\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 5096234,
+        "event": "step"
+      },
+      {
+        "rip": 5096236,
+        "event": "step"
+      },
+      {
+        "rip": 5096242,
+        "event": "call local"
+      },
+      {
+        "rip": 5096244,
+        "event": "step"
+      },
+      {
+        "rip": 5096248,
+        "event": "ret local"
+      },
+      {
+        "rip": 5096252,
+        "event": "step"
+      },
+      {
+        "rip": 5096256,
+        "event": "step"
+      },
+      {
+        "rip": 5096260,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "forbiddenPatternTags": [
+        "dynamic-api-resolution",
+        "self-modifying-code",
+        "oep-transfer",
+        "anti-debug-probe",
+        "rop-chain"
+      ],
+      "maxRiskScore": 15
+    }
+  },
+  {
+    "id": "challenge-flareauthenticator",
+    "name": "Challenge Replay - FlareAuthenticator",
+    "description": "Derived from real NEST session logs (FlareAuthenticator), verdict=packer, confidence=44, iterations=5, stop=plateau",
+    "source": {
+      "challenge": "FlareAuthenticator",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\8 - FlareAuthenticator\\FlareAuthenticator.exe",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\FlareAuthenticator\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\FlareAuthenticator\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4612197,
+        "event": "step"
+      },
+      {
+        "rip": 4612199,
+        "event": "step"
+      },
+      {
+        "rip": 4612201,
+        "event": "step"
+      },
+      {
+        "rip": 4612203,
+        "event": "step"
+      },
+      {
+        "rip": 4612197,
+        "event": "step"
+      },
+      {
+        "rip": 4612199,
+        "event": "step"
+      },
+      {
+        "rip": 4612201,
+        "event": "step"
+      },
+      {
+        "rip": 4612203,
+        "event": "step"
+      },
+      {
+        "rip": 4612197,
+        "event": "step"
+      },
+      {
+        "rip": 4612199,
+        "event": "step"
+      },
+      {
+        "rip": 4612201,
+        "event": "step"
+      },
+      {
+        "rip": 4612203,
+        "event": "step"
+      },
+      {
+        "rip": 4612197,
+        "event": "step"
+      },
+      {
+        "rip": 4612199,
+        "event": "step"
+      },
+      {
+        "rip": 4612201,
+        "event": "step"
+      },
+      {
+        "rip": 4612203,
+        "event": "step"
+      },
+      {
+        "rip": 4612197,
+        "event": "step"
+      },
+      {
+        "rip": 4612199,
+        "event": "step"
+      },
+      {
+        "rip": 4612201,
+        "event": "step"
+      },
+      {
+        "rip": 4612203,
+        "event": "step"
+      },
+      {
+        "rip": 4612197,
+        "event": "step"
+      },
+      {
+        "rip": 4612199,
+        "event": "step"
+      },
+      {
+        "rip": 4612201,
+        "event": "step"
+      },
+      {
+        "rip": 4612203,
+        "event": "step"
+      },
+      {
+        "rip": 14045285,
+        "event": "jmp handoff"
+      },
+      {
+        "rip": 14045291,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "requiredPatternTags": [
+        "self-modifying-code",
+        "oep-transfer"
+      ],
+      "minHotBlockPct": 8,
+      "minRiskScore": 35
+    }
+  },
+  {
+    "id": "challenge-gujian3",
+    "name": "Challenge Replay - Gujian3",
+    "description": "Derived from real NEST session logs (Gujian3), verdict=dropper, confidence=79, iterations=4, stop=confidence-threshold",
+    "source": {
+      "challenge": "Gujian3",
+      "targetPath": "..\\Challenges\\Gujian3.exe",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\Gujian3\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\Gujian3\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4743097,
+        "event": "step"
+      },
+      {
+        "rip": 5070777,
+        "event": "getprocaddress call"
+      },
+      {
+        "rip": 5406649,
+        "event": "loadlibrary call"
+      },
+      {
+        "rip": 5738425,
+        "event": "jmp resolver"
+      },
+      {
+        "rip": 5738441,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "requiredPatternTags": [
+        "dynamic-api-resolution"
+      ],
+      "minRiskScore": 24
+    }
+  },
+  {
+    "id": "challenge-hopeanddreams",
+    "name": "Challenge Replay - hopeanddreams",
+    "description": "Derived from real NEST session logs (hopeanddreams), verdict=rat, confidence=72, iterations=5, stop=plateau",
+    "source": {
+      "challenge": "hopeanddreams",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\7 - The Boss Needs Help\\hopeanddreams.exe",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\hopeanddreams\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\hopeanddreams\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4334507,
+        "event": "step"
+      },
+      {
+        "rip": 4334555,
+        "event": "IsDebuggerPresent"
+      },
+      {
+        "rip": 4334573,
+        "event": "gs:0x60 peb walk"
+      },
+      {
+        "rip": 4662187,
+        "event": "getprocaddress call"
+      },
+      {
+        "rip": 4993963,
+        "event": "loadlibrary call"
+      },
+      {
+        "rip": 5350315,
+        "event": "jmp resolver"
+      },
+      {
+        "rip": 5350331,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "requiredPatternTags": [
+        "anti-debug-probe",
+        "peb-walk",
+        "dynamic-api-resolution"
+      ],
+      "minRiskScore": 54
+    }
+  },
+  {
+    "id": "challenge-keygenme",
+    "name": "Challenge Replay - keygenme",
+    "description": "Derived from real NEST session logs (keygenme), verdict=dropper, confidence=99, iterations=4, stop=confidence-threshold",
+    "source": {
+      "challenge": "keygenme",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\ch76\\keygenme.exe",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\keygenme\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\keygenme\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4754921,
+        "event": "step"
+      },
+      {
+        "rip": 5082601,
+        "event": "getprocaddress call"
+      },
+      {
+        "rip": 5418473,
+        "event": "loadlibrary call"
+      },
+      {
+        "rip": 5750249,
+        "event": "jmp resolver"
+      },
+      {
+        "rip": 5750265,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "requiredPatternTags": [
+        "dynamic-api-resolution"
+      ],
+      "minRiskScore": 30
+    }
+  },
+  {
+    "id": "challenge-ntfsm",
+    "name": "Challenge Replay - ntfsm",
+    "description": "Derived from real NEST session logs (ntfsm), verdict=ransomware-like, confidence=66, iterations=5, stop=plateau",
+    "source": {
+      "challenge": "ntfsm",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\5 - ntfsm\\ntfsm.exe",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\ntfsm\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\ntfsm\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4489658,
+        "event": "step"
+      },
+      {
+        "rip": 4489660,
+        "event": "step"
+      },
+      {
+        "rip": 4489660,
+        "event": "rdtsc"
+      },
+      {
+        "rip": 4489662,
+        "event": "exception single-step trap"
+      },
+      {
+        "rip": 4489661,
+        "event": "rdtsc"
+      },
+      {
+        "rip": 4489662,
+        "event": "step"
+      },
+      {
+        "rip": 4489664,
+        "event": "step"
+      },
+      {
+        "rip": 4489658,
+        "event": "step"
+      },
+      {
+        "rip": 4489660,
+        "event": "step"
+      },
+      {
+        "rip": 4489662,
+        "event": "step"
+      },
+      {
+        "rip": 4489664,
+        "event": "step"
+      },
+      {
+        "rip": 4489658,
+        "event": "step"
+      },
+      {
+        "rip": 4489660,
+        "event": "step"
+      },
+      {
+        "rip": 4489662,
+        "event": "step"
+      },
+      {
+        "rip": 4489664,
+        "event": "step"
+      },
+      {
+        "rip": 4489658,
+        "event": "step"
+      },
+      {
+        "rip": 4489660,
+        "event": "step"
+      },
+      {
+        "rip": 4489662,
+        "event": "step"
+      },
+      {
+        "rip": 4489664,
+        "event": "step"
+      },
+      {
+        "rip": 4489658,
+        "event": "step"
+      },
+      {
+        "rip": 4489660,
+        "event": "step"
+      },
+      {
+        "rip": 4489662,
+        "event": "step"
+      },
+      {
+        "rip": 4489664,
+        "event": "step"
+      },
+      {
+        "rip": 4489658,
+        "event": "step"
+      },
+      {
+        "rip": 4489660,
+        "event": "step"
+      },
+      {
+        "rip": 14967226,
+        "event": "jmp handoff"
+      },
+      {
+        "rip": 14967234,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "requiredPatternTags": [
+        "timing-check",
+        "exception-probe",
+        "self-modifying-code",
+        "oep-transfer"
+      ],
+      "minHotBlockPct": 8,
+      "minRiskScore": 53
+    }
+  },
+  {
+    "id": "challenge-pretty-devilish-file",
+    "name": "Challenge Replay - pretty_devilish_file",
+    "description": "Derived from real NEST session logs (pretty_devilish_file), verdict=suspicious, confidence=13, iterations=5, stop=plateau",
+    "source": {
+      "challenge": "pretty_devilish_file",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\3 - pretty_devilish_file\\pretty_devilish_file.pdf",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\pretty_devilish_file\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\pretty_devilish_file\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4706444,
+        "event": "step"
+      },
+      {
+        "rip": 4706446,
+        "event": "step"
+      },
+      {
+        "rip": 4706452,
+        "event": "call local"
+      },
+      {
+        "rip": 4706454,
+        "event": "step"
+      },
+      {
+        "rip": 4706458,
+        "event": "ret local"
+      },
+      {
+        "rip": 4706462,
+        "event": "step"
+      },
+      {
+        "rip": 4706466,
+        "event": "step"
+      },
+      {
+        "rip": 4706470,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "forbiddenPatternTags": [
+        "dynamic-api-resolution",
+        "self-modifying-code",
+        "oep-transfer",
+        "anti-debug-probe",
+        "rop-chain"
+      ],
+      "maxRiskScore": 15
+    }
+  },
+  {
+    "id": "challenge-project-chimera",
+    "name": "Challenge Replay - project_chimera",
+    "description": "Derived from real NEST session logs (project_chimera), verdict=suspicious, confidence=13, iterations=4, stop=plateau",
+    "source": {
+      "challenge": "project_chimera",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\2 - project_chimera\\project_chimera.py",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\project_chimera\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\project_chimera\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 5205317,
+        "event": "step"
+      },
+      {
+        "rip": 5205319,
+        "event": "step"
+      },
+      {
+        "rip": 5205325,
+        "event": "call local"
+      },
+      {
+        "rip": 5205327,
+        "event": "step"
+      },
+      {
+        "rip": 5205331,
+        "event": "ret local"
+      },
+      {
+        "rip": 5205335,
+        "event": "step"
+      },
+      {
+        "rip": 5205339,
+        "event": "step"
+      },
+      {
+        "rip": 5205343,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "forbiddenPatternTags": [
+        "dynamic-api-resolution",
+        "self-modifying-code",
+        "oep-transfer",
+        "anti-debug-probe",
+        "rop-chain"
+      ],
+      "maxRiskScore": 15
+    }
+  },
+  {
+    "id": "challenge-run",
+    "name": "Challenge Replay - run",
+    "description": "Derived from real NEST session logs (run), verdict=suspicious, confidence=39, iterations=5, stop=plateau",
+    "source": {
+      "challenge": "run",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\8 - FlareAuthenticator\\run.bat",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\run\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\run\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4307595,
+        "event": "step"
+      },
+      {
+        "rip": 4307597,
+        "event": "step"
+      },
+      {
+        "rip": 4307603,
+        "event": "call local"
+      },
+      {
+        "rip": 4307605,
+        "event": "step"
+      },
+      {
+        "rip": 4307609,
+        "event": "ret local"
+      },
+      {
+        "rip": 4307613,
+        "event": "step"
+      },
+      {
+        "rip": 4307617,
+        "event": "step"
+      },
+      {
+        "rip": 4307621,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "forbiddenPatternTags": [
+        "dynamic-api-resolution",
+        "self-modifying-code",
+        "oep-transfer",
+        "anti-debug-probe",
+        "rop-chain"
+      ],
+      "maxRiskScore": 23
+    }
+  },
+  {
+    "id": "challenge-unholydragon-150",
+    "name": "Challenge Replay - UnholyDragon-150",
+    "description": "Derived from real NEST session logs (UnholyDragon-150), verdict=dropper, confidence=25, iterations=5, stop=plateau",
+    "source": {
+      "challenge": "UnholyDragon-150",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\4 - UnholyDragon\\UnholyDragon-150.exe",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\UnholyDragon-150\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\UnholyDragon-150\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4643519,
+        "event": "step"
+      },
+      {
+        "rip": 4971199,
+        "event": "getprocaddress call"
+      },
+      {
+        "rip": 5307071,
+        "event": "loadlibrary call"
+      },
+      {
+        "rip": 5638847,
+        "event": "jmp resolver"
+      },
+      {
+        "rip": 5638863,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "requiredPatternTags": [
+        "dynamic-api-resolution"
+      ],
+      "minRiskScore": 20
+    }
+  }
+]

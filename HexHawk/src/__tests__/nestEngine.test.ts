@@ -64,6 +64,8 @@ function mockVerdict(
     reasoningChain:  [],
     contradictions:  [],
     alternatives:    [],
+    uncertaintyFlags: [],
+    heuristicSignalIds: [],
     ...overrides,
   };
 }
@@ -386,7 +388,7 @@ describe('annotateIteration', () => {
       refinementPlan: null,
       delta: null,
       durationMs: 100,
-    };
+    } as unknown as Omit<NestIterationSnapshot, 'annotations'>;
     const notes = annotateIteration(partial, null);
     expect(Array.isArray(notes)).toBe(true);
     expect(notes.length).toBeGreaterThan(0);
@@ -404,7 +406,7 @@ describe('annotateIteration', () => {
       refinementPlan: null,
       delta: null,
       durationMs: 50,
-    };
+    } as unknown as Omit<NestIterationSnapshot, 'annotations'>;
     const notes = annotateIteration(partial, null);
     expect(notes[0]).toContain('suspicious');
     expect(notes[0]).toContain('72');
@@ -423,7 +425,7 @@ describe('annotateIteration', () => {
       refinementPlan: null,
       delta,
       durationMs: 80,
-    };
+    } as unknown as Omit<NestIterationSnapshot, 'annotations'>;
     const notes = annotateIteration(partial, delta);
     expect(notes.some(n => n.includes('confidence') || n.includes('change') || n.includes('Marginal') || n.includes('Significant'))).toBe(true);
   });

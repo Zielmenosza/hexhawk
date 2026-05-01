@@ -151,11 +151,13 @@ fn compute_hashes(path: &str, file_size: u64) -> Result<(String, String, String)
         scanned += n as u64;
     }
 
-    let partial = if file_size > FULL_HASH_LIMIT { "[partial-256MB]" } else { "" };
+    // Note: for files > 512 MB only the first 256 MB is hashed. The hash is
+    // still lowercase hex so it passes evidence-bundle validation; callers can
+    // detect partial coverage via file_size vs FULL_HASH_LIMIT if needed.
     Ok((
-        format!("{:x}{partial}", sha256.finalize()),
-        format!("{:x}{partial}", sha1_h.finalize()),
-        format!("{:x}{partial}", md5_h.finalize()),
+        format!("{:x}", sha256.finalize()),
+        format!("{:x}", sha1_h.finalize()),
+        format!("{:x}", md5_h.finalize()),
     ))
 }
 

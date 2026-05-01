@@ -34,9 +34,12 @@ lopdf = { version = "0.33", default-features = false, features = ["nom_parser"] 
 cfb = "0.10"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 walkdir = "2"
+rfd = "0.14"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 regex = "1"
 keyring = "3"
+rhai = { version = "1", features = ["serde"] }
+rayon = "1.10"
 base64 = "0.22"
 rand = "0.8"
 time = { version = "0.3", features = ["formatting"] }

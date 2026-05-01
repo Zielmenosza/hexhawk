@@ -53,6 +53,10 @@ import { ControlFlowGraph } from './components/ControlFlowGraph';
 // Phase 8 � Decision Engine Components
 import { AnalysisGraph } from './components/AnalysisGraph';
 import { IntelligenceReport } from './components/IntelligenceReport';
+import { SnapshotHistoryPanel } from './components/SnapshotHistoryPanel';
+import { AutoHealBanner } from './components/AutoHealBanner';
+import { diagnose } from './utils/selfHealEngine';
+import type { HealPrescription } from './utils/selfHealEngine';
 
 // Demangling (wired in M10 gap pass)
 import { demangle } from './utils/demangler';
@@ -87,6 +91,7 @@ import StrikeView from './components/StrikeView';
 // ECHO � Fuzzy Signature Recognition
 import EchoView from './components/EchoView';
 import NestView from './components/NestView';
+import ReplView from './components/ReplView';
 import BinaryDiffPanel from './components/BinaryDiffPanel';
 import OperatorConsole from './components/OperatorConsole';
 import WelcomeScreen, { shouldShowWelcome, markFirstRunComplete } from './components/WelcomeScreen';
@@ -178,7 +183,9 @@ type AppTab =
   | 'echo'
   | 'nest'
   | 'console'
-  | 'diff';
+  | 'diff'
+  | 'repl'
+  | 'agent';
 
 type SectionMetadata = {
   name: string;
@@ -1376,6 +1383,29 @@ function CfgView({
     return reachable.size > 0 ? reachable : new Set<string>();
   }, [graph, pathMode, pathStartId, pathEndId]);
 
+  const autoSelectPath = useCallback(() => {
+    if (!graph || graph.nodes.length === 0) return;
+    const entry = graph.nodes.find(n => n.block_type === 'entry') ?? graph.nodes[0];
+    if (!entry) return;
+
+    const candidates = graph.nodes.filter(n => n.id !== entry.id);
+    const fallback = candidates[candidates.length - 1] ?? entry;
+
+    let bestTarget = fallback;
+    let bestSize = -1;
+    for (const candidate of candidates) {
+      const route = findPathNodesAnyRoute(graph, entry.id, candidate.id);
+      if (route.size > bestSize) {
+        bestSize = route.size;
+        bestTarget = candidate;
+      }
+    }
+
+    setPathMode(true);
+    setPathStartId(entry.id);
+    setPathEndId(bestTarget.id);
+  }, [graph]);
+
   if (!graph || graph.nodes.length === 0) {
     return (
       <div className="panel">
@@ -1412,10 +1442,10 @@ function CfgView({
 
   const loopCount = naturalLoops?.length ?? 0;
   return (
-    <div className="panel" style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <div className="cfg-header-bar" style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '0.4rem 0.6rem', flexShrink: 0 }}>
-        <h3 style={{ margin: 0 }}>Control Flow Graph</h3>
-        <span style={{ color: '#aaa', fontSize: '0.8rem' }}>
+    <div className="panel cfg-panel-modern">
+      <div className="cfg-header-bar cfg-header-bar--modern">
+        <h3 className="cfg-heading">Control Flow Graph</h3>
+        <span className="cfg-heading-meta">
           {graph.nodes.length}{' blocks \u00b7 '}{graph.edges.length}{' edges'}
           {loopCount > 0 ? (' \u00b7 ' + loopCount + ' loop' + (loopCount > 1 ? 's' : '')) : ''}
         </span>
@@ -1432,20 +1462,20 @@ function CfgView({
               return next;
             });
           }}
-          style={{
-            border: '1px solid #3a3a3a',
-            background: pathMode ? 'rgba(255, 165, 0, 0.25)' : 'rgba(255,255,255,0.04)',
-            color: pathMode ? '#ffcf66' : '#c9d1d9',
-            borderRadius: 6,
-            padding: '0.2rem 0.45rem',
-            fontSize: '0.75rem',
-            cursor: 'pointer',
-          }}
+          className={`cfg-toolbar-btn ${pathMode ? 'cfg-toolbar-btn--active' : ''}`}
         >
           {pathMode ? 'Path: ON' : 'Path: OFF'}
         </button>
+        <button
+          type="button"
+          title="Auto-select strongest route from entry block"
+          onClick={autoSelectPath}
+          className="cfg-toolbar-btn"
+        >
+          Auto Route
+        </button>
         {pathMode && (
-          <span style={{ color: '#aaa', fontSize: '0.75rem' }}>
+          <span className="cfg-path-hint">
             {pathStartId && pathEndId
               ? `Path ${pathStartId} → ${pathEndId}${(pathNodes?.size ?? 0) > 0 ? ` (${pathNodes?.size ?? 0} nodes)` : ' (no route)'}`
               : pathStartId
@@ -1461,29 +1491,21 @@ function CfgView({
               setPathStartId(null);
               setPathEndId(null);
             }}
-            style={{
-              border: '1px solid #3a3a3a',
-              background: 'rgba(255,255,255,0.04)',
-              color: '#c9d1d9',
-              borderRadius: 6,
-              padding: '0.2rem 0.45rem',
-              fontSize: '0.75rem',
-              cursor: 'pointer',
-            }}
+            className="cfg-toolbar-btn"
           >
             Clear Path
           </button>
         )}
         {loopCount > 0 && (
-          <span style={{ fontSize: '0.75rem', color: '#aaa', display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
-            <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#00e5cc', marginRight: 4 }} />Loop header</span>
-            <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#00bfa5', marginRight: 4 }} />Loop body</span>
-            <span title="Block with no outgoing edges (ret/syscall)"><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#9c6aff', marginRight: 4 }} />Exit block</span>
-            <span title="Jump/call target outside analyzed range"><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#7a7a9a', marginRight: 4 }} />External</span>
+          <span className="cfg-inline-legend">
+            <span><span className="cfg-legend-dot cfg-legend-dot--loop-header" />Loop header</span>
+            <span><span className="cfg-legend-dot cfg-legend-dot--loop-body" />Loop body</span>
+            <span title="Block with no outgoing edges (ret/syscall)"><span className="cfg-legend-dot cfg-legend-dot--exit" />Exit block</span>
+            <span title="Jump/call target outside analyzed range"><span className="cfg-legend-dot cfg-legend-dot--external" />External</span>
           </span>
         )}
       </div>
-      <div style={{ flex: 1, minHeight: 0, height: '100%' }}>
+      <div className="cfg-canvas-wrap">
         <ControlFlowGraph
           graph={cfgData}
           onNodeClick={(node) => {
@@ -1663,6 +1685,7 @@ export default function App() {
   const [disasmHasMore, setDisasmHasMore] = useState<boolean>(false);
   const [disasmNextByteOffset, setDisasmNextByteOffset] = useState<number | null>(null);
   const [disasmIsLoadingMore, setDisasmIsLoadingMore] = useState<boolean>(false);
+  const [disasmIsLoading, setDisasmIsLoading] = useState<boolean>(false);
   const [cfg, setCfg] = useState<CfgGraph | null>(null);
   const [cfgNaturalLoops, setCfgNaturalLoops] = useState<NaturalLoop[]>([]);
   const [cfgDomTree, setCfgDomTree] = useState<DomTree | null>(null);
@@ -1721,6 +1744,15 @@ export default function App() {
   const [nestEnrichedVerdict, setNestEnrichedVerdict] = useState<BinaryVerdictResult | null>(null);
   React.useEffect(() => { setNestEnrichedVerdict(null); }, [binaryPath]);
 
+  // Self-heal banner dismiss state — reset when the binary changes
+  const [healDismissed, setHealDismissed] = useState(false);
+  const [showSelfHealBanner, setShowSelfHealBanner] = useState(false);
+  React.useEffect(() => { setHealDismissed(false); }, [binaryPath]);
+  React.useEffect(() => { setShowSelfHealBanner(false); }, [binaryPath]);
+
+  // M12: Agent-approved signals (declared here so verdict memo can depend on them)
+  const [approvedAgentSignals, setApprovedAgentSignals] = useState<Array<{ id: string; finding: string; weight: number; certainty?: 'observed' | 'inferred' | 'heuristic' }>>([]);
+
   // Unified threat verdict � correlates structure, imports, strings, disassembly
   const verdict = useMemo<BinaryVerdictResult>(() => {
     if (!metadata) {
@@ -1735,8 +1767,9 @@ export default function App() {
       imports: metadata.imports ?? [],
       strings: strings.map(s => ({ text: s.text })),
       patterns: disassemblyAnalysis.suspiciousPatterns,
+      agentSignals: approvedAgentSignals.length > 0 ? approvedAgentSignals : undefined,
     });
-  }, [metadata, strings, disassemblyAnalysis.suspiciousPatterns]);
+  }, [metadata, strings, disassemblyAnalysis.suspiciousPatterns, approvedAgentSignals]);
 
 
   // --- Patch Intelligence suggestions ---
@@ -1759,6 +1792,17 @@ export default function App() {
     return 'inspected';
   }, [binaryPath, metadata, disassembly, strings, cfg]);
 
+  // ─── Self-heal diagnosis ───────────────────────────────────────────────────
+  const healDiagnosis = useMemo(() => diagnose({
+    hasMetadata: !!metadata,
+    disassemblyCount: disassembly.length,
+    stringCount: strings.length,
+    hasCfg: !!(cfg && cfg.nodes.length > 0),
+    hasStrike: false, // extended when STRIKE session is active
+    hasNest: !!nestEnrichedVerdict,
+    verdict: nestEnrichedVerdict ?? verdict,
+  }), [metadata, disassembly, strings, cfg, nestEnrichedVerdict, verdict]);
+
   function navigateView(view: NavView) {
     setActiveView(view);
     localStorage.setItem('hexhawk.activeView', view);
@@ -1766,10 +1810,11 @@ export default function App() {
     const viewToTab: Partial<Record<NavView, AppTab>> = {
       metadata: 'metadata', inspect: 'metadata', hex: 'hex', strings: 'strings',
       disassembly: 'disassembly', cfg: 'cfg', decompile: 'decompile',
+      talon: 'talon',
       verdict: 'graph', signals: 'metadata', nest: 'nest',
       activity: 'logs', patch: 'disassembly', constraint: 'constraint',
       sandbox: 'sandbox', debugger: 'debugger', plugins: 'plugins',
-      diff: 'diff',
+      diff: 'diff', repl: 'repl', agent: 'agent',
     };
     const tab = viewToTab[view];
     if (tab) setAndPersistTab(tab);
@@ -1886,6 +1931,54 @@ export default function App() {
 
   // PHASE 8: Auto-annotation engine state
   const [autoAnnotations, setAutoAnnotations] = useState<AutoAnnotation[]>([]);
+
+  // M12: Agent signal approval gate & action log
+  type AgentSignalPending = {
+    pendingId: string;
+    sessionId: string;
+    signal: { id: string; finding: string; weight: number; certainty: 'observed' | 'inferred' | 'heuristic' };
+    receivedAt: number;
+  };
+  type AgentActionEntry = {
+    id: string;
+    tool: string;
+    summary: string;
+    timestamp: number;
+    approved: boolean | null; // null = pending
+  };
+  const [pendingAgentSignals, setPendingAgentSignals] = useState<AgentSignalPending[]>([]);
+  const [agentActionLog, setAgentActionLog] = useState<AgentActionEntry[]>([]);
+
+  const handleApproveAgentSignal = React.useCallback((pendingId: string) => {
+    setPendingAgentSignals(prev => {
+      const entry = prev.find(p => p.pendingId === pendingId);
+      if (!entry) return prev;
+      setApprovedAgentSignals(a => [...a, entry.signal]);
+      setAgentActionLog(log => [...log, {
+        id: pendingId,
+        tool: 'inject_agent_signal',
+        summary: `Approved: "${entry.signal.finding}" (weight ${entry.signal.weight})`,
+        timestamp: Date.now(),
+        approved: true,
+      }]);
+      return prev.filter(p => p.pendingId !== pendingId);
+    });
+  }, []);
+
+  const handleRejectAgentSignal = React.useCallback((pendingId: string) => {
+    setPendingAgentSignals(prev => {
+      const entry = prev.find(p => p.pendingId === pendingId);
+      if (!entry) return prev;
+      setAgentActionLog(log => [...log, {
+        id: pendingId,
+        tool: 'inject_agent_signal',
+        summary: `Rejected: "${entry.signal.finding}"`,
+        timestamp: Date.now(),
+        approved: false,
+      }]);
+      return prev.filter(p => p.pendingId !== pendingId);
+    });
+  }, []);
   React.useEffect(() => {
     const newAnnotations = generateAutoAnnotations({
       imports: metadata?.imports ?? [],
@@ -2221,141 +2314,167 @@ export default function App() {
     targetMap: Map<number, Set<number>>
   ): Map<number, FunctionMetadata> => {
     const functions = new Map<number, FunctionMetadata>();
+    if (instructions.length === 0) return functions;
+
     const callTargets = new Set<number>();
-    
-    // Collect all CALL targets as likely function starts
-    instructions.forEach((ins) => {
-      if (ins.mnemonic.toLowerCase().startsWith('call') && ins.operands) {
-        const targets = targetMap.get(ins.address) || new Set();
+    const jumpTargets = new Set<number>();
+    const addrToIndex = new Map<number, number>();
+    instructions.forEach((ins, idx) => {
+      addrToIndex.set(ins.address, idx);
+      const mn = ins.mnemonic.toLowerCase();
+      const targets = targetMap.get(ins.address) || new Set();
+      if (mn.startsWith('call')) {
         targets.forEach((addr) => callTargets.add(addr));
+      }
+      if (mn.startsWith('j')) {
+        targets.forEach((addr) => jumpTargets.add(addr));
       }
     });
 
-    // Prologue patterns (x64): push rbp; mov rbp,rsp or sub rsp,<N>
-    let i = 0;
-    while (i < instructions.length) {
-      const curr = instructions[i];
-      let funcStart = curr.address;
-      let prologueType: FunctionMetadata['prologueType'] = undefined;
-      let hasRet = false;
-      let callCount = 0;
-      let returnCount = 0;
+    const candidateStarts = new Set<number>([instructions[0].address, ...callTargets]);
+    for (let i = 0; i < instructions.length; i++) {
+      const ins = instructions[i];
+      const mn = ins.mnemonic.toLowerCase();
 
-      // Check for prologue
-      if (curr.mnemonic.toLowerCase() === 'push' && curr.operands.includes('rbp')) {
-        if (i + 1 < instructions.length && instructions[i + 1].mnemonic.toLowerCase().startsWith('mov')) {
-          prologueType = 'push_rbp';
-          i += 2;
-        }
-      } else if (curr.mnemonic.toLowerCase().startsWith('sub') && curr.operands.includes('rsp')) {
+      // Canonical frame-setup prologue
+      if (
+        mn === 'push' &&
+        ins.operands.includes('rbp') &&
+        i + 1 < instructions.length &&
+        instructions[i + 1].mnemonic.toLowerCase().startsWith('mov') &&
+        instructions[i + 1].operands.includes('rbp')
+      ) {
+        candidateStarts.add(ins.address);
+      }
+
+      // Frame allocation style prologue
+      if (mn.startsWith('sub') && ins.operands.includes('rsp')) {
+        candidateStarts.add(ins.address);
+      }
+    }
+
+    // Promote jump targets that look like true entries (prologue-like)
+    for (const tgt of jumpTargets) {
+      const idx = addrToIndex.get(tgt);
+      if (idx === undefined) continue;
+      const cur = instructions[idx];
+      const nxt = instructions[idx + 1];
+      const mn = cur.mnemonic.toLowerCase();
+      const looksLikePrologue =
+        (mn === 'push' && cur.operands.includes('rbp') && !!nxt && nxt.mnemonic.toLowerCase().startsWith('mov')) ||
+        (mn.startsWith('sub') && cur.operands.includes('rsp'));
+      if (looksLikePrologue) candidateStarts.add(tgt);
+    }
+
+    const sortedStarts = [...candidateStarts]
+      .filter((addr) => addrToIndex.has(addr))
+      .sort((a, b) => a - b);
+
+    for (let s = 0; s < sortedStarts.length; s++) {
+      const funcStart = sortedStarts[s];
+      const startIdx = addrToIndex.get(funcStart);
+      if (startIdx === undefined) continue;
+
+      const nextStart = sortedStarts[s + 1];
+      const nextStartIdx = nextStart !== undefined ? addrToIndex.get(nextStart) : undefined;
+      const endBoundIdx = nextStartIdx !== undefined ? Math.max(startIdx, nextStartIdx - 1) : instructions.length - 1;
+      const funcInstructions = instructions.slice(startIdx, endBoundIdx + 1);
+      if (funcInstructions.length === 0) continue;
+
+      const first = funcInstructions[0];
+      const second = funcInstructions[1];
+      let prologueType: FunctionMetadata['prologueType'] = undefined;
+      if (
+        first.mnemonic.toLowerCase() === 'push' &&
+        first.operands.includes('rbp') &&
+        !!second &&
+        second.mnemonic.toLowerCase().startsWith('mov')
+      ) {
+        prologueType = 'push_rbp';
+      } else if (first.mnemonic.toLowerCase().startsWith('sub') && first.operands.includes('rsp')) {
         prologueType = 'sub_rsp';
-        i++;
       } else if (callTargets.has(funcStart)) {
         prologueType = 'custom';
-        i++;
-      } else {
-        i++;
-        continue;
       }
 
-      // Scan for function end (ret instruction or next function start)
-      let funcEnd = funcStart;
-      let j = i;
-      while (j < instructions.length) {
-        const ins = instructions[j];
-        funcEnd = ins.address;
+      let callCount = 0;
+      let returnCount = 0;
+      for (const ins of funcInstructions) {
+        const mn = ins.mnemonic.toLowerCase();
+        if (mn.startsWith('call')) callCount++;
+        if (mn.startsWith('ret')) returnCount++;
+      }
 
-        if (ins.mnemonic.toLowerCase().startsWith('ret')) {
-          hasRet = true;
-          returnCount++;
-        }
-        if (ins.mnemonic.toLowerCase().startsWith('call')) {
-          callCount++;
-        }
+      const incomingCalls = refMap.get(funcStart) || new Set<number>();
+      const hasRet = returnCount > 0;
+      const isEntryCandidate = s === 0;
+      const strongEvidence = !!prologueType || hasRet || incomingCalls.size > 0 || isEntryCandidate;
+      if (!strongEvidence) continue;
 
-        // Stop at next likely function start
-        if (callTargets.has(ins.address) && j > i) {
+      const funcEnd = funcInstructions[funcInstructions.length - 1].address;
+      const size = Math.max(0, funcEnd - funcStart);
+      const isRecursive = incomingCalls.has(funcStart);
+
+      let hasTailCall = false;
+      for (let k = funcInstructions.length - 1; k >= 0; k--) {
+        const ins = funcInstructions[k];
+        const mn = ins.mnemonic.toLowerCase();
+        if (mn === 'ret') break;
+        if (mn === 'jmp' || mn === 'jmpq') {
+          const jmpTargets = targetMap.get(ins.address);
+          if (jmpTargets) {
+            for (const tgt of jmpTargets) {
+              if (tgt < funcStart || tgt > funcEnd) { hasTailCall = true; break; }
+            }
+          }
           break;
         }
-
-        j++;
       }
 
-      if (prologueType || hasRet) {
-        const incomingCalls = refMap.get(funcStart) || new Set();
-        const size = funcEnd - funcStart;
+      let callingConvention: FunctionMetadata['callingConvention'] = 'unknown';
+      if (prologueType === 'push_rbp') {
+        callingConvention = 'cdecl';
+      } else if (prologueType === 'sub_rsp') {
+        callingConvention = 'fastcall';
+      }
 
-        // Recursive: any caller is the function itself
-        const isRecursive = incomingCalls.has(funcStart);
-
-        // Tail call: scan backward from funcEnd for a jmp whose resolved target
-        // lies outside [funcStart, funcEnd]
-        let hasTailCall = false;
-        for (let k = j - 1; k >= i; k--) {
-          const ins = instructions[k];
-          if (ins.mnemonic.toLowerCase() === 'ret') break;
-          if (ins.mnemonic.toLowerCase() === 'jmp' || ins.mnemonic.toLowerCase() === 'jmpq') {
-            const jmpTargets = targetMap.get(ins.address);
-            if (jmpTargets) {
-              for (const tgt of jmpTargets) {
-                if (tgt < funcStart || tgt > funcEnd) { hasTailCall = true; break; }
-              }
-            }
-            break;
-          }
-        }
-
-        // Calling convention: infer from prologue type and arg register usage
-        let callingConvention: FunctionMetadata['callingConvention'] = 'unknown';
-        if (prologueType === 'push_rbp') {
-          // x86-64 System V / cdecl (rdi, rsi, rdx, rcx ...)
-          callingConvention = 'cdecl';
-        } else if (prologueType === 'sub_rsp') {
-          // Windows fastcall (rcx, rdx, r8, r9 first args)
-          callingConvention = 'fastcall';
-        }
-        
-        // Thunk detection: single jmp to an external address (≤2 total instructions).
-        // A thunk is a tiny stub that just forwards to another function.
-        const funcInstructions = instructions.slice(i - (prologueType === 'push_rbp' ? 2 : prologueType === 'sub_rsp' ? 1 : 1), j);
-        let isThunk = false;
-        let thunkTarget: number | undefined;
-        const nonNopInstrs = funcInstructions.filter(ins => {
-          const m = ins.mnemonic.toLowerCase();
-          return m !== 'nop' && m !== 'nopl' && m !== 'nopw';
-        });
-        if (nonNopInstrs.length <= 2 && nonNopInstrs.length > 0) {
-          const lastInstr = nonNopInstrs[nonNopInstrs.length - 1];
-          if (lastInstr.mnemonic.toLowerCase() === 'jmp' || lastInstr.mnemonic.toLowerCase() === 'jmpq') {
-            const tgts = targetMap.get(lastInstr.address);
-            if (tgts && tgts.size === 1) {
-              const tgt = Array.from(tgts)[0];
-              if (tgt < funcStart || tgt > funcEnd) {
-                isThunk = true;
-                thunkTarget = tgt;
-              }
+      let isThunk = false;
+      let thunkTarget: number | undefined;
+      const nonNopInstrs = funcInstructions.filter(ins => {
+        const m = ins.mnemonic.toLowerCase();
+        return m !== 'nop' && m !== 'nopl' && m !== 'nopw';
+      });
+      if (nonNopInstrs.length <= 2 && nonNopInstrs.length > 0) {
+        const lastInstr = nonNopInstrs[nonNopInstrs.length - 1];
+        if (lastInstr.mnemonic.toLowerCase() === 'jmp' || lastInstr.mnemonic.toLowerCase() === 'jmpq') {
+          const tgts = targetMap.get(lastInstr.address);
+          if (tgts && tgts.size === 1) {
+            const tgt = Array.from(tgts)[0];
+            if (tgt < funcStart || tgt > funcEnd) {
+              isThunk = true;
+              thunkTarget = tgt;
             }
           }
         }
-
-        functions.set(funcStart, {
-          startAddress: funcStart,
-          endAddress: funcEnd,
-          size,
-          prologueType,
-          callCount,
-          incomingCalls: new Set(incomingCalls),
-          returnCount,
-          hasLoops: false,
-          complexity: Math.min(10, callCount + returnCount),
-          suspiciousPatterns: [],
-          isRecursive,
-          hasTailCall,
-          callingConvention,
-          isThunk,
-          thunkTarget,
-        });
       }
+
+      functions.set(funcStart, {
+        startAddress: funcStart,
+        endAddress: funcEnd,
+        size,
+        prologueType,
+        callCount,
+        incomingCalls: new Set(incomingCalls),
+        returnCount,
+        hasLoops: false,
+        complexity: Math.min(10, callCount + returnCount),
+        suspiciousPatterns: [],
+        isRecursive,
+        hasTailCall,
+        callingConvention,
+        isThunk,
+        thunkTarget,
+      });
     }
 
     return functions;
@@ -2792,6 +2911,8 @@ export default function App() {
     setHexBytes([]);
     setSelectedHexIndex(null);
     setSelectedDisasmAddress(null);
+    setDisasmOffset(0);
+    localStorage.setItem('hexhawk.disasmOffset', '0');
     setDisassembly([]);
     setDisasmArch(null);
     setDisasmArchFallback(false);
@@ -3090,6 +3211,19 @@ export default function App() {
     localStorage.setItem('hexhawk.activeTab', tab);
   }
 
+    function handleHeal(action: HealPrescription['action']) {
+      switch (action) {
+        case 'inspect':       void inspectFile(); break;
+        case 'scan_strings':  void scanStrings(); break;
+        case 'disassemble':   void disassembleFile(); break;
+        case 'build_cfg':     void buildCfg(); break;
+        case 'run_nest':      navigateView('nest'); break;
+        case 'run_strike':    navigateView('debugger'); break;
+        case 'ask_llm':       navigateView('agent'); break;
+      }
+      addLog(`Self-heal: triggered "${action}" from banner.`, 'info');
+    }
+
   useEffect(() => {
     localStorage.setItem('hexhawk.binaryPath', binaryPath);
   }, [binaryPath]);
@@ -3155,6 +3289,19 @@ export default function App() {
       // Escape: Close help
       if (e.key === 'Escape' && showKeyboardHelp) {
         setShowKeyboardHelp(false);
+      }
+
+      // Ctrl+Alt+Shift+H: Toggle hidden self-heal banner visibility
+      if (e.ctrlKey && e.altKey && e.shiftKey && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        setShowSelfHealBanner((prev) => {
+          const next = !prev;
+          addLog(`Self-heal hints ${next ? 'revealed' : 'hidden'} via advanced shortcut.`, 'info');
+          if (next) {
+            setHealDismissed(false);
+          }
+          return next;
+        });
       }
 
       // Ctrl+B: Add/Toggle bookmark
@@ -3354,8 +3501,9 @@ export default function App() {
 
     try {
       const selected = await openFileDialog({ multiple: false, directory: false });
-      if (selected && typeof selected === 'string') {
-        const safePath = sanitizeBridgePath(selected, 'selected file path');
+      const selectedPath = Array.isArray(selected) ? selected[0] : selected;
+      if (selectedPath && typeof selectedPath === 'string') {
+        const safePath = sanitizeBridgePath(selectedPath, 'selected file path');
         prepareForBinarySelection(safePath);
         setRecentFiles(prev => {
           const next = [safePath, ...prev.filter(f => f !== safePath)].slice(0, 10);
@@ -3363,9 +3511,37 @@ export default function App() {
           return next;
         });
       }
-    } catch {
-      // User cancelled
+      return;
+    } catch (error) {
+      const msg = String(error);
+      // Treat explicit cancellation as a no-op; surface all other dialog failures.
+      if (/cancel/i.test(msg)) {
+        return;
+      }
+      addLog(`Browse via plugin-dialog failed, trying backend fallback: ${msg}`, 'warn');
     }
+
+    // Fallback path: use backend-native picker command if plugin dialog path fails.
+    try {
+      const fallbackPath = await invoke<string | null>('open_file_picker');
+      if (fallbackPath && typeof fallbackPath === 'string') {
+        const safePath = sanitizeBridgePath(fallbackPath, 'selected file path');
+        prepareForBinarySelection(safePath);
+        setRecentFiles(prev => {
+          const next = [safePath, ...prev.filter(f => f !== safePath)].slice(0, 10);
+          localStorage.setItem('hexhawk.recentFiles', JSON.stringify(next));
+          return next;
+        });
+        return;
+      }
+    } catch (fallbackError) {
+      const fallbackMsg = String(fallbackError);
+      setMessage(`Browse failed: ${fallbackMsg}`);
+      addLog(`Browse fallback failed: ${fallbackMsg}`, 'error');
+      return;
+    }
+
+    setMessage('Browse cancelled.');
   }
 
   async function inspectFile() {
@@ -3382,7 +3558,7 @@ export default function App() {
       setMessage('Browser mode inspection completed (simulated backend).');
       addLog(`Simulated inspect for ${binaryPath}`, 'info');
       addLog(`Seeded browser hex preview for ${binaryPath} at ${formatHex(safeRange.offset)}.`, 'info');
-      setAndPersistTab('metadata');
+      navigateView('inspect');
       return;
     }
 
@@ -3403,7 +3579,7 @@ export default function App() {
       setHexFileSize(response.file_size ?? 0);
       setMessage('File inspection completed');
       addLog(`Inspected file: ${binaryPath}`);
-      setAndPersistTab('metadata');
+      navigateView('inspect');
 
       // ── Corpus log ──────────────────────────────────────────────────────────
       // Compute a verdict from the freshly returned metadata.  Strings and
@@ -3445,7 +3621,11 @@ export default function App() {
         notes:               '',
       });
     } catch (error) {
-      const msg = String(error);
+      const rawMsg = String(error);
+      const notFound = /(os error 3|cannot find the path|path not found|No such file or directory)/i.test(rawMsg);
+      const msg = notFound
+        ? `${rawMsg}. Path not found: verify the file exists, or click Browse... to select a valid file.`
+        : rawMsg;
       console.error('Failed to inspect file', error);
       setMessage(`Failed to inspect file: ${msg}`);
       addLog(`Failed to inspect file: ${msg}`, 'error');
@@ -3463,7 +3643,7 @@ export default function App() {
       setSelectedDisasmAddress(null);
       setMessage('Hex preview loaded (browser-mode simulation).');
       addLog(`Simulated hex preview for ${binaryPath} at offset ${hexOffset}`);
-      setAndPersistTab('hex');
+      navigateView('hex');
       return;
     }
 
@@ -3480,7 +3660,7 @@ export default function App() {
       setSelectedDisasmAddress(null);
       setMessage('Hex preview loaded');
       addLog(`Loaded hex preview for ${binaryPath} at offset ${hexOffset}`);
-      setAndPersistTab('hex');
+      navigateView('hex');
     } catch (error) {
       const msg = String(error);
       console.error('Failed to load hex preview', error);
@@ -3501,7 +3681,7 @@ export default function App() {
       setSelectedDisasmAddress(null);
       setMessage(`Hex preview loaded at ${formatHex(offset)} (browser simulation)`);
       addLog(`Simulated hex preview at ${formatHex(offset)} for ${binaryPath}`);
-      setAndPersistTab('hex');
+      navigateView('hex');
       return;
     }
 
@@ -3519,7 +3699,7 @@ export default function App() {
       setSelectedDisasmAddress(null);
       setMessage(`Hex preview loaded at ${formatHex(offset)}`);
       addLog(`Loaded hex preview at ${formatHex(offset)} for ${binaryPath}`);
-      setAndPersistTab('hex');
+      navigateView('hex');
     } catch (error) {
       const msg = String(error);
       console.error('Failed to load hex preview at offset', error);
@@ -3534,7 +3714,7 @@ export default function App() {
       setStrings(capped);
       setMessage(`Found ${capped.length} strings (browser-mode simulation).`);
       addLog(`Simulated string scan for ${binaryPath}`, 'info');
-      setAndPersistTab('strings');
+      navigateView('strings');
       return;
     }
 
@@ -3555,7 +3735,7 @@ export default function App() {
       }
       setMessage(`Found ${capped.length} strings from ${formatHex(safeRange.offset)}`);
       addLog(`Scanned strings in ${safePath} at ${formatHex(safeRange.offset)} length ${safeRange.length}`);
-      setAndPersistTab('strings');
+      navigateView('strings');
     } catch (error) {
       const msg = String(error);
       console.error('Failed to scan strings', error);
@@ -3572,6 +3752,7 @@ export default function App() {
 
   async function disassembleFile(offset?: number) {
     const startOffset = offset ?? disasmOffset;
+    setDisasmIsLoading(true);
     if (!hasTauriRuntime()) {
       const safeRange = sanitizeRange(startOffset, disasmLength);
       const instructions = buildMockDisassembly(safeRange.offset);
@@ -3584,7 +3765,8 @@ export default function App() {
       setMessage(`Disassembly loaded from ${formatHex(startOffset)} (browser simulation)`);
       addLog(`Simulated disassembly for ${binaryPath} from ${formatHex(startOffset)}`, 'info');
       performFullAnalysis(instructions, cfg);
-      setAndPersistTab('disassembly');
+      setDisasmIsLoading(false);
+      navigateView('disassembly');
       return;
     }
 
@@ -3603,7 +3785,26 @@ export default function App() {
         length: safeRange.length,
         max_instructions: DISASM_CHUNK_SIZE,
       });
-      setDisassembly(capArraySize(response.instructions, MAX_UI_DISASSEMBLY_ITEMS));
+      const instructions = capArraySize(response.instructions, MAX_UI_DISASSEMBLY_ITEMS);
+      if (instructions.length === 0) {
+        addLog(`No instructions decoded at ${formatHex(safeRange.offset)} for ${binaryPath}.`, 'warn');
+        if (safeRange.offset !== 0) {
+          setMessage(`No instructions decoded at ${formatHex(safeRange.offset)}. Retrying from 0x0...`);
+          setDisasmOffset(0);
+          localStorage.setItem('hexhawk.disasmOffset', '0');
+          await disassembleFile(0);
+          return;
+        }
+
+        setMessage(`No instructions decoded at ${formatHex(safeRange.offset)}. Try a different offset.`);
+        setDisassembly([]);
+        setDisasmHasMore(false);
+        setDisasmNextByteOffset(null);
+        navigateView('disassembly');
+        return;
+      }
+
+      setDisassembly(instructions);
       setDisasmArch(response.arch);
       setDisasmArchFallback(response.is_fallback);
       setDisasmOffset(safeRange.offset);
@@ -3614,9 +3815,9 @@ export default function App() {
       addLog(`Disassembled ${binaryPath} from ${formatHex(startOffset)}${archNote}`, response.is_fallback ? 'warn' : 'info');
       
       // PHASE 5: Perform analysis on disassembly
-      performFullAnalysis(response.instructions, cfg);
+      performFullAnalysis(instructions, cfg);
       
-      setAndPersistTab('disassembly');
+      navigateView('disassembly');
     } catch (error) {
       const msg = String(error);
       console.error('Failed to disassemble file', error);
@@ -3625,6 +3826,8 @@ export default function App() {
       setDisassembly([]);
       setDisasmHasMore(false);
       setDisasmNextByteOffset(null);
+    } finally {
+      setDisasmIsLoading(false);
     }
   }
 
@@ -3684,7 +3887,7 @@ export default function App() {
       setMessage('CFG built successfully (browser-mode simulation).');
       addLog(`Simulated CFG build for ${binaryPath}`, 'info');
       performFullAnalysis(disassembly.length > 0 ? disassembly : buildMockDisassembly(disasmOffset), response);
-      setAndPersistTab('cfg');
+      navigateView('cfg');
       return;
     }
 
@@ -3712,7 +3915,7 @@ export default function App() {
       // PHASE 5: Re-analyze with new CFG data
       performFullAnalysis(disassembly, response);
       
-      setAndPersistTab('cfg');
+      navigateView('cfg');
     } catch (error) {
       const msg = String(error);
       console.error('Failed to build CFG', error);
@@ -3728,7 +3931,7 @@ export default function App() {
       setPluginResults(response);
       setMessage('Plugin analysis completed (browser-mode simulation).');
       addLog(`Simulated plugin analysis for ${binaryPath}`, 'info');
-      setAndPersistTab('plugins');
+      navigateView('plugins');
       return;
     }
 
@@ -3740,7 +3943,7 @@ export default function App() {
       setPluginResults(response);
       setMessage('Plugin analysis completed');
       addLog(`Ran plugin analysis for ${binaryPath}`);
-      setAndPersistTab('plugins');
+      navigateView('plugins');
     } catch (error) {
       const msg = String(error);
       console.error('Failed to run plugins', error);
@@ -3942,7 +4145,7 @@ export default function App() {
     }
   }
 
-  const tabs: AppTab[] = ['metadata', 'hex', 'strings', 'cfg', 'plugins', 'disassembly', 'decompile', 'talon', 'constraint', 'document', 'sandbox', 'debugger', 'strike', 'signatures', 'echo', 'nest', 'console', 'bookmarks', 'logs', 'graph', 'report'];
+  const tabs: AppTab[] = ['metadata', 'hex', 'strings', 'cfg', 'plugins', 'disassembly', 'decompile', 'talon', 'constraint', 'document', 'sandbox', 'debugger', 'strike', 'signatures', 'echo', 'nest', 'repl', 'console', 'bookmarks', 'logs', 'graph', 'report', 'agent'];
 
   return (
     <div className="wf-shell">
@@ -4113,6 +4316,7 @@ export default function App() {
             hasDisassembly={disassembly.length > 0}
             hasCfg={cfg !== null && cfg.nodes.length > 0}
             hasVerdict={verdict !== null && verdict.classification !== 'unknown'}
+            disassemblyLoading={disasmIsLoading}
             onInspect={inspectFile}
             onDisassemble={() => disassembleFile()}
             onBuildCfg={buildCfg}
@@ -4156,6 +4360,7 @@ export default function App() {
                     <div><strong>Ctrl+I</strong> → Inspect file</div>
                     <div><strong>Ctrl+S</strong> → Scan strings</div>
                     <div><strong>?</strong> → Toggle shortcuts</div>
+                    <div><strong>Ctrl+Alt+Shift+H</strong> → Reveal hidden self-heal hints</div>
                   </div>
                 </div>
               </div>
@@ -4503,18 +4708,28 @@ export default function App() {
             {activeView === 'disassembly' && (
               disassembly.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '1rem', color: '#888' }}>
-                  <div style={{ fontSize: '2.5rem' }}>?</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#aaa' }}>No disassembly loaded</div>
-                  <div style={{ fontSize: '0.875rem' }}>Click the <strong style={{ color: '#00d4ff' }}>Disassemble</strong> button in the toolbar above, or use Inspect ? Disassemble.</div>
-                  {metadata && (
-                    <button
-                      type="button"
-                      className="wf-cta-primary-btn"
-                      style={{ marginTop: '0.5rem' }}
-                      onClick={() => disassembleFile()}
-                    >
-                      ? Disassemble Now
-                    </button>
+                  {disasmIsLoading ? (
+                    <>
+                      <div style={{ fontSize: '2.5rem', animation: 'spin 1s linear infinite' }}>⟳</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#aaa' }}>Disassembling...</div>
+                      <div style={{ fontSize: '0.875rem' }}>Processing binary at {disasmOffset ? formatHex(disasmOffset) : 'default offset'}...</div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: '2.5rem' }}>?</div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#aaa' }}>No disassembly loaded</div>
+                      <div style={{ fontSize: '0.875rem' }}>Click the <strong style={{ color: '#00d4ff' }}>Disassemble</strong> button in the toolbar above, or use Inspect ? Disassemble.</div>
+                      {metadata && (
+                        <button
+                          type="button"
+                          className="wf-cta-primary-btn"
+                          style={{ marginTop: '0.5rem' }}
+                          onClick={() => disassembleFile()}
+                        >
+                          ? Disassemble Now
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (
@@ -4620,6 +4835,20 @@ export default function App() {
               </div>
             )}
 
+            {/* ── TALON ────────────────────────────────────────────────────── */}
+            {activeView === 'talon' && gateTab('talon', 'TALON', (
+              <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }} data-testid="panel-talon">
+                <TalonView
+                  disassembly={disassembly}
+                  cfg={cfg}
+                  functions={disassemblyAnalysis.functions}
+                  currentAddress={currentAddress}
+                  onAddressSelect={(addr) => { selectAddress(addr); navigateView('disassembly'); }}
+                  metadata={metadata ? { architecture: metadata.architecture } : null}
+                />
+              </div>
+            ))}
+
             {/* ── Verdict (Intelligence answer screen) ───────────────────────── */}
             {activeView === 'verdict' && (
               <div className="panel wf-verdict-panel">
@@ -4647,6 +4876,13 @@ export default function App() {
                           title="Revert to base verdict"
                         >? revert</button>
                       </div>
+                    )}
+                    {showSelfHealBanner && !healDismissed && (
+                      <AutoHealBanner
+                        diagnosis={healDiagnosis}
+                        onHeal={handleHeal}
+                        onDismiss={() => setHealDismissed(true)}
+                      />
                     )}
                     <BinaryVerdict verdict={nestEnrichedVerdict ?? verdict} onNavigateTab={(tab) => setAndPersistTab(tab as AppTab)} onJumpToAddress={jumpToDisassembly} />
                     <div style={{ marginTop: '1.5rem' }}>
@@ -4775,6 +5011,26 @@ export default function App() {
             {/* ── Activity ──────────────────────────────────────────────────── */}
             {activeView === 'activity' && gateTab('logs', 'Activity Logs', <ActivityLog entries={logs} />)}
 
+            {/* ── Intelligence Report ───────────────────────────────────────── */}
+            {activeView === 'report' && (
+              <div className="panel" style={{ overflowY: 'auto', flex: 1 }} data-testid="panel-report">
+                <IntelligenceReport
+                  verdict={nestEnrichedVerdict ?? verdict}
+                  binaryPath={binaryPath}
+                  binarySize={metadata?.file_size}
+                  architecture={metadata?.architecture}
+                  fileType={metadata?.file_type}
+                />
+              </div>
+            )}
+
+            {/* ── Snapshot History ──────────────────────────────────────────── */}
+            {activeView === 'history' && (
+              <div className="panel" style={{ overflowY: 'auto', flex: 1 }} data-testid="panel-history">
+                <SnapshotHistoryPanel />
+              </div>
+            )}
+
             {/* ── Patch ─────────────────────────────────────────────────────── */}
             {activeView === 'patch' && gateTab('disassembly', 'Patch', (
               browserMode ? (
@@ -4827,6 +5083,97 @@ export default function App() {
                   />
                 </div>
               )
+            ))}
+
+            {/* ── REPL ─────────────────────────────────────────────────────── */}
+            {activeView === 'repl' && gateTab('repl', 'REPL', (
+              <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }} data-testid="panel-repl">
+                <ReplView binaryPath={binaryPath} />
+              </div>
+            ))}
+
+            {/* ── Agent Gate ────────────────────────────────────────────────── */}
+            {activeView === 'agent' && gateTab('agent', 'Agent Gate', (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} data-testid="panel-agent">
+                <div className="agent-gate-panel">
+                  <h2 className="agent-gate-title">⬢ Agent Signal Gate</h2>
+                  <p className="agent-gate-desc">
+                    External AI agents connected via <code>nest_cli serve --mcp</code> may propose signals for GYRE analysis.
+                    Each signal requires explicit analyst approval before it influences the verdict.
+                  </p>
+
+                  {/* Pending approvals */}
+                  <section className="agent-gate-section">
+                    <h3 className="agent-gate-section-title">
+                      Pending Approval ({pendingAgentSignals.length})
+                    </h3>
+                    {pendingAgentSignals.length === 0 ? (
+                      <p className="agent-gate-empty">No pending agent signals.</p>
+                    ) : (
+                      <ul className="agent-signal-list">
+                        {pendingAgentSignals.map(p => (
+                          <li key={p.pendingId} className="agent-signal-item">
+                            <div className="agent-signal-meta">
+                              <span className="agent-signal-id">{p.signal.id}</span>
+                              <span className={`agent-signal-certainty agent-cert-${p.signal.certainty}`}>{p.signal.certainty}</span>
+                              <span className="agent-signal-weight">w={p.signal.weight}</span>
+                            </div>
+                            <div className="agent-signal-finding">{p.signal.finding}</div>
+                            <div className="agent-signal-actions">
+                              <button type="button" className="agent-btn-approve" onClick={() => handleApproveAgentSignal(p.pendingId)}>✓ Approve</button>
+                              <button type="button" className="agent-btn-reject"  onClick={() => handleRejectAgentSignal(p.pendingId)}>✗ Reject</button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+
+                  {/* Approved signals */}
+                  <section className="agent-gate-section">
+                    <h3 className="agent-gate-section-title">
+                      Active Agent Signals ({approvedAgentSignals.length})
+                    </h3>
+                    {approvedAgentSignals.length === 0 ? (
+                      <p className="agent-gate-empty">No approved agent signals in current verdict.</p>
+                    ) : (
+                      <ul className="agent-signal-list agent-signal-list--approved">
+                        {approvedAgentSignals.map(s => (
+                          <li key={s.id} className="agent-signal-item agent-signal-item--approved">
+                            <span className="agent-signal-id">{s.id}</span>
+                            <span className="agent-signal-finding">{s.finding}</span>
+                            <span className="agent-signal-weight">w={s.weight}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+
+                  {/* Agent action log */}
+                  <section className="agent-gate-section">
+                    <h3 className="agent-gate-section-title">Agent Action Log ({agentActionLog.length})</h3>
+                    {agentActionLog.length === 0 ? (
+                      <p className="agent-gate-empty">No actions recorded yet.</p>
+                    ) : (
+                      <table className="agent-log-table">
+                        <thead>
+                          <tr><th>Time</th><th>Tool</th><th>Summary</th><th>Decision</th></tr>
+                        </thead>
+                        <tbody>
+                          {[...agentActionLog].reverse().map(e => (
+                            <tr key={e.id} className={`agent-log-row agent-log-row--${e.approved === true ? 'approved' : e.approved === false ? 'rejected' : 'pending'}`}>
+                              <td>{new Date(e.timestamp).toLocaleTimeString()}</td>
+                              <td><code>{e.tool}</code></td>
+                              <td>{e.summary}</td>
+                              <td>{e.approved === true ? '✓ Approved' : e.approved === false ? '✗ Rejected' : '⏳ Pending'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </section>
+                </div>
+              </div>
             ))}
 
             {/* ── Sandbox ───────────────────────────────────────────────────── */}
@@ -4960,6 +5307,7 @@ export default function App() {
                       ['Ctrl+I', 'Inspect file'],
                       ['Ctrl+S', 'Scan strings'],
                       ['?', 'Toggle shortcuts overlay'],
+                      ['Ctrl+Alt+Shift+H', 'Reveal hidden self-heal hints'],
                     ] as [string, string][]).map(([key, desc]) => (
                       <tr key={key} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                         <td style={{ padding: '0.35rem 1rem 0.35rem 0', fontFamily: 'monospace', color: '#79c0ff', whiteSpace: 'nowrap' }}>

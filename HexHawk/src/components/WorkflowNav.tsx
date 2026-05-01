@@ -11,8 +11,11 @@ export type NavView =
   | 'disassembly'
   | 'cfg'
   | 'decompile'
+  | 'talon'
   | 'verdict'
   | 'signals'
+  | 'report'
+  | 'history'
   | 'nest'
   | 'activity'
   | 'patch'
@@ -20,6 +23,8 @@ export type NavView =
   | 'sandbox'
   | 'debugger'
   | 'diff'
+  | 'repl'
+  | 'agent'
   | 'plugins'
   | 'help'
   | 'about';
@@ -56,15 +61,18 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'disassembly', label: 'Disassembly', icon: '⊞',  minTier: 'free', requiresState: 'fileLoaded' },
       { id: 'cfg',         label: 'CFG',         icon: '⬡',  minTier: 'free', requiresState: 'fileLoaded' },
       { id: 'decompile',   label: 'Decompile',   icon: '⟨/⟩', minTier: 'free', requiresState: 'inspected' },
+      { id: 'talon',       label: 'TALON',       icon: '🧠', minTier: 'pro',  requiresState: 'inspected' },
     ],
   },
   {
     label: 'Intelligence',
     items: [
-      { id: 'verdict',  label: 'Verdict',  icon: '⚖',  minTier: 'free',         requiresState: 'fileLoaded' },
-      { id: 'signals',  label: 'Signals',  icon: '📡',  minTier: 'free',         requiresState: 'fileLoaded' },
-      { id: 'nest',     label: 'NEST',     icon: '⟳',  minTier: 'enterprise',   requiresState: 'fileLoaded' },
-      { id: 'activity', label: 'Activity', icon: '📋',  minTier: 'pro',          requiresState: 'fileLoaded' },
+      { id: 'verdict',  label: 'Verdict',          icon: '⚖',  minTier: 'free',         requiresState: 'fileLoaded' },
+      { id: 'signals',  label: 'Signals',          icon: '📡',  minTier: 'free',         requiresState: 'fileLoaded' },
+      { id: 'report',   label: 'Report',           icon: '📊',  minTier: 'free',         requiresState: 'fileLoaded' },
+      { id: 'history',  label: 'Snapshot History', icon: '🕐',  minTier: 'free',         requiresState: 'noFile' },
+      { id: 'nest',     label: 'NEST',             icon: '⟳',  minTier: 'enterprise',   requiresState: 'fileLoaded' },
+      { id: 'activity', label: 'Activity',         icon: '📋',  minTier: 'pro',          requiresState: 'fileLoaded' },
     ],
   },
   {
@@ -74,7 +82,8 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'constraint', label: 'Constraint', icon: '⊗',  minTier: 'pro', requiresState: 'inspected' },
       { id: 'sandbox',    label: 'Sandbox',    icon: '⬡',  minTier: 'pro', requiresState: 'fileLoaded' },
       { id: 'debugger',   label: 'Debugger',   icon: '⚙',  minTier: 'pro', requiresState: 'fileLoaded' },
-      { id: 'diff',       label: 'Binary Diff', icon: '⊕',  minTier: 'pro', requiresState: 'fileLoaded' },
+      { id: 'diff',       label: 'Binary Diff', icon: '⊕',  minTier: 'pro', requiresState: 'fileLoaded' },      { id: 'repl',       label: 'REPL',        icon: '>_',  minTier: 'pro', requiresState: 'fileLoaded' },
+      { id: 'agent',      label: 'Agent Gate',  icon: '⬢',  minTier: 'pro', requiresState: 'fileLoaded' },
     ],
   },
   {

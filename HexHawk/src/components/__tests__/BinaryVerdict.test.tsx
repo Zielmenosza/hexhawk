@@ -18,17 +18,22 @@ function makeVerdict(overrides: Partial<BinaryVerdictResult> = {}): BinaryVerdic
     confidence: 92,
     signalCount: 3,
     signals: [
-      { id: 'sig-1', source: 'imports', description: 'Known-clean DLLs', weight: -10, priority: 'low', corroborations: 0 },
-      { id: 'sig-2', source: 'structure', description: 'Valid PE header', weight: -5, priority: 'low', corroborations: 0 },
-      { id: 'sig-3', source: 'strings', description: 'No suspicious strings', weight: -3, priority: 'low', corroborations: 0 },
+      { id: 'sig-1', source: 'imports', finding: 'Known-clean DLLs', weight: -10, corroboratedBy: [] },
+      { id: 'sig-2', source: 'structure', finding: 'Valid PE header', weight: -5, corroboratedBy: [] },
+      { id: 'sig-3', source: 'strings', finding: 'No suspicious strings', weight: -3, corroboratedBy: [] },
     ],
     negativeSignals: [],
-    behavioralTags: [],
+    amplifiers: [],
+    dismissals: [],
+    summary: 'Mock verdict',
+    behaviors: [],
     contradictions: [],
-    alternativeHypotheses: [],
+    alternatives: [],
     reasoningChain: [],
-    workflowSteps: [],
+    nextSteps: [],
     explainability: [],
+    uncertaintyFlags: [],
+    heuristicSignalIds: [],
     ...overrides,
   };
 }
@@ -76,10 +81,10 @@ describe('BinaryVerdict', () => {
   it('calls onNavigateTab when a workflow step is clicked', () => {
     const onNavigateTab = vi.fn();
     const v = makeVerdict({
-      workflowSteps: [
-        { label: 'Inspect imports', tab: 'strings', description: 'Review import table' },
-        { label: 'Check CFG', tab: 'cfg', description: 'Review control flow' },
-      ] as BinaryVerdictResult['workflowSteps'],
+      nextSteps: [
+        { priority: 'medium', action: 'Inspect imports', rationale: 'Review import table', tab: 'strings' },
+        { priority: 'medium', action: 'Check CFG', rationale: 'Review control flow', tab: 'cfg' },
+      ],
     });
     render(<BinaryVerdict verdict={v} onNavigateTab={onNavigateTab} />);
     // Expand to see workflow steps
@@ -97,7 +102,7 @@ describe('BinaryVerdict', () => {
     const v = makeVerdict({
       classification: 'likely-malware',
       threatScore: 88,
-      behavioralTags: ['anti-analysis', 'c2-communication'],
+      behaviors: ['anti-analysis', 'c2-communication'],
     });
     render(<BinaryVerdict verdict={v} />);
     const header = document.querySelector('.verdict-header');
@@ -110,8 +115,8 @@ describe('BinaryVerdict', () => {
   it('shows contradictions when present', () => {
     const v = makeVerdict({
       contradictions: [
-        { signalA: 'sig-clean', signalB: 'sig-suspicious', description: 'Conflicting network signals', severity: 'medium' },
-      ] as BinaryVerdictResult['contradictions'],
+        { id: 'c1', observation: 'sig-clean', conflict: 'sig-suspicious', resolution: 'Conflicting network signals', severity: 'medium' },
+      ],
     });
     const header = document.querySelector('.verdict-header');
     const { container } = render(<BinaryVerdict verdict={v} />);

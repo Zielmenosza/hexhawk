@@ -462,13 +462,39 @@ export default function TalonView({
   onAddressSelect,
   metadata,
 }: Props) {
+  const LLM_SETTINGS_STORAGE_KEY = 'hexhawk.talon.llmSettings.v1';
+
+  function loadPersistedLlmSettings(): LLMSettings {
+    try {
+      const raw = localStorage.getItem(LLM_SETTINGS_STORAGE_KEY);
+      if (!raw) return DEFAULT_LLM_SETTINGS;
+      const parsed = JSON.parse(raw) as Partial<LLMSettings>;
+      return {
+        ...DEFAULT_LLM_SETTINGS,
+        ...parsed,
+        providerEnabled: {
+          ...DEFAULT_LLM_SETTINGS.providerEnabled,
+          ...(parsed.providerEnabled ?? {}),
+        },
+        featureEnabled: {
+          ...DEFAULT_LLM_SETTINGS.featureEnabled,
+          ...(parsed.featureEnabled ?? {}),
+        },
+      };
+    } catch {
+      return DEFAULT_LLM_SETTINGS;
+    }
+  }
+
   const [selectedFuncAddr, setSelectedFuncAddr] = useState<number | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
-  const [llmSettings, setLlmSettings] = useState<LLMSettings>(DEFAULT_LLM_SETTINGS);
+  const [llmSettings, setLlmSettings] = useState<LLMSettings>(() => loadPersistedLlmSettings());
   const [llmRefined, setLlmRefined] = useState<TalonResult | null>(null);
   const [llmLoading, setLlmLoading] = useState(false);
   const [llmError, setLlmError] = useState<string | null>(null);
+  const [inferredTypes, setInferredTypes] = useState<string | null>(null);
+  const [typeInferLoading, setTypeInferLoading] = useState(false);
   const [hasStoredApiKey, setHasStoredApiKey] = useState<Record<'open_ai' | 'anthropic' | 'ollama', boolean>>({
     open_ai: false,
     anthropic: false,
@@ -539,6 +565,20 @@ export default function TalonView({
   }, [result]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem(LLM_SETTINGS_STORAGE_KEY, JSON.stringify(llmSettings));
+    } catch {
+      // Ignore persistence failures (private mode, quota, etc.) and continue.
+    }
+  }, [llmSettings]);
+
+  useEffect(() => {
+    if (!llmSettings.useKeychain && llmError?.toLowerCase().includes('stronghold')) {
+      setLlmError(null);
+    }
+  }, [llmSettings.useKeychain, llmError]);
+
+  useEffect(() => {
     let cancelled = false;
     Promise.all([
       invoke<boolean>('has_llm_provider_key', { provider: 'open_ai', keyAlias: llmSettings.keyAlias || undefined }).catch(() => false),
@@ -562,6 +602,12 @@ export default function TalonView({
     setLlmRefined(null);
     setLlmError(null);
     if (!llmSettings.enabled || !result.instrCount || llmLoading) return;
+    const providerNeedsRemote = llmSettings.provider !== 'ollama';
+    if (providerNeedsRemote && !llmSettings.allowRemoteEndpoints) {
+      setLlmError(`LLM request blocked: provider ${llmSettings.provider} requires enabling remote endpoint opt-in.`);
+      setShowSettings(true);
+      return;
+    }
     if (!llmSettings.providerEnabled[llmSettings.provider]) {
       setLlmError(`LLM request blocked: provider ${llmSettings.provider} is disabled.`);
       return;
@@ -614,10 +660,78 @@ export default function TalonView({
       });
   }, [llmLoading, llmSettings, result, sessionTokensUsed]);
 
+  // ── LLM Type Recovery ────────────────────────────────────────────────────────
+  // Sends the current TALON pseudo-C output to the LLM and asks it to annotate
+  // all parameters, locals, and return values with inferred C types.
+  const handleInferTypes = useCallback(() => {
+    if (typeInferLoading || llmLoading) return;
+    if (!result.lines.length) return;
+    const pseudoC = result.lines.map((l) => l.text).join('\n');
+    if (!pseudoC.trim()) return;
+
+    const approved = window.confirm(
+      [
+        'Send TALON pseudo-C to LLM for type inference?',
+        `Provider: ${llmSettings.provider}`,
+        `Endpoint: ${llmSettings.endpointUrl || 'unset'}`,
+        `Model: ${llmSettings.modelName || 'unset'}`,
+      ].join('\n'),
+    );
+    if (!approved) return;
+
+    setTypeInferLoading(true);
+    setInferredTypes(null);
+    setLlmError(null);
+
+    const prompt = [
+      'You are an expert binary reverse engineer. Below is pseudo-C decompiled output from a binary function.',
+      'Your task: infer precise C types for ALL parameters, local variables, and the return value.',
+      'Output ONLY the annotated pseudo-C — identical structure, but with every variable given an explicit C type.',
+      'Use standard C types (int, uint32_t, char *, void *, struct { ... } *, etc.).',
+      'Do not add explanatory text outside the code block.',
+      '',
+      '```c',
+      pseudoC,
+      '```',
+    ].join('\n');
+
+    const config = settingsToConfig(llmSettings);
+    invoke<{ content: string }>('llm_query', {
+      request: {
+        provider: llmSettings.provider,
+        action: 'type_recovery',
+        endpointUrl: config.endpointUrl,
+        modelName: config.modelName,
+        prompt,
+        contextBlocks: [],
+        timeoutMs: 60000,
+        approvalGranted: true,
+        allowRemoteEndpoint: llmSettings.allowRemoteEndpoints,
+        allowAgentTools: false,
+        apiKey: llmSettings.useKeychain ? undefined : llmSettings.apiKey,
+        useKeychainKey: llmSettings.useKeychain,
+        keyAlias: llmSettings.keyAlias || undefined,
+      },
+    })
+      .then((resp) => {
+        setInferredTypes(resp.content);
+      })
+      .catch((err: unknown) => {
+        setLlmError(`Type inference failed: ${String(err)}`);
+      })
+      .finally(() => {
+        setTypeInferLoading(false);
+      });
+  }, [typeInferLoading, llmLoading, llmSettings, result]);
+
   const handleSaveApiKey = useCallback(() => {
     const apiKey = llmSettings.apiKey.trim();
     if (llmSettings.provider === 'ollama') {
       setLlmError('Local Ollama does not require API key storage.');
+      return;
+    }
+    if (!llmSettings.useKeychain) {
+      setLlmError('Inline API key mode is active. Use Test provider or Run LLM directly.');
       return;
     }
     if (!apiKey) {
@@ -640,7 +754,7 @@ export default function TalonView({
         const msg = err instanceof Error ? err.message : String(err);
         setLlmError(msg);
       });
-  }, [llmSettings.apiKey, llmSettings.keyAlias, llmSettings.provider]);
+  }, [llmSettings.apiKey, llmSettings.keyAlias, llmSettings.provider, llmSettings.useKeychain]);
 
   const handleClearApiKey = useCallback(() => {
     if (llmSettings.provider === 'ollama') {
@@ -661,6 +775,21 @@ export default function TalonView({
   }, [llmSettings.keyAlias, llmSettings.provider]);
 
   const handleTestProvider = useCallback(() => {
+    if (!llmSettings.enabled) {
+      setLlmError('Enable LLM decompilation pass first, then run provider test.');
+      return;
+    }
+    if (llmSettings.provider !== 'ollama' && !llmSettings.allowRemoteEndpoints) {
+      setLlmError(`Provider test blocked: ${llmSettings.provider} requires remote endpoint opt-in.`);
+      setShowSettings(true);
+      return;
+    }
+    if (llmSettings.provider !== 'ollama' && !llmSettings.useKeychain && !llmSettings.apiKey.trim()) {
+      setLlmError('Provider test blocked: enter API key or enable keychain mode.');
+      setShowSettings(true);
+      return;
+    }
+
     const approved = window.confirm(
       [
         'Run provider connectivity/key test?',
@@ -687,6 +816,8 @@ export default function TalonView({
         approvalGranted: true,
         allowRemoteEndpoint: llmSettings.allowRemoteEndpoints,
         allowAgentTools: false,
+        apiKey: llmSettings.useKeychain ? undefined : llmSettings.apiKey,
+        useKeychainKey: llmSettings.useKeychain,
         keyAlias: llmSettings.keyAlias || undefined,
       },
     })
@@ -716,7 +847,9 @@ export default function TalonView({
   const llmRunBlockedReason = !llmSettings.enabled
     ? 'Enable the LLM decompilation pass first.'
     : !result.instrCount
-      ? 'Run TALON on a function before requesting LLM refinement.'
+      ? 'No disassembly loaded. Click Disassemble first, then run TALON/LLM on a function.'
+      : llmSettings.provider !== 'ollama' && !llmSettings.allowRemoteEndpoints
+        ? `Provider ${llmSettings.provider} requires enabling remote endpoint opt-in.`
       : !llmSettings.providerEnabled[llmSettings.provider]
         ? `Provider ${llmSettings.provider} is disabled in provider availability.`
         : !llmSettings.featureEnabled[llmSettings.action]
@@ -751,6 +884,15 @@ export default function TalonView({
           >
             Run LLM
           </button>
+          <button
+            type="button"
+            className="tln-toggle-btn"
+            onClick={handleInferTypes}
+            disabled={typeInferLoading || llmLoading || !result.lines.length}
+            title="Infer C types for all variables and parameters via LLM"
+          >
+            {typeInferLoading ? '⟳ Types…' : 'Infer Types'}
+          </button>
           {llmLoading && (
             <span className="tln-llm-loading" title="LLM refinement running…">⟳ LLM</span>
           )}
@@ -784,7 +926,17 @@ export default function TalonView({
       {showSettings && (
         <SettingsPanel
           settings={llmSettings}
-          onChange={setLlmSettings}
+          onChange={(next) => {
+            setLlmSettings(next);
+            if (llmError && (
+              next.useKeychain !== llmSettings.useKeychain ||
+              next.apiKey !== llmSettings.apiKey ||
+              next.provider !== llmSettings.provider ||
+              next.keyAlias !== llmSettings.keyAlias
+            )) {
+              setLlmError(null);
+            }
+          }}
           onClose={() => setShowSettings(false)}
           hasStoredApiKey={hasStoredApiKey}
           onSaveApiKey={handleSaveApiKey}
@@ -800,6 +952,22 @@ export default function TalonView({
           {result.warnings.map((w, i) => (
             <div key={i} className="tln-warning-item">⚠ {w}</div>
           ))}
+        </div>
+      )}
+
+      {/* ── Type Inference Panel ── */}
+      {inferredTypes && (
+        <div className="tln-type-panel">
+          <div className="tln-type-panel-header">
+            <span className="tln-type-panel-title">⬡ LLM Type Annotations</span>
+            <button
+              type="button"
+              className="tln-type-panel-close"
+              onClick={() => setInferredTypes(null)}
+              title="Dismiss type annotations"
+            >×</button>
+          </div>
+          <pre className="tln-type-panel-body">{inferredTypes}</pre>
         </div>
       )}
 

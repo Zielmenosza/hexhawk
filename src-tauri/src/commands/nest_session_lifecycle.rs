@@ -1006,6 +1006,60 @@ pub fn nest_get_session_summary(
     Ok(to_summary(&state))
 }
 
+/// M13 NEST runtime fidelity gate.
+/// Re-hashes the binary at `binary_path` and verifies it matches the identity
+/// recorded when the session was created. Returns an error if the hash
+/// diverges, which must block session continuation.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NestIdentityVerifyResult {
+    pub session_id: String,
+    pub verified: bool,
+    pub stored_sha256: String,
+    pub computed_sha256: String,
+    pub mismatch: bool,
+    pub message: String,
+}
+
+#[tauri::command]
+pub fn nest_verify_binary_identity(
+    app: tauri::AppHandle,
+    session_id: String,
+    binary_path: String,
+) -> Result<NestIdentityVerifyResult, String> {
+    let state = get_or_load_state(&app, &session_id)?;
+
+    // Re-hash the binary file
+    let bytes = std::fs::read(&binary_path)
+        .map_err(|e| format!("Cannot read binary at '{binary_path}': {e}"))?;
+    let mut hasher = Sha256::new();
+    hasher.update(&bytes);
+    let computed = format!("{:x}", hasher.finalize());
+
+    let stored = state.binary_sha256.clone();
+    let mismatch = computed != stored;
+
+    if mismatch {
+        Ok(NestIdentityVerifyResult {
+            session_id,
+            verified: false,
+            stored_sha256: stored,
+            computed_sha256: computed,
+            mismatch: true,
+            message: "Binary identity mismatch — session continuation blocked. The file on disk has changed since this session was created.".to_string(),
+        })
+    } else {
+        Ok(NestIdentityVerifyResult {
+            session_id,
+            verified: true,
+            stored_sha256: stored,
+            computed_sha256: computed,
+            mismatch: false,
+            message: "Binary identity verified. File matches session record.".to_string(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

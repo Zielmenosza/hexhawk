@@ -1081,54 +1081,54 @@ export function parseNestManifest(raw: unknown): NestValidationResult<NestManife
   if (!isRecord(raw)) {
     return { ok: false, issues: [{ path: 'manifest', code: 'invalid-type', message: 'Expected object.' }] };
   }
-  return finishValidation(raw as NestManifest, validateNestManifest(raw as NestManifest));
+  return finishValidation(raw as unknown as NestManifest, validateNestManifest(raw as unknown as NestManifest));
 }
 
 export function parseNestBinaryIdentity(raw: unknown): NestValidationResult<NestBinaryIdentity> {
   if (!isRecord(raw)) {
     return { ok: false, issues: [{ path: 'binary_identity', code: 'invalid-type', message: 'Expected object.' }] };
   }
-  return finishValidation(raw as NestBinaryIdentity, validateNestBinaryIdentity(raw as NestBinaryIdentity));
+  return finishValidation(raw as unknown as NestBinaryIdentity, validateNestBinaryIdentity(raw as unknown as NestBinaryIdentity));
 }
 
 export function parseNestSessionRecord(raw: unknown): NestValidationResult<NestSessionRecord> {
   if (!isRecord(raw)) {
     return { ok: false, issues: [{ path: 'session', code: 'invalid-type', message: 'Expected object.' }] };
   }
-  return finishValidation(raw as NestSessionRecord, validateNestSessionRecord(raw as NestSessionRecord));
+  return finishValidation(raw as unknown as NestSessionRecord, validateNestSessionRecord(raw as unknown as NestSessionRecord));
 }
 
 export function parseNestIterationsFile(raw: unknown): NestValidationResult<NestIterationsFile> {
   if (!isRecord(raw)) {
     return { ok: false, issues: [{ path: 'iterations', code: 'invalid-type', message: 'Expected object.' }] };
   }
-  return finishValidation(raw as NestIterationsFile, validateNestIterationsFile(raw as NestIterationsFile));
+  return finishValidation(raw as unknown as NestIterationsFile, validateNestIterationsFile(raw as unknown as NestIterationsFile));
 }
 
 export function parseNestDeltasFile(raw: unknown): NestValidationResult<NestDeltasFile> {
   if (!isRecord(raw)) {
     return { ok: false, issues: [{ path: 'deltas', code: 'invalid-type', message: 'Expected object.' }] };
   }
-  return finishValidation(raw as NestDeltasFile, validateNestDeltasFile(raw as NestDeltasFile));
+  return finishValidation(raw as unknown as NestDeltasFile, validateNestDeltasFile(raw as unknown as NestDeltasFile));
 }
 
 export function parseNestFinalVerdictSnapshot(raw: unknown): NestValidationResult<NestFinalVerdictSnapshot> {
   if (!isRecord(raw)) {
     return { ok: false, issues: [{ path: 'final_verdict_snapshot', code: 'invalid-type', message: 'Expected object.' }] };
   }
-  return finishValidation(raw as NestFinalVerdictSnapshot, validateNestFinalVerdictSnapshot(raw as NestFinalVerdictSnapshot));
+  return finishValidation(raw as unknown as NestFinalVerdictSnapshot, validateNestFinalVerdictSnapshot(raw as unknown as NestFinalVerdictSnapshot));
 }
 
 export function parseNestRuntimeProof(raw: unknown): NestValidationResult<NestRuntimeProof> {
   if (!isRecord(raw)) {
     return { ok: false, issues: [{ path: 'runtime_proof', code: 'invalid-type', message: 'Expected object.' }] };
   }
-  return finishValidation(raw as NestRuntimeProof, validateNestRuntimeProof(raw as NestRuntimeProof));
+  return finishValidation(raw as unknown as NestRuntimeProof, validateNestRuntimeProof(raw as unknown as NestRuntimeProof));
 }
 
 export function parseNestAuditRefs(raw: unknown): NestValidationResult<NestAuditRefs> {
   if (!isRecord(raw)) {
     return { ok: false, issues: [{ path: 'audit_refs', code: 'invalid-type', message: 'Expected object.' }] };
   }
-  return finishValidation(raw as NestAuditRefs, validateNestAuditRefs(raw as NestAuditRefs));
+  return finishValidation(raw as unknown as NestAuditRefs, validateNestAuditRefs(raw as unknown as NestAuditRefs));
 }

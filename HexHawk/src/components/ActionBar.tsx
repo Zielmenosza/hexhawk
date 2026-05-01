@@ -10,6 +10,7 @@ interface Action {
   primary?: boolean;
   minTier?: Tier;
   onClick: () => void;
+  disabled?: boolean;
 }
 
 interface ActionBarProps {
@@ -18,6 +19,7 @@ interface ActionBarProps {
   hasDisassembly: boolean;
   hasCfg: boolean;
   hasVerdict: boolean;
+  disassemblyLoading?: boolean;
   onInspect: () => void;
   onDisassemble: () => void;
   onBuildCfg: () => void;
@@ -34,6 +36,7 @@ export default function ActionBar({
   hasDisassembly,
   hasCfg,
   hasVerdict,
+  disassemblyLoading,
   onInspect,
   onDisassemble,
   onBuildCfg,
@@ -61,7 +64,7 @@ export default function ActionBar({
     ];
   } else if (workflowState === 'inspected') {
     actions = [
-      { label: 'Disassemble', icon: '⊞', primary: !hasDisassembly, onClick: onDisassemble },
+      { label: 'Disassemble', icon: '⊞', primary: !hasDisassembly, onClick: onDisassemble, disabled: disassemblyLoading },
       { label: 'Build CFG',   icon: '⬡', primary: !hasCfg,         onClick: onBuildCfg },
       { label: 'Scan Strings', icon: '𝕊',                           onClick: onScanStrings },
       { label: 'Run Analysis', icon: '⚡', primary: !hasVerdict,    onClick: onRunAnalysis },
@@ -80,6 +83,7 @@ export default function ActionBar({
     <div className="wf-actionbar">
       {actions.map((action) => {
         const locked = action.minTier ? !tierAtLeast(tier, action.minTier) : false;
+        const isDisabled = locked || action.disabled;
         return (
           <button
             key={action.label}
@@ -88,14 +92,15 @@ export default function ActionBar({
             className={[
               'wf-action-btn',
               action.primary ? 'wf-action-btn--primary' : '',
-              locked ? 'wf-action-btn--locked' : '',
+              isDisabled ? 'wf-action-btn--locked' : '',
             ].filter(Boolean).join(' ')}
             onClick={action.onClick}
-            title={locked ? `Requires ${action.minTier?.toUpperCase()}` : action.label}
+            disabled={isDisabled}
+            title={locked ? `Requires ${action.minTier?.toUpperCase()}` : action.disabled ? `${action.label}...` : action.label}
           >
             {action.icon && <span className="wf-action-btn-icon">{action.icon}</span>}
             {action.label}
-            {locked && <span className="wf-action-btn-lock">🔒</span>}
+            {isDisabled && !action.disabled && <span className="wf-action-btn-lock">🔒</span>}
           </button>
         );
       })}

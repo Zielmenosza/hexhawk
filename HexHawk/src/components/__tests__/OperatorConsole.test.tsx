@@ -13,15 +13,10 @@ import type { BinaryContext } from '../../utils/operatorConsole';
 
 function makeContext(overrides: Partial<BinaryContext> = {}): BinaryContext {
   return {
-    fileName: 'test.exe',
-    fileSize: 102400,
+    binaryPath: 'test.exe',
     architecture: 'x86_64',
-    threatScore: 42,
-    classification: 'suspicious',
-    behavioralTags: ['anti-analysis'],
-    hasDebugInfo: false,
-    importCount: 23,
-    sectionCount: 5,
+    verdictClassification: 'suspicious',
+    verdictBehaviors: ['anti-analysis'],
     ...overrides,
   };
 }
@@ -79,7 +74,7 @@ describe('OperatorConsole', () => {
   });
 
   it('shows context information from binary', () => {
-    render(<OperatorConsole onNavigateTab={onNavigateTab} context={makeContext({ fileName: 'malware.exe', threatScore: 88 })} />);
+    render(<OperatorConsole onNavigateTab={onNavigateTab} context={makeContext({ binaryPath: 'malware.exe' })} />);
     const html = document.body.innerHTML;
     // Context should inform the console UI
     expect(html.length).toBeGreaterThan(0);
@@ -87,19 +82,15 @@ describe('OperatorConsole', () => {
 
   it('renders with clean binary context', () => {
     render(<OperatorConsole onNavigateTab={onNavigateTab} context={makeContext({
-      threatScore: 5,
-      classification: 'clean',
-      behavioralTags: [],
+      verdictClassification: 'clean',
+      verdictBehaviors: [],
     })} />);
     // Should render without error
     expect(document.body.innerHTML.length).toBeGreaterThan(0);
   });
 
   it('renders with zero-import binary context', () => {
-    render(<OperatorConsole onNavigateTab={onNavigateTab} context={makeContext({
-      importCount: 0,
-      fileSize: 512,
-    })} />);
+    render(<OperatorConsole onNavigateTab={onNavigateTab} context={makeContext()} />);
     expect(document.body.innerHTML.length).toBeGreaterThan(0);
   });
 });

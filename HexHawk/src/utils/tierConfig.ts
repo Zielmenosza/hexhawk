@@ -90,6 +90,7 @@ export const TAB_MIN_TIER: Record<string, Tier> = {
 
   // ── PRO (binary diff / version tracking) ─────────────────────────────────
   diff:        'pro',         // Binary Diff: compare two binaries, track version changes
+  agent:       'pro',         // Agent Gate: MCP agent signal approval and action log
 };
 
 /** Human-readable description of each gated tab shown in the upgrade wall. */

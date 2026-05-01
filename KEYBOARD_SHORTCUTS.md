@@ -22,6 +22,12 @@ HexHawk now includes comprehensive keyboard shortcuts for efficient binary analy
 | **Ctrl+F** | Focus search in current tab |
 | **↑/↓ (Arrow Keys)** | Navigate instructions up/down in disassembly tab |
 
+## Advanced Shortcuts (Quiet Features)
+
+| Shortcut | Action |
+|----------|--------|
+| **Ctrl+Alt+Shift+H** | Reveal/hide self-heal hints panel in Verdict view |
+
 ## Help Shortcuts
 
 | Shortcut | Action |

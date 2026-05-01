@@ -1,1 +1,1 @@
-{}
+{"main-window":{"identifier":"main-window","description":"Permissions for the main HexHawk window","local":true,"windows":["main"],"permissions":["core:default","dialog:allow-open","dialog:allow-save"]}}

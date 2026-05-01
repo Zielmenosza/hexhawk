@@ -93,6 +93,8 @@ export type StructuredNode =
   | { kind: 'seq'; nodes: StructuredNode[] }
   | { kind: 'if'; cond: string; address: number; then: StructuredNode; else?: StructuredNode; uncertain?: boolean }
   | { kind: 'while'; cond: string; address: number; body: StructuredNode }
+  | { kind: 'for'; init: string; cond: string; step: string; address: number; body: StructuredNode }
+  | { kind: 'switch'; expr: string; address: number; cases: Array<{ value: string; body: StructuredNode }>; defaultCase?: StructuredNode; uncertain?: boolean }
   | { kind: 'block'; irBlock: IRBlock }
   | { kind: 'goto'; target: string; address: number };
 
@@ -1359,6 +1361,21 @@ function findJoinPoint(
   return null;
 }
 
+/** Find first topo-ordered block reachable from all starts */
+function findMultiJoinPoint(
+  starts: string[],
+  blockMap: Map<string, IRBlock>,
+  backEdges: Set<string>,
+  topoOrder: string[]
+): string | null {
+  if (starts.length < 2) return null;
+  const reachableSets = starts.map(s => reachable(s, blockMap, backEdges));
+  for (const id of topoOrder) {
+    if (reachableSets.every(rs => rs.has(id))) return id;
+  }
+  return null;
+}
+
 function topoSort(blocks: IRBlock[], backEdges: Set<string>): string[] {
   const blockMap = new Map(blocks.map(b => [b.id, b]));
   const order: string[] = [];
@@ -1394,6 +1411,115 @@ function hasCjmp(block: IRBlock): boolean {
   return block.stmts.some(s => s.op === 'cjmp');
 }
 
+function extractSwitchExprFromBlock(block: IRBlock): string {
+  for (let i = block.stmts.length - 1; i >= 0; i--) {
+    const s = block.stmts[i];
+    if ((s.op === 'cmp' || s.op === 'test') && s.left) {
+      return renderValueRaw(s.left);
+    }
+  }
+  return 'selector';
+}
+
+function extractSwitchCaseValuesFromBlock(block: IRBlock, caseCount: number): string[] {
+  const values: string[] = [];
+  for (const s of block.stmts) {
+    if (s.op !== 'cmp') continue;
+    if (s.right.kind !== 'const') continue;
+    const v = s.right.value;
+    values.push(Math.abs(v) < 1000 ? String(v) : `0x${(v >>> 0).toString(16)}`);
+  }
+
+  const unique: string[] = [];
+  for (const v of values) {
+    if (!unique.includes(v)) unique.push(v);
+    if (unique.length >= caseCount) break;
+  }
+
+  if (unique.length < caseCount) {
+    for (let i = unique.length; i < caseCount; i++) {
+      unique.push(String(i));
+    }
+  }
+  return unique;
+}
+
+// ── Loop-reconstruction helpers ─────────────────────────────────────────────
+
+/** Invert a simple comparison condition string. */
+function invertCond(cond: string): string {
+  if (cond.includes(' != ')) return cond.replace(' != ', ' == ');
+  if (cond.includes(' == ')) return cond.replace(' == ', ' != ');
+  if (cond.includes(' >= ')) return cond.replace(' >= ', ' < ');
+  if (cond.includes(' <= ')) return cond.replace(' <= ', ' > ');
+  if (cond.includes(' > '))  return cond.replace(' > ',  ' <= ');
+  if (cond.includes(' < '))  return cond.replace(' < ',  ' >= ');
+  return `!(${cond})`;
+}
+
+/** All block IDs that are targets of back edges (= natural loop headers). */
+function computeLoopHeaders(backEdges: Set<string>): Set<string> {
+  const headers = new Set<string>();
+  for (const edge of backEdges) {
+    const arrow = edge.indexOf('->');
+    if (arrow !== -1) headers.add(edge.slice(arrow + 2));
+  }
+  return headers;
+}
+
+/**
+ * Returns true if a path from `from` → ... → someBlock → `target` exists where
+ * the last hop is a back edge (i.e., `from` eventually loops back to `target`).
+ */
+function canReachViaBackEdge(
+  from: string,
+  target: string,
+  blockMap: Map<string, IRBlock>,
+  backEdges: Set<string>,
+): boolean {
+  const fwdReachable = reachable(from, blockMap, backEdges);
+  fwdReachable.add(from);
+  for (const edge of backEdges) {
+    const arrow = edge.indexOf('->');
+    if (arrow === -1) continue;
+    const src = edge.slice(0, arrow);
+    const dst = edge.slice(arrow + 2);
+    if (dst === target && fwdReachable.has(src)) return true;
+  }
+  return false;
+}
+
+/**
+ * Try to extract a for-loop step expression by scanning the first body block
+ * for an increment/decrement of `condRegName`.
+ * Returns a string like `"i++"`, `"i += 4"`, or null.
+ */
+function tryExtractLoopStep(
+  bodyFirstId: string,
+  condRegName: string,
+  blockMap: Map<string, IRBlock>,
+  backEdges: Set<string>,
+): string | null {
+  const body = blockMap.get(bodyFirstId);
+  if (!body) return null;
+  const reg = condRegName;
+  for (const s of body.stmts) {
+    if (s.op === 'binop' && s.dest.kind === 'reg' && s.dest.name === reg) {
+      if (s.operator === '+' && s.right.kind === 'const') {
+        return s.right.value === 1 ? `${reg}++` : `${reg} += ${s.right.value}`;
+      }
+      if (s.operator === '-' && s.right.kind === 'const') {
+        return s.right.value === 1 ? `${reg}--` : `${reg} -= ${s.right.value}`;
+      }
+    }
+    if (s.op === 'uop' && s.dest.kind === 'reg' && s.dest.name === reg) {
+      if (s.operator === 'inc') return `${reg}++`;
+      if (s.operator === 'dec') return `${reg}--`;
+    }
+  }
+  return null;
+}
+
 const MAX_STRUCT_DEPTH = 24;
 
 function structureBlock(
@@ -1401,6 +1527,7 @@ function structureBlock(
   blockMap: Map<string, IRBlock>,
   backEdges: Set<string>,
   topoOrder: string[],
+  loopHeaders: Set<string>,
   visited: Set<string>,
   stopAt: string | null,
   depth: number
@@ -1436,12 +1563,12 @@ function structureBlock(
 
     // Build loop body: from loop header to this (tail) block
     const bodyNode = structureBlock(loopHeader, blockMap, backEdges, topoOrder,
-                                    bodyVisited, blockId, depth + 1);
+                                    loopHeaders, bodyVisited, blockId, depth + 1);
 
     const whileNode: StructuredNode = { kind: 'while', cond, address: block.stmts.find(s => s.op === 'cjmp')?.address ?? block.start, body: bodyNode };
 
     const rest = exitSucc
-      ? structureBlock(exitSucc, blockMap, backEdges, topoOrder, visited, stopAt, depth + 1)
+      ? structureBlock(exitSucc, blockMap, backEdges, topoOrder, loopHeaders, visited, stopAt, depth + 1)
       : { kind: 'seq' as const, nodes: [] };
 
     return { kind: 'seq', nodes: [blockNode, whileNode, rest] };
@@ -1453,11 +1580,11 @@ function structureBlock(
   }
 
   if (fwdSuccs.length === 1) {
-    const rest = structureBlock(fwdSuccs[0], blockMap, backEdges, topoOrder, visited, stopAt, depth + 1);
+    const rest = structureBlock(fwdSuccs[0], blockMap, backEdges, topoOrder, loopHeaders, visited, stopAt, depth + 1);
     return { kind: 'seq', nodes: [blockNode, rest] };
   }
 
-  // ── IF / ELSE (two forward successors) ──────────────
+  // ── IF / ELSE or WHILE-HEADER (two forward successors) ──────────────────────
   if (fwdSuccs.length === 2 && hasCjmp(block)) {
     const cjmpStmt = [...block.stmts].reverse().find((s): s is Extract<IRStmt, { op: 'cjmp' }> => s.op === 'cjmp');
     const cond = cjmpStmt?.cond ?? '?';
@@ -1466,12 +1593,41 @@ function structureBlock(
       : fwdSuccs[0];
     const falseSucc = fwdSuccs.find(s => s !== trueSucc) ?? fwdSuccs[1];
 
+    // ── WHILE / FOR header (this block is the target of a back edge) ────────
+    if (loopHeaders.has(blockId)) {
+      const trueLoopsBack = canReachViaBackEdge(trueSucc, blockId, blockMap, backEdges);
+      const bodySucc = trueLoopsBack ? trueSucc : falseSucc;
+      const exitSucc = trueLoopsBack ? falseSucc : trueSucc;
+      const whileCond = (trueSucc === bodySucc) ? cond : invertCond(cond);
+
+      const bodyVisited = new Set(visited);
+      const bodyNode = structureBlock(bodySucc, blockMap, backEdges, topoOrder, loopHeaders, bodyVisited, blockId, depth + 1);
+
+      // Try to promote while → for if we can extract a step expression
+      const cmpStmt = [...block.stmts].reverse().find(s => s.op === 'cmp' || s.op === 'test');
+      let loopNode: StructuredNode;
+      if (cmpStmt && (cmpStmt.op === 'cmp' || cmpStmt.op === 'test') && cmpStmt.left.kind === 'reg') {
+        const stepStr = tryExtractLoopStep(bodySucc, cmpStmt.left.name, blockMap, backEdges);
+        if (stepStr) {
+          loopNode = { kind: 'for', init: '', cond: whileCond, step: stepStr, address: block.start, body: bodyNode };
+        } else {
+          loopNode = { kind: 'while', cond: whileCond, address: block.start, body: bodyNode };
+        }
+      } else {
+        loopNode = { kind: 'while', cond: whileCond, address: block.start, body: bodyNode };
+      }
+
+      const rest = structureBlock(exitSucc, blockMap, backEdges, topoOrder, loopHeaders, visited, stopAt, depth + 1);
+      return { kind: 'seq', nodes: [blockNode, loopNode, rest] };
+    }
+
+    // ── IF / ELSE (no back edge into this block) ─────────────────────────────
     const joinId = findJoinPoint(trueSucc, falseSucc, blockMap, backEdges, topoOrder);
 
     const thenVisited = new Set(visited);
     const elseVisited = new Set(visited);
-    const thenNode = structureBlock(trueSucc, blockMap, backEdges, topoOrder, thenVisited, joinId, depth + 1);
-    const elseNode = structureBlock(falseSucc, blockMap, backEdges, topoOrder, elseVisited, joinId, depth + 1);
+    const thenNode = structureBlock(trueSucc, blockMap, backEdges, topoOrder, loopHeaders, thenVisited, joinId, depth + 1);
+    const elseNode = structureBlock(falseSucc, blockMap, backEdges, topoOrder, loopHeaders, elseVisited, joinId, depth + 1);
 
     const cjmpAddr = cjmpStmt?.address ?? block.start;
     const ifNode: StructuredNode = {
@@ -1483,16 +1639,51 @@ function structureBlock(
     };
 
     const rest = joinId
-      ? structureBlock(joinId, blockMap, backEdges, topoOrder, visited, stopAt, depth + 1)
+      ? structureBlock(joinId, blockMap, backEdges, topoOrder, loopHeaders, visited, stopAt, depth + 1)
       : { kind: 'seq' as const, nodes: [] };
 
     return { kind: 'seq', nodes: [blockNode, ifNode, rest] };
   }
 
+  // ── SWITCH / JUMP-TABLE STYLE DISPATCH (3+ successors) ──
+  if (fwdSuccs.length >= 3) {
+    const joinId = findMultiJoinPoint(fwdSuccs, blockMap, backEdges, topoOrder);
+    const caseSuccs = [...fwdSuccs];
+    const hasIndirectDispatch = block.stmts.some(s => s.op === 'jmp' && s.target === null);
+    const defaultSucc = caseSuccs.length >= 2 ? caseSuccs[caseSuccs.length - 1] : null;
+    const explicitCases = defaultSucc ? caseSuccs.slice(0, -1) : caseSuccs;
+    const caseValues = extractSwitchCaseValuesFromBlock(block, explicitCases.length);
+
+    const switchCases = explicitCases.map((succ, idx) => {
+      const caseVisited = new Set(visited);
+      const caseNode = structureBlock(succ, blockMap, backEdges, topoOrder, loopHeaders, caseVisited, joinId, depth + 1);
+      return { value: caseValues[idx] ?? String(idx), body: caseNode };
+    });
+
+    const defaultNode = defaultSucc
+      ? structureBlock(defaultSucc, blockMap, backEdges, topoOrder, loopHeaders, new Set(visited), joinId, depth + 1)
+      : undefined;
+
+    const switchNode: StructuredNode = {
+      kind: 'switch',
+      expr: extractSwitchExprFromBlock(block),
+      address: block.start,
+      cases: switchCases,
+      defaultCase: defaultNode,
+      uncertain: !hasIndirectDispatch,
+    };
+
+    const rest = joinId
+      ? structureBlock(joinId, blockMap, backEdges, topoOrder, loopHeaders, visited, stopAt, depth + 1)
+      : { kind: 'seq' as const, nodes: [] };
+
+    return { kind: 'seq', nodes: [blockNode, switchNode, rest] };
+  }
+
   // ── FALLBACK: multi-successor, can't structure cleanly ──
   const nodes: StructuredNode[] = [blockNode];
   for (const s of fwdSuccs) {
-    const child = structureBlock(s, blockMap, backEdges, topoOrder, visited, stopAt, depth + 1);
+    const child = structureBlock(s, blockMap, backEdges, topoOrder, loopHeaders, visited, stopAt, depth + 1);
     nodes.push(child);
   }
   return { kind: 'seq', nodes };
@@ -1553,6 +1744,40 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
         kind: 'control',
       });
       emitNode(node.body, varMap, indent + 1, lines);
+      lines.push({ indent, text: '}', kind: 'brace' });
+      return;
+    }
+
+    case 'for': {
+      const initPart = node.init || '';
+      lines.push({
+        indent,
+        text: `for (${initPart}; ${node.cond}; ${node.step}) {`,
+        address: node.address,
+        kind: 'control',
+      });
+      emitNode(node.body, varMap, indent + 1, lines);
+      lines.push({ indent, text: '}', kind: 'brace' });
+      return;
+    }
+
+    case 'switch': {
+      lines.push({
+        indent,
+        text: `switch (${node.expr}) {`,
+        address: node.address,
+        isUncertain: node.uncertain,
+        kind: 'control',
+      });
+      for (const c of node.cases) {
+        lines.push({ indent: indent + 1, text: `case ${c.value}:`, kind: 'control' });
+        emitNode(c.body, varMap, indent + 2, lines);
+        lines.push({ indent: indent + 2, text: 'break;', kind: 'stmt' });
+      }
+      if (node.defaultCase && !isEmptySeq(node.defaultCase)) {
+        lines.push({ indent: indent + 1, text: 'default:', kind: 'control' });
+        emitNode(node.defaultCase, varMap, indent + 2, lines);
+      }
       lines.push({ indent, text: '}', kind: 'brace' });
       return;
     }
@@ -1802,12 +2027,13 @@ export function decompile(
   // Phase 5: Structure control flow
   const blockMap = new Map(irBlocks.map(b => [b.id, b]));
   const backEdges = computeBackEdges(irBlocks);
+  const loopHeaders = computeLoopHeaders(backEdges);
   const topo = topoSort(irBlocks, backEdges);
   const entry = findEntryBlock(irBlocks);
 
   let structured: StructuredNode;
   if (entry) {
-    structured = structureBlock(entry.id, blockMap, backEdges, topo, new Set(), null, 0);
+    structured = structureBlock(entry.id, blockMap, backEdges, topo, loopHeaders, new Set(), null, 0);
   } else {
     structured = { kind: 'seq', nodes: irBlocks.map(b => ({ kind: 'block' as const, irBlock: b })) };
     warnings.push('Could not find entry block — using flat block sequence.');

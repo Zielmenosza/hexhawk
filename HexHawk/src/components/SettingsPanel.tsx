@@ -130,6 +130,7 @@ export default function SettingsPanel({
 
   const selectedProviderStoredKey = hasStoredApiKey[settings.provider];
   const providerNeedsKey = settings.provider !== 'ollama';
+  const secureStorageAvailable = settings.useKeychain && settings.provider !== 'ollama';
 
   return (
     <div className="tln-settings-panel" role="dialog" aria-label="TALON LLM settings">
@@ -144,6 +145,26 @@ export default function SettingsPanel({
           ✕
         </button>
       </div>
+
+      {llmError && (
+        <div
+          className="tln-settings-row"
+          style={{
+            margin: '8px 10px 0',
+            border: '1px solid rgba(90, 163, 255, 0.45)',
+            borderRadius: 8,
+            background: llmError.toLowerCase().includes('succeeded')
+              ? 'rgba(56, 178, 102, 0.14)'
+              : 'rgba(255, 122, 122, 0.12)',
+            color: llmError.toLowerCase().includes('succeeded') ? '#9be2b4' : '#ffd2d2',
+            fontSize: '0.86rem',
+            fontWeight: 600,
+            padding: '8px 10px',
+          }}
+        >
+          {llmError}
+        </div>
+      )}
 
       <div className="tln-settings-body">
         {/* Toggle */}
@@ -347,16 +368,30 @@ export default function SettingsPanel({
         </label>
 
         <div className="tln-settings-row tln-settings-actions">
-          <button type="button" className="tln-btn" disabled={!settings.enabled || (!settings.apiKey && !selectedProviderStoredKey)} onClick={onSaveApiKey}>
+          <button
+            type="button"
+            className="tln-btn"
+            disabled={!settings.enabled || !secureStorageAvailable || (!settings.apiKey && !selectedProviderStoredKey)}
+            onClick={onSaveApiKey}
+          >
             {selectedProviderStoredKey ? 'Update key securely' : 'Add key securely'}
           </button>
-          <button type="button" className="tln-btn" disabled={!settings.enabled || !selectedProviderStoredKey} onClick={onClearApiKey}>
+          <button
+            type="button"
+            className="tln-btn"
+            disabled={!settings.enabled || !secureStorageAvailable || !selectedProviderStoredKey}
+            onClick={onClearApiKey}
+          >
             Remove stored key
           </button>
           <button type="button" className="tln-btn" disabled={!settings.enabled} onClick={onTestApiKey}>
             Test provider
           </button>
-          <span className="tln-settings-hint">Stored key ({settings.provider}): {selectedProviderStoredKey ? 'yes' : 'no'}</span>
+          <span className="tln-settings-hint">
+            {secureStorageAvailable
+              ? `Stored key (${settings.provider}): ${selectedProviderStoredKey ? 'yes' : 'no'}`
+              : 'Inline API key mode active for this session.'}
+          </span>
         </div>
 
         <label className="tln-settings-row tln-settings-toggle-row">
@@ -372,6 +407,11 @@ export default function SettingsPanel({
             <span className="tln-toggle-track" aria-hidden="true" />
           </span>
         </label>
+        {settings.enabled && settings.provider !== 'ollama' && !settings.allowRemoteEndpoints && (
+          <div className="tln-settings-note" style={{ marginTop: -4 }}>
+            Hosted providers require this opt-in. Turn this on for OpenAI or Anthropic requests.
+          </div>
+        )}
 
         <label className="tln-settings-row tln-settings-toggle-row">
           <span className="tln-settings-label">Allow agent/tool directives in LLM output</span>
@@ -404,7 +444,6 @@ export default function SettingsPanel({
           <p className="tln-settings-note">
             LLM pass is manual-only. Every call requires explicit confirmation.
             Output is advisory and falls back to TALON output on any failure.
-            {llmError ? ` Last status: ${llmError}` : ''}
           </p>
         )}
       </div>

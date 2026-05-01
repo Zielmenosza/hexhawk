@@ -1,0 +1,95 @@
+{
+  "generatedAt": "2026-05-01T10:43:10.182Z",
+  "scenarioPaths": [
+    "D:\\Project\\HexHawk\\HexHawk\\scripts\\strike-benchmarks\\default-scenarios.json",
+    "D:\\Project\\HexHawk\\HexHawk\\scripts\\strike-benchmarks\\challenge-derived-scenarios.json"
+  ],
+  "scenarioCount": 17,
+  "scenarios": {
+    "decoder-loop-oep": {
+      "score": 100,
+      "riskScore": 65,
+      "passed": true
+    },
+    "nested-calls-and-resolution": {
+      "score": 100,
+      "riskScore": 81,
+      "passed": true
+    },
+    "challenge-1-drillbabydrill": {
+      "score": 100,
+      "riskScore": 0,
+      "passed": true
+    },
+    "challenge-10000": {
+      "score": 100,
+      "riskScore": 33,
+      "passed": true
+    },
+    "challenge-4-unholydragon": {
+      "score": 100,
+      "riskScore": 0,
+      "passed": true
+    },
+    "challenge-chat-client": {
+      "score": 100,
+      "riskScore": 33,
+      "passed": true
+    },
+    "challenge-crackme-shroud": {
+      "score": 100,
+      "riskScore": 33,
+      "passed": true
+    },
+    "challenge-drillbabydrill": {
+      "score": 100,
+      "riskScore": 0,
+      "passed": true
+    },
+    "challenge-flareauthenticator": {
+      "score": 100,
+      "riskScore": 45,
+      "passed": true
+    },
+    "challenge-gujian3": {
+      "score": 100,
+      "riskScore": 33,
+      "passed": true
+    },
+    "challenge-hopeanddreams": {
+      "score": 100,
+      "riskScore": 84,
+      "passed": true
+    },
+    "challenge-keygenme": {
+      "score": 100,
+      "riskScore": 33,
+      "passed": true
+    },
+    "challenge-ntfsm": {
+      "score": 100,
+      "riskScore": 95,
+      "passed": true
+    },
+    "challenge-pretty-devilish-file": {
+      "score": 100,
+      "riskScore": 0,
+      "passed": true
+    },
+    "challenge-project-chimera": {
+      "score": 100,
+      "riskScore": 0,
+      "passed": true
+    },
+    "challenge-run": {
+      "score": 100,
+      "riskScore": 0,
+      "passed": true
+    },
+    "challenge-unholydragon-150": {
+      "score": 100,
+      "riskScore": 33,
+      "passed": true
+    }
+  }
+}

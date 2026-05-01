@@ -165,7 +165,7 @@ pub async fn install_plugin(
     copy_file_create_new(src, &dest)?;
 
     // ── Validate the copied file actually loads as a HexHawk plugin ──────────
-    match crate::plugins::quill::scan_plugin_dir(&dir)
+    match scan_plugin_dir(&dir)
         .into_iter()
         .find(|(info, _)| {
             info.filename == filename.to_string_lossy().as_ref()
@@ -287,3 +287,168 @@ pub async fn open_plugin_directory(app: tauri::AppHandle) -> Result<(), String> 
 
     Ok(())
 }
+
+// ── QUILL Plugin API Manifest ─────────────────────────────────────────────────
+//
+// Returns the full machine-readable API surface that a QUILL plugin can call.
+// This powers in-app docs and allows external tooling to discover capabilities.
+
+#[derive(Debug, serde::Serialize)]
+pub struct ApiCommand {
+    pub name: String,
+    pub description: String,
+    pub params: Vec<ApiParam>,
+    pub returns: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ApiParam {
+    pub name: String,
+    pub kind: String,
+    pub required: bool,
+    pub description: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct PluginManifest {
+    pub schema_version: u32,
+    pub hexhawk_version: String,
+    pub plugin_api_version: String,
+    pub platform: String,
+    pub commands: Vec<ApiCommand>,
+    pub script_ops: Vec<String>,
+}
+
+#[command]
+pub fn get_plugin_manifest() -> PluginManifest {
+    PluginManifest {
+        schema_version: 1,
+        hexhawk_version: env!("CARGO_PKG_VERSION").to_string(),
+        plugin_api_version: "1.0".to_string(),
+        platform: std::env::consts::OS.to_string(),
+        script_ops: vec![
+            "disassemble".to_string(),
+            "disassemble_section".to_string(),
+            "strings".to_string(),
+            "hex".to_string(),
+            "inspect".to_string(),
+            "file_size".to_string(),
+            "entropy".to_string(),
+            "find_bytes".to_string(),
+            "xref_to".to_string(),
+            "section_map".to_string(),
+        ],
+        commands: vec![
+            ApiCommand {
+                name: "disassemble_file_range".to_string(),
+                description: "Disassemble a byte range from a file. Automatically detects architecture. Skips undecodable bytes rather than failing.".to_string(),
+                params: vec![
+                    ApiParam { name: "path".to_string(), kind: "string".to_string(), required: true, description: "Absolute file path".to_string() },
+                    ApiParam { name: "offset".to_string(), kind: "usize".to_string(), required: true, description: "Byte offset into the file".to_string() },
+                    ApiParam { name: "length".to_string(), kind: "usize".to_string(), required: true, description: "Number of bytes to decode".to_string() },
+                    ApiParam { name: "max_instructions".to_string(), kind: "u64?".to_string(), required: false, description: "Instruction limit (default 256)".to_string() },
+                ],
+                returns: "DisassemblyResult { arch, is_fallback, instructions[], has_more, next_byte_offset, bad_bytes }".to_string(),
+            },
+            ApiCommand {
+                name: "run_script".to_string(),
+                description: "Execute a batch analysis script — a JSON array of named operations against a file. The IDA-equivalent scripting interface.".to_string(),
+                params: vec![
+                    ApiParam { name: "script.path".to_string(), kind: "string".to_string(), required: true, description: "Absolute file path".to_string() },
+                    ApiParam { name: "script.steps".to_string(), kind: "ScriptStep[]".to_string(), required: true, description: "Array of { op, params, result_key? }".to_string() },
+                    ApiParam { name: "script.timeout_ms".to_string(), kind: "u64?".to_string(), required: false, description: "Wall-time limit (default 60 000, max 300 000)".to_string() },
+                ],
+                returns: "ScriptOutput { path, steps_run, steps_ok, steps_failed, total_duration_ms, results[] }".to_string(),
+            },
+            ApiCommand {
+                name: "create_repl_session".to_string(),
+                description: "Create a persistent Rhai scripting session bound to a binary path. Stored values survive across subsequent eval calls for that session.".to_string(),
+                params: vec![
+                    ApiParam { name: "request.path".to_string(), kind: "string".to_string(), required: true, description: "Absolute file path to analyze in the REPL session".to_string() },
+                ],
+                returns: "ReplSessionInfo { session_id, path, eval_count, stored_keys[] }".to_string(),
+            },
+            ApiCommand {
+                name: "repl_eval".to_string(),
+                description: "Execute Rhai code inside a persistent analysis session. Exposes helpers like file_size(), inspect(), strings(), disasm(), find_bytes(), xref_to(), store(), load(), and run().".to_string(),
+                params: vec![
+                    ApiParam { name: "request.session_id".to_string(), kind: "string".to_string(), required: true, description: "Existing REPL session identifier".to_string() },
+                    ApiParam { name: "request.code".to_string(), kind: "string".to_string(), required: true, description: "Rhai source code to evaluate".to_string() },
+                ],
+                returns: "ReplEvalResponse { session_id, path, result, eval_count, stored_keys[] }".to_string(),
+            },
+            ApiCommand {
+                name: "get_repl_session".to_string(),
+                description: "Inspect a persistent Rhai session without executing code.".to_string(),
+                params: vec![
+                    ApiParam { name: "session_id".to_string(), kind: "string".to_string(), required: true, description: "Existing REPL session identifier".to_string() },
+                ],
+                returns: "ReplSessionInfo { session_id, path, eval_count, stored_keys[] }".to_string(),
+            },
+            ApiCommand {
+                name: "close_repl_session".to_string(),
+                description: "Dispose a persistent Rhai session and its stored analysis values.".to_string(),
+                params: vec![
+                    ApiParam { name: "session_id".to_string(), kind: "string".to_string(), required: true, description: "Existing REPL session identifier".to_string() },
+                ],
+                returns: "bool".to_string(),
+            },
+            ApiCommand {
+                name: "run_plugins_on_file".to_string(),
+                description: "Run all enabled QUILL plugins against a file and return structured results.".to_string(),
+                params: vec![
+                    ApiParam { name: "path".to_string(), kind: "string".to_string(), required: true, description: "Absolute file path".to_string() },
+                ],
+                returns: "PluginResultResponse[]".to_string(),
+            },
+            ApiCommand {
+                name: "inspect_file_metadata".to_string(),
+                description: "Parse PE/ELF/MachO headers: sections, imports, exports, symbols, entropy, hashes.".to_string(),
+                params: vec![
+                    ApiParam { name: "path".to_string(), kind: "string".to_string(), required: true, description: "Absolute file path".to_string() },
+                ],
+                returns: "FileMetadata { format, arch, sections[], imports[], exports[], entropy, md5, sha256, … }".to_string(),
+            },
+            ApiCommand {
+                name: "build_cfg".to_string(),
+                description: "Build a control-flow graph for a function starting at a virtual address.".to_string(),
+                params: vec![
+                    ApiParam { name: "path".to_string(), kind: "string".to_string(), required: true, description: "Absolute file path".to_string() },
+                    ApiParam { name: "address".to_string(), kind: "u64".to_string(), required: true, description: "Function entry virtual address".to_string() },
+                    ApiParam { name: "max_instructions".to_string(), kind: "u32?".to_string(), required: false, description: "CFG instruction budget (default 2048)".to_string() },
+                ],
+                returns: "CfgGraph { nodes[], edges[] }".to_string(),
+            },
+            ApiCommand {
+                name: "llm_query".to_string(),
+                description: "Send a prompt + binary context to an LLM provider (OpenAI / Anthropic / Ollama) for AI-assisted analysis.".to_string(),
+                params: vec![
+                    ApiParam { name: "request.prompt".to_string(), kind: "string".to_string(), required: true, description: "Analysis question or instruction".to_string() },
+                    ApiParam { name: "request.provider".to_string(), kind: "open_ai|anthropic|ollama".to_string(), required: false, description: "LLM provider (inferred from endpoint if omitted)".to_string() },
+                    ApiParam { name: "request.endpointUrl".to_string(), kind: "string".to_string(), required: true, description: "Provider API endpoint URL".to_string() },
+                    ApiParam { name: "request.modelName".to_string(), kind: "string".to_string(), required: true, description: "Model identifier e.g. gpt-4o-mini".to_string() },
+                    ApiParam { name: "request.apiKey".to_string(), kind: "string?".to_string(), required: false, description: "API key (inline mode; omit to use keychain)".to_string() },
+                    ApiParam { name: "request.approvalGranted".to_string(), kind: "bool".to_string(), required: true, description: "Must be true — user consent gate".to_string() },
+                ],
+                returns: "LlmQueryResponse { content, provider, model_name, token_estimate, warnings[], … }".to_string(),
+            },
+            ApiCommand {
+                name: "export_patched".to_string(),
+                description: "Write a patched copy of the binary to a new file path.".to_string(),
+                params: vec![
+                    ApiParam { name: "src_path".to_string(), kind: "string".to_string(), required: true, description: "Source binary path".to_string() },
+                    ApiParam { name: "dest_path".to_string(), kind: "string".to_string(), required: true, description: "Output file path".to_string() },
+                    ApiParam { name: "patches".to_string(), kind: "PatchSpec[]".to_string(), required: true, description: "Array of { offset, new_bytes }".to_string() },
+                ],
+                returns: "{ bytes_written: u64 }".to_string(),
+            },
+            ApiCommand {
+                name: "get_plugin_manifest".to_string(),
+                description: "Return this manifest — the full HexHawk scripting API surface.".to_string(),
+                params: vec![],
+                returns: "PluginManifest".to_string(),
+            },
+        ],
+    }
+}
+

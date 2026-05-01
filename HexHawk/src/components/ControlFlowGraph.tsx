@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import ReactFlow, { Background, Controls, Edge, MiniMap, Node } from 'reactflow';
+import ReactFlow, { Background, Controls, Edge, MarkerType, MiniMap, Node, NodeProps } from 'reactflow';
 import 'reactflow/dist/style.css';
 
 interface GraphNode {
@@ -47,6 +47,38 @@ interface Props {
   pathNodes?: Set<string>;
 }
 
+type CfgNodeData = {
+  title: string;
+  addrLine: string;
+  metricLine: string;
+  badges: string[];
+  level: 'highlight' | 'path' | 'dispatcher' | 'loop-header' | 'loop-body' | 'exit' | 'external' | 'entry' | 'normal';
+  muted: boolean;
+  loopDepth: number;
+};
+
+const CfgBlockNode = React.memo(({ data }: NodeProps<CfgNodeData>) => {
+  return (
+    <div className={`cfg-node cfg-node--${data.level}${data.muted ? ' cfg-node--muted' : ''}`}>
+      <div className="cfg-node-title">{data.title}</div>
+      {data.addrLine && <div className="cfg-node-addr">{data.addrLine}</div>}
+      {data.metricLine && <div className="cfg-node-metrics">{data.metricLine}</div>}
+      {data.badges.length > 0 && (
+        <div className="cfg-node-badges">
+          {data.badges.map(b => (
+            <span key={b} className="cfg-node-badge">{b}</span>
+          ))}
+        </div>
+      )}
+      {data.loopDepth > 1 && (
+        <div className="cfg-node-depth">Loop depth {data.loopDepth}</div>
+      )}
+    </div>
+  );
+});
+
+CfgBlockNode.displayName = 'CfgBlockNode';
+
 export function ControlFlowGraph({
   graph,
   onNodeClick,
@@ -67,7 +99,7 @@ export function ControlFlowGraph({
     return map;
   }, [graph.edges]);
 
-  const nodeList: Node[] = graph.nodes.map((node, index) => {
+  const nodeList: Node<CfgNodeData>[] = graph.nodes.map((node, index) => {
     const isExternal = node.block_type === 'external';
     const isEntry = node.block_type === 'entry';
     const isHighlighted = node.id === highlightedBlockId;
@@ -79,45 +111,24 @@ export function ControlFlowGraph({
     const loopDepth = loopBodies?.get(node.id) ?? 0;
     const isLoopBody = loopDepth > 0 && !isLoopHeader;
 
-    let color: string;
-    let bgColor: string;
-    let boxShadow = 'none';
+    let level: CfgNodeData['level'] = 'normal';
 
     if (isHighlighted) {
-      color = '#00ff00';
-      bgColor = 'rgba(0, 200, 100, 0.5)';
-      boxShadow = '0 0 20px rgba(0, 255, 0, 0.6)';
+      level = 'highlight';
     } else if (pathModeActive && isOnPath) {
-      color = '#ffcf66';
-      bgColor = 'rgba(160, 110, 0, 0.45)';
-      boxShadow = '0 0 12px rgba(255, 207, 102, 0.4)';
+      level = 'path';
     } else if (isDispatcher) {
-      // CFF dispatcher hub: amber/orange to signal control-flow flattening
-      color = '#ffb347';
-      bgColor = 'rgba(180, 90, 0, 0.45)';
-      boxShadow = '0 0 12px rgba(255, 160, 0, 0.5)';
+      level = 'dispatcher';
     } else if (isLoopHeader) {
-      color = '#00e5cc';
-      bgColor = 'rgba(0, 150, 120, 0.45)';
-      boxShadow = '0 0 10px rgba(0, 229, 204, 0.4)';
+      level = 'loop-header';
     } else if (isLoopBody) {
-      const alpha = Math.min(0.15 + loopDepth * 0.1, 0.45);
-      color = '#00bfa5';
-      bgColor = `rgba(0, 100, 90, ${alpha})`;
+      level = 'loop-body';
     } else if (isExitBlock) {
-      // True exit block: no outgoing edges (ret/syscall ending block)
-      color = '#9c6aff';
-      bgColor = 'rgba(70, 30, 120, 0.5)';
+      level = 'exit';
     } else if (isExternal) {
-      // External target: jump/call to address outside the analyzed range
-      color = '#7a7a9a';
-      bgColor = 'rgba(40, 40, 70, 0.5)';
+      level = 'external';
     } else if (isEntry) {
-      color = '#00ff00';
-      bgColor = 'rgba(0, 100, 0, 0.3)';
-    } else {
-      color = '#00d4ff';
-      bgColor = 'rgba(0, 100, 150, 0.3)';
+      level = 'entry';
     }
 
     // Use layout coordinates from backend if available
@@ -133,36 +144,31 @@ export function ControlFlowGraph({
     const metricLine = instrCount > 0
       ? `${instrCount} instr${incoming > 0 ? ` · ${incoming} in` : ''}`
       : '';
-    const typeMarkers: string[] = [];
-    if (isEntry) typeMarkers.push('[ENTRY]');
-    if (isExitBlock) typeMarkers.push('[EXIT]');      // block with no outgoing edges
-    if (isExternal) typeMarkers.push('[EXT]');        // external call/jump target
-    if (pathModeActive && isOnPath) typeMarkers.push('[PATH]');
-    if (isLoopHeader) typeMarkers.push('[LOOP HDR]');
-    if (isDispatcher) typeMarkers.push('[DISPATCHER]'); // CFF dispatcher hub
-    const typeLine = typeMarkers.join(' ');
-    const labelParts = [node.label || node.id, addrLine, metricLine, typeLine].filter(Boolean);
+    const badges: string[] = [];
+    if (isEntry) badges.push('ENTRY');
+    if (isExitBlock) badges.push('EXIT');
+    if (isExternal) badges.push('EXTERNAL');
+    if (pathModeActive && isOnPath) badges.push('PATH');
+    if (isLoopHeader) badges.push('LOOP HDR');
+    if (isDispatcher) badges.push('DISPATCHER');
 
     return {
       id: node.id,
       position: { x, y },
-      data: { label: labelParts.join('\n') },
+      type: 'cfgNode',
+      data: {
+        title: node.label || node.id,
+        addrLine,
+        metricLine,
+        badges,
+        level,
+        muted: pathModeActive ? !isOnPath : false,
+        loopDepth,
+      },
       style: {
-        border: `2px solid ${color}`,
-        background: bgColor,
-        color: '#fff',
-        padding: 10,
-        minWidth: 170,
-        textAlign: 'center' as const,
-        fontSize: '11px',
-        borderRadius: '8px',
+        minWidth: 204,
         cursor: onNodeClick ? 'pointer' : 'default',
-        fontFamily: 'monospace',
-        whiteSpace: 'pre-wrap' as const,
-        boxShadow,
-        transition: 'all 0.2s ease',
-        lineHeight: '1.4',
-        opacity: pathModeActive ? (isOnPath ? 1 : 0.35) : 1,
+        opacity: pathModeActive ? (isOnPath ? 1 : 0.32) : 1,
       },
     };
   });
@@ -198,7 +204,7 @@ export function ControlFlowGraph({
 
     if (pathModeActive && edgeOnPath) {
       strokeColor = '#ffcf66';
-      strokeWidth = 3;
+      strokeWidth = 3.2;
       if (!label) label = 'PATH';
     }
 
@@ -208,6 +214,12 @@ export function ControlFlowGraph({
       target: edge.target,
       type: 'smoothstep',
       animated,
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: strokeColor,
+        width: 16,
+        height: 16,
+      },
       style: {
         stroke: strokeColor,
         strokeWidth,
@@ -227,30 +239,41 @@ export function ControlFlowGraph({
     }
   }, [graph.nodes, onNodeClick]);
 
+  const nodeTypes = useMemo(() => ({
+    cfgNode: CfgBlockNode,
+  }), []);
+
   return (
-    <div className="cfg-view">
+    <div className="cfg-view cfg-view--modern">
       <ReactFlow
         nodes={nodeList}
         edges={edgeList}
+        nodeTypes={nodeTypes}
         fitView
+        fitViewOptions={{ padding: 0.2, maxZoom: 1.35 }}
+        minZoom={0.15}
+        maxZoom={2}
         attributionPosition="bottom-left"
         onNodeClick={handleNodeClick}
       >
-        <Background gap={16} />
-        <Controls />
+        <Background gap={22} size={1.1} color="rgba(154, 208, 255, 0.18)" />
+        <Controls showInteractive={false} />
         <MiniMap
-          nodeColor={(node) => {
-            const s = node.style as React.CSSProperties | undefined;
-            const border = typeof s?.border === 'string' ? s.border : '';
-            if (border.includes('#00ff00')) return '#00ff00';
-            if (border.includes('#00e5cc')) return '#00e5cc';
-            if (border.includes('#00bfa5')) return '#00bfa5';
-            if (border.includes('#9c6aff')) return '#9c6aff';
-            if (border.includes('#666')) return '#555';
-            return '#00d4ff';
+          nodeColor={(node: Node) => {
+            const d = node.data as CfgNodeData | undefined;
+            if (!d) return '#7aaaff';
+            if (d.level === 'highlight') return '#6effb4';
+            if (d.level === 'path') return '#ffcf66';
+            if (d.level === 'loop-header') return '#00e5cc';
+            if (d.level === 'loop-body') return '#00bfa5';
+            if (d.level === 'dispatcher') return '#ffb347';
+            if (d.level === 'exit') return '#b38cff';
+            if (d.level === 'external') return '#8c8ca8';
+            if (d.level === 'entry') return '#66ffa8';
+            return '#68c2ff';
           }}
-          maskColor="rgba(0,0,0,0.5)"
-          style={{ background: '#111', border: '1px solid #333' }}
+          maskColor="rgba(0,0,0,0.44)"
+          style={{ background: '#0e1526', border: '1px solid rgba(255,255,255,0.18)' }}
         />
       </ReactFlow>
     </div>

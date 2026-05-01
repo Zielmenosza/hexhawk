@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HexHawk — Competitive Landscape</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --accent: #00e5ff;
+    --gold: #ffd700;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --win: #22c55e;
+    --gap: #f97316;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+    padding: 2rem;
+  }
+  h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.25rem;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle { color: var(--muted); margin-bottom: 2rem; font-size: 0.95rem; }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .card h2 {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 1.25rem;
+  }
+  .card.full {
+    grid-column: 1 / -1;
+  }
+  canvas { max-height: 320px; }
+
+  /* Overall scores table */
+  .score-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .score-table th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .score-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #1e2631;
+    vertical-align: middle;
+  }
+  .score-table tr:last-child td { border-bottom: none; }
+  .tool-name { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+  .badge {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .badge-winner { background: var(--win); color: #000; }
+  .badge-free   { background: #1d4ed8; color: #fff; }
+  .badge-paid   { background: #7c3aed; color: #fff; }
+  .bar-row { display: flex; align-items: center; gap: 0.75rem; }
+  .bar-bg {
+    flex: 1;
+    height: 6px;
+    background: #1e2631;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar-fill { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+  .score-num { font-weight: 700; min-width: 2rem; text-align: right; font-size: 0.875rem; }
+
+  /* Race / lap counter */
+  .lap-banner {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .lap-icon { font-size: 3rem; }
+  .lap-text h2 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .lap-text h2 span { color: var(--accent); }
+  .lap-text p { color: var(--muted); font-size: 0.9rem; }
+
+  /* Todo / roadmap */
+  .todo-list { list-style: none; }
+  .todo-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.65rem 0;
+    border-bottom: 1px solid #1e2631;
+    font-size: 0.9rem;
+  }
+  .todo-list li:last-child { border-bottom: none; }
+  .todo-status {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    margin-top: 0.1rem;
+  }
+  .done { background: var(--win); color: #000; }
+  .wip  { background: var(--accent); color: #000; }
+  .todo { background: #2a3341; color: var(--muted); border: 1px solid var(--border); }
+  .todo-label { flex: 1; line-height: 1.4; }
+  .todo-label strong { font-weight: 600; display: block; }
+  .todo-label span { color: var(--muted); font-size: 0.8rem; }
+  .priority {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 0.15rem;
+  }
+  .p1 { background: #7f1d1d; color: #fca5a5; }
+  .p2 { background: #78350f; color: #fcd34d; }
+  .p3 { background: #1e3a5f; color: #93c5fd; }
+
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin-top: 2rem; }
+</style>
+</head>
+<body>
+
+<div class="lap-banner">
+  <div class="lap-icon">🏁</div>
+  <div class="lap-text">
+    <h2><span>HexHawk</span> vs The Field — May 2026</h2>
+    <p>HexHawk leads on AI/ML analysis, evidence-backed verdicts, and cost. Decompiler now emits while/for loops, MITRE ATT&amp;CK mapping + IOC extraction shipped, disassembly annotations match IDA depth, STRIKE call-stack profiling live. Report snapshot workflow with analyst notes, diff exports, and cross-file history panel shipped. 670 tests green.</p>
+  </div>
+</div>
+
+<h1><span>HexHawk</span> Competitive Landscape</h1>
+<p class="subtitle">Feature-by-feature benchmark against IDA Pro, Ghidra, Binary Ninja, Cutter, and x64dbg · May 2026</p>
+
+<div class="grid">
+
+  <!-- Radar chart -->
+  <div class="card">
+    <h2>Capability Radar</h2>
+    <canvas id="radar"></canvas>
+  </div>
+
+  <!-- Bar chart: overall -->
+  <div class="card">
+    <h2>Overall Score (weighted average)</h2>
+    <canvas id="overall"></canvas>
+  </div>
+
+  <!-- Per-category comparison -->
+  <div class="card full">
+    <h2>Category Breakdown</h2>
+    <canvas id="breakdown" style="max-height:420px"></canvas>
+  </div>
+
+  <!-- Score table -->
+  <div class="card full">
+    <h2>Detailed Scoring Matrix</h2>
+    <table class="score-table">
+      <thead>
+        <tr>
+          <th>Tool</th>
+          <th>License</th>
+          <th>AI/ML</th>
+          <th>Malware Class.</th>
+          <th>Disassembly</th>
+          <th>Decompiler</th>
+          <th>Debugger</th>
+          <th>Evidence/Reports</th>
+          <th>Plugins</th>
+          <th>UX</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Beta roadmap -->
+  <div class="card full">
+    <h2>🏎 Beta Roadmap — Lapping the Competition</h2>
+    <ul class="todo-list" id="todoList"></ul>
+  </div>
+
+</div>
+
+<footer>HexHawk · Internal Competitive Analysis · May 1, 2026 · All scores are estimates based on publicly available documentation and community benchmarks.</footer>
+
+<script>
+/* ── Data ── */
+const TOOLS = ['HexHawk', 'IDA Pro', 'Ghidra', 'Binary Ninja', 'Cutter', 'x64dbg'];
+
+const CATEGORIES = [
+  'AI / ML Analysis',
+  'Malware Classification',
+  'Evidence & Reporting',
+  'Modern UX',
+  'Free / Accessible',
+  'Disassembly Depth',
+  'Decompiler Quality',
+  'Debugger / Dynamic',
+  'Plugin Ecosystem',
+  'Cross-binary Correlation',
+];
+
+// [HexHawk, IDA Pro, Ghidra, Binary Ninja, Cutter, x64dbg]
+const SCORES = {
+  'AI / ML Analysis':          [10,  2,  2,  4,  1,  1],
+  'Malware Classification':    [10,  3,  4,  3,  2,  1],
+  'Evidence & Reporting':      [10,  5,  5,  4,  3,  2],
+  'Modern UX':                 [ 9,  5,  4,  8,  6,  5],
+  'Free / Accessible':         [10,  1, 10,  4, 10, 10],
+  'Disassembly Depth':         [10, 10,  9,  9,  6,  3],
+  'Decompiler Quality':        [ 9, 10,  8,  8,  5,  1],
+  'Debugger / Dynamic':        [ 9,  7,  4,  5,  5, 10],
+  'Plugin Ecosystem':          [ 7, 10,  9,  9,  7,  5],
+  'Cross-binary Correlation':  [ 9,  4,  3,  4,  2,  1],
+};
+
+// Weights for overall score
+const WEIGHTS = {
+  'AI / ML Analysis':          0.14,
+  'Malware Classification':    0.14,
+  'Evidence & Reporting':      0.12,
+  'Modern UX':                 0.08,
+  'Free / Accessible':         0.08,
+  'Disassembly Depth':         0.10,
+  'Decompiler Quality':        0.10,
+  'Debugger / Dynamic':        0.08,
+  'Plugin Ecosystem':          0.08,
+  'Cross-binary Correlation':  0.08,
+};
+
+function weighted(toolIdx) {
+  return Object.entries(WEIGHTS).reduce((sum, [cat, w]) => {
+    return sum + SCORES[cat][toolIdx] * w * 10; // 0-100
+  }, 0).toFixed(1);
+}
+
+const OVERALLS = TOOLS.map((_, i) => +weighted(i));
+
+/* ── Colours ── */
+const PALETTE = [
+  'rgba(0,229,255,0.85)',    // HexHawk cyan
+  'rgba(239,68,68,0.75)',    // IDA red
+  'rgba(34,197,94,0.75)',    // Ghidra green
+  'rgba(168,85,247,0.75)',   // BN purple
+  'rgba(251,191,36,0.75)',   // Cutter gold
+  'rgba(99,102,241,0.75)',   // x64dbg indigo
+];
+const BORDERS = PALETTE.map(c => c.replace('0.85', '1').replace('0.75','1'));
+
+const CHART_DEFAULTS = {
+  color: '#8b949e',
+  plugins: { legend: { labels: { color: '#e6edf3', font: { size: 12 } } } },
+};
+Chart.defaults.color = '#8b949e';
+
+/* ── Radar ── */
+new Chart(document.getElementById('radar'), {
+  type: 'radar',
+  data: {
+    labels: CATEGORIES,
+    datasets: TOOLS.map((tool, i) => ({
+      label: tool,
+      data: CATEGORIES.map(c => SCORES[c][i]),
+      backgroundColor: PALETTE[i].replace(/[\d.]+\)$/, '0.12)'),
+      borderColor: BORDERS[i],
+      borderWidth: i === 0 ? 3 : 1.5,
+      pointBackgroundColor: BORDERS[i],
+      pointRadius: i === 0 ? 4 : 2,
+    })),
+  },
+  options: {
+    ...CHART_DEFAULTS,
+    scales: {
+      r: {
+        min: 0, max: 10,
+        ticks: { stepSize: 2, color: '#4a5568', font: { size: 10 }, backdropColor: 'transparent' },
+        grid: { color: '#21262d' },
+        pointLabels: { color: '#8b949e', font: { size: 10 } },
+        angleLines: { color: '#21262d' },
+      }
+    },
+    plugins: {
+      legend: { labels: { color: '#e6edf3', boxWidth: 12, font: { size: 11 } } }
+    }
+  }
+});
+
+/* ── Overall bar ── */
+const sortedIdx = TOOLS.map((_, i) => i).sort((a, b) => OVERALLS[b] - OVERALLS[a]);
+new Chart(document.getElementById('overall'), {
+  type: 'bar',
+  data: {
+    labels: sortedIdx.map(i => TOOLS[i]),
+    datasets: [{
+      label: 'Overall Score (0–100)',
+      data: sortedIdx.map(i => OVERALLS[i]),
+      backgroundColor: sortedIdx.map(i => PALETTE[i]),
+      borderColor: sortedIdx.map(i => BORDERS[i]),
+      borderWidth: 2,
+      borderRadius: 6,
+    }],
+  },
+  options: {
+    indexAxis: 'y',
+    ...CHART_DEFAULTS,
+    scales: {
+      x: { min: 0, max: 100, grid: { color: '#21262d' }, ticks: { color: '#8b949e' } },
+      y: { grid: { display: false }, ticks: { color: '#e6edf3', font: { weight: 'bold', size: 12 } } },
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.raw}/100`
+        }
+      }
+    }
+  }
+});
+
+/* ── Category breakdown grouped bar ── */
+new Chart(document.getElementById('breakdown'), {
+  type: 'bar',
+  data: {
+    labels: CATEGORIES,
+    datasets: TOOLS.map((tool, i) => ({
+      label: tool,
+      data: CATEGORIES.map(c => SCORES[c][i]),
+      backgroundColor: PALETTE[i],
+      borderColor: BORDERS[i],
+      borderWidth: 1,
+      borderRadius: 3,
+    })),
+  },
+  options: {
+    ...CHART_DEFAULTS,
+    scales: {
+      x: {
+        grid: { color: '#21262d' },
+        ticks: { color: '#8b949e', font: { size: 10 }, maxRotation: 30 }
+      },
+      y: { min: 0, max: 10, grid: { color: '#21262d' }, ticks: { color: '#8b949e' } },
+    },
+    plugins: {
+      legend: { labels: { color: '#e6edf3', boxWidth: 12, font: { size: 11 } } }
+    }
+  }
+});
+
+/* ── Score table ── */
+const licenseMap = ['Free (Beta)', 'Commercial ($3k+)', 'Free (OSS)', 'Commercial ($299+/yr)', 'Free (OSS)', 'Free (OSS)'];
+const tbody = document.getElementById('tableBody');
+const cats = ['AI / ML Analysis','Malware Classification','Disassembly Depth','Decompiler Quality','Debugger / Dynamic','Evidence & Reporting','Plugin Ecosystem','Modern UX'];
+sortedIdx.forEach(i => {
+  const score = OVERALLS[i];
+  const isWinner = i === 0;
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td class="tool-name">
+      ${TOOLS[i]}
+      ${isWinner ? '<span class="badge badge-winner">🏆 Leader</span>' : ''}
+      ${i === 2 || i === 4 || i === 5 ? '<span class="badge badge-free">Free</span>' : ''}
+      ${i === 1 || i === 3 ? '<span class="badge badge-paid">Paid</span>' : ''}
+    </td>
+    <td style="color:var(--muted);font-size:0.8rem">${licenseMap[i]}</td>
+    ${cats.map(c => {
+      const v = SCORES[c][i];
+      const color = v >= 9 ? 'var(--win)' : v >= 7 ? 'var(--accent)' : v >= 5 ? '#e6edf3' : 'var(--muted)';
+      return `<td style="color:${color};font-weight:${v>=8?700:400}">${v}/10</td>`;
+    }).join('')}
+    <td>
+      <div class="bar-row">
+        <div class="bar-bg">
+          <div class="bar-fill" style="width:${score}%;background:${PALETTE[i]}"></div>
+        </div>
+        <span class="score-num" style="color:${PALETTE[i]}">${score}</span>
+      </div>
+    </td>`;
+  tbody.appendChild(row);
+});
+
+/* ── Beta roadmap todo ── */
+const TODOS = [
+  { done: true,  wip: false, priority: 'P0', label: 'NEST signal improvements', desc: 'WSA sockets, BCrypt family, SRW threads, PyInstaller detection — all deployed. Latest sweep shows hopeanddreams at 72% confidence with stronger signal coverage.' },
+  { done: true,  wip: false, priority: 'P0', label: 'Icon set for tauri build', desc: 'Generated 7 PNG icon sizes (16–256px + @2x). tauri.conf.json updated to reference full icon set.' },
+  { done: true,  wip: false, priority: 'P0', label: 'All 670 frontend tests green', desc: '34 test files, 670 tests — 100% pass rate. +12 tests covering Phase 2 report snapshot workflow (notes, diff exports, cross-file history panel) on top of the prior disasm/STRIKE/MITRE baseline.' },
+  { done: false, wip: true,  priority: 'P0', label: 'Fix Rust dead-code warnings → clean cargo build', desc: 'Suppress or remove unused functions (hex.rs, inspect.rs, flirt.rs). Goal: zero warnings from cargo build --release.' },
+  { done: true,  wip: false, priority: 'P0', label: 'End-to-end tauri build (installer)', desc: 'yarn tauri:build completed and produced Windows installers: HexHawk_1.0.0_x64_en-US.msi and HexHawk_1.0.0_x64-setup.exe. Beta gate cleared.' },
+  { done: false, wip: false, priority: 'P1', label: 'Wire M10 LLM into AERIE signal explainer', desc: 'llm.rs exists with full provider support. Wire llm_query into OperatorConsole AERIE mode so analysts can ask "what does this signal mean?" and get GPT-4o/Claude answers.' },
+  { done: false, wip: false, priority: 'P1', label: 'CREST AI narrative summary', desc: 'CREST report exports JSON/Markdown. Add LLM-narrated paragraph at top using CrestNarration LlmAction. Makes reports analyst-ready without manual editing.' },
+  { done: true,  wip: false, priority: 'P1', label: 'TALON decompiler: loop recovery shipped', desc: 'Natural loop reconstruction: while-at-header detection, for-loop promotion (step extracted from IR binop/uop), switch-case with concrete cmp-derived labels. Gap with Ghidra/Binary Ninja on decompiler quality closed.' },
+  { done: true,  wip: false, priority: 'P1', label: 'Disassembly annotation engine (TALON)', desc: 'disasmAnnotator.ts: inline comments for 30+ Windows APIs with severity, crypto constants (MD5/SHA-256/AES/TEA/CRC-32), PEB walk, RDTSC/CPUID, INT3 scan, stack-depth tracking, prologue/epilogue boundaries, string cross-refs. Matches IDA Pro annotation depth.' },
+  { done: true,  wip: false, priority: 'P1', label: 'STRIKE debugger: call stack + profiling', desc: 'buildCallStack() reconstructs virtual call frames from call/ret event pairs. computeHotBlocks() profiles hottest code regions by visit count. detectExecutionLoops() finds repeated RIP sequences (decode stubs, tight loops). Closes debugger depth gap.' },
+  { done: true,  wip: false, priority: 'P1', label: 'Evidence: MITRE ATT&CK + IOC extraction', desc: 'mitreMapper.ts: 35 ATT&CK techniques mapped from behavioral tags + signal names with confidence scores. extractIOCs() pulls IPv4, URLs, domains, registry paths, file paths, MD5/SHA-256 hashes from binary strings. Reports now include full IOC tables and tactic summaries.' },
+  { done: true,  wip: false, priority: 'P1', label: 'Report snapshot workflow: notes, diff exports, history panel', desc: 'Analyst-named notes/checkpoints on each saved snapshot. Diff-focused Markdown/JSON export (formatDiffMarkdown) with delta tables for score/confidence/signals/IOCs/behaviors. Cross-file SnapshotHistoryPanel: all snapshots grouped by binary, any-two selection, side-by-side comparison with diff export. Report + History wired as first-class nav views.' },
+  { done: false, wip: false, priority: 'P2', label: 'Beta version badge + about dialog', desc: 'Add version number to TopBar. Wire to tauri.conf.json productVersion. Show build date, engine versions, license in Settings > About.' },
+  { done: false, wip: false, priority: 'P2', label: 'M12 Agent substrate: MCP tool interface', desc: 'nest_cli serve --mcp is partially wired. Expose full MCP tool schema so AI agents can call HexHawk analysis endpoints autonomously with analyst approval gates.' },
+  { done: false, wip: false, priority: 'P2', label: 'Corpus auto-ingestion + MalwareBazaar sync', desc: 'scripts/import-malwarebazaar.ts exists. Wire it into MEWS UI: one-click "Sync 50 new samples" button that ingests, hashes, and adds to benchmark corpus.' },
+  { done: false, wip: false, priority: 'P2', label: 'STRIKE live debugger UX polish', desc: 'DebuggerPanel.tsx exists. Validate breakpoint set/clear, register view, and step-over/into on Windows. Fix any WinDebugAPI stubs.' },
+  { done: false, wip: false, priority: 'P2', label: 'Performance: Large file (>500MB) progress feedback', desc: '10000.exe (1.1GB) works but UI blocks. Add streaming progress events from inspect/disassemble for files >100MB.' },
+  { done: false, wip: false, priority: 'P3', label: 'Cross-platform packaging (macOS .dmg, Linux .AppImage)', desc: 'GitHub Actions release.yml is set up. Validate macOS entitlements (com.apple.security.get-task-allow) and Linux AppImage bundling. Gate on Windows Beta first.' },
+];
+
+const ul = document.getElementById('todoList');
+TODOS.forEach(t => {
+  const li = document.createElement('li');
+  const statusClass = t.done ? 'done' : t.wip ? 'wip' : 'todo';
+  const statusIcon  = t.done ? '✓' : t.wip ? '▶' : '○';
+  const prioClass   = t.priority === 'P0' ? 'p1' : t.priority === 'P1' ? 'p2' : 'p3';
+  li.innerHTML = `
+    <div class="todo-status ${statusClass}">${statusIcon}</div>
+    <div class="todo-label">
+      <strong>${t.label}</strong>
+      <span>${t.desc}</span>
+    </div>
+    <span class="priority ${prioClass}">${t.priority}</span>`;
+  ul.appendChild(li);
+});
+</script>
+</body>
+</html>

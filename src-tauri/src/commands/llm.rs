@@ -41,6 +41,7 @@ pub enum LlmAction {
     TalonNarrate,
     CrestNarration,
     BinaryDiffInsight,
+    TypeRecovery,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -59,6 +60,8 @@ pub struct LlmQueryRequest {
     pub approval_granted: bool,
     pub allow_remote_endpoint: bool,
     pub allow_agent_tools: bool,
+    pub api_key: Option<String>,
+    pub use_keychain_key: Option<bool>,
     pub key_alias: Option<String>,
 }
 
@@ -105,7 +108,7 @@ enum LlmError {
     InvalidEndpoint,
     #[error("remote endpoints are disabled")]
     RemoteEndpointDisabled,
-    #[error("api key lookup failed")]
+    #[error("api key lookup failed (Stronghold unavailable or no key for alias). Disable keychain mode to use inline API key.")]
     KeyLookupFailed,
     #[error("provider timeout")]
     ProviderTimeout,
@@ -113,6 +116,8 @@ enum LlmError {
     MalformedProviderResponse,
     #[error("provider request failed")]
     ProviderRequestFailed,
+    #[error("provider HTTP error {0} (check API key and endpoint)")]
+    ProviderHttpError(u16),
     #[error("stronghold storage operation failed")]
     SecretStoreFailed,
     #[error("provider requires an API key")]
@@ -502,12 +507,24 @@ async fn llm_query_core<S: SecretStore, E: HttpExecutor>(
     let (redacted_prompt, redaction_count) = redact_sensitive_text(&combined);
 
     let alias = normalize_alias(req.key_alias.clone());
+    let use_keychain = req.use_keychain_key.unwrap_or(true);
+    let inline_key = req
+        .api_key
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(ToString::to_string);
+
     let api_key = match provider {
         LlmProvider::Ollama => None,
         LlmProvider::OpenAi | LlmProvider::Anthropic => {
-            store
-                .load_provider_key(&provider, &alias)
-                .map_err(|_| LlmError::KeyLookupFailed)?
+            if use_keychain {
+                store
+                    .load_provider_key(&provider, &alias)
+                    .map_err(|_| LlmError::KeyLookupFailed)?
+            } else {
+                inline_key
+            }
         }
     };
 
@@ -546,8 +563,6 @@ async fn llm_query_core<S: SecretStore, E: HttpExecutor>(
                 "model": req.model_name,
                 "messages": [{"role": "user", "content": redacted_prompt}],
                 "response_format": {"type": "json_object"},
-                "tool_choice": "none",
-                "parallel_tool_calls": false,
                 "max_tokens": max_output_tokens,
             })
         }
@@ -600,8 +615,26 @@ async fn llm_query_core<S: SecretStore, E: HttpExecutor>(
             HttpExecError::Request => LlmError::ProviderRequestFailed,
         })?;
 
+    // 429 = rate limited; key is valid and endpoint is reachable
+    if status == 429 {
+        return Ok(LlmQueryResponse {
+            advisory_only: true,
+            provider,
+            action,
+            model_name: req.model_name,
+            endpoint_host: endpoint.host_str().unwrap_or("unknown").to_string(),
+            content: "{\"status\":\"rate_limited\"}".to_string(),
+            redaction_count,
+            prompt_chars,
+            context_chars,
+            token_estimate,
+            estimated_cost_usd: None,
+            warnings: vec!["Provider is rate-limiting requests. API key and endpoint are valid.".to_string()],
+        });
+    }
+
     if status < 200 || status >= 300 {
-        return Err(LlmError::ProviderRequestFailed);
+        return Err(LlmError::ProviderHttpError(status));
     }
 
     let content = extract_provider_content(&provider, &body)?;
@@ -642,10 +675,16 @@ pub fn store_llm_provider_key(
         return Err("API key appears invalid (too short).".to_string());
     }
 
-    let store = StrongholdSecretStore::from_app(&app).map_err(|e| e.to_string())?;
+    let store = StrongholdSecretStore::from_app(&app).map_err(|_| {
+        "stronghold storage operation failed. Disable 'Use keychain stored key' to use inline API key for this session."
+            .to_string()
+    })?;
     store
         .store_provider_key(&request.provider, &alias, key)
-        .map_err(|e| e.to_string())?;
+        .map_err(|_| {
+            "stronghold storage operation failed. Disable 'Use keychain stored key' to use inline API key for this session."
+                .to_string()
+        })?;
 
     Ok(())
 }
@@ -657,10 +696,16 @@ pub fn clear_llm_provider_key(
     key_alias: Option<String>,
 ) -> Result<(), String> {
     let alias = normalize_alias(key_alias);
-    let store = StrongholdSecretStore::from_app(&app).map_err(|e| e.to_string())?;
+    let store = StrongholdSecretStore::from_app(&app).map_err(|_| {
+        "stronghold storage operation failed. Disable 'Use keychain stored key' to use inline API key for this session."
+            .to_string()
+    })?;
     store
         .clear_provider_key(&provider, &alias)
-        .map_err(|e| e.to_string())
+        .map_err(|_| {
+            "stronghold storage operation failed. Disable 'Use keychain stored key' to use inline API key for this session."
+                .to_string()
+        })
 }
 
 #[tauri::command]
@@ -670,10 +715,16 @@ pub fn has_llm_provider_key(
     key_alias: Option<String>,
 ) -> Result<bool, String> {
     let alias = normalize_alias(key_alias);
-    let store = StrongholdSecretStore::from_app(&app).map_err(|e| e.to_string())?;
+    let store = StrongholdSecretStore::from_app(&app).map_err(|_| {
+        "stronghold storage operation failed. Disable 'Use keychain stored key' to use inline API key for this session."
+            .to_string()
+    })?;
     store
         .has_provider_key(&provider, &alias)
-        .map_err(|e| e.to_string())
+        .map_err(|_| {
+            "stronghold storage operation failed. Disable 'Use keychain stored key' to use inline API key for this session."
+                .to_string()
+        })
 }
 
 // Backward-compatible wrappers for existing TALON settings UI.
@@ -800,6 +851,8 @@ mod tests {
             approval_granted: true,
             allow_remote_endpoint: true,
             allow_agent_tools: false,
+            api_key: None,
+            use_keychain_key: Some(true),
             key_alias: Some("default".to_string()),
         }
     }

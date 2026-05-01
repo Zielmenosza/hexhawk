@@ -175,7 +175,7 @@ describe('echoScan', () => {
     const functions = new Map([
       [0x1000, { startAddress: 0x1000, endAddress: 0x1001, name: 'fn1', size: 2, instructionCount: 2, isEntryPoint: false, calledFunctions: [] }],
       [0x2000, { startAddress: 0x2000, endAddress: 0x2001, name: 'fn2', size: 2, instructionCount: 2, isEntryPoint: false, calledFunctions: [] }],
-    ]);
+    ]) as unknown as Map<number, import('../App').FunctionMetadata>;
     const result = echoScan(instrs, EMPTY_CTX, functions);
     expect(result.scannedFunctions).toBe(2);
   });

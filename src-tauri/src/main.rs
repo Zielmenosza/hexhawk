@@ -11,6 +11,7 @@ use commands::debugger::{
 };
 use commands::disassemble::disassemble_file_range;
 use commands::graph::build_cfg;
+use commands::file_dialog::open_file_picker;
 use commands::hex::{find_strings, get_file_size, read_hex_range};
 use commands::inspect::{inspect_file_metadata, inspect_pe_extras, inspect_macho_load_commands};
 use commands::plugin_browser::{
@@ -37,8 +38,14 @@ use commands::nest_session_lifecycle::{
     nest_export_session_bundle,
     nest_finalize_session,
     nest_get_session_summary,
+    nest_verify_binary_identity,
 };
 use commands::patch::{export_patched, get_jump_inversion};
+use commands::flirt::{inspect_sig_file, match_flirt_signatures};
+use commands::structs::infer_structs;
+use commands::repl::{close_repl_session, create_repl_session, get_repl_session, repl_eval};
+use commands::script::run_script;
+use commands::plugin_browser::get_plugin_manifest;
 
 fn main() {
     tauri::Builder::default()
@@ -62,6 +69,7 @@ fn main() {
             get_file_size,
             disassemble_file_range,
             build_cfg,
+            open_file_picker,
             start_debug_session,
             debug_step,
             debug_continue,
@@ -94,6 +102,16 @@ fn main() {
             nest_finalize_session,
             nest_export_session_bundle,
             nest_get_session_summary,
+            nest_verify_binary_identity,
+            create_repl_session,
+            get_repl_session,
+            repl_eval,
+            close_repl_session,
+            inspect_sig_file,
+            match_flirt_signatures,
+            infer_structs,
+            run_script,
+            get_plugin_manifest,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
