@@ -40,6 +40,8 @@ HexHawk/output.txt
 
 # NEST test sessions / analysis output
 nest_tests/
+Challenges/
+challenges/
 
 # System
 .DS_Store
