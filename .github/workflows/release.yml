@@ -46,6 +46,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload bundle artifacts (Windows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-windows
+          path: |
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
+          if-no-files-found: error
+
   # ── Build macOS DMG ──────────────────────────────────────────────────────────
   release-macos:
     name: Release macOS
@@ -85,6 +94,13 @@ jobs:
           files: target/release/bundle/dmg/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload bundle artifacts (macOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-macos
+          path: target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
 
   # ── Build Linux AppImage ─────────────────────────────────────────────────────
   release-linux:
@@ -141,11 +157,53 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Upload bundle artifacts (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-linux
+          path: |
+            target/release/bundle/appimage/*.AppImage
+            target/release/bundle/deb/*.deb
+          if-no-files-found: error
+
+  # ── Prepare website release payload (latest.json + checksums + hosted assets) ─────────
+  prepare-website-release:
+    name: Prepare Website Release Payload
+    runs-on: ubuntu-latest
+    needs: [release-windows, release-macos, release-linux]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - name: Download all bundle artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: bundle-*
+          path: target/release/bundle
+          merge-multiple: true
+
+      - name: Generate website release files
+        shell: pwsh
+        run: |
+          ./prepare-release.ps1 -Version "${{ steps.version.outputs.VERSION }}" -UseLocalReleaseFiles
+
+      - name: Upload website payload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-release-payload
+          path: |
+            website/releases/latest.json
+            website/releases/v${{ steps.version.outputs.VERSION }}/**
+          if-no-files-found: error
+
   # ── Create GitHub Release (draft) ────────────────────────────────────────────
   create-release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [release-windows, release-macos, release-linux]
+    needs: [release-windows, release-macos, release-linux, prepare-website-release]
     steps:
       - uses: actions/checkout@v4
 
