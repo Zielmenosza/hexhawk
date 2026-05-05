@@ -1,0 +1,144 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HexHawk Lab | HexHawk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="container nav">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
+    <nav class="links">
+      <a data-path="/" href="/">Home</a>
+      <a data-path="/features" href="/features">Features</a>
+      <a data-path="/hexhawk-lab" href="/hexhawk-lab">HexHawk Lab</a>
+      <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/downloads" href="/downloads">Downloads</a>
+      <a data-path="/docs" href="/docs">Docs</a>
+      <a data-path="/release-notes" href="/release-notes">Release Notes</a>
+    </nav>
+  </div>
+</header>
+<main class="container">
+  <section class="hero">
+    <span class="kicker">LEARN MODE</span>
+    <h1>Reverse engineering, explained with depth and visuals.</h1>
+    <p class="lead">Move the timeline and explore the breakdown below to see how HexHawk handles static analysis, dynamic behavior, hypothesis testing, and client-ready reporting.</p>
+    <div class="cta">
+      <a class="btn primary" href="/downloads">Try HexHawk</a>
+      <a class="btn ghost" href="/pricing">For Teams</a>
+    </div>
+  </section>
+
+  <section class="section split">
+    <div class="viz">
+      <svg viewBox="0 0 620 220" role="img" aria-label="HexHawk workflow visualization">
+        <line class="viz-line" data-stage-line="0" x1="95" y1="110" x2="235" y2="110"></line>
+        <line class="viz-line" data-stage-line="1" x1="245" y1="110" x2="385" y2="110"></line>
+        <line class="viz-line" data-stage-line="2" x1="395" y1="110" x2="535" y2="110"></line>
+
+        <circle class="stage-node" data-stage-node="0" cx="85" cy="110" r="42"></circle>
+        <text class="viz-label" x="85" y="106" text-anchor="middle">Collect</text>
+        <text class="viz-label" x="85" y="123" text-anchor="middle">Signals</text>
+
+        <circle class="stage-node" data-stage-node="1" cx="235" cy="110" r="42"></circle>
+        <text class="viz-label" x="235" y="106" text-anchor="middle">Build</text>
+        <text class="viz-label" x="235" y="123" text-anchor="middle">Hypotheses</text>
+
+        <circle class="stage-node" data-stage-node="2" cx="385" cy="110" r="42"></circle>
+        <text class="viz-label" x="385" y="106" text-anchor="middle">Challenge</text>
+        <text class="viz-label" x="385" y="123" text-anchor="middle">Validate</text>
+
+        <circle class="stage-node" data-stage-node="3" cx="535" cy="110" r="42"></circle>
+        <text class="viz-label" x="535" y="106" text-anchor="middle">Client</text>
+        <text class="viz-label" x="535" y="123" text-anchor="middle">Output</text>
+      </svg>
+      <label for="stageInput" class="mono">Workflow timeline</label>
+      <input id="stageInput" class="timeline" type="range" min="0" max="3" step="1" value="0">
+      <div class="stage-controls">
+        <button class="stage-btn" type="button" data-stage-jump="0">Signals</button>
+        <button class="stage-btn" type="button" data-stage-jump="1">Hypotheses</button>
+        <button class="stage-btn" type="button" data-stage-jump="2">Validate</button>
+        <button class="stage-btn" type="button" data-stage-jump="3">Deliver</button>
+      </div>
+    </div>
+
+    <aside class="explain-box">
+      <h2 id="stageTitle">1) Collect Signals</h2>
+      <p id="stageText">HexHawk begins by gathering evidence from files and behavior traces.</p>
+      <div id="stageTags" class="pill-row"></div>
+      <div class="section">
+        <h2>Why this matters for younger analysts</h2>
+        <ul class="checklist">
+          <li>Visual flow removes jargon-first onboarding.</li>
+          <li>Each stage explains what to trust and why.</li>
+          <li>You can connect technical actions to real client value.</li>
+        </ul>
+      </div>
+    </aside>
+  </section>
+
+  <section class="section">
+    <h2>Client-ready by design</h2>
+    <div class="grid">
+      <article class="card"><h3>Explainable findings</h3><p>Every verdict includes evidence chain references, not just a score.</p></article>
+      <article class="card"><h3>Repeatable process</h3><p>Challenge validation and regression checks reduce surprises during demos and pilots.</p></article>
+      <article class="card"><h3>Team scale</h3><p>Professional and Enterprise tiers support collaboration, governance, and secure deployment.</p></article>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Deep Reverse Engineering Walkthrough</h2>
+    <div class="grid">
+      <article class="card">
+        <h3>1) Initial triage and unpacking signals</h3>
+        <p>HexHawk starts by fingerprinting file format, entropy zones, suspicious sections, and packer patterns. It flags indicators that suggest compression, virtualization, or encrypted payload staging.</p>
+      </article>
+      <article class="card">
+        <h3>2) Static code intelligence</h3>
+        <p>TALON maps imports, API families, strings, control-flow fragments, and suspicious constants. It builds explainable hypotheses for likely capability clusters like credential theft, persistence, or C2 behavior.</p>
+      </article>
+      <article class="card">
+        <h3>3) Dynamic behavior correlation</h3>
+        <p>Runtime traces are correlated with static hypotheses to check what actually executes. Process injection, network beacons, mutex usage, and file-system patterns are linked into a time-aware evidence graph.</p>
+      </article>
+      <article class="card">
+        <h3>4) Contradiction testing</h3>
+        <p>ECHO tests alternative explanations and contradiction points. If strings suggest one family but runtime behavior suggests another, HexHawk surfaces the conflict instead of hiding uncertainty.</p>
+      </article>
+      <article class="card">
+        <h3>5) Challenge-grade validation</h3>
+        <p>STRIKE validates detection logic against known challenge and adversarial samples. This keeps regressions visible and improves trust when presenting outcomes to clients or internal leadership.</p>
+      </article>
+      <article class="card">
+        <h3>6) Report generation</h3>
+        <p>NEST compiles findings into evidence-backed outputs: observed actions, confidence levels, alternate hypotheses, and practical remediation notes for security operations teams.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>What HexHawk teaches younger reverse engineers</h2>
+    <div class="grid">
+      <article class="card"><h3>Reason before conclusions</h3><p>Separate observed evidence from assumptions. Learn to defend each conclusion with traceable artifacts.</p></article>
+      <article class="card"><h3>Map behavior over time</h3><p>Understand sequence and causality: what happened first, what followed, and what was likely triggered.</p></article>
+      <article class="card"><h3>Communicate clearly</h3><p>Translate deep technical findings into concise summaries stakeholders can act on immediately.</p></article>
+    </div>
+  </section>
+</main>
+<footer class="footer">
+  <div class="container">HexHawk | Built for reverse engineers and threat hunters | <span class="mono">v1.0</span></div>
+</footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>
+
+
+
+

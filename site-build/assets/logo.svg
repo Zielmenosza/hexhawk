@@ -1,0 +1,6 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="HexHawk logo">
+  <defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0%" stop-color="#18d2c3"/><stop offset="100%" stop-color="#59a8ff"/></linearGradient></defs>
+  <rect width="64" height="64" rx="14" fill="#091521"/>
+  <path d="M10 22L32 10l22 12v20L32 54 10 42V22z" fill="none" stroke="url(#g)" stroke-width="4"/>
+  <path d="M22 25h8v14h4V25h8v20h-8v-3h-4v3h-8V25z" fill="url(#g)"/>
+</svg>

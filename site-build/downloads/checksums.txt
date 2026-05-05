@@ -1,0 +1,4 @@
+# HexHawk release integrity checks
+# Replace with production release hashes during build/publish pipeline.
+HexHawk-Setup-win64.exe  SHA256: PENDING
+HexHawk-x86_64.AppImage  SHA256: PENDING
