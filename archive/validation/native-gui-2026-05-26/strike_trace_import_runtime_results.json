@@ -1,0 +1,189 @@
+{
+  "runtime": {
+    "hasTauriRuntime": true,
+    "browserMode": false
+  },
+  "fixture": "D:\\Project\\HexHawk\\HexHawk\\scripts\\strike-trace-fixtures\\fixture-x64dbg-wrapped-realistic.json",
+  "nav": {
+    "ok": true,
+    "text": "\u2699\nSTRIKE",
+    "cls": "wf-nav-item"
+  },
+  "importClick": {
+    "ok": true,
+    "text": "\ud83d\udcc2 Import Saved Trace",
+    "cls": "dbg-btn"
+  },
+  "dialog": {
+    "dialogHwnd": 657256,
+    "editHwnd": 591788,
+    "openHwnd": 460836
+  },
+  "rowsAll": [
+    "#14\nOTHER\n0x00000000\npartial step without instruction pointer",
+    "#13\nMEMORY\n0x00402020\nmemory read [rsp+8]",
+    "#12\nEXCEPTION\n0x00402020\nguard-page exception",
+    "#11\nAPI\n0x00402010\nntdll!NtCreateFile api dispatch",
+    "#10\nCALL\n0x00402000\ncall qword ptr ds:[<&kernel32.CreateFileW>]"
+  ],
+  "filtersAll": [
+    {
+      "text": "all 5",
+      "active": true
+    },
+    {
+      "text": "call 1",
+      "active": false
+    },
+    {
+      "text": "ret 0",
+      "active": false
+    },
+    {
+      "text": "exception 1",
+      "active": false
+    },
+    {
+      "text": "breakpoint 0",
+      "active": false
+    },
+    {
+      "text": "memory 1",
+      "active": false
+    },
+    {
+      "text": "api 1",
+      "active": false
+    },
+    {
+      "text": "other 1",
+      "active": false
+    }
+  ],
+  "apiFilterClicked": true,
+  "rowsApi": [
+    "#11\nAPI\n0x00402010\nntdll!NtCreateFile api dispatch"
+  ],
+  "filtersApi": [
+    {
+      "text": "all 5",
+      "active": false
+    },
+    {
+      "text": "call 1",
+      "active": false
+    },
+    {
+      "text": "ret 0",
+      "active": false
+    },
+    {
+      "text": "exception 1",
+      "active": false
+    },
+    {
+      "text": "breakpoint 0",
+      "active": false
+    },
+    {
+      "text": "memory 1",
+      "active": false
+    },
+    {
+      "text": "api 1",
+      "active": true
+    },
+    {
+      "text": "other 1",
+      "active": false
+    }
+  ],
+  "allFilterClicked": true,
+  "rowClicked": true,
+  "activeNavAfterRowClick": [
+    "\u229e\nDisassembly"
+  ],
+  "statusAddressAfterRowClick": [
+    "0x402000 (0x402000\u20130x402001)"
+  ],
+  "exportEnableAction": {
+    "ok": true,
+    "text": "\ud83d\udd0e\nInspect File",
+    "cls": "wf-action-btn wf-action-btn--primary"
+  },
+  "exportClick": {
+    "ok": true,
+    "text": "Export",
+    "cls": "wf-status-icon-btn"
+  },
+  "download": {
+    "download": "hexhawk-analysis-crackme_shroud-1779729571577.json",
+    "href": "blob:http://localhost:5173/c6972621-e4b5-487a-912e-b99a926808c9"
+  },
+  "exportTopLevelKeys": [
+    "timestamp",
+    "binaryPath",
+    "sourceSemantics",
+    "metadata",
+    "verdict",
+    "displayedVerdict",
+    "nestEvidenceValidation",
+    "nestEvidenceBundle",
+    "strings",
+    "disassembly",
+    "bookmarks",
+    "annotations"
+  ],
+  "exportContainsDebuggerTraceArtifact": false,
+  "exportVerdictShape": {
+    "classification": "suspicious",
+    "threatScore": 5,
+    "confidence": 44,
+    "summary": "Classified as Suspicious \u2014 threat score 5/100 (44% confidence). Key evidence: Dynamic API resolution (GetProcAddress) \u2014 hides true capabilities; 2 file-system API(s): CreateFileW, WriteFile; 1 anti-debugging API(s): IsDebuggerPresent.",
+    "signals": [
+      {
+        "source": "imports",
+        "finding": "Dynamic API resolution (GetProcAddress) \u2014 hides true capabilities",
+        "weight": 5
+      },
+      {
+        "source": "imports",
+        "finding": "2 file-system API(s): CreateFileW, WriteFile",
+        "weight": 3
+      },
+      {
+        "source": "imports",
+        "finding": "1 anti-debugging API(s): IsDebuggerPresent",
+        "weight": 2
+      }
+    ],
+    "negativeSignals": [
+      {
+        "finding": "7 sections with normal entropy \u2014 standard compiled binary",
+        "reduction": 8
+      }
+    ],
+    "amplifiers": [],
+    "dismissals": []
+  },
+  "malformedFixture": "D:\\Project\\HexHawk\\HexHawk\\scripts\\strike-trace-fixtures\\fixture-malformed-unrecognized.json",
+  "malformedNav": {
+    "ok": true,
+    "text": "\u2699\nSTRIKE",
+    "cls": "wf-nav-item"
+  },
+  "malformedImportClick": {
+    "ok": true,
+    "text": "\ud83d\udcc2 Import Trace",
+    "cls": "dbg-btn"
+  },
+  "malformedDialog": {
+    "dialogHwnd": 263924,
+    "editHwnd": 591732,
+    "openHwnd": 1116226
+  },
+  "malformedErrors": [
+    "\u2715\nTrace import failed: JSON trace: unrecognized schema\n\u2715"
+  ],
+  "rowsAfterMalformed": []
+}

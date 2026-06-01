@@ -1,0 +1,164 @@
+{
+  "gate": "packaged_native_gui_export_parity_probe",
+  "time": "2026-06-01T18:46:33Z",
+  "sample_path": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+  "remote_debug_port": 9223,
+  "checks": [
+    {
+      "name": "hasTauriRuntime",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "browserMode",
+      "ok": true,
+      "detail": false
+    },
+    {
+      "name": "tauriInternalsType",
+      "ok": true,
+      "detail": "object"
+    },
+    {
+      "name": "click nav-load",
+      "ok": true,
+      "detail": "clicked"
+    },
+    {
+      "name": "click load-apply-path",
+      "ok": true,
+      "detail": "clicked"
+    },
+    {
+      "name": "click action-inspect-file",
+      "ok": true,
+      "detail": "clicked"
+    },
+    {
+      "name": "metadata_present",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "click action-run-analysis",
+      "ok": true,
+      "detail": "clicked"
+    },
+    {
+      "name": "verdict_or_disasm_present",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "click nav-nest",
+      "ok": true,
+      "detail": "clicked"
+    },
+    {
+      "name": "click nav-nest",
+      "ok": true,
+      "detail": "clicked"
+    },
+    {
+      "name": "native_nest_completion_visible",
+      "ok": true,
+      "detail": true
+    },
+    {
+      "name": "click nav-report",
+      "ok": true,
+      "detail": "clicked"
+    },
+    {
+      "name": "report_json_export_click",
+      "ok": true,
+      "detail": "clicked"
+    },
+    {
+      "name": "export_contains_source_engine",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "name": "export_contains_gyre_is_sole_verdict_source",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "name": "export_contains_final_verdict_snapshot",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "name": "export_contains_nestEvidenceBundle",
+      "ok": true,
+      "detail": "present"
+    },
+    {
+      "name": "export_contains_nest_evidence",
+      "ok": true,
+      "detail": "present"
+    }
+  ],
+  "downloads": [
+    {
+      "url": "blob:http://tauri.localhost/2d76d921-2fb5-4c44-b450-b378b6cba36c",
+      "type": "application/json",
+      "size": 4615,
+      "text": "{\n  \"generatedAt\": \"2026-06-01T18:46:36.672Z\",\n  \"binary\": {\n    \"path\": \"D:\\\\Project\\\\HexHawk\\\\Challenges\\\\pwn109-1644300507645.pwn109\",\n    \"size\": 16920,\n    \"architecture\": \"x64\",\n    \"fileType\": \"Elf\"\n  },\n  \"verdict\": {\n    \"classification\": \"suspicious\",\n    \"threatScore\": 8,\n    \"confidence\": 38,\n    \"summary\": \"Classified as Suspicious \u2014 threat score 8/100 (38% confidence). Key evidence: 7 critical-severity disassembly pattern(s); 2 indirect calls \u2014 hides control flow.\",\n    \"behaviors\": [],\n    \"signals\": [\n      {\n        \"source\": \"disassembly\",\n        \"id\": \"critical-patterns\",\n        \"finding\": \"7 critical-severity disassembly pattern(s)\",\n        \"weight\": 19,\n        \"corroboratedBy\": [],\n        \"tier\": \"STRONG\",\n        \"certainty\": \"heuristic\"\n      },\n      {\n        \"source\": \"disassembly\",\n        \"id\": \"indirect-calls\",\n        \"finding\": \"2 indirect calls \u2014 hides control flow\",\n        \"weight\": 3,\n        \"corroboratedBy\": [],\n        \"tier\": \"STRONG\",\n        \"certainty\": \"heuristic\"\n      }\n    ],\n    \"negativeSignals\": [\n      {\n        \"id\": \"normal-section-count\",\n        \"finding\": \"31 sections with normal entropy \u2014 standard compiled binary\",\n        \"reduction\": 8\n      }\n    ],\n    \"reasoningChain\": [\n      {\n        \"stage\": 1,\n        \"name\": \"Raw Signal Collection\",\n        \"findings\": [\n          \"Disassembly: 7 critical-severity disassembly pattern(s); 2 indirect calls \u2014 hides control flow\",\n          \"Clean indicators: 31 sections with normal entropy \u2014 standard compiled binary\"\n        ],\n        \"conclusion\": \"Collected 2 threat signal(s) and 1 clean indicator(s) from 1 source(s).\",\n        \"confidence\": 36\n      },\n      {\n        \"stage\": 2,\n        \"name\": \"Behavioral Inference\",\n        \"findings\": [\n          \"No behavioral capabilities inferred from available signals.\"\n        ],\n        \"conclusion\": \"No malicious behaviors identified from current signals.\",\n        \"confidence\": 30\n      },\n      {\n        \"stage\": 3,\n        \"name\": \"Intent Classification\",\n        \"findings\": [\n          \"Classification: Suspicious \u2014 too few signals to classify precisely, warrants further investigation\",\n          \"Composite threat score: 8/100\",\n          \"Primary behaviors: none detected\",\n          \"Mitigated by 1 clean indicator(s), reducing raw score by 8 points.\"\n        ],\n        \"conclusion\": \"Final verdict: Suspicious \u2014 too few signals to classify precisely, warrants further investigation. Score 8/100.\",\n        \"confidence\": 44\n      }\n    ],\n    \"contradictions\": [],\n    \"alternatives\": [\n      {\n        \"classification\": \"unknown\",\n        \"label\": \"Insufficient Evidence \u2014 Verdict Unreliable\",\n        \"probability\": 62,\n        \"reasoning\": \"Confidence is 38%. More data sources needed. Run: Inspect \u2192 Hex \u2192 Scan Strings \u2192 Disassemble to increase signal coverage before trusting this verdict.\",\n        \"requiredEvidence\": [\n          \"Load and inspect the binary (Inspect file)\",\n          \"Scan strings with minimum length 4\",\n          \"Disassemble at least 1024 bytes\",\n          \"Run all plugins\"\n        ]\n      }\n    ],\n    \"nextSteps\": [\n      {\n        \"priority\": \"low\",\n        \"action\": \"Build and review the Control Flow Graph\",\n        \"rationale\": \"CFG reveals program structure \u2014 dense graphs with few calls indicate encrypted/packed stubs.\",\n        \"tab\": \"cfg\"\n      }\n    ]\n  },\n  \"final_verdict_snapshot\": {\n    \"verdict_snapshot_id\": \"gyre-2026-06-01T18:46:36.672Z-suspicious-8\",\n    \"source_engine\": \"gyre\",\n    \"gyre_is_sole_verdict_source\": true,\n    \"gyre_schema_version\": \"1.0.0\",\n    \"classification\": \"suspicious\",\n    \"confidence\": 38,\n    \"threat_score\": 8,\n    \"summary\": \"Classified as Suspicious \u2014 threat score 8/100 (38% confidence). Key evidence: 7 critical-severity disassembly pattern(s); 2 indirect calls \u2014 hides control flow.\",\n    \"signal_count\": 2,\n    \"nest_linkage\": {\n      \"nest_enrichment_applied\": false,\n      \"gyre_is_sole_verdict_source\": true,\n      \"note\": \"Report export preserves GYRE authority. Typed NEST evidence bundles are exported only by the NEST evidence path after a real native NEST completion.\"\n    }\n  },\n  \"nest_evidence_bundle\": null,\n  \"nestEvidenceBundle\": null,\n  \"nest_evidence_bundle_status\": \"not_embedded_in_report_export; use NEST evidence export after real native NEST completion\",\n  \"authority_doctrine\": {\n    \"gyre_is_sole_verdict_source\": true,\n    \"nest_role\": \"evidence-orchestration-only\",\n    \"aetherframe_role\": \"bounded-uplift-lineage-only\",\n    \"nexus_role\": \"non-authoritative-assistant-layer\"\n  }\n}"
+    }
+  ],
+  "runtime": {
+    "hasTauriRuntime": true,
+    "browserMode": false,
+    "tauriInternalsType": "object",
+    "url": "http://tauri.localhost/",
+    "title": "HexHawk"
+  },
+  "nest_buttons": [
+    {
+      "testid": "nav-nest",
+      "text": "\u27f3\nNEST",
+      "disabled": false,
+      "state": null
+    }
+  ],
+  "report_buttons": [
+    {
+      "i": 33,
+      "text": "Export",
+      "disabled": false
+    },
+    {
+      "i": 38,
+      "text": "\u2193\nExport",
+      "disabled": false
+    },
+    {
+      "i": 40,
+      "text": "\u2193 JSON",
+      "disabled": false
+    },
+    {
+      "i": 41,
+      "text": "\u2193 Markdown",
+      "disabled": false
+    },
+    {
+      "i": 42,
+      "text": "\u2193 IOCs",
+      "disabled": false
+    }
+  ],
+  "export_top_keys": [
+    "generatedAt",
+    "binary",
+    "verdict",
+    "final_verdict_snapshot",
+    "nest_evidence_bundle",
+    "nestEvidenceBundle",
+    "nest_evidence_bundle_status",
+    "authority_doctrine"
+  ],
+  "export_verdict_classification": "suspicious"
+}

@@ -1,0 +1,22 @@
+{
+    "revocations":  [
+                        {
+                            "revoked_at":  "2026-06-01T20:46:00Z",
+                            "reason":  "Lifecycle rotation after release-hardening rollout.",
+                            "scope":  "updater-metadata",
+                            "key_id":  "HXK-UPDATER-2025-LEGACY",
+                            "action":  "Reject signatures issued after revocation timestamp."
+                        },
+                        {
+                            "revoked_at":  "2026-06-01T20:46:00Z",
+                            "reason":  "Legacy test report key retired for deterministic trust policy.",
+                            "scope":  "report-signatures",
+                            "key_id":  "HXK-REPORT-2025-LEGACY",
+                            "action":  "Reject signatures from this key for all new reports."
+                        }
+                    ],
+    "version":  "1.0.0",
+    "generated_at":  "2026-06-01T19:11:45.4922539Z",
+    "schema":  "hexhawk.trust.revocations.v1",
+    "release_blocks":  null
+}

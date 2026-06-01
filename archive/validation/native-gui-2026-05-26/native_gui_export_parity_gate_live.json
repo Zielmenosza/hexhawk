@@ -1,0 +1,495 @@
+{
+  "gate": "native_gui_export_parity",
+  "mode": "live-native-gui",
+  "ok": true,
+  "result_count": 2,
+  "results": [
+    {
+      "path": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+      "ok": true,
+      "actual_identity": {
+        "sha256": "beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77",
+        "file_size": 2804697
+      },
+      "authoritative_verdict": {
+        "classification": "unknown",
+        "confidence": 51,
+        "threatScore": 22
+      },
+      "displayed_verdict": {
+        "classification": "unknown",
+        "confidence": 72.4,
+        "threatScore": 22
+      },
+      "bundle_final_verdict_snapshot": {
+        "source_engine": "gyre",
+        "classification": "unknown",
+        "confidence": 51,
+        "threat_score": 22,
+        "gyre_is_sole_verdict_source": true
+      },
+      "checks": [
+        {
+          "name": "export_json_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "GUI export JSON blob was captured"
+        },
+        {
+          "name": "native_tauri_runtime",
+          "ok": true,
+          "severity": "error",
+          "detail": "runtime={'hasTauriRuntime': True, 'browserMode': False}"
+        },
+        {
+          "name": "not_browser_mode",
+          "ok": true,
+          "severity": "error",
+          "detail": "runtime={'hasTauriRuntime': True, 'browserMode': False}"
+        },
+        {
+          "name": "tauri_internals_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "typeof window.__TAURI_INTERNALS__='object'; older captured artifacts may omit this field"
+        },
+        {
+          "name": "metadata_sha256_matches_actual",
+          "ok": true,
+          "severity": "error",
+          "detail": "metadata=beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77 actual=beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77"
+        },
+        {
+          "name": "metadata_file_size_matches_actual",
+          "ok": true,
+          "severity": "error",
+          "detail": "metadata=2804697 actual=2804697"
+        },
+        {
+          "name": "bundle_sha256_matches_actual",
+          "ok": true,
+          "severity": "error",
+          "detail": "bundle=beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77 actual=beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77"
+        },
+        {
+          "name": "bundle_file_size_matches_actual",
+          "ok": true,
+          "severity": "error",
+          "detail": "bundle=2804697 actual=2804697"
+        },
+        {
+          "name": "source_semantics_native",
+          "ok": true,
+          "severity": "error",
+          "detail": "sourceSemantics={'runtime': 'native-tauri', 'verdictAuthority': 'GYRE/NEST session final verdict', 'displayedVerdictMayIncludeAetherframeUplift': True, 'displayedVerdictIncludesForgeLineage': True, 'hasNativeNestCompletion': True, 'hasTypedNestEvidenceBundle': True}"
+        },
+        {
+          "name": "native_nest_completion_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "sourceSemantics={'runtime': 'native-tauri', 'verdictAuthority': 'GYRE/NEST session final verdict', 'displayedVerdictMayIncludeAetherframeUplift': True, 'displayedVerdictIncludesForgeLineage': True, 'hasNativeNestCompletion': True, 'hasTypedNestEvidenceBundle': True}"
+        },
+        {
+          "name": "typed_bundle_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "sourceSemantics={'runtime': 'native-tauri', 'verdictAuthority': 'GYRE/NEST session final verdict', 'displayedVerdictMayIncludeAetherframeUplift': True, 'displayedVerdictIncludesForgeLineage': True, 'hasNativeNestCompletion': True, 'hasTypedNestEvidenceBundle': True}"
+        },
+        {
+          "name": "nest_evidence_validation_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "validation={'ok': True, 'issues': []}"
+        },
+        {
+          "name": "source_engine_is_gyre",
+          "ok": true,
+          "severity": "error",
+          "detail": "source_engine=gyre"
+        },
+        {
+          "name": "gyre_sole_verdict_source",
+          "ok": true,
+          "severity": "error",
+          "detail": "nest_linkage={'session_id': 'nestsession_T2YJB6FE7VG44C70T2YJB6FE7V', 'final_iteration_id': 'nestiter_T2YJB6FE7VG44C70T2YJB6FE7V_0005', 'nest_enrichment_applied': True, 'gyre_is_sole_verdict_source': True, 'nest_summary': 'NEST finished with 5 iteration(s), confidence 51%.', 'enriched_signal_ids': ['injection-imports', 'dynload-imports', 'file-imports', 'exec-imports', 'threading-imports', 'talon-anti-debug']}"
+        },
+        {
+          "name": "snapshot_classification_matches_authoritative_verdict",
+          "ok": true,
+          "severity": "error",
+          "detail": "snapshot=unknown verdict=unknown"
+        },
+        {
+          "name": "snapshot_confidence_matches_authoritative_verdict",
+          "ok": true,
+          "severity": "error",
+          "detail": "snapshot=51 verdict=51"
+        },
+        {
+          "name": "displayed_classification_not_uplifted",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=unknown verdict=unknown"
+        },
+        {
+          "name": "displayed_aetherframe_uplift_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "aetherframeUplift={'upliftApplied': True, 'baseConfidence': 51, 'promotedConfidence': 72.4, 'confidenceDelta': 21.400000000000006, 'policyReason': 'standard-analysis', 'upliftRationale': 'AETHERFRAME target=72.4% from Bayes=75% (support +3, uncertainty -0, contradictions -2, CI width 5.7%).', 'auditMarker': 'aetherframe:forge:enabled:standard-analysis'}"
+        },
+        {
+          "name": "displayed_forge_summary_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "forgeSessionSummary={'baseVerdictSource': 'GYRE_VIA_NEST', 'baseConfidence': 51, 'promotedConfidence': 72.4, 'confidenceDelta': 21.400000000000006, 'upliftApplied': True, 'policyReason': 'standard-analysis', 'auditMarker': 'aetherframe:forge:enabled:standard-analysis', 'refinementStageSummary': ['NEST selected the final GYRE verdict as the base verdict.', 'AETHERFRAME Forge merged 2 scaffold signal(s) after de-duplication.', 'AETHERFRAME Forge calibrated confidence from 51% to 72.4% without changing classification.', 'Classification remains the unchanged GYRE/NEST classification.']}"
+        },
+        {
+          "name": "uplift_upliftApplied_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=True super_scaffold=True"
+        },
+        {
+          "name": "uplift_baseConfidence_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=51 super_scaffold=51"
+        },
+        {
+          "name": "uplift_promotedConfidence_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=72.4 super_scaffold=72.4"
+        },
+        {
+          "name": "uplift_confidenceDelta_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=21.400000000000006 super_scaffold=21.400000000000006"
+        },
+        {
+          "name": "uplift_policyReason_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed='standard-analysis' super_scaffold='standard-analysis'"
+        },
+        {
+          "name": "uplift_auditMarker_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed='aetherframe:forge:enabled:standard-analysis' super_scaffold='aetherframe:forge:enabled:standard-analysis'"
+        },
+        {
+          "name": "forge_summary_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed forgeSessionSummary equals final_verdict_snapshot.certainty_profile.super_scaffold.forgeSessionSummary"
+        },
+        {
+          "name": "super_scaffold_matches_runtime_proof",
+          "ok": true,
+          "severity": "error",
+          "detail": "final verdict super_scaffold equals runtime_proof nest_runtime_fields.super_scaffold"
+        },
+        {
+          "name": "base_vs_promoted_confidence_split_reported",
+          "ok": true,
+          "severity": "warning",
+          "detail": "authoritative=51 displayed=72.4"
+        },
+        {
+          "name": "action_load_set_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "load_set={'ok': True, 'value': 'D:/Project/HexHawk/Challenges/ch76/keygenme.exe'}"
+        },
+        {
+          "name": "action_opened_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "opened={'ok': True, 'text': 'Open', 'cls': 'load-open-btn', 'disabled': False}"
+        },
+        {
+          "name": "action_inspect_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "inspect_click={'ok': True, 'text': '\ud83d\udd0e\\nInspect File', 'cls': 'wf-action-btn wf-action-btn--primary', 'disabled': False}"
+        },
+        {
+          "name": "action_scan_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "scan_click={'ok': True, 'text': '\ud835\udd4a\\nScan Strings', 'cls': 'wf-action-btn', 'disabled': False}"
+        },
+        {
+          "name": "action_disasm_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "disasm_click={'ok': True, 'text': '? Disassemble Now', 'cls': 'wf-cta-primary-btn', 'disabled': False}"
+        },
+        {
+          "name": "action_gyre_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "gyre_click={'ok': True, 'text': '\u2696\\nGYRE', 'cls': 'wf-nav-item', 'disabled': False}"
+        },
+        {
+          "name": "action_nest_nav_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "nest_nav_click={'ok': True, 'text': '\u27f3\\nNEST', 'cls': 'wf-nav-item', 'disabled': False}"
+        },
+        {
+          "name": "action_nest_start_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "nest_start_click={'ok': True, 'text': '\u27f3 Start NEST Session', 'cls': 'nest-btn primary', 'disabled': False}"
+        }
+      ]
+    },
+    {
+      "path": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+      "ok": true,
+      "actual_identity": {
+        "sha256": "36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1",
+        "file_size": 9384960
+      },
+      "authoritative_verdict": {
+        "classification": "suspicious",
+        "confidence": 44,
+        "threatScore": 5
+      },
+      "displayed_verdict": {
+        "classification": "suspicious",
+        "confidence": 55.2,
+        "threatScore": 5
+      },
+      "bundle_final_verdict_snapshot": {
+        "source_engine": "gyre",
+        "classification": "suspicious",
+        "confidence": 44,
+        "threat_score": 5,
+        "gyre_is_sole_verdict_source": true
+      },
+      "checks": [
+        {
+          "name": "export_json_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "GUI export JSON blob was captured"
+        },
+        {
+          "name": "native_tauri_runtime",
+          "ok": true,
+          "severity": "error",
+          "detail": "runtime={'hasTauriRuntime': True, 'browserMode': False}"
+        },
+        {
+          "name": "not_browser_mode",
+          "ok": true,
+          "severity": "error",
+          "detail": "runtime={'hasTauriRuntime': True, 'browserMode': False}"
+        },
+        {
+          "name": "tauri_internals_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "typeof window.__TAURI_INTERNALS__='object'; older captured artifacts may omit this field"
+        },
+        {
+          "name": "metadata_sha256_matches_actual",
+          "ok": true,
+          "severity": "error",
+          "detail": "metadata=36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1 actual=36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1"
+        },
+        {
+          "name": "metadata_file_size_matches_actual",
+          "ok": true,
+          "severity": "error",
+          "detail": "metadata=9384960 actual=9384960"
+        },
+        {
+          "name": "bundle_sha256_matches_actual",
+          "ok": true,
+          "severity": "error",
+          "detail": "bundle=36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1 actual=36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1"
+        },
+        {
+          "name": "bundle_file_size_matches_actual",
+          "ok": true,
+          "severity": "error",
+          "detail": "bundle=9384960 actual=9384960"
+        },
+        {
+          "name": "source_semantics_native",
+          "ok": true,
+          "severity": "error",
+          "detail": "sourceSemantics={'runtime': 'native-tauri', 'verdictAuthority': 'GYRE/NEST session final verdict', 'displayedVerdictMayIncludeAetherframeUplift': True, 'displayedVerdictIncludesForgeLineage': True, 'hasNativeNestCompletion': True, 'hasTypedNestEvidenceBundle': True}"
+        },
+        {
+          "name": "native_nest_completion_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "sourceSemantics={'runtime': 'native-tauri', 'verdictAuthority': 'GYRE/NEST session final verdict', 'displayedVerdictMayIncludeAetherframeUplift': True, 'displayedVerdictIncludesForgeLineage': True, 'hasNativeNestCompletion': True, 'hasTypedNestEvidenceBundle': True}"
+        },
+        {
+          "name": "typed_bundle_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "sourceSemantics={'runtime': 'native-tauri', 'verdictAuthority': 'GYRE/NEST session final verdict', 'displayedVerdictMayIncludeAetherframeUplift': True, 'displayedVerdictIncludesForgeLineage': True, 'hasNativeNestCompletion': True, 'hasTypedNestEvidenceBundle': True}"
+        },
+        {
+          "name": "nest_evidence_validation_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "validation={'ok': True, 'issues': []}"
+        },
+        {
+          "name": "source_engine_is_gyre",
+          "ok": true,
+          "severity": "error",
+          "detail": "source_engine=gyre"
+        },
+        {
+          "name": "gyre_sole_verdict_source",
+          "ok": true,
+          "severity": "error",
+          "detail": "nest_linkage={'session_id': 'nestsession_P25MGBYR1KDYBDPTP25MGBYR1K', 'final_iteration_id': 'nestiter_P25MGBYR1KDYBDPTP25MGBYR1K_0005', 'nest_enrichment_applied': True, 'gyre_is_sole_verdict_source': True, 'nest_summary': 'NEST finished with 5 iteration(s), confidence 44%.', 'enriched_signal_ids': ['dynload-imports', 'file-imports', 'antidebug-imports', 'sig-notable-patterns']}"
+        },
+        {
+          "name": "snapshot_classification_matches_authoritative_verdict",
+          "ok": true,
+          "severity": "error",
+          "detail": "snapshot=suspicious verdict=suspicious"
+        },
+        {
+          "name": "snapshot_confidence_matches_authoritative_verdict",
+          "ok": true,
+          "severity": "error",
+          "detail": "snapshot=44 verdict=44"
+        },
+        {
+          "name": "displayed_classification_not_uplifted",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=suspicious verdict=suspicious"
+        },
+        {
+          "name": "displayed_aetherframe_uplift_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "aetherframeUplift={'upliftApplied': True, 'baseConfidence': 44, 'promotedConfidence': 55.2, 'confidenceDelta': 11.200000000000003, 'policyReason': 'standard-analysis', 'upliftRationale': 'AETHERFRAME target=55.2% from Bayes=56% (support +1, uncertainty -0, contradictions -0, CI width 7.0%).', 'auditMarker': 'aetherframe:forge:enabled:standard-analysis'}"
+        },
+        {
+          "name": "displayed_forge_summary_present",
+          "ok": true,
+          "severity": "error",
+          "detail": "forgeSessionSummary={'baseVerdictSource': 'GYRE_VIA_NEST', 'baseConfidence': 44, 'promotedConfidence': 55.2, 'confidenceDelta': 11.200000000000003, 'upliftApplied': True, 'policyReason': 'standard-analysis', 'auditMarker': 'aetherframe:forge:enabled:standard-analysis', 'refinementStageSummary': ['NEST selected the final GYRE verdict as the base verdict.', 'AETHERFRAME Forge merged 1 scaffold signal(s) after de-duplication.', 'AETHERFRAME Forge calibrated confidence from 44% to 55.2% without changing classification.', 'Classification remains the unchanged GYRE/NEST classification.']}"
+        },
+        {
+          "name": "uplift_upliftApplied_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=True super_scaffold=True"
+        },
+        {
+          "name": "uplift_baseConfidence_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=44 super_scaffold=44"
+        },
+        {
+          "name": "uplift_promotedConfidence_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=55.2 super_scaffold=55.2"
+        },
+        {
+          "name": "uplift_confidenceDelta_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed=11.200000000000003 super_scaffold=11.200000000000003"
+        },
+        {
+          "name": "uplift_policyReason_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed='standard-analysis' super_scaffold='standard-analysis'"
+        },
+        {
+          "name": "uplift_auditMarker_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed='aetherframe:forge:enabled:standard-analysis' super_scaffold='aetherframe:forge:enabled:standard-analysis'"
+        },
+        {
+          "name": "forge_summary_matches_super_scaffold",
+          "ok": true,
+          "severity": "error",
+          "detail": "displayed forgeSessionSummary equals final_verdict_snapshot.certainty_profile.super_scaffold.forgeSessionSummary"
+        },
+        {
+          "name": "super_scaffold_matches_runtime_proof",
+          "ok": true,
+          "severity": "error",
+          "detail": "final verdict super_scaffold equals runtime_proof nest_runtime_fields.super_scaffold"
+        },
+        {
+          "name": "base_vs_promoted_confidence_split_reported",
+          "ok": true,
+          "severity": "warning",
+          "detail": "authoritative=44 displayed=55.2"
+        },
+        {
+          "name": "action_load_set_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "load_set={'ok': True, 'value': 'D:/Project/HexHawk/Challenges/crackme_shroud.exe'}"
+        },
+        {
+          "name": "action_opened_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "opened={'ok': True, 'text': 'Open', 'cls': 'load-open-btn', 'disabled': False}"
+        },
+        {
+          "name": "action_inspect_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "inspect_click={'ok': True, 'text': '\ud83d\udd0e\\nInspect File', 'cls': 'wf-action-btn wf-action-btn--primary', 'disabled': False}"
+        },
+        {
+          "name": "action_scan_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "scan_click={'ok': True, 'text': '\ud835\udd4a\\nScan Strings', 'cls': 'wf-action-btn', 'disabled': False}"
+        },
+        {
+          "name": "action_disasm_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "disasm_click={'ok': True, 'text': '? Disassemble Now', 'cls': 'wf-cta-primary-btn', 'disabled': False}"
+        },
+        {
+          "name": "action_gyre_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "gyre_click={'ok': True, 'text': '\u2696\\nGYRE', 'cls': 'wf-nav-item', 'disabled': False}"
+        },
+        {
+          "name": "action_nest_nav_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "nest_nav_click={'ok': True, 'text': '\u27f3\\nNEST', 'cls': 'wf-nav-item', 'disabled': False}"
+        },
+        {
+          "name": "action_nest_start_click_ok",
+          "ok": true,
+          "severity": "error",
+          "detail": "nest_start_click={'ok': True, 'text': '\u27f3 Start NEST Session', 'cls': 'nest-btn primary', 'disabled': False}"
+        }
+      ]
+    }
+  ],
+  "raw_run_count": 2
+}

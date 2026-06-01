@@ -486,3 +486,60 @@ describe('decompile — switch reconstruction', () => {
     expect(text).toContain('break;');
   });
 });
+
+
+// ─── Decompiler call-argument recovery ───────────────────────────────────────
+
+describe('decompile — advisory call-argument recovery', () => {
+  it('renders recent x64 Windows register and stack arguments at call sites', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x5000, mnemonic: 'mov', operands: 'rcx, 0x1000' },
+      { address: 0x5005, mnemonic: 'mov', operands: 'rdx, 0x40' },
+      { address: 0x500a, mnemonic: 'mov', operands: 'r8, 0x3000' },
+      { address: 0x500f, mnemonic: 'mov', operands: 'qword ptr [rsp + 0x20], 0x4' },
+      { address: 0x5014, mnemonic: 'call', operands: 'VirtualAllocEx' },
+      { address: 0x5019, mnemonic: 'ret', operands: '' },
+    ];
+
+    const result = decompile(instructions, null, { functionName: 'win64_call_args' });
+    const text = result.lines.map(l => l.text).join('\n');
+
+    expect(text).toContain('VirtualAllocEx(0x1000, 64, 0x3000, 4);');
+    const callStmt = result.irBlocks.flatMap(b => b.stmts).find(s => s.op === 'call');
+    expect(callStmt?.op === 'call' ? callStmt.args?.length : 0).toBe(4);
+    expect(callStmt?.op === 'call' ? callStmt.argRecovery : undefined).toBe('register-stack-window');
+  });
+
+  it('renders recent x64 System V register arguments when SysV front args are present', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x5100, mnemonic: 'mov', operands: 'rdi, 0x1111' },
+      { address: 0x5105, mnemonic: 'mov', operands: 'rsi, 0x2222' },
+      { address: 0x510a, mnemonic: 'mov', operands: 'rdx, 0x3333' },
+      { address: 0x510f, mnemonic: 'call', operands: 'memcpy' },
+      { address: 0x5114, mnemonic: 'ret', operands: '' },
+    ];
+
+    const result = decompile(instructions, null, { functionName: 'sysv_call_args' });
+    const text = result.lines.map(l => l.text).join('\n');
+
+    expect(text).toContain('memcpy(0x1111, 0x2222, 0x3333);');
+    const callStmt = result.irBlocks.flatMap(b => b.stmts).find(s => s.op === 'call');
+    expect(callStmt?.op === 'call' ? callStmt.argRecovery : undefined).toBe('register-window');
+  });
+
+  it('renders recent AArch64 x0-x7 arguments at bl call sites', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x9000, mnemonic: 'mov', operands: 'x0, #0x10' },
+      { address: 0x9004, mnemonic: 'mov', operands: 'x1, #0x20' },
+      { address: 0x9008, mnemonic: 'bl', operands: 'memcpy' },
+      { address: 0x900c, mnemonic: 'ret', operands: '' },
+    ];
+
+    const result = decompile(instructions, null, { functionName: 'aarch64_call_args' });
+    const text = result.lines.map(l => l.text).join('\n');
+
+    expect(text).toContain('memcpy(16, 32);');
+    const callStmt = result.irBlocks.flatMap(b => b.stmts).find(s => s.op === 'call');
+    expect(callStmt?.op === 'call' ? callStmt.args?.length : 0).toBe(2);
+  });
+});

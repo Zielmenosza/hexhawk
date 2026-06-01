@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verify File | HexHawk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="container nav">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
+    <nav class="links">
+      <a data-path="/" href="/">Home</a>
+      <a data-path="/features" href="/features">Features</a>
+      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
+      <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/downloads" href="/downloads">Downloads</a>
+      <a data-path="/docs" href="/docs">Docs</a>
+      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
+      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
+      <a data-path="/verify-file" href="/verify-file">Verify File</a>
+      <a data-path="/release-notes" href="/release-notes">Release Notes</a>
+    </nav>
+  </div>
+</header>
+<main class="container">
+<section class="hero"><span class="kicker">BROWSER VERIFY</span><h1>Verify hash and detached signature locally in your browser.</h1><p class="lead">No upload occurs. Files are processed in-browser with Web Crypto so analysts can verify integrity and signatures before opening artifacts.</p></section>
+<section class="section"><h2>Verification inputs</h2><div class="card"><div class="form-grid"><div class="field full"><label for="fileInput">File to verify</label><input id="fileInput" type="file" required></div><div class="field"><label for="expectedHash">Expected SHA-256 (optional)</label><input id="expectedHash" type="text" placeholder="paste lowercase or uppercase hash"></div><div class="field"><label for="algoSelect">Signature algorithm</label><select id="algoSelect"><option value="rsa">RSA PKCS#1 v1.5 + SHA-256</option><option value="ecdsa">ECDSA P-256 + SHA-256</option></select></div><div class="field"><label for="keyIdSelect">Known key ID (from /trust/keys.json)</label><select id="keyIdSelect"><option value="">Manual key entry</option></select></div><div class="field"><label for="keysEndpoint">Keys endpoint</label><input id="keysEndpoint" type="text" value="/trust/keys.json"></div><div class="field"><label for="revocationsEndpoint">Revocations endpoint</label><input id="revocationsEndpoint" type="text" value="/trust/revocations.json"></div><div class="field full"><label for="pubKeyPem">Public key PEM (SPKI PUBLIC KEY)</label><textarea id="pubKeyPem" placeholder="-----BEGIN PUBLIC KEY-----"></textarea></div><div class="field full"><label for="sigText">Signature (base64 or hex, optional when .sig file is provided)</label><textarea id="sigText" placeholder="paste detached signature"></textarea></div><div class="field full"><label for="sigFile">Detached signature file (.sig) optional</label><input id="sigFile" type="file"></div></div><div class="cta"><button id="loadTrustBtn" class="btn ghost" type="button">Load Trust Endpoints</button><button id="hashBtn" class="btn ghost" type="button">Compute Hash</button><button id="verifyBtn" class="btn primary" type="button">Verify Hash + Signature</button></div><div class="result-box"><p class="result-line"><strong>Registry Status:</strong> <span id="registryOut">Not loaded</span></p><p class="result-line"><strong>Computed SHA-256:</strong> <span id="hashOut" class="mono">(none)</span></p><p class="result-line"><strong>Hash Match:</strong> <span id="hashStatus" class="status warn">NOT CHECKED</span></p><p class="result-line"><strong>Signature Status:</strong> <span id="sigStatus" class="status warn">NOT CHECKED</span></p><p class="result-line"><strong>Details:</strong> <span id="detailOut">Provide a file, then compute hash or run full verification.</span></p></div></div></section>
+<section class="section"><h2>Automation endpoints</h2><ul class="checklist"><li>Key registry JSON: <a href="/trust/keys.json" class="mono">/trust/keys.json</a></li><li>Revocations JSON: <a href="/trust/revocations.json" class="mono">/trust/revocations.json</a></li><li>Detached signatures JSON: <a href="/trust/signatures/latest/signatures.json" class="mono">/trust/signatures/latest/signatures.json</a></li><li>Signed timestamps JSON: <a href="/trust/signed-timestamps.json" class="mono">/trust/signed-timestamps.json</a></li><li>Discovery JSON: <a href="/.well-known/hexhawk-trust.json" class="mono">/.well-known/hexhawk-trust.json</a></li></ul></section>
+<section class="section"><h2>Recommended process</h2><ul class="checklist"><li>Download checksums from <a href="/downloads/checksums.txt">/downloads/checksums.txt</a>.</li><li>Load trust endpoints and select a known key ID when possible.</li><li>Treat unknown or revoked keys as failed trust decisions.</li></ul></section>
+</main>
+<footer class="footer">
+  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate · 2026-06-01</span></div>
+</footer>
+<script src="/assets/app.js"></script>
+<script>
+(function () {
+  const fileInput = document.getElementById('fileInput');
+  const expectedHash = document.getElementById('expectedHash');
+  const algoSelect = document.getElementById('algoSelect');
+  const keyIdSelect = document.getElementById('keyIdSelect');
+  const keysEndpoint = document.getElementById('keysEndpoint');
+  const revocationsEndpoint = document.getElementById('revocationsEndpoint');
+  const pubKeyPem = document.getElementById('pubKeyPem');
+  const sigText = document.getElementById('sigText');
+  const sigFile = document.getElementById('sigFile');
+  const loadTrustBtn = document.getElementById('loadTrustBtn');
+  const hashBtn = document.getElementById('hashBtn');
+  const verifyBtn = document.getElementById('verifyBtn');
+  const registryOut = document.getElementById('registryOut');
+  const hashOut = document.getElementById('hashOut');
+  const hashStatus = document.getElementById('hashStatus');
+  const sigStatus = document.getElementById('sigStatus');
+  const detailOut = document.getElementById('detailOut');
+
+  let knownKeys = [];
+  let revokedIds = new Set();
+
+  function setStatus(node, text, mode) {
+    node.textContent = text;
+    node.className = 'status ' + mode;
+  }
+
+  function bytesToHex(bytes) {
+    return Array.from(bytes).map(function (b) {
+      return b.toString(16).padStart(2, '0');
+    }).join('');
+  }
+
+  function normalizeHash(text) {
+    return String(text || '').trim().toLowerCase().replace(/[^a-f0-9]/g, '');
+  }
+
+  function mapAlgorithmToMode(algorithm) {
+    const value = String(algorithm || '').toLowerCase();
+    if (value.indexOf('rsa') !== -1) return 'rsa';
+    if (value.indexOf('ecdsa') !== -1 || value.indexOf('p-256') !== -1) return 'ecdsa';
+    return '';
+  }
+
+  function setRegistryMessage(text) {
+    registryOut.textContent = text;
+  }
+
+  function populateKnownKeyOptions() {
+    const previous = keyIdSelect.value;
+    keyIdSelect.innerHTML = '<option value="">Manual key entry</option>';
+    knownKeys.forEach(function (key) {
+      const option = document.createElement('option');
+      const isUnsupported = String(key.algorithm || '').toLowerCase().indexOf('minisign') !== -1;
+      option.value = key.key_id;
+      option.textContent = key.key_id + (isUnsupported ? ' (non-WebCrypto)' : '');
+      keyIdSelect.appendChild(option);
+    });
+    if (previous) {
+      keyIdSelect.value = previous;
+    }
+  }
+
+  async function fetchJson(pathValue) {
+    const response = await fetch(pathValue, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error('Failed to load ' + pathValue + ' (' + response.status + ').');
+    }
+    return response.json();
+  }
+
+  async function loadTrustData() {
+    try {
+      const keysData = await fetchJson(keysEndpoint.value.trim() || '/trust/keys.json');
+      const revocationData = await fetchJson(revocationsEndpoint.value.trim() || '/trust/revocations.json');
+      knownKeys = Array.isArray(keysData.keys) ? keysData.keys : [];
+      revokedIds = new Set((revocationData.revocations || []).map(function (entry) { return entry.key_id; }));
+      populateKnownKeyOptions();
+      setRegistryMessage('Loaded ' + knownKeys.length + ' keys and ' + revokedIds.size + ' revocations.');
+    } catch (err) {
+      setRegistryMessage('Registry load failed: ' + err.message);
+    }
+  }
+
+  async function applyKnownKeySelection() {
+    const keyId = keyIdSelect.value;
+    if (!keyId) {
+      return;
+    }
+    const key = knownKeys.find(function (item) { return item.key_id === keyId; });
+    if (!key) {
+      detailOut.textContent = 'Selected key ID was not found in loaded registry.';
+      return;
+    }
+    if (!key.public_key_url) {
+      detailOut.textContent = 'Selected key has no downloadable public key URL.';
+      return;
+    }
+    const mode = mapAlgorithmToMode(key.algorithm);
+    if (!mode) {
+      detailOut.textContent = 'Selected key algorithm is not compatible with browser signature verification in this tool.';
+      return;
+    }
+    const response = await fetch(key.public_key_url, { cache: 'no-store' });
+    if (!response.ok) {
+      throw new Error('Failed to download key file from registry URL.');
+    }
+    pubKeyPem.value = await response.text();
+    algoSelect.value = mode;
+    if (revokedIds.has(keyId)) {
+      detailOut.textContent = 'Warning: selected key is revoked. Verification should be treated as failed trust.';
+    } else {
+      detailOut.textContent = 'Loaded key ' + keyId + ' from registry.';
+    }
+  }
+
+  function pemToArrayBuffer(pem) {
+    const cleaned = String(pem || '')
+      .replace('-----BEGIN PUBLIC KEY-----', '')
+      .replace('-----END PUBLIC KEY-----', '')
+      .replace(/\s+/g, '');
+    if (!cleaned) {
+      throw new Error('Public key PEM is empty.');
+    }
+    const binary = atob(cleaned);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  function decodeSignatureText(input) {
+    const raw = String(input || '').trim().replace(/\s+/g, '');
+    if (!raw) {
+      throw new Error('No signature text supplied. Paste base64/hex or provide a .sig file.');
+    }
+    if (/^[0-9a-fA-F]+$/.test(raw) && raw.length % 2 === 0) {
+      const bytes = new Uint8Array(raw.length / 2);
+      for (let i = 0; i < raw.length; i += 2) {
+        bytes[i / 2] = parseInt(raw.slice(i, i + 2), 16);
+      }
+      return bytes;
+    }
+    const binary = atob(raw);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      out[i] = binary.charCodeAt(i);
+    }
+    return out;
+  }
+
+  async function getFileBytes(file) {
+    if (!file) {
+      throw new Error('Select a file first.');
+    }
+    const buf = await file.arrayBuffer();
+    return new Uint8Array(buf);
+  }
+
+  async function computeHash(fileBytes) {
+    const digest = await crypto.subtle.digest('SHA-256', fileBytes);
+    return bytesToHex(new Uint8Array(digest));
+  }
+
+  async function computeOnlyHash() {
+    try {
+      const file = fileInput.files[0];
+      const bytes = await getFileBytes(file);
+      const hashHex = await computeHash(bytes);
+      hashOut.textContent = hashHex;
+      const expected = normalizeHash(expectedHash.value);
+      if (expected) {
+        if (expected === hashHex) {
+          setStatus(hashStatus, 'MATCH', 'ok');
+          detailOut.textContent = 'SHA-256 matches expected checksum.';
+        } else {
+          setStatus(hashStatus, 'MISMATCH', 'warn');
+          detailOut.textContent = 'Computed hash does not match expected checksum.';
+        }
+      } else {
+        setStatus(hashStatus, 'COMPUTED', 'ok');
+        detailOut.textContent = 'SHA-256 computed. Add an expected hash to compare.';
+      }
+    } catch (err) {
+      setStatus(hashStatus, 'ERROR', 'warn');
+      detailOut.textContent = err.message;
+    }
+  }
+
+  async function verifyAll() {
+    setStatus(sigStatus, 'CHECKING', 'warn');
+    try {
+      const selectedKeyId = keyIdSelect.value;
+      if (selectedKeyId && revokedIds.has(selectedKeyId)) {
+        throw new Error('Selected key ID ' + selectedKeyId + ' is revoked in /trust/revocations.json.');
+      }
+
+      const file = fileInput.files[0];
+      const fileBytes = await getFileBytes(file);
+      const hashHex = await computeHash(fileBytes);
+      hashOut.textContent = hashHex;
+
+      const expected = normalizeHash(expectedHash.value);
+      if (expected) {
+        if (expected === hashHex) {
+          setStatus(hashStatus, 'MATCH', 'ok');
+        } else {
+          setStatus(hashStatus, 'MISMATCH', 'warn');
+        }
+      } else {
+        setStatus(hashStatus, 'COMPUTED', 'ok');
+      }
+
+      const pemBuffer = pemToArrayBuffer(pubKeyPem.value);
+      const mode = algoSelect.value;
+      const importParams = mode === 'ecdsa'
+        ? { name: 'ECDSA', namedCurve: 'P-256' }
+        : { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
+
+      const publicKey = await crypto.subtle.importKey(
+        'spki',
+        pemBuffer,
+        importParams,
+        false,
+        ['verify']
+      );
+
+      let signatureBytes;
+      if (sigFile.files[0]) {
+        signatureBytes = new Uint8Array(await sigFile.files[0].arrayBuffer());
+      } else {
+        signatureBytes = decodeSignatureText(sigText.value);
+      }
+
+      const verifyParams = mode === 'ecdsa'
+        ? { name: 'ECDSA', hash: 'SHA-256' }
+        : { name: 'RSASSA-PKCS1-v1_5' };
+
+      const ok = await crypto.subtle.verify(
+        verifyParams,
+        publicKey,
+        signatureBytes,
+        fileBytes
+      );
+
+      if (ok) {
+        setStatus(sigStatus, 'VALID', 'ok');
+        detailOut.textContent = 'Signature is valid for the selected file and key.';
+      } else {
+        setStatus(sigStatus, 'INVALID', 'warn');
+        detailOut.textContent = 'Signature verification failed. Check key, algorithm, and signature bytes.';
+      }
+    } catch (err) {
+      setStatus(sigStatus, 'ERROR', 'warn');
+      detailOut.textContent = err.message;
+    }
+  }
+
+  hashBtn.addEventListener('click', computeOnlyHash);
+  verifyBtn.addEventListener('click', verifyAll);
+  loadTrustBtn.addEventListener('click', loadTrustData);
+  keyIdSelect.addEventListener('change', function () {
+    applyKnownKeySelection().catch(function (err) {
+      detailOut.textContent = err.message;
+    });
+  });
+
+  loadTrustData();
+})();
+</script>
+</body>
+</html>

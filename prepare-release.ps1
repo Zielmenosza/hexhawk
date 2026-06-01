@@ -1,10 +1,12 @@
 param(
   [string]$Version,
-  [string]$WebsiteRoot = ".\website",
+  [string]$WebsiteRoot = ".\site-build",
   [string]$BundleRoot = ".\target\release\bundle",
   [string]$GitHubOwner = "Zielmenosza",
   [string]$GitHubRepo = "hexhawk",
-  [switch]$UseLocalReleaseFiles
+  [switch]$UseLocalReleaseFiles,
+  [string]$TrustSigningPrivateKeyPath = $env:HEXHAWK_TRUST_SIGNING_KEY_PATH,
+  [string]$TrustSigningKeyId = $env:HEXHAWK_TRUST_SIGNING_KEY_ID
 )
 
 $scriptPath = Join-Path $PSScriptRoot "website\tools\prepare-release.ps1"
@@ -17,6 +19,8 @@ $params = @{
   BundleRoot = $BundleRoot
   GitHubOwner = $GitHubOwner
   GitHubRepo = $GitHubRepo
+  TrustSigningPrivateKeyPath = $TrustSigningPrivateKeyPath
+  TrustSigningKeyId = $TrustSigningKeyId
 }
 
 if ($PSBoundParameters.ContainsKey('Version') -and $Version) {

@@ -204,8 +204,146 @@ h1 { font-size: clamp(2rem, 4.8vw, 4rem); line-height: 1.08; margin: 16px 0; }
 .checklist li {
   margin-bottom: 8px;
 }
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.meta-item {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(8, 20, 31, 0.68);
+}
+
+.meta-label {
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.meta-value {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(8, 20, 31, 0.72);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 640px;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+th {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+}
+
+.status.ok {
+  color: var(--accent);
+  border-color: rgba(24, 210, 195, 0.45);
+  background: rgba(24, 210, 195, 0.12);
+}
+
+.status.warn {
+  color: var(--warn);
+  border-color: rgba(255, 180, 84, 0.45);
+  background: rgba(255, 180, 84, 0.1);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field.full {
+  grid-column: 1 / -1;
+}
+
+label {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #081b2a;
+  color: var(--text);
+  padding: 10px;
+  font: inherit;
+}
+
+textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.result-box {
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(8, 20, 31, 0.72);
+  padding: 12px;
+}
+
+.result-line {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.result-line strong {
+  color: var(--text);
+}
+
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; }
   .split { grid-template-columns: 1fr; }
+  .meta-grid { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
   .nav { align-items: flex-start; gap: 10px; flex-direction: column; }
 }

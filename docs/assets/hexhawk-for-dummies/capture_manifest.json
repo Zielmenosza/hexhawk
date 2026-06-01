@@ -1,0 +1,163 @@
+{
+  "generated_at": "2026-06-01T19:31:24.796Z",
+  "script": "scripts/capture_hexhawk_screenshots.py plus Playwright browser-dev automation",
+  "runtime_mode": "browser-dev",
+  "native_tauri_proven": false,
+  "sample": "C:/Samples/keygenme.exe",
+  "entries": [
+    {
+      "filename": "01-launch-home.png",
+      "status": "captured",
+      "workflow": "Browser/dev-mode HexHawk launch and onboarding screen.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 161259,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "02-open-safe-sample.png",
+      "status": "captured",
+      "workflow": "Load Binary panel before applying safe sample path.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 58333,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "03-analysis-workspace.png",
+      "status": "captured",
+      "workflow": "Safe sample path typed into Load Binary panel before Apply Path.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 49084,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "04-strings-view.png",
+      "status": "captured",
+      "workflow": "Strings panel after applying a safe sample path in browser/dev mode.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 53920,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "05-disassembly-view.png",
+      "status": "captured",
+      "workflow": "Disassembly workspace/tab area in browser/dev mode.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 57462,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "06-gyre-verdict.png",
+      "status": "captured",
+      "workflow": "Verdict panel in browser/dev mode; visual orientation only.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 68078,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "07-nest-evidence.png",
+      "status": "captured",
+      "workflow": "NEST navigation target in browser/dev mode; captured available/gated/no-file state as shown.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 73962,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "08-aetherframe-lineage.png",
+      "status": "captured",
+      "workflow": "AETHERFRAME/Forge lineage disclosure rendered from report authority doctrine fields.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 69594,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": "Rendered evidence card; not a native runtime panel screenshot."
+    },
+    {
+      "filename": "09-report-export.png",
+      "status": "captured",
+      "workflow": "Report/CREST panel in browser/dev mode.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 92730,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "10-authority-fields.png",
+      "status": "captured",
+      "workflow": "Report/authority area as visible in browser/dev mode; export parity not validated.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 92730,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "11-cli-identify.png",
+      "status": "captured",
+      "workflow": "Rendered image from real nest_cli identify command output.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 16060,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": "Not an OS terminal window capture; command output was real and display path was sanitized."
+    },
+    {
+      "filename": "12-gated-state.png",
+      "status": "captured",
+      "workflow": "Gated or unavailable NEST/feature state as visible in browser/dev mode.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 73962,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": ""
+    },
+    {
+      "filename": "13-troubleshooting-native-runtime.png",
+      "status": "captured",
+      "workflow": "Runtime diagnostic rendered from browser page evaluation.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 40956,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": "Diagnostic: {\"hasTauriRuntime\":false,\"browserMode\":true,\"title\":\"HexHawk\",\"url\":\"http://127.0.0.1:5173/\"}"
+    },
+    {
+      "filename": "00-unsigned-windows-warning-not-captured.png",
+      "status": "captured",
+      "workflow": "Windows trust-chain warning evidence rendered from real Authenticode results.",
+      "runtime_mode": "browser-dev",
+      "capture_method": "playwright-page-screenshot",
+      "source_sample": "C:/Samples/keygenme.exe",
+      "size_bytes": 77337,
+      "secrets_private_paths_visible": "reviewed-no-secrets-observed",
+      "notes": "Rendered evidence card from real artifact-signature output; not an OS SmartScreen screenshot."
+    }
+  ]
+}

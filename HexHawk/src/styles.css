@@ -351,6 +351,91 @@ body {
   min-height: 0;
 }
 
+/* Workspace-style feature views own their inner scrollports.
+   Keep the outer panel from growing past the viewport so long panes such as
+   Disassembly, CFG, TALON/NEST, and REPL scroll inside the available window
+   instead of continuing below the bottom edge. */
+.wf-panel--workspace {
+  overflow: hidden;
+}
+
+.workspace-view-shell {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-view-scroll {
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable both-edges;
+}
+
+.workspace-view-scroll > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.workspace-view-scroll > .nest-root,
+.workspace-view-scroll > .dc-root {
+  min-height: 100%;
+}
+
+.workspace-tabbar {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.35rem;
+  margin-bottom: 0.65rem;
+  padding: 0.35rem;
+  overflow-x: auto;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 0.65rem;
+  background: rgba(8, 12, 22, 0.78);
+}
+
+.workspace-tab {
+  min-width: 8.5rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 0.45rem;
+  background: rgba(255,255,255,0.035);
+  color: #9eacc8;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.12rem;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.workspace-tab:hover {
+  background: rgba(0, 191, 255, 0.08);
+  border-color: rgba(0, 191, 255, 0.28);
+  color: #dbe9ff;
+}
+
+.workspace-tab--active {
+  background: rgba(0, 191, 255, 0.14);
+  border-color: rgba(0, 191, 255, 0.55);
+  color: #f2fbff;
+  box-shadow: inset 0 -2px 0 rgba(0, 191, 255, 0.65);
+}
+
+.workspace-tab-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.workspace-tab-eyebrow {
+  font-size: 0.65rem;
+  color: #6f829f;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .panel-fidelity-badge {
   display: flex;
   flex-wrap: wrap;
@@ -460,8 +545,75 @@ body {
 /* Split layout for disassembly */
 .wf-panel-split {
   display: flex;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   gap: 0;
+  overflow: hidden;
+}
+
+.wf-panel-split--disassembly {
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 0.65rem;
+  background: rgba(7, 11, 20, 0.92);
+}
+
+.wf-disasm-workspace {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.workspace-subtabbar {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+  overflow-x: auto;
+}
+
+.workspace-subtab {
+  flex: 1 1 0;
+  min-width: 8.75rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 0.45rem;
+  background: rgba(255,255,255,0.035);
+  color: #aeb9cf;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1rem;
+}
+
+.workspace-subtab small {
+  color: #6f829f;
+  font-size: 0.65rem;
+}
+
+.workspace-subtab--active {
+  border-color: rgba(127, 182, 255, 0.55);
+  background: rgba(127, 182, 255, 0.12);
+  color: #e8f3ff;
+}
+
+.workspace-empty-pane {
+  padding: 0.75rem;
+  border: 1px dashed rgba(255,255,255,0.14);
+  border-radius: 0.45rem;
+  color: #8b99b5;
+  background: rgba(255,255,255,0.03);
+  font-size: 0.82rem;
+}
+
+.wf-disasm-main-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -470,10 +622,15 @@ body {
   flex-shrink: 0;
   border-left: 1px solid rgba(255,255,255,0.06);
   overflow-y: auto;
+  min-height: 0;
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.disassembly-list-scroll {
+  scrollbar-gutter: stable;
 }
 
 /* Console bar at bottom of verdict view */
@@ -7462,6 +7619,164 @@ pre {
   background: rgba(229, 57, 53, 0.10);
   border-color: rgba(229, 57, 53, 0.35);
   color: #ef9a9a;
+}
+
+/* ── Decompiler View ─────────────────────────────────────────────────────── */
+.dc-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  min-width: 0;
+  background: #0a0a12;
+  color: #c8d0e0;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.85rem;
+}
+
+.dc-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 1rem;
+  background: #111120;
+  border-bottom: 1px solid #222240;
+  flex: 0 0 auto;
+}
+
+.dc-toolbar-left,
+.dc-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.dc-toolbar-title {
+  color: #00d4ff;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.dc-arch-badge,
+.dc-stats {
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  color: #00bfff;
+  background: rgba(0, 212, 255, 0.08);
+  font-size: 0.75rem;
+}
+
+.dc-func-selector,
+.dc-view-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.dc-func-selector-label {
+  color: #667;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.dc-func-select {
+  max-width: min(320px, 42vw);
+  min-width: 0;
+  background: #1a1a2e;
+  color: #c0c8d8;
+  border: 1px solid #333355;
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+.dc-toggle-btn {
+  border: 1px solid #333355;
+  background: transparent;
+  color: #8899aa;
+  padding: 0.25rem 0.65rem;
+  cursor: pointer;
+}
+
+.dc-toggle-btn.active {
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+}
+
+.dc-warnings {
+  flex: 0 0 auto;
+  padding: 0.35rem 1rem;
+  background: rgba(255, 170, 0, 0.07);
+  border-bottom: 1px solid rgba(255, 170, 0, 0.2);
+}
+
+.dc-warning-item { color: #cc9900; font-size: 0.78rem; }
+
+.dc-content {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: visible;
+}
+
+.dc-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
+  padding: 0.5rem 0;
+}
+
+.dc-sidebar {
+  width: 230px;
+  flex: 0 0 auto;
+  min-width: 0;
+  border-left: 1px solid #1a1a30;
+  background: #0d0d1a;
+  padding: 0.5rem;
+}
+
+.dc-pseudocode,
+.dc-ir-viewer {
+  min-width: max-content;
+}
+
+.dc-line,
+.dc-ir-stmt {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.12rem 1rem;
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.dc-line-addr,
+.dc-ir-addr {
+  color: #445566;
+  flex: 0 0 auto;
+  font-size: 0.72rem;
+  min-width: 7ch;
+}
+
+.dc-line--selected { background: rgba(0, 212, 255, 0.14); }
+.dc-line--clickable { cursor: pointer; }
+.dc-line--clickable:hover { background: rgba(0, 212, 255, 0.06); }
+.dc-tok-keyword { color: #569cd6; font-weight: 600; }
+.dc-tok-var { color: #9cdcfe; }
+.dc-tok-func { color: #dcdcaa; }
+.dc-tok-number { color: #b5cea8; }
+.dc-tok-comment { color: #6a9955; font-style: italic; }
+.dc-empty { padding: 2rem 1.5rem; color: #667; font-style: italic; }
+
+@media (max-width: 920px) {
+  .dc-content { flex-direction: column; }
+  .dc-sidebar { width: auto; border-left: 0; border-top: 1px solid #1a1a30; }
 }
 
 /* ── NEST View ──────────────────────────────────────────────────────────── */

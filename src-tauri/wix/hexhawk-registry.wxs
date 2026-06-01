@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="HexHawkRegistryComponent" Guid="*">
+        <RegistryKey Root="HKLM" Key="Software\HexHawk">
+          <RegistryValue Name="InstallDir" Type="string" Value="[INSTALLDIR]" KeyPath="yes" />
+          <RegistryValue Name="ProductName" Type="string" Value="HexHawk" />
+          <RegistryValue Name="ProductVersion" Type="string" Value="[ProductVersion]" />
+          <RegistryValue Name="Publisher" Type="string" Value="HexHawk Team" />
+        </RegistryKey>
+      </Component>
+    </DirectoryRef>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="HexHawkEnterpriseRegistry">
+      <ComponentRef Id="HexHawkRegistryComponent" />
+    </ComponentGroup>
+  </Fragment>
+</Wix>

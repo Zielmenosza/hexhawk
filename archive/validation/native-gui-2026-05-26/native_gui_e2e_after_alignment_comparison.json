@@ -1,0 +1,216 @@
+[
+  {
+    "path": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+    "runtime_confirmed": {
+      "hasTauriRuntime": true,
+      "browserMode": false
+    },
+    "actual_identity": {
+      "sha256": "beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77",
+      "file_size": 2804697
+    },
+    "export_metadata": {
+      "sha256": "beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77",
+      "file_size": 2804697
+    },
+    "bundle_identity": {
+      "sha256": "beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77",
+      "file_size": 2804697
+    },
+    "identity_matches_actual": true,
+    "gui_authoritative_verdict": {
+      "classification": "unknown",
+      "confidence": 51,
+      "threatScore": 22
+    },
+    "displayed_verdict": {
+      "classification": "unknown",
+      "confidence": 72.4,
+      "threatScore": 22
+    },
+    "bundle_final_verdict_snapshot": {
+      "source_engine": "gyre",
+      "classification": "unknown",
+      "confidence": 51,
+      "threat_score": 22,
+      "gyre_is_sole_verdict_source": true
+    },
+    "classification_authority_preserved": true,
+    "base_confidence_preserved_in_snapshot": true,
+    "displayed_confidence_is_uplifted": true,
+    "aetherframe_uplift_matches_super_scaffold": true,
+    "forge_summary_matches_super_scaffold": true,
+    "super_scaffold_matches_runtime_proof": true,
+    "source_semantics": {
+      "runtime": "native-tauri",
+      "verdictAuthority": "GYRE/NEST session final verdict",
+      "displayedVerdictMayIncludeAetherframeUplift": true,
+      "displayedVerdictIncludesForgeLineage": true,
+      "hasNativeNestCompletion": true,
+      "hasTypedNestEvidenceBundle": true
+    },
+    "nestEvidenceValidation": {
+      "ok": true,
+      "issues": []
+    },
+    "actions": {
+      "load_set": {
+        "ok": true,
+        "value": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+      },
+      "opened": {
+        "ok": true,
+        "text": "Open",
+        "cls": "load-open-btn",
+        "disabled": false
+      },
+      "inspect_click": {
+        "ok": true,
+        "text": "\ud83d\udd0e\nInspect File",
+        "cls": "wf-action-btn wf-action-btn--primary",
+        "disabled": false
+      },
+      "scan_click": {
+        "ok": true,
+        "text": "\ud835\udd4a\nScan Strings",
+        "cls": "wf-action-btn",
+        "disabled": false
+      },
+      "disasm_click": {
+        "ok": true,
+        "text": "? Disassemble Now",
+        "cls": "wf-cta-primary-btn",
+        "disabled": false
+      },
+      "gyre_click": {
+        "ok": true,
+        "text": "\u2696\nGYRE",
+        "cls": "wf-nav-item",
+        "disabled": false
+      },
+      "nest_nav_click": {
+        "ok": true,
+        "text": "\u27f3\nNEST",
+        "cls": "wf-nav-item",
+        "disabled": false
+      },
+      "nest_start_click": {
+        "ok": true,
+        "text": "\u27f3 Start NEST Session",
+        "cls": "nest-btn primary",
+        "disabled": false
+      },
+      "download": {
+        "download": "hexhawk-analysis-keygenme-1779546242772.json",
+        "href": "blob:http://localhost:5173/a51e9be4-80ab-4ee5-b988-0ccb6ba7f868"
+      }
+    }
+  },
+  {
+    "path": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+    "runtime_confirmed": {
+      "hasTauriRuntime": true,
+      "browserMode": false
+    },
+    "actual_identity": {
+      "sha256": "36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1",
+      "file_size": 9384960
+    },
+    "export_metadata": {
+      "sha256": "36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1",
+      "file_size": 9384960
+    },
+    "bundle_identity": {
+      "sha256": "36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1",
+      "file_size": 9384960
+    },
+    "identity_matches_actual": true,
+    "gui_authoritative_verdict": {
+      "classification": "suspicious",
+      "confidence": 44,
+      "threatScore": 5
+    },
+    "displayed_verdict": {
+      "classification": "suspicious",
+      "confidence": 55.2,
+      "threatScore": 5
+    },
+    "bundle_final_verdict_snapshot": {
+      "source_engine": "gyre",
+      "classification": "suspicious",
+      "confidence": 44,
+      "threat_score": 5,
+      "gyre_is_sole_verdict_source": true
+    },
+    "classification_authority_preserved": true,
+    "base_confidence_preserved_in_snapshot": true,
+    "displayed_confidence_is_uplifted": true,
+    "aetherframe_uplift_matches_super_scaffold": true,
+    "forge_summary_matches_super_scaffold": true,
+    "super_scaffold_matches_runtime_proof": true,
+    "source_semantics": {
+      "runtime": "native-tauri",
+      "verdictAuthority": "GYRE/NEST session final verdict",
+      "displayedVerdictMayIncludeAetherframeUplift": true,
+      "displayedVerdictIncludesForgeLineage": true,
+      "hasNativeNestCompletion": true,
+      "hasTypedNestEvidenceBundle": true
+    },
+    "nestEvidenceValidation": {
+      "ok": true,
+      "issues": []
+    },
+    "actions": {
+      "load_set": {
+        "ok": true,
+        "value": "D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+      },
+      "opened": {
+        "ok": true,
+        "text": "Open",
+        "cls": "load-open-btn",
+        "disabled": false
+      },
+      "inspect_click": {
+        "ok": true,
+        "text": "\ud83d\udd0e\nInspect File",
+        "cls": "wf-action-btn wf-action-btn--primary",
+        "disabled": false
+      },
+      "scan_click": {
+        "ok": true,
+        "text": "\ud835\udd4a\nScan Strings",
+        "cls": "wf-action-btn",
+        "disabled": false
+      },
+      "disasm_click": {
+        "ok": true,
+        "text": "? Disassemble Now",
+        "cls": "wf-cta-primary-btn",
+        "disabled": false
+      },
+      "gyre_click": {
+        "ok": true,
+        "text": "\u2696\nGYRE",
+        "cls": "wf-nav-item",
+        "disabled": false
+      },
+      "nest_nav_click": {
+        "ok": true,
+        "text": "\u27f3\nNEST",
+        "cls": "wf-nav-item",
+        "disabled": false
+      },
+      "nest_start_click": {
+        "ok": true,
+        "text": "\u27f3 Start NEST Session",
+        "cls": "nest-btn primary",
+        "disabled": false
+      },
+      "download": {
+        "download": "hexhawk-analysis-crackme_shroud-1779546251879.json",
+        "href": "blob:http://localhost:5173/5bdd7d0c-efab-41f7-b476-6b922f23f41b"
+      }
+    }
+  }
+]

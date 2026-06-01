@@ -112,7 +112,9 @@ const DisassemblyList: React.FC<DisassemblyListProps> = ({
   return (
     <div
       ref={containerRef}
-      style={{ flex: 1, minHeight: 0, overflowY: 'auto', background: '#0f0f1e' }}
+      className="disassembly-list-scroll"
+      data-testid="disassembly-scrollport"
+      style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto', background: '#0f0f1e' }}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
         {virtualItems.map(({ index, top, size }) => {

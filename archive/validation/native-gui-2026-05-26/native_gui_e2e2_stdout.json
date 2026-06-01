@@ -1,0 +1,2066 @@
+[
+  {
+    "path": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+    "runtime0": {
+      "hasTauriRuntime": false,
+      "browserMode": true
+    },
+    "load_set": {
+      "ok": true,
+      "value": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+    },
+    "opened": {
+      "ok": true,
+      "text": "Open",
+      "cls": "load-open-btn",
+      "disabled": false
+    },
+    "inspect_click": {
+      "ok": true,
+      "text": "\ud83d\udd0e\nInspect File",
+      "cls": "wf-action-btn wf-action-btn--primary",
+      "disabled": false
+    },
+    "scan_click": {
+      "ok": true,
+      "text": "\ud835\udd4a\nScan Strings",
+      "cls": "wf-action-btn",
+      "disabled": false
+    },
+    "disasm_click": {
+      "ok": true,
+      "text": "? Disassemble Now",
+      "cls": "wf-cta-primary-btn",
+      "disabled": false
+    },
+    "gyre_click": {
+      "ok": true,
+      "text": "\u2696\nGYRE",
+      "cls": "wf-nav-item",
+      "disabled": false
+    },
+    "nest_nav_click": {
+      "ok": true,
+      "text": "\u27f3\nNEST",
+      "cls": "wf-nav-item",
+      "disabled": false
+    },
+    "nest_start_click": {
+      "ok": true,
+      "text": "\u27f3 Start NEST Session",
+      "cls": "",
+      "disabled": false
+    },
+    "snap_inspect": {
+      "timestamp": "2026-05-23T09:01:58.884Z",
+      "runtime": {
+        "hasTauriRuntime": false,
+        "browserMode": true
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+      "activeView": "inspect",
+      "workflowState": "inspected",
+      "panelFidelity": {
+        "source": "simulation",
+        "detail": "Metadata is generated from browser simulation fixtures; no native file inspection is invoked."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "fileSize": 65536,
+        "sha256": "6b657967656e6d652e657865000000006b657967656e6d652e65786500000000",
+        "entryPoint": 5368713216
+      },
+      "strings": {
+        "count": 0,
+        "sample": []
+      },
+      "disassembly": {
+        "count": 0,
+        "arch": null,
+        "fallback": false,
+        "sample": []
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 4,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_SIMULATION | Simulated inspect for D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied binary path for analysis: D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        }
+      ]
+    },
+    "snap_strings": {
+      "timestamp": "2026-05-23T09:01:58.924Z",
+      "runtime": {
+        "hasTauriRuntime": false,
+        "browserMode": true
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+      "activeView": "strings",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "simulation",
+        "detail": "String extraction is simulated for workflow QA; no backend scanner is invoked."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "fileSize": 65536,
+        "sha256": "6b657967656e6d652e657865000000006b657967656e6d652e65786500000000",
+        "entryPoint": 5368713216
+      },
+      "strings": {
+        "count": 5,
+        "sample": [
+          {
+            "offset": 16400,
+            "text": "https://example.com"
+          },
+          {
+            "offset": 16448,
+            "text": "HKEY_LOCAL_MACHINE\\SOFTWARE\\HexHawk"
+          },
+          {
+            "offset": 16512,
+            "text": "kernel32.dll"
+          },
+          {
+            "offset": 16560,
+            "text": "C:\\Windows\\System32\\cmd.exe"
+          },
+          {
+            "offset": 16640,
+            "text": "CreateRemoteThread"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 0,
+        "arch": null,
+        "fallback": false,
+        "sample": []
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 4,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_SIMULATION | Simulated string scan for D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_SIMULATION | Simulated inspect for D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied binary path for analysis: D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        }
+      ]
+    },
+    "snap_disasm": {
+      "timestamp": "2026-05-23T09:01:59.295Z",
+      "runtime": {
+        "hasTauriRuntime": false,
+        "browserMode": true
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+      "activeView": "disassembly",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "simulation",
+        "detail": "Instructions are simulated for browser-mode validation and are not backend disassembly output."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "fileSize": 65536,
+        "sha256": "6b657967656e6d652e657865000000006b657967656e6d652e65786500000000",
+        "entryPoint": 5368713216
+      },
+      "strings": {
+        "count": 5,
+        "sample": [
+          {
+            "offset": 16400,
+            "text": "https://example.com"
+          },
+          {
+            "offset": 16448,
+            "text": "HKEY_LOCAL_MACHINE\\SOFTWARE\\HexHawk"
+          },
+          {
+            "offset": 16512,
+            "text": "kernel32.dll"
+          },
+          {
+            "offset": 16560,
+            "text": "C:\\Windows\\System32\\cmd.exe"
+          },
+          {
+            "offset": 16640,
+            "text": "CreateRemoteThread"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 12,
+        "arch": "x86_64",
+        "fallback": false,
+        "sample": [
+          {
+            "address": 5368713216,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 5368713217,
+            "mnemonic": "mov",
+            "operands": "rbp, rsp"
+          },
+          {
+            "address": 5368713220,
+            "mnemonic": "sub",
+            "operands": "rsp, 0x30"
+          },
+          {
+            "address": 5368713224,
+            "mnemonic": "call",
+            "operands": "0x140001080"
+          },
+          {
+            "address": 5368713229,
+            "mnemonic": "cmp",
+            "operands": "eax, 0x0"
+          },
+          {
+            "address": 5368713232,
+            "mnemonic": "je",
+            "operands": "0x140001028"
+          },
+          {
+            "address": 5368713238,
+            "mnemonic": "mov",
+            "operands": "ecx, 0x1"
+          },
+          {
+            "address": 5368713243,
+            "mnemonic": "jmp",
+            "operands": "0x14000102F"
+          },
+          {
+            "address": 5368713256,
+            "mnemonic": "xor",
+            "operands": "ecx, ecx"
+          },
+          {
+            "address": 5368713263,
+            "mnemonic": "add",
+            "operands": "rsp, 0x30"
+          },
+          {
+            "address": 5368713267,
+            "mnemonic": "pop",
+            "operands": "rbp"
+          },
+          {
+            "address": 5368713268,
+            "mnemonic": "ret",
+            "operands": ""
+          }
+        ]
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 4,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "DISASSEMBLY_SIMULATION | Simulated disassembly for D:/Project/HexHawk/Challenges/ch76/keygenme.exe from 0x0"
+        },
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_SIMULATION | Simulated string scan for D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_SIMULATION | Simulated inspect for D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied binary path for analysis: D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        }
+      ]
+    },
+    "snap_nest": {
+      "timestamp": "2026-05-23T09:02:03.297Z",
+      "runtime": {
+        "hasTauriRuntime": false,
+        "browserMode": true
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+      "activeView": "nest",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "simulation",
+        "detail": "NEST session is simulated for workflow QA without native backend orchestration."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "fileSize": 65536,
+        "sha256": "6b657967656e6d652e657865000000006b657967656e6d652e65786500000000",
+        "entryPoint": 5368713216
+      },
+      "strings": {
+        "count": 5,
+        "sample": [
+          {
+            "offset": 16400,
+            "text": "https://example.com"
+          },
+          {
+            "offset": 16448,
+            "text": "HKEY_LOCAL_MACHINE\\SOFTWARE\\HexHawk"
+          },
+          {
+            "offset": 16512,
+            "text": "kernel32.dll"
+          },
+          {
+            "offset": 16560,
+            "text": "C:\\Windows\\System32\\cmd.exe"
+          },
+          {
+            "offset": 16640,
+            "text": "CreateRemoteThread"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 12,
+        "arch": "x86_64",
+        "fallback": false,
+        "sample": [
+          {
+            "address": 5368713216,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 5368713217,
+            "mnemonic": "mov",
+            "operands": "rbp, rsp"
+          },
+          {
+            "address": 5368713220,
+            "mnemonic": "sub",
+            "operands": "rsp, 0x30"
+          },
+          {
+            "address": 5368713224,
+            "mnemonic": "call",
+            "operands": "0x140001080"
+          },
+          {
+            "address": 5368713229,
+            "mnemonic": "cmp",
+            "operands": "eax, 0x0"
+          },
+          {
+            "address": 5368713232,
+            "mnemonic": "je",
+            "operands": "0x140001028"
+          },
+          {
+            "address": 5368713238,
+            "mnemonic": "mov",
+            "operands": "ecx, 0x1"
+          },
+          {
+            "address": 5368713243,
+            "mnemonic": "jmp",
+            "operands": "0x14000102F"
+          },
+          {
+            "address": 5368713256,
+            "mnemonic": "xor",
+            "operands": "ecx, ecx"
+          },
+          {
+            "address": 5368713263,
+            "mnemonic": "add",
+            "operands": "rsp, 0x30"
+          },
+          {
+            "address": 5368713267,
+            "mnemonic": "pop",
+            "operands": "rbp"
+          },
+          {
+            "address": 5368713268,
+            "mnemonic": "ret",
+            "operands": ""
+          }
+        ]
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 4,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": {
+          "confidence": 76.3,
+          "signals": 7
+        }
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "APP_EVENT | NESTCORE OMEGA Super Scaffold uplift applied (+1 signals, +13.299999999999997% confidence)."
+        },
+        {
+          "level": "info",
+          "message": "NEST_SIMULATION_START | Started NEST simulation session in browser mode."
+        },
+        {
+          "level": "info",
+          "message": "DISASSEMBLY_SIMULATION | Simulated disassembly for D:/Project/HexHawk/Challenges/ch76/keygenme.exe from 0x0"
+        },
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_SIMULATION | Simulated string scan for D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_SIMULATION | Simulated inspect for D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied binary path for analysis: D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        }
+      ]
+    },
+    "body_gyre": "HexHawk\nv1.1.0\nkeygenme.exe\n6b657967656e6d65\u2026\n\u21b5\n\u25c6 ENTERPRISE\n\ud83d\udd11\n\ud83d\udcc4\nkeygenme.exe\n\u21c4\nFILE\n\ud83d\udcc2\nLoad Binary\n\ud83d\uddc2\nMetadata\nANALYSIS\n\ud83d\udd0e\nInspect\n\u2b21\nHex Viewer\n\ud835\udd4a\nStrings\n\u229e\nDisassembly\n\u2b21\nCFG\n\u27e8/\u27e9\nVEIL\n\ud83e\udde0\nTALON\nINTELLIGENCE\n\u2696\nGYRE\n\ud83d\udce1\nECHO\n\ud83d\udcca\nCREST\n\ud83d\udd50\nSnapshot History\n\u27f3\nNEST\n\ud83d\udee1\nAssurance\n\ud83d\udccb\nActivity\nACTIONS\n\ud83e\ude79\nIMP\n\u2297\nBIND\n\u2b21\nCAGE\n\u2699\nSTRIKE\n\u2295\nDELTA\n>_\nREPL\n\u2b22\nAEGIS\n\ud83d\udce6\nVAULT\n\ud83e\udd16\nDROID\n\ud83c\udfaf\nRAKE\n\ud83d\udcd0\nFORM\n\ud83d\udd27\nFORGE\n\ud83d\udce1\nTIDE\nPLUGINS\n\ud83e\udeb6\nQUILL\nHELP\n?\nHelp\n\u2139\nAbout\nDisassembly loaded from 0x0 (browser simulation)\nJump\nShortcuts\nExport\nSources\n\u2b22 5 techniques\n\u2696\nGYRE\n\ud83e\ude79\nIMP\n\u2699\nSTRIKE\n\u2193\nExport\n\u2197\nJump to\u2026\nData Source: SIMULATION\nGYRE verdict is computed client-side from simulated or loaded UI artifacts in browser mode.\n\u2691\nSuspicious\n33\n/ 100\n44%\nconf\nS \u2014\nI 2\nS 4\nD \u2014\n\u25bc\n\u26a0\nUncertain: no runtime execution evidence (STRIKE) was collected \u2014 static analysis only; behaviour could differ at runtime.\n\u26a0\nUncertain: confidence is 44% \u2014 below the 50% threshold; more disassembly passes are recommended.\n\nClassified as Suspicious \u2014 threat score 33/100 (44% confidence). Key evidence: Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hides true capabilities; 1 registry path string(s) \u2014 potential persistence mechanism; 2 embedded executable name(s): kernel32.dll, C:\\Windows\\System32\\cmd.exe.\n\nc2-communication\npersistence\ncredential-theft\ndynamic-resolution\nprocess-execution\nKnowledge Graph\n3 capability clusters \u00b7 3 suspicious strings \u00b7 0 critical patterns\nReact Flow\n\u25a0 Injection\n\u25a0 Network/C2\n\u25a0 Evasion\n\u25a0 Persistence\n\u25a0 Crypto\n\u25a0 Strings\n\u25a0 Patterns\n\u2b21\nOperator Console\nDescribe your objective \u2014 HexHawk will tell you what to do next\nGenerate\nBinary context suggests:\nnetworking\nUse\nPress Enter to generate\nInjection\nNetworking\nPersistence\nUnpacking\nEvasion\nCredentials\nRansomware\nGeneral\n\u2b21\nReady\nType your objective above or select a quick-intent chip.\nHexHawk will generate a guided step-by-step workflow.\nBased on the loaded binary, try the networking workflow.\nRecommended now\nOpen TALON\nTALON confidence is 44% and STRIKE risk is 33.\nOpen paletteRun next step\nNext best step\nFinalize report\nOpen the verdict, TALON, or STRIKE for final decision confidence.\nEvidence converged88%\nRanked actions\nOpen TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.\nInspect metadata\nExtract hashes, imports, sections, and file traits.\nLoad binary\nOpen the next sample and establish baseline context.",
+    "body_nest_before": "HexHawk\nv1.1.0\nkeygenme.exe\n6b657967656e6d65\u2026\n\u21b5\n\u25c6 ENTERPRISE\n\ud83d\udd11\n\ud83d\udcc4\nkeygenme.exe\n\u21c4\nFILE\n\ud83d\udcc2\nLoad Binary\n\ud83d\uddc2\nMetadata\nANALYSIS\n\ud83d\udd0e\nInspect\n\u2b21\nHex Viewer\n\ud835\udd4a\nStrings\n\u229e\nDisassembly\n\u2b21\nCFG\n\u27e8/\u27e9\nVEIL\n\ud83e\udde0\nTALON\nINTELLIGENCE\n\u2696\nGYRE\n\ud83d\udce1\nECHO\n\ud83d\udcca\nCREST\n\ud83d\udd50\nSnapshot History\n\u27f3\nNEST\n\ud83d\udee1\nAssurance\n\ud83d\udccb\nActivity\nACTIONS\n\ud83e\ude79\nIMP\n\u2297\nBIND\n\u2b21\nCAGE\n\u2699\nSTRIKE\n\u2295\nDELTA\n>_\nREPL\n\u2b22\nAEGIS\n\ud83d\udce6\nVAULT\n\ud83e\udd16\nDROID\n\ud83c\udfaf\nRAKE\n\ud83d\udcd0\nFORM\n\ud83d\udd27\nFORGE\n\ud83d\udce1\nTIDE\nPLUGINS\n\ud83e\udeb6\nQUILL\nHELP\n?\nHelp\n\u2139\nAbout\nDisassembly loaded from 0x0 (browser simulation)\nJump\nShortcuts\nExport\nSources\n\u2b22 5 techniques\n\u2696\nGYRE\n\ud83e\ude79\nIMP\n\u2699\nSTRIKE\n\u2193\nExport\n\u2197\nJump to\u2026\nData Source: SIMULATION\nNEST session is simulated for workflow QA without native backend orchestration.\nNEST (Browser Simulation)\n\nIterative multi-pass convergence engine. Each pass correlates evidence across loaded analysis artifacts, dampens isolated signals, and resolves contradictions.\n\nSIGNAL SOURCES\nStrings (4)\nImports (2)\n\u27f3 Start NEST Session\nRecommended now\nOpen TALON\nTALON confidence is 44% and STRIKE risk is 33.\nOpen paletteRun next step\nNext best step\nFinalize report\nOpen the verdict, TALON, or STRIKE for final decision confidence.\nEvidence converged88%\nRanked actions\nOpen TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.\nInspect metadata\nExtract hashes, imports, sections, and file traits.\nLoad binary\nOpen the next sample and establish baseline context.",
+    "body_nest_after": "HexHawk\nv1.1.0\nkeygenme.exe\n6b657967656e6d65\u2026\n\u21b5\n\u25c6 ENTERPRISE\n\ud83d\udd11\n\ud83d\udcc4\nkeygenme.exe\n\u21c4\nFILE\n\ud83d\udcc2\nLoad Binary\n\ud83d\uddc2\nMetadata\nANALYSIS\n\ud83d\udd0e\nInspect\n\u2b21\nHex Viewer\n\ud835\udd4a\nStrings\n\u229e\nDisassembly\n\u2b21\nCFG\n\u27e8/\u27e9\nVEIL\n\ud83e\udde0\nTALON\nINTELLIGENCE\n\u2696\nGYRE\n\ud83d\udce1\nECHO\n\ud83d\udcca\nCREST\n\ud83d\udd50\nSnapshot History\n\u27f3\nNEST\n\ud83d\udee1\nAssurance\n\ud83d\udccb\nActivity\nACTIONS\n\ud83e\ude79\nIMP\n\u2297\nBIND\n\u2b21\nCAGE\n\u2699\nSTRIKE\n\u2295\nDELTA\n>_\nREPL\n\u2b22\nAEGIS\n\ud83d\udce6\nVAULT\n\ud83e\udd16\nDROID\n\ud83c\udfaf\nRAKE\n\ud83d\udcd0\nFORM\n\ud83d\udd27\nFORGE\n\ud83d\udce1\nTIDE\nPLUGINS\n\ud83e\udeb6\nQUILL\nHELP\n?\nHelp\n\u2139\nAbout\nNEST simulation completed. AETHERFRAME confidence uplift integrated.\nJump\nShortcuts\nExport\nSources\n\u2b22 5 techniques\n\u2696\nGYRE\n\ud83e\ude79\nIMP\n\u2699\nSTRIKE\n\u2193\nExport\n\u2197\nJump to\u2026\nData Source: SIMULATION\nNEST session is simulated for workflow QA without native backend orchestration.\nNEST (Browser Simulation)\n\nIterative multi-pass convergence engine. Each pass correlates evidence across loaded analysis artifacts, dampens isolated signals, and resolves contradictions.\n\n63%\nConvergence Log \u2014 5 / 5 passes\nP1\nInitial scan: 6 signals across 2 evidence sources \u2014 baseline established\n52%\n+8%\nINITIAL SCAN\n+3 signals\nP2\nImport\u2013string cross-reference: 2 import signals corroborated by 4 string surface indicators \u2014 \"Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hide\u2026\"\n57%\n+5%\nCROSS-REFERENCE\n+2 signals\nP3\nBehavioral inference: 0 mutually-corroborating signals clustered \u2014 suspicious classification strengthened\n60%\n+3%\nBEHAVIORAL INFERENCE\nP4\nContradiction resolution: 4 weak-tier indicators weighted down \u2014 signal-to-noise ratio improved\n62%\n+2%\nCONTRADICTION RESOLUTION\nP5\nFinal convergence: residual uncertainty 56% \u2014 within dampening threshold for suspicious classification\n63%\n+1%\nFINAL CONVERGENCE\nSIGNAL SOURCES\nStrings (4)\nImports (2)\n\u2713\nConvergence achieved \u2014 confidence elevated to 63%\n5 passes \u00b7 6 signals evaluated \u00b7 suspicious classification\ndynload-imports\nregistry-strings\npe-names\nembedded-urls\n+2 more\n\u27f3 Re-run NEST Session\nRecommended now\nOpen TALON\nTALON confidence is 44% and STRIKE risk is 33.\nOpen paletteRun next step\nNext best step\nFinalize report\nOpen the verdict, TALON, or STRIKE for final decision confidence.\nEvidence converged88%\nRanked actions\nOpen TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.\nInspect metadata\nExtract hashes, imports, sections, and file traits.\nLoad binary\nOpen the next sample and establish baseline context.",
+    "download": {
+      "download": "hexhawk-analysis-keygenme-1779526923480.json",
+      "href": "blob:http://localhost:5173/ad5dc5bd-192c-4851-a259-3a2aeedcbab9"
+    },
+    "export_json": {
+      "timestamp": "2026-05-23T09:02:03.479Z",
+      "binaryPath": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+      "metadata": {
+        "file_type": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "entry_point": "0x140001000",
+        "file_size": 65536,
+        "sha256": "6b657967656e6d652e657865000000006b657967656e6d652e65786500000000",
+        "md5": "6b657967656e6d652e65786500000000",
+        "sections": [
+          {
+            "name": ".text",
+            "entropy": "6.78",
+            "size": 24576
+          },
+          {
+            "name": ".rdata",
+            "entropy": "5.44",
+            "size": 10240
+          },
+          {
+            "name": ".data",
+            "entropy": "3.11",
+            "size": 4096
+          }
+        ],
+        "imports": [
+          "kernel32.dll!GetProcAddress",
+          "kernel32.dll!LoadLibraryA",
+          "kernel32.dll!VirtualAlloc",
+          "kernel32.dll!VirtualProtect",
+          "advapi32.dll!RegSetValueExA"
+        ],
+        "exports": []
+      },
+      "verdict": {
+        "classification": "suspicious",
+        "threatScore": 33,
+        "confidence": 44,
+        "summary": "Classified as Suspicious \u2014 threat score 33/100 (44% confidence). Key evidence: Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hides true capabilities; 1 registry path string(s) \u2014 potential persistence mechanism; 2 embedded executable name(s): kernel32.dll, C:\\Windows\\System32\\cmd.exe.",
+        "signals": [
+          {
+            "source": "imports",
+            "finding": "Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hides true capabilities",
+            "weight": 6
+          },
+          {
+            "source": "strings",
+            "finding": "1 registry path string(s) \u2014 potential persistence mechanism",
+            "weight": 5
+          },
+          {
+            "source": "strings",
+            "finding": "2 embedded executable name(s): kernel32.dll, C:\\Windows\\System32\\cmd.exe",
+            "weight": 5
+          },
+          {
+            "source": "strings",
+            "finding": "1 embedded URL(s): https://example.com",
+            "weight": 4
+          },
+          {
+            "source": "imports",
+            "finding": "1 registry modification API(s)",
+            "weight": 3
+          },
+          {
+            "source": "strings",
+            "finding": "1 embedded domain(s)",
+            "weight": 3
+          }
+        ],
+        "negativeSignals": [],
+        "amplifiers": [],
+        "dismissals": []
+      },
+      "strings": [
+        {
+          "offset": "0x4010",
+          "text": "https://example.com"
+        },
+        {
+          "offset": "0x4040",
+          "text": "HKEY_LOCAL_MACHINE\\SOFTWARE\\HexHawk"
+        },
+        {
+          "offset": "0x4080",
+          "text": "kernel32.dll"
+        },
+        {
+          "offset": "0x40B0",
+          "text": "C:\\Windows\\System32\\cmd.exe"
+        },
+        {
+          "offset": "0x4100",
+          "text": "CreateRemoteThread"
+        }
+      ],
+      "disassembly": [
+        {
+          "address": "0x140001000",
+          "mnemonic": "push",
+          "operands": "rbp"
+        },
+        {
+          "address": "0x140001001",
+          "mnemonic": "mov",
+          "operands": "rbp, rsp"
+        },
+        {
+          "address": "0x140001004",
+          "mnemonic": "sub",
+          "operands": "rsp, 0x30"
+        },
+        {
+          "address": "0x140001008",
+          "mnemonic": "call",
+          "operands": "0x140001080"
+        },
+        {
+          "address": "0x14000100D",
+          "mnemonic": "cmp",
+          "operands": "eax, 0x0"
+        },
+        {
+          "address": "0x140001010",
+          "mnemonic": "je",
+          "operands": "0x140001028"
+        },
+        {
+          "address": "0x140001016",
+          "mnemonic": "mov",
+          "operands": "ecx, 0x1"
+        },
+        {
+          "address": "0x14000101B",
+          "mnemonic": "jmp",
+          "operands": "0x14000102F"
+        },
+        {
+          "address": "0x140001028",
+          "mnemonic": "xor",
+          "operands": "ecx, ecx"
+        },
+        {
+          "address": "0x14000102F",
+          "mnemonic": "add",
+          "operands": "rsp, 0x30"
+        },
+        {
+          "address": "0x140001033",
+          "mnemonic": "pop",
+          "operands": "rbp"
+        },
+        {
+          "address": "0x140001034",
+          "mnemonic": "ret",
+          "operands": ""
+        }
+      ],
+      "bookmarks": [],
+      "annotations": []
+    }
+  },
+  {
+    "path": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+    "runtime0": {
+      "hasTauriRuntime": false,
+      "browserMode": true
+    },
+    "load_set": {
+      "ok": true,
+      "value": "D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+    },
+    "opened": {
+      "ok": true,
+      "text": "Open",
+      "cls": "load-open-btn",
+      "disabled": false
+    },
+    "inspect_click": {
+      "ok": true,
+      "text": "\ud83d\udd0e\nInspect File",
+      "cls": "wf-action-btn wf-action-btn--primary",
+      "disabled": false
+    },
+    "scan_click": {
+      "ok": true,
+      "text": "\ud835\udd4a\nScan Strings",
+      "cls": "wf-action-btn",
+      "disabled": false
+    },
+    "disasm_click": {
+      "ok": true,
+      "text": "? Disassemble Now",
+      "cls": "wf-cta-primary-btn",
+      "disabled": false
+    },
+    "gyre_click": {
+      "ok": true,
+      "text": "\u2696\nGYRE",
+      "cls": "wf-nav-item",
+      "disabled": false
+    },
+    "nest_nav_click": {
+      "ok": true,
+      "text": "\u27f3\nNEST",
+      "cls": "wf-nav-item",
+      "disabled": false
+    },
+    "nest_start_click": {
+      "ok": true,
+      "text": "\u27f3 Start NEST Session",
+      "cls": "",
+      "disabled": false
+    },
+    "snap_inspect": {
+      "timestamp": "2026-05-23T09:02:06.556Z",
+      "runtime": {
+        "hasTauriRuntime": false,
+        "browserMode": true
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+      "activeView": "inspect",
+      "workflowState": "inspected",
+      "panelFidelity": {
+        "source": "simulation",
+        "detail": "Metadata is generated from browser simulation fixtures; no native file inspection is invoked."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "fileSize": 73728,
+        "sha256": "637261636b6d655f7368726f75642e65637261636b6d655f7368726f75642e65",
+        "entryPoint": 5368713216
+      },
+      "strings": {
+        "count": 0,
+        "sample": []
+      },
+      "disassembly": {
+        "count": 0,
+        "arch": null,
+        "fallback": false,
+        "sample": []
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 4,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_SIMULATION | Simulated inspect for D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied binary path for analysis: D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        }
+      ]
+    },
+    "snap_strings": {
+      "timestamp": "2026-05-23T09:02:06.572Z",
+      "runtime": {
+        "hasTauriRuntime": false,
+        "browserMode": true
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+      "activeView": "strings",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "simulation",
+        "detail": "String extraction is simulated for workflow QA; no backend scanner is invoked."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "fileSize": 73728,
+        "sha256": "637261636b6d655f7368726f75642e65637261636b6d655f7368726f75642e65",
+        "entryPoint": 5368713216
+      },
+      "strings": {
+        "count": 5,
+        "sample": [
+          {
+            "offset": 16400,
+            "text": "https://example.com"
+          },
+          {
+            "offset": 16448,
+            "text": "HKEY_LOCAL_MACHINE\\SOFTWARE\\HexHawk"
+          },
+          {
+            "offset": 16512,
+            "text": "kernel32.dll"
+          },
+          {
+            "offset": 16560,
+            "text": "C:\\Windows\\System32\\cmd.exe"
+          },
+          {
+            "offset": 16640,
+            "text": "CreateRemoteThread"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 0,
+        "arch": null,
+        "fallback": false,
+        "sample": []
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 4,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_SIMULATION | Simulated string scan for D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_SIMULATION | Simulated inspect for D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied binary path for analysis: D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        }
+      ]
+    },
+    "snap_disasm": {
+      "timestamp": "2026-05-23T09:02:06.903Z",
+      "runtime": {
+        "hasTauriRuntime": false,
+        "browserMode": true
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+      "activeView": "disassembly",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "simulation",
+        "detail": "Instructions are simulated for browser-mode validation and are not backend disassembly output."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "fileSize": 73728,
+        "sha256": "637261636b6d655f7368726f75642e65637261636b6d655f7368726f75642e65",
+        "entryPoint": 5368713216
+      },
+      "strings": {
+        "count": 5,
+        "sample": [
+          {
+            "offset": 16400,
+            "text": "https://example.com"
+          },
+          {
+            "offset": 16448,
+            "text": "HKEY_LOCAL_MACHINE\\SOFTWARE\\HexHawk"
+          },
+          {
+            "offset": 16512,
+            "text": "kernel32.dll"
+          },
+          {
+            "offset": 16560,
+            "text": "C:\\Windows\\System32\\cmd.exe"
+          },
+          {
+            "offset": 16640,
+            "text": "CreateRemoteThread"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 12,
+        "arch": "x86_64",
+        "fallback": false,
+        "sample": [
+          {
+            "address": 5368713216,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 5368713217,
+            "mnemonic": "mov",
+            "operands": "rbp, rsp"
+          },
+          {
+            "address": 5368713220,
+            "mnemonic": "sub",
+            "operands": "rsp, 0x30"
+          },
+          {
+            "address": 5368713224,
+            "mnemonic": "call",
+            "operands": "0x140001080"
+          },
+          {
+            "address": 5368713229,
+            "mnemonic": "cmp",
+            "operands": "eax, 0x0"
+          },
+          {
+            "address": 5368713232,
+            "mnemonic": "je",
+            "operands": "0x140001028"
+          },
+          {
+            "address": 5368713238,
+            "mnemonic": "mov",
+            "operands": "ecx, 0x1"
+          },
+          {
+            "address": 5368713243,
+            "mnemonic": "jmp",
+            "operands": "0x14000102F"
+          },
+          {
+            "address": 5368713256,
+            "mnemonic": "xor",
+            "operands": "ecx, ecx"
+          },
+          {
+            "address": 5368713263,
+            "mnemonic": "add",
+            "operands": "rsp, 0x30"
+          },
+          {
+            "address": 5368713267,
+            "mnemonic": "pop",
+            "operands": "rbp"
+          },
+          {
+            "address": 5368713268,
+            "mnemonic": "ret",
+            "operands": ""
+          }
+        ]
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 4,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "DISASSEMBLY_SIMULATION | Simulated disassembly for D:/Project/HexHawk/Challenges/crackme_shroud.exe from 0x0"
+        },
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_SIMULATION | Simulated string scan for D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_SIMULATION | Simulated inspect for D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied binary path for analysis: D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        }
+      ]
+    },
+    "snap_nest": {
+      "timestamp": "2026-05-23T09:02:10.283Z",
+      "runtime": {
+        "hasTauriRuntime": false,
+        "browserMode": true
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+      "activeView": "nest",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "simulation",
+        "detail": "NEST session is simulated for workflow QA without native backend orchestration."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "simulation",
+          "detail": "Browser-mode simulation path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "fileSize": 73728,
+        "sha256": "637261636b6d655f7368726f75642e65637261636b6d655f7368726f75642e65",
+        "entryPoint": 5368713216
+      },
+      "strings": {
+        "count": 5,
+        "sample": [
+          {
+            "offset": 16400,
+            "text": "https://example.com"
+          },
+          {
+            "offset": 16448,
+            "text": "HKEY_LOCAL_MACHINE\\SOFTWARE\\HexHawk"
+          },
+          {
+            "offset": 16512,
+            "text": "kernel32.dll"
+          },
+          {
+            "offset": 16560,
+            "text": "C:\\Windows\\System32\\cmd.exe"
+          },
+          {
+            "offset": 16640,
+            "text": "CreateRemoteThread"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 12,
+        "arch": "x86_64",
+        "fallback": false,
+        "sample": [
+          {
+            "address": 5368713216,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 5368713217,
+            "mnemonic": "mov",
+            "operands": "rbp, rsp"
+          },
+          {
+            "address": 5368713220,
+            "mnemonic": "sub",
+            "operands": "rsp, 0x30"
+          },
+          {
+            "address": 5368713224,
+            "mnemonic": "call",
+            "operands": "0x140001080"
+          },
+          {
+            "address": 5368713229,
+            "mnemonic": "cmp",
+            "operands": "eax, 0x0"
+          },
+          {
+            "address": 5368713232,
+            "mnemonic": "je",
+            "operands": "0x140001028"
+          },
+          {
+            "address": 5368713238,
+            "mnemonic": "mov",
+            "operands": "ecx, 0x1"
+          },
+          {
+            "address": 5368713243,
+            "mnemonic": "jmp",
+            "operands": "0x14000102F"
+          },
+          {
+            "address": 5368713256,
+            "mnemonic": "xor",
+            "operands": "ecx, ecx"
+          },
+          {
+            "address": 5368713263,
+            "mnemonic": "add",
+            "operands": "rsp, 0x30"
+          },
+          {
+            "address": 5368713267,
+            "mnemonic": "pop",
+            "operands": "rbp"
+          },
+          {
+            "address": 5368713268,
+            "mnemonic": "ret",
+            "operands": ""
+          }
+        ]
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 4,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": {
+          "confidence": 76.3,
+          "signals": 7
+        }
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "APP_EVENT | NESTCORE OMEGA Super Scaffold uplift applied (+1 signals, +13.299999999999997% confidence)."
+        },
+        {
+          "level": "info",
+          "message": "NEST_SIMULATION_START | Started NEST simulation session in browser mode."
+        },
+        {
+          "level": "info",
+          "message": "DISASSEMBLY_SIMULATION | Simulated disassembly for D:/Project/HexHawk/Challenges/crackme_shroud.exe from 0x0"
+        },
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_SIMULATION | Simulated string scan for D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_SIMULATION | Simulated inspect for D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied binary path for analysis: D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "HEX_PREVIEW_SEEDED | Seeded browser hex preview for D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0."
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_SIMULATION | Loaded simulated built-in plugins for browser mode."
+        }
+      ]
+    },
+    "body_gyre": "HexHawk\nv1.1.0\ncrackme_shroud.exe\n637261636b6d655f\u2026\n\u21b5\n\u25c6 ENTERPRISE\n\ud83d\udd11\n\ud83d\udcc4\ncrackme_shroud.exe\n\u21c4\nFILE\n\ud83d\udcc2\nLoad Binary\n\ud83d\uddc2\nMetadata\nANALYSIS\n\ud83d\udd0e\nInspect\n\u2b21\nHex Viewer\n\ud835\udd4a\nStrings\n\u229e\nDisassembly\n\u2b21\nCFG\n\u27e8/\u27e9\nVEIL\n\ud83e\udde0\nTALON\nINTELLIGENCE\n\u2696\nGYRE\n\ud83d\udce1\nECHO\n\ud83d\udcca\nCREST\n\ud83d\udd50\nSnapshot History\n\u27f3\nNEST\n\ud83d\udee1\nAssurance\n\ud83d\udccb\nActivity\nACTIONS\n\ud83e\ude79\nIMP\n\u2297\nBIND\n\u2b21\nCAGE\n\u2699\nSTRIKE\n\u2295\nDELTA\n>_\nREPL\n\u2b22\nAEGIS\n\ud83d\udce6\nVAULT\n\ud83e\udd16\nDROID\n\ud83c\udfaf\nRAKE\n\ud83d\udcd0\nFORM\n\ud83d\udd27\nFORGE\n\ud83d\udce1\nTIDE\nPLUGINS\n\ud83e\udeb6\nQUILL\nHELP\n?\nHelp\n\u2139\nAbout\nDisassembly loaded from 0x0 (browser simulation)\nJump\nShortcuts\nExport\nSources\n\u2b22 5 techniques\n\u2696\nGYRE\n\ud83e\ude79\nIMP\n\u2699\nSTRIKE\n\u2193\nExport\n\u2197\nJump to\u2026\nData Source: SIMULATION\nGYRE verdict is computed client-side from simulated or loaded UI artifacts in browser mode.\n\u2691\nSuspicious\n33\n/ 100\n44%\nconf\nS \u2014\nI 2\nS 4\nD \u2014\n\u25bc\n\u26a0\nUncertain: no runtime execution evidence (STRIKE) was collected \u2014 static analysis only; behaviour could differ at runtime.\n\u26a0\nUncertain: confidence is 44% \u2014 below the 50% threshold; more disassembly passes are recommended.\n\nClassified as Suspicious \u2014 threat score 33/100 (44% confidence). Key evidence: Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hides true capabilities; 1 registry path string(s) \u2014 potential persistence mechanism; 2 embedded executable name(s): kernel32.dll, C:\\Windows\\System32\\cmd.exe.\n\nc2-communication\npersistence\ncredential-theft\ndynamic-resolution\nprocess-execution\nKnowledge Graph\n3 capability clusters \u00b7 3 suspicious strings \u00b7 0 critical patterns\nReact Flow\n\u25a0 Injection\n\u25a0 Network/C2\n\u25a0 Evasion\n\u25a0 Persistence\n\u25a0 Crypto\n\u25a0 Strings\n\u25a0 Patterns\n\u2b21\nOperator Console\nDescribe your objective \u2014 HexHawk will tell you what to do next\nGenerate\nBinary context suggests:\nnetworking\nUse\nPress Enter to generate\nInjection\nNetworking\nPersistence\nUnpacking\nEvasion\nCredentials\nRansomware\nGeneral\n\u2b21\nReady\nType your objective above or select a quick-intent chip.\nHexHawk will generate a guided step-by-step workflow.\nBased on the loaded binary, try the networking workflow.\nRecommended now\nOpen TALON\nTALON confidence is 44% and STRIKE risk is 33.\nOpen paletteRun next step\nNext best step\nFinalize report\nOpen the verdict, TALON, or STRIKE for final decision confidence.\nEvidence converged88%\nRanked actions\nOpen TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.\nInspect metadata\nExtract hashes, imports, sections, and file traits.\nLoad binary\nOpen the next sample and establish baseline context.",
+    "body_nest_before": "HexHawk\nv1.1.0\ncrackme_shroud.exe\n637261636b6d655f\u2026\n\u21b5\n\u25c6 ENTERPRISE\n\ud83d\udd11\n\ud83d\udcc4\ncrackme_shroud.exe\n\u21c4\nFILE\n\ud83d\udcc2\nLoad Binary\n\ud83d\uddc2\nMetadata\nANALYSIS\n\ud83d\udd0e\nInspect\n\u2b21\nHex Viewer\n\ud835\udd4a\nStrings\n\u229e\nDisassembly\n\u2b21\nCFG\n\u27e8/\u27e9\nVEIL\n\ud83e\udde0\nTALON\nINTELLIGENCE\n\u2696\nGYRE\n\ud83d\udce1\nECHO\n\ud83d\udcca\nCREST\n\ud83d\udd50\nSnapshot History\n\u27f3\nNEST\n\ud83d\udee1\nAssurance\n\ud83d\udccb\nActivity\nACTIONS\n\ud83e\ude79\nIMP\n\u2297\nBIND\n\u2b21\nCAGE\n\u2699\nSTRIKE\n\u2295\nDELTA\n>_\nREPL\n\u2b22\nAEGIS\n\ud83d\udce6\nVAULT\n\ud83e\udd16\nDROID\n\ud83c\udfaf\nRAKE\n\ud83d\udcd0\nFORM\n\ud83d\udd27\nFORGE\n\ud83d\udce1\nTIDE\nPLUGINS\n\ud83e\udeb6\nQUILL\nHELP\n?\nHelp\n\u2139\nAbout\nDisassembly loaded from 0x0 (browser simulation)\nJump\nShortcuts\nExport\nSources\n\u2b22 5 techniques\n\u2696\nGYRE\n\ud83e\ude79\nIMP\n\u2699\nSTRIKE\n\u2193\nExport\n\u2197\nJump to\u2026\nData Source: SIMULATION\nNEST session is simulated for workflow QA without native backend orchestration.\nNEST (Browser Simulation)\n\nIterative multi-pass convergence engine. Each pass correlates evidence across loaded analysis artifacts, dampens isolated signals, and resolves contradictions.\n\nSIGNAL SOURCES\nStrings (4)\nImports (2)\n\u27f3 Start NEST Session\nRecommended now\nOpen TALON\nTALON confidence is 44% and STRIKE risk is 33.\nOpen paletteRun next step\nNext best step\nFinalize report\nOpen the verdict, TALON, or STRIKE for final decision confidence.\nEvidence converged88%\nRanked actions\nOpen TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.\nInspect metadata\nExtract hashes, imports, sections, and file traits.\nLoad binary\nOpen the next sample and establish baseline context.",
+    "body_nest_after": "HexHawk\nv1.1.0\ncrackme_shroud.exe\n637261636b6d655f\u2026\n\u21b5\n\u25c6 ENTERPRISE\n\ud83d\udd11\n\ud83d\udcc4\ncrackme_shroud.exe\n\u21c4\nFILE\n\ud83d\udcc2\nLoad Binary\n\ud83d\uddc2\nMetadata\nANALYSIS\n\ud83d\udd0e\nInspect\n\u2b21\nHex Viewer\n\ud835\udd4a\nStrings\n\u229e\nDisassembly\n\u2b21\nCFG\n\u27e8/\u27e9\nVEIL\n\ud83e\udde0\nTALON\nINTELLIGENCE\n\u2696\nGYRE\n\ud83d\udce1\nECHO\n\ud83d\udcca\nCREST\n\ud83d\udd50\nSnapshot History\n\u27f3\nNEST\n\ud83d\udee1\nAssurance\n\ud83d\udccb\nActivity\nACTIONS\n\ud83e\ude79\nIMP\n\u2297\nBIND\n\u2b21\nCAGE\n\u2699\nSTRIKE\n\u2295\nDELTA\n>_\nREPL\n\u2b22\nAEGIS\n\ud83d\udce6\nVAULT\n\ud83e\udd16\nDROID\n\ud83c\udfaf\nRAKE\n\ud83d\udcd0\nFORM\n\ud83d\udd27\nFORGE\n\ud83d\udce1\nTIDE\nPLUGINS\n\ud83e\udeb6\nQUILL\nHELP\n?\nHelp\n\u2139\nAbout\nNEST simulation completed. AETHERFRAME confidence uplift integrated.\nJump\nShortcuts\nExport\nSources\n\u2b22 5 techniques\n\u2696\nGYRE\n\ud83e\ude79\nIMP\n\u2699\nSTRIKE\n\u2193\nExport\n\u2197\nJump to\u2026\nData Source: SIMULATION\nNEST session is simulated for workflow QA without native backend orchestration.\nNEST (Browser Simulation)\n\nIterative multi-pass convergence engine. Each pass correlates evidence across loaded analysis artifacts, dampens isolated signals, and resolves contradictions.\n\n63%\nConvergence Log \u2014 5 / 5 passes\nP1\nInitial scan: 6 signals across 2 evidence sources \u2014 baseline established\n52%\n+8%\nINITIAL SCAN\n+3 signals\nP2\nImport\u2013string cross-reference: 2 import signals corroborated by 4 string surface indicators \u2014 \"Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hide\u2026\"\n57%\n+5%\nCROSS-REFERENCE\n+2 signals\nP3\nBehavioral inference: 0 mutually-corroborating signals clustered \u2014 suspicious classification strengthened\n60%\n+3%\nBEHAVIORAL INFERENCE\nP4\nContradiction resolution: 4 weak-tier indicators weighted down \u2014 signal-to-noise ratio improved\n62%\n+2%\nCONTRADICTION RESOLUTION\nP5\nFinal convergence: residual uncertainty 56% \u2014 within dampening threshold for suspicious classification\n63%\n+1%\nFINAL CONVERGENCE\nSIGNAL SOURCES\nStrings (4)\nImports (2)\n\u2713\nConvergence achieved \u2014 confidence elevated to 63%\n5 passes \u00b7 6 signals evaluated \u00b7 suspicious classification\ndynload-imports\nregistry-strings\npe-names\nembedded-urls\n+2 more\n\u27f3 Re-run NEST Session\nRecommended now\nOpen TALON\nTALON confidence is 44% and STRIKE risk is 33.\nOpen paletteRun next step\nNext best step\nFinalize report\nOpen the verdict, TALON, or STRIKE for final decision confidence.\nEvidence converged88%\nRanked actions\nOpen TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.\nInspect metadata\nExtract hashes, imports, sections, and file traits.\nLoad binary\nOpen the next sample and establish baseline context.",
+    "download": {
+      "download": "hexhawk-analysis-crackme_shroud-1779526930312.json",
+      "href": "blob:http://localhost:5173/8d103c5d-0a7a-4179-a48c-cae7f5c5d631"
+    },
+    "export_json": {
+      "timestamp": "2026-05-23T09:02:10.311Z",
+      "binaryPath": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+      "metadata": {
+        "file_type": "PE32+ EXE (.exe)",
+        "architecture": "x86_64",
+        "entry_point": "0x140001000",
+        "file_size": 73728,
+        "sha256": "637261636b6d655f7368726f75642e65637261636b6d655f7368726f75642e65",
+        "md5": "637261636b6d655f7368726f75642e65",
+        "sections": [
+          {
+            "name": ".text",
+            "entropy": "6.78",
+            "size": 24576
+          },
+          {
+            "name": ".rdata",
+            "entropy": "5.44",
+            "size": 10240
+          },
+          {
+            "name": ".data",
+            "entropy": "3.11",
+            "size": 4096
+          }
+        ],
+        "imports": [
+          "kernel32.dll!GetProcAddress",
+          "kernel32.dll!LoadLibraryA",
+          "kernel32.dll!VirtualAlloc",
+          "kernel32.dll!VirtualProtect",
+          "advapi32.dll!RegSetValueExA"
+        ],
+        "exports": []
+      },
+      "verdict": {
+        "classification": "suspicious",
+        "threatScore": 33,
+        "confidence": 44,
+        "summary": "Classified as Suspicious \u2014 threat score 33/100 (44% confidence). Key evidence: Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hides true capabilities; 1 registry path string(s) \u2014 potential persistence mechanism; 2 embedded executable name(s): kernel32.dll, C:\\Windows\\System32\\cmd.exe.",
+        "signals": [
+          {
+            "source": "imports",
+            "finding": "Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hides true capabilities",
+            "weight": 6
+          },
+          {
+            "source": "strings",
+            "finding": "1 registry path string(s) \u2014 potential persistence mechanism",
+            "weight": 5
+          },
+          {
+            "source": "strings",
+            "finding": "2 embedded executable name(s): kernel32.dll, C:\\Windows\\System32\\cmd.exe",
+            "weight": 5
+          },
+          {
+            "source": "strings",
+            "finding": "1 embedded URL(s): https://example.com",
+            "weight": 4
+          },
+          {
+            "source": "imports",
+            "finding": "1 registry modification API(s)",
+            "weight": 3
+          },
+          {
+            "source": "strings",
+            "finding": "1 embedded domain(s)",
+            "weight": 3
+          }
+        ],
+        "negativeSignals": [],
+        "amplifiers": [],
+        "dismissals": []
+      },
+      "strings": [
+        {
+          "offset": "0x4010",
+          "text": "https://example.com"
+        },
+        {
+          "offset": "0x4040",
+          "text": "HKEY_LOCAL_MACHINE\\SOFTWARE\\HexHawk"
+        },
+        {
+          "offset": "0x4080",
+          "text": "kernel32.dll"
+        },
+        {
+          "offset": "0x40B0",
+          "text": "C:\\Windows\\System32\\cmd.exe"
+        },
+        {
+          "offset": "0x4100",
+          "text": "CreateRemoteThread"
+        }
+      ],
+      "disassembly": [
+        {
+          "address": "0x140001000",
+          "mnemonic": "push",
+          "operands": "rbp"
+        },
+        {
+          "address": "0x140001001",
+          "mnemonic": "mov",
+          "operands": "rbp, rsp"
+        },
+        {
+          "address": "0x140001004",
+          "mnemonic": "sub",
+          "operands": "rsp, 0x30"
+        },
+        {
+          "address": "0x140001008",
+          "mnemonic": "call",
+          "operands": "0x140001080"
+        },
+        {
+          "address": "0x14000100D",
+          "mnemonic": "cmp",
+          "operands": "eax, 0x0"
+        },
+        {
+          "address": "0x140001010",
+          "mnemonic": "je",
+          "operands": "0x140001028"
+        },
+        {
+          "address": "0x140001016",
+          "mnemonic": "mov",
+          "operands": "ecx, 0x1"
+        },
+        {
+          "address": "0x14000101B",
+          "mnemonic": "jmp",
+          "operands": "0x14000102F"
+        },
+        {
+          "address": "0x140001028",
+          "mnemonic": "xor",
+          "operands": "ecx, ecx"
+        },
+        {
+          "address": "0x14000102F",
+          "mnemonic": "add",
+          "operands": "rsp, 0x30"
+        },
+        {
+          "address": "0x140001033",
+          "mnemonic": "pop",
+          "operands": "rbp"
+        },
+        {
+          "address": "0x140001034",
+          "mnemonic": "ret",
+          "operands": ""
+        }
+      ],
+      "bookmarks": [],
+      "annotations": []
+    }
+  }
+]

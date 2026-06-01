@@ -1,103 +1,57 @@
-# HexHawk Final Evaluation
+# HexHawk Current Evaluation
 
-Date: 2026-05-01
-
-This evaluation reflects the current implemented state of HexHawk.
+Date: 2026-05-31
 
 ## Executive Summary
 
-HexHawk is operating as a full-stack reverse engineering workstation with strong parity in disassembly depth and evidence quality, and major gains in decompiler and debugger depth.
+HexHawk has moved from prototype packaging risk to a working Windows internal-tester build path. The latest source validation and installer rebuild prove that the frontend, Rust backend, CLI, MSI package, NSIS package, and extracted CLI smoke path are currently functioning.
 
-Current competitive posture used in project scoring:
-
-- Disassembly Depth: 10/10
-- Decompiler Quality: 9/10
-- Debugger and Dynamic: 9/10
-- Evidence and Reporting: 10/10
+This is not yet a signed public release. It is suitable for board/investor demonstration and controlled internal testing with explicit caveats.
 
 ## Verified Engineering Status
 
-- Frontend build: passing
-- Frontend tests: 34 test files, 670 passing tests
-- Recent feature additions are implemented and covered by targeted tests
+Latest validated results:
 
-## Capability Evaluation
+- Frontend tests: 38 files, 683 tests passing.
+- Frontend typecheck: passing.
+- Frontend production build: passing.
+- Rust workspace check: passing.
+- Rust workspace tests: 85 passing tests.
+- Tauri Windows release build: passing.
+- MSI artifact: produced successfully.
+- NSIS artifact: produced successfully.
+- MSI administrative extraction: passing.
+- Extracted `nest_cli.exe identify` smoke test on `Challenges/ch76/keygenme.exe`: passing.
 
-### Disassembly Depth - 10/10
+## Current Build Artifacts
 
-Strengths now present:
+- Release executable: `target/release/hexhawk-backend.exe`.
+- MSI: `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`.
+- NSIS: `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`.
 
-- Instruction-level annotation with severity tagging
-- Recognition of high-signal API usage patterns
-- Crypto constant and anti-analysis indicator detection
-- Stack and boundary context enrichment to aid analyst triage
+Latest hashes recorded during the installer rebuild:
 
-Assessment:
+- `hexhawk-backend.exe`: `5cace39dabcf5cd436f112be58e6f26088ebfe53910b6b8e2fe87498795c0e44`.
+- `HexHawk_1.0.0_x64_en-US.msi`: `aa6ebfeb10f4a2f7544b9c3cf854064a1706cfb39e6f81d377eefad20fbe461a`.
+- `HexHawk_1.0.0_x64-setup.exe`: `4082169a95b9be9670e74fd4ea60c009f3010a967e2f9ca76d779437fa0ca227`.
 
-HexHawk now provides deep first-pass analyst context directly in disassembly output, reducing dependence on manual side-channel interpretation.
+## Product Assessment
 
-### Decompiler Quality - 9/10
+Strengths:
 
-Strengths now present:
+- Strong local-first desktop architecture.
+- Evidence-first reverse engineering workflow.
+- GYRE/NEST/AETHERFRAME authority boundaries are explicit and testable.
+- Native Windows installer build path is now working.
+- Rust CLI can analyze real PE files from extracted installer payloads.
 
-- Natural loop header recovery
-- While-loop reconstruction
-- For-loop promotion when IR supports init/step extraction
-- Better structured output quality for common real-world control flow
+Remaining gaps:
 
-Assessment:
-
-Decompiler readability and intent recovery have materially improved. Remaining gap is mainly in very complex control-flow flattening and advanced edge-case structuring.
-
-### Debugger and Dynamic - 9/10
-
-Strengths now present:
-
-- Timeline-derived call-stack reconstruction
-- Hot-block execution profiling
-- Repeated execution loop detection for packed/decoded behavior patterns
-
-Assessment:
-
-STRIKE now gives significantly stronger dynamic insight and triage acceleration, especially on traces with repeated decode loops or staged behavior.
-
-### Evidence and Reporting - 10/10
-
-Strengths now present:
-
-- MITRE ATT&CK technique mapping from behavioral and runtime signals
-- IOC extraction from recovered strings and artifacts
-- Enriched evidence generation suitable for direct report inclusion
-
-Assessment:
-
-Evidence output is now both technically deep and report-ready, with clear downstream value for CREST export workflows.
-
-## What Changed in This Evaluation Window
-
-Major delivered feature blocks:
-
-- Decompiler natural loop and for-loop recovery
-- Disassembly annotation engine implementation
-- STRIKE call-stack, hot-block, and loop-detection enhancements
-- MITRE ATT&CK mapping and IOC extraction pipeline
-- Phase 2 report snapshot workflow: named analyst notes/checkpoints on each snapshot, diff-focused Markdown/JSON export for snapshot comparisons, cross-file snapshot history panel with any-two comparison and diff exports
-- Expanded automated coverage with 34 focused tests included in the 670-pass baseline
-
-## Risks and Remaining Gaps
-
-Known non-blocking areas to continue improving:
-
-- Decompiler edge cases for aggressively obfuscated control flow
-- Annotation precision tuning for specific noisy API/string patterns
-- Additional report profile variants for enterprise workflows
-
-None of these gaps invalidate current production utility.
+- Unsigned artifacts will trigger Windows trust warnings.
+- Updater artifacts are disabled until signing keys are supplied.
+- Installed-artifact native GUI export parity still needs to be rerun.
+- Public download/payment/support operations need final release-process proof.
 
 ## Conclusion
 
-HexHawk is now in a strong current-state position:
-
-- It is technically credible across static, dynamic, and evidence workflows.
-- It has measurable validation coverage and a passing build/test baseline.
-- It has shipped the specific capability upgrades required to justify the latest scoring posture.
+HexHawk is credible for controlled internal testing and investor/board demonstration. The next release-readiness step is not more marketing copy; it is signing, installed-GUI parity proof, and a clean external tester release checklist.

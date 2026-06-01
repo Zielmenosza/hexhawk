@@ -1,0 +1,2 @@
+a51ddacb1753a2c48d79fe830f790436d1348e44b6bebc1552610c291d54dba0  HexHawk_1.0.0_x64_en-US.msi
+d4e39045fcbbb29a1ee8cc45d7dc66664b061ccbd34bde1b0350738ff01397bf  HexHawk_1.0.0_x64-setup.exe

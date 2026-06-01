@@ -552,8 +552,10 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
   }, [snapshots]);
 
   const handleDownloadJSON = () => {
+    const generatedAt = new Date().toISOString();
+    const verdictSnapshotId = `gyre-${generatedAt}-${verdict.classification}-${verdict.threatScore}`;
     const report = {
-      generatedAt: new Date().toISOString(),
+      generatedAt,
       binary: { path: binaryPath, size: binarySize, architecture, fileType },
       verdict: {
         classification: verdict.classification,
@@ -567,6 +569,31 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
         contradictions: verdict.contradictions,
         alternatives: verdict.alternatives,
         nextSteps: verdict.nextSteps,
+      },
+      final_verdict_snapshot: {
+        verdict_snapshot_id: verdictSnapshotId,
+        source_engine: 'gyre',
+        gyre_is_sole_verdict_source: true,
+        gyre_schema_version: '1.0.0',
+        classification: verdict.classification,
+        confidence: verdict.confidence,
+        threat_score: verdict.threatScore,
+        summary: verdict.summary,
+        signal_count: verdict.signalCount,
+        nest_linkage: {
+          nest_enrichment_applied: false,
+          gyre_is_sole_verdict_source: true,
+          note: 'Report export preserves GYRE authority. Typed NEST evidence bundles are exported only by the NEST evidence path after a real native NEST completion.',
+        },
+      },
+      nest_evidence_bundle: null,
+      nestEvidenceBundle: null,
+      nest_evidence_bundle_status: 'not_embedded_in_report_export; use NEST evidence export after real native NEST completion',
+      authority_doctrine: {
+        gyre_is_sole_verdict_source: true,
+        nest_role: 'evidence-orchestration-only',
+        aetherframe_role: 'bounded-uplift-lineage-only',
+        nexus_role: 'non-authoritative-assistant-layer',
       },
     };
     downloadText(JSON.stringify(report, null, 2), 'hexhawk-report.json', 'application/json');

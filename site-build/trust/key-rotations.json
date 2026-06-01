@@ -1,0 +1,21 @@
+{
+    "history":  [
+                    {
+                        "rotated_at":  "2026-06-01T20:46:00Z",
+                        "retired_key_id":  "HXK-UPDATER-2025-LEGACY",
+                        "replacement_key_id":  "HXK-UPDATER-2026-01",
+                        "scope":  "updater-metadata",
+                        "reason":  "Lifecycle rotation after release-hardening rollout."
+                    },
+                    {
+                        "rotated_at":  "2026-06-01T20:46:00Z",
+                        "retired_key_id":  "HXK-REPORT-2025-LEGACY",
+                        "replacement_key_id":  "HXK-REPORT-2026-06",
+                        "scope":  "report-signatures",
+                        "reason":  "Legacy test report key retired for deterministic trust policy."
+                    }
+                ],
+    "generated_at":  "2026-06-01T19:11:45.4922539Z",
+    "schema":  "hexhawk.trust.key_rotations.v1",
+    "version":  "1.0.0"
+}

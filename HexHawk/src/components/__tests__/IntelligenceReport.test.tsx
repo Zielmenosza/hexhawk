@@ -30,8 +30,16 @@ function makeVerdict(overrides: Partial<BinaryVerdictResult> = {}): BinaryVerdic
 }
 
 describe('IntelligenceReport', () => {
+  let lastBlob: Blob | null = null;
+
   beforeEach(() => {
     window.localStorage.clear();
+    lastBlob = null;
+    URL.createObjectURL = ((blob: Blob) => {
+      lastBlob = blob;
+      return 'blob:hexhawk-test';
+    }) as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => undefined) as typeof URL.revokeObjectURL;
   });
 
   it('saves the current report as a local snapshot', async () => {
@@ -102,5 +110,43 @@ describe('IntelligenceReport', () => {
     expect(screen.getByText('+79')).toBeTruthy();
     expect(screen.getByText('clean → rat')).toBeTruthy();
     expect(screen.getByText('anti-analysis, c2-communication')).toBeTruthy();
+  });
+
+  it('exports JSON with GYRE authority envelope markers', async () => {
+    render(
+      <IntelligenceReport
+        verdict={makeVerdict({
+          classification: 'suspicious',
+          threatScore: 66,
+          confidence: 83,
+          signalCount: 4,
+          summary: 'Authority envelope regression test snapshot',
+        })}
+        binaryPath="D:\\Project\\HexHawk\\Challenges\\sample.exe"
+        binarySize={8192}
+        architecture="x86_64"
+        fileType="PE32+ EXE"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /json/i }));
+
+    await waitFor(() => {
+      expect(lastBlob).toBeTruthy();
+    });
+
+    const payload = JSON.parse(await lastBlob!.text()) as {
+      final_verdict_snapshot: {
+        source_engine: string;
+        gyre_is_sole_verdict_source: boolean;
+        nest_linkage: { gyre_is_sole_verdict_source: boolean };
+      };
+      authority_doctrine: { gyre_is_sole_verdict_source: boolean };
+    };
+
+    expect(payload.final_verdict_snapshot.source_engine).toBe('gyre');
+    expect(payload.final_verdict_snapshot.gyre_is_sole_verdict_source).toBe(true);
+    expect(payload.final_verdict_snapshot.nest_linkage.gyre_is_sole_verdict_source).toBe(true);
+    expect(payload.authority_doctrine.gyre_is_sole_verdict_source).toBe(true);
   });
 });

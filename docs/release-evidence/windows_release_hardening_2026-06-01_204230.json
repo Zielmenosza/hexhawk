@@ -1,0 +1,70 @@
+{
+    "generatedAt":  "2026-06-01T18:42:30.0676748Z",
+    "version":  "1.0.0",
+    "signingIdentity":  {
+                            "thumbprint":  "7373D2D0A1260F63A9D9CF51AD50681314595C70",
+                            "pfxPath":  null,
+                            "usedSelfSignedDevCert":  true
+                        },
+    "artifacts":  [
+                      {
+                          "path":  "D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe",
+                          "sha256":  "63b7bd8ef68d9291e729361e690f61049e42c3809191f615f40901c157422fac"
+                      },
+                      {
+                          "path":  "D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi",
+                          "sha256":  "700c6894c87998da14f08bbeaaefd75d972950325310fff47b2b392ac7c9ae01"
+                      },
+                      {
+                          "path":  "D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe",
+                          "sha256":  "752e0556a84dd2b6af60f07ba71de157a31d4e70ffd1d43e454718b82397fd56"
+                      }
+                  ],
+    "signatures":  [
+                       {
+                           "path":  "D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe",
+                           "status":  "UnknownError",
+                           "statusMessage":  "A certificate chain processed, but terminated in a root certificate which is not trusted by the trust provider",
+                           "signerSubject":  "CN=HexHawk Internal Dev Code Signing",
+                           "signerThumbprint":  "7373D2D0A1260F63A9D9CF51AD50681314595C70",
+                           "signerNotAfter":  "2027-06-01T18:41:25.0000000Z",
+                           "timestampSubject":  "CN=DigiCert SHA256 RSA4096 Timestamp Responder 2025 1, O=\"DigiCert, Inc.\", C=US"
+                       },
+                       {
+                           "path":  "D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi",
+                           "status":  "UnknownError",
+                           "statusMessage":  "A certificate chain processed, but terminated in a root certificate which is not trusted by the trust provider",
+                           "signerSubject":  "CN=HexHawk Internal Dev Code Signing",
+                           "signerThumbprint":  "7373D2D0A1260F63A9D9CF51AD50681314595C70",
+                           "signerNotAfter":  "2027-06-01T18:41:25.0000000Z",
+                           "timestampSubject":  "CN=DigiCert SHA256 RSA4096 Timestamp Responder 2025 1, O=\"DigiCert, Inc.\", C=US"
+                       },
+                       {
+                           "path":  "D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe",
+                           "status":  "UnknownError",
+                           "statusMessage":  "A certificate chain processed, but terminated in a root certificate which is not trusted by the trust provider",
+                           "signerSubject":  "CN=HexHawk Internal Dev Code Signing",
+                           "signerThumbprint":  "7373D2D0A1260F63A9D9CF51AD50681314595C70",
+                           "signerNotAfter":  "2027-06-01T18:41:25.0000000Z",
+                           "timestampSubject":  "CN=DigiCert SHA256 RSA4096 Timestamp Responder 2025 1, O=\"DigiCert, Inc.\", C=US"
+                       }
+                   ],
+    "updaterValidation":  {
+                              "endpointTemplate":  "https://releases.hexhawk.app/releases/latest.json",
+                              "resolvedUrl":  "https://releases.hexhawk.app/releases/latest.json",
+                              "pubkeyConfigured":  true,
+                              "fetchOk":  false,
+                              "httpStatus":  null,
+                              "metadataValid":  false,
+                              "metadataChecks":  [
+
+                                                 ],
+                              "error":  "The remote name could not be resolved: \u0027releases.hexhawk.app\u0027"
+                          },
+    "nativeProbe":  {
+                        "skipped":  false,
+                        "ok":  false,
+                        "outputPath":  "D:\\Project\\HexHawk\\gui-evidence\\release_hardening_native_gui_probe_2026-06-01_204226.json",
+                        "error":  "native probe failed with exit code 1"
+                    }
+}

@@ -28,6 +28,8 @@ build/
 .env
 .env.*
 !.env.example
+scripts/release/.generated/
+*.pem.key
 
 # Logs and temp files
 *.log

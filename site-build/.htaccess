@@ -1,0 +1,14 @@
+# HexHawk static site entrypoint.
+# Serve the root index directly and keep hidden files private.
+<Files .*>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</Files>
+
+Options -Indexes
+DirectoryIndex index.html

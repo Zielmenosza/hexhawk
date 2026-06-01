@@ -1,0 +1,45 @@
+{
+    "generated_at":  "2026-06-01T19:11:45.4922539Z",
+    "schema":  "hexhawk.trust.keys.v1",
+    "version":  "1.0.0",
+    "keys":  [
+                 {
+                     "metadata":  {
+                                      "tauri_updater_key_id":  "B9F77606A2FB0574"
+                                  },
+                     "purpose":  "updater-metadata",
+                     "public_key_url":  "/trust/keys/HXK-UPDATER-2026-01.minisign.pub",
+                     "algorithm":  "ed25519-minisign",
+                     "activated_at":  "2026-06-01T20:46:00Z",
+                     "key_id":  "HXK-UPDATER-2026-01",
+                     "status":  "active"
+                 },
+                 {
+                     "purpose":  "report-signatures",
+                     "public_key_url":  "/trust/keys/HXK-REPORT-2026-01.pem",
+                     "algorithm":  "rsa-2048-sha256",
+                     "activated_at":  "2026-06-01T21:15:00Z",
+                     "key_id":  "HXK-REPORT-2026-01",
+                     "status":  "active",
+                     "fingerprint_sha256":  "e050f2253c47981123f5d3127ccf4d8cc4a380fce3d1009383b7b4f8c4274eca"
+                 },
+                 {
+                     "purpose":  "plugin-signatures",
+                     "public_key_url":  "/trust/keys/HXK-PLUGIN-2026-01.pem",
+                     "algorithm":  "ecdsa-p256-sha256",
+                     "activated_at":  "2026-06-01T21:15:00Z",
+                     "key_id":  "HXK-PLUGIN-2026-01",
+                     "status":  "pilot",
+                     "fingerprint_sha256":  "30eeeb6e5158a53c627c456621270e9971b41a9c5ed87450061768a44e5c3311"
+                 },
+                 {
+                     "key_id":  "HXK-REPORT-2026-06",
+                     "purpose":  "release-artifact-signatures",
+                     "algorithm":  "rsa-2048-sha256",
+                     "status":  "active",
+                     "activated_at":  "2026-06-01T19:11:45.4922539Z",
+                     "public_key_url":  "/trust/keys/HXK-REPORT-2026-06.pem",
+                     "fingerprint_sha256":  "a06a2dbea1df2e30e0c6cc6de7b151466345eba314aebda6f40a2f797ca52150"
+                 }
+             ]
+}

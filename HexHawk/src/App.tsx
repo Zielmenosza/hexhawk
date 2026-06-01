@@ -126,6 +126,66 @@ import {
   splitActivityMessage,
 } from './utils/qaUx';
 
+function WorkspaceTabStrip({
+  activeView,
+  onSelect,
+}: {
+  activeView: NavView;
+  onSelect: (view: NavView) => void;
+}) {
+  return (
+    <div className="workspace-tabbar" role="tablist" aria-label="Workspace tools" data-testid="workspace-tabbar">
+      {WORKSPACE_NAV_ITEMS.map((item) => {
+        const active = activeView === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            className={`workspace-tab ${active ? 'workspace-tab--active' : ''}`}
+            onClick={() => onSelect(item.id)}
+            data-testid={`workspace-tab-${item.id}`}
+          >
+            <span className="workspace-tab-label">{item.label}</span>
+            <span className="workspace-tab-eyebrow">{item.eyebrow}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DisassemblySubtabStrip({
+  activeTab,
+  onSelect,
+}: {
+  activeTab: DisassemblyWorkspaceTab;
+  onSelect: (tab: DisassemblyWorkspaceTab) => void;
+}) {
+  return (
+    <div className="workspace-subtabbar" role="tablist" aria-label="Disassembly panes" data-testid="disassembly-subtabbar">
+      {DISASSEMBLY_WORKSPACE_TABS.map((tab) => {
+        const active = activeTab === tab.id;
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            className={`workspace-subtab ${active ? 'workspace-subtab--active' : ''}`}
+            onClick={() => onSelect(tab.id)}
+            data-testid={`disassembly-subtab-${tab.id}`}
+          >
+            <span>{tab.label}</span>
+            <small>{tab.detail}</small>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ─── Corpus logging ───────────────────────────────────────────────────────────
 
 function classificationToCorpusVerdict(
@@ -186,6 +246,32 @@ type AppTab =
   | 'diff'
   | 'repl'
   | 'agent';
+
+type WorkspaceNavItem = {
+  id: NavView;
+  label: string;
+  eyebrow: string;
+};
+
+type DisassemblyWorkspaceTab = 'overview' | 'patches' | 'xrefs' | 'patterns';
+
+const WORKSPACE_NAV_ITEMS: WorkspaceNavItem[] = [
+  { id: 'disassembly', label: 'Disassembly', eyebrow: 'instructions' },
+  { id: 'cfg', label: 'CFG', eyebrow: 'flow graph' },
+  { id: 'decompile', label: 'Decompile', eyebrow: 'pseudocode' },
+  { id: 'talon', label: 'TALON', eyebrow: 'structured' },
+  { id: 'nest', label: 'NEST', eyebrow: 'evidence' },
+  { id: 'repl', label: 'REPL', eyebrow: 'interactive' },
+];
+
+const WORKSPACE_VIEW_IDS = new Set<NavView>(WORKSPACE_NAV_ITEMS.map((item) => item.id));
+
+const DISASSEMBLY_WORKSPACE_TABS: Array<{ id: DisassemblyWorkspaceTab; label: string; detail: string }> = [
+  { id: 'overview', label: 'Instructions', detail: 'virtualized list + analysis' },
+  { id: 'patches', label: 'Patches', detail: 'queued edits + suggestions' },
+  { id: 'xrefs', label: 'XRefs', detail: 'references for selection' },
+  { id: 'patterns', label: 'Patterns', detail: 'suspicious categories' },
+];
 
 type SectionMetadata = {
   name: string;
@@ -1548,6 +1634,9 @@ export default function App() {
   );
   const [activeView, setActiveView] = useState<NavView>(
     () => (localStorage.getItem('hexhawk.activeView') as NavView) ?? 'inspect'
+  );
+  const [disassemblyWorkspaceTab, setDisassemblyWorkspaceTab] = useState<DisassemblyWorkspaceTab>(
+    () => (localStorage.getItem('hexhawk.disassemblyWorkspaceTab') as DisassemblyWorkspaceTab) ?? 'overview'
   );
   const [message, setMessage] = useState('Ready for analysis');
 
@@ -3804,15 +3893,18 @@ export default function App() {
         return;
       }
 
+      const effectiveStart = instructions[0]?.address ?? safeRange.offset;
+      const effectiveEnd = instructions[instructions.length - 1]?.address ?? effectiveStart;
+
       setDisassembly(instructions);
       setDisasmArch(response.arch);
       setDisasmArchFallback(response.is_fallback);
-      setDisasmOffset(safeRange.offset);
+      setDisasmOffset(effectiveStart);
       setDisasmHasMore(response.has_more);
       setDisasmNextByteOffset(response.has_more ? response.next_byte_offset : null);
       const archNote = response.is_fallback ? ` (⚠ unsupported arch - fell back to ${response.arch})` : ` (${response.arch})`;
-      setMessage(`Disassembly loaded from ${formatHex(startOffset)}${archNote}`);
-      addLog(`Disassembled ${binaryPath} from ${formatHex(startOffset)}${archNote}`, response.is_fallback ? 'warn' : 'info');
+      setMessage(`Disassembly loaded from ${formatHex(effectiveStart)} to ${formatHex(effectiveEnd)}${archNote}`);
+      addLog(`Disassembled ${binaryPath} from ${formatHex(effectiveStart)} to ${formatHex(effectiveEnd)}${archNote}`, response.is_fallback ? 'warn' : 'info');
       
       // PHASE 5: Perform analysis on disassembly
       performFullAnalysis(instructions, cfg);
@@ -3893,7 +3985,13 @@ export default function App() {
 
     try {
       const safePath = sanitizeBridgePath(binaryPath, 'binary path');
-      const safeRange = sanitizeRange(disasmOffset, disasmLength);
+      const cfgOffset = disassembly.length > 0
+        ? disassembly[0].address
+        : disasmOffset;
+      const cfgLength = disassembly.length > 1
+        ? Math.max(1, (disassembly[disassembly.length - 1].address - disassembly[0].address) + 1)
+        : disasmLength;
+      const safeRange = sanitizeRange(cfgOffset, cfgLength);
       const response = await invoke<CfgGraph>('build_cfg', {
         path: safePath,
         offset: safeRange.offset,
@@ -4368,13 +4466,19 @@ export default function App() {
           )}
 
           {/* ── Main Panel � workflow CTA or active view ──────────────────── */}
-          <div className="wf-panel">
+          <div
+            className={`wf-panel ${WORKSPACE_VIEW_IDS.has(activeView) ? 'wf-panel--workspace' : ''}`}
+          >
             {panelFidelity && (
               <PanelFidelityBadge source={panelFidelity.source} detail={panelFidelity.detail} />
             )}
 
             {showQaSources && (
               <QASubsystemPanel statuses={qaSubsystemStatuses} />
+            )}
+
+            {WORKSPACE_VIEW_IDS.has(activeView) && (
+              <WorkspaceTabStrip activeView={activeView} onSelect={navigateView} />
             )}
 
             {/* Recent-files quick-access for the load view */}
@@ -4733,58 +4837,100 @@ export default function App() {
                   )}
                 </div>
               ) : (
-              <div className="wf-panel-split">
-                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                  {patches.length > 0 && (
-                    <PatchPanel
-                      patches={patches as PanelPatch[]}
-                      binaryPath={binaryPath}
-                      onRemovePatch={removePatch}
-                      onTogglePatch={togglePatch}
-                      onClearAll={clearAllPatches}
-                      suggestions={patchSuggestions as any}
-                      onQueueSuggestion={(s) => void queueFromSuggestion(s as any)}
-                    />
-                  )}
-                  <DisassemblyList
-                    disassembly={disassembly}
-                    highlightedDisasmRange={highlightedDisasmRange}
-                    disassemblyAnalysis={disassemblyAnalysis}
-                    selectedDisasmAddress={selectedDisasmAddress}
-                    annotations={annotations}
-                    onSelectInstruction={(address) => { setSelectedDisasmAddress(address); selectAddress(address); }}
-                    onNavigateToFunction={(address) => { setSelectedFunction(address); }}
-                    onShowReferences={(address) => { setSelectedDisasmAddress(address); setShowReferencesPanel(true); }}
-                    onInvertJump={(address) => { void queueInvertJump(address); }}
-                    onNopOut={(address, count) => { void queueNopSled(address, count); }}
-                    onLoadMore={disasmHasMore ? () => disassembleFile(disasmNextByteOffset ?? undefined) : undefined}
-                    hasMore={disasmHasMore}
-                    isLoadingMore={disasmIsLoadingMore}
-                    patchedAddresses={patches.length > 0 ? new Set(patches.map(p => p.address)) : undefined}
-                  />
-                </div>
-                <div className="wf-disasm-sidebar">
-                  {disassemblyAnalysis.suspiciousPatterns.length > 0 && (
-                    <PatternCategoryBrowser
-                      analysis={disassemblyAnalysis}
+              <div className="wf-disasm-workspace" data-testid="panel-disassembly">
+                <DisassemblySubtabStrip
+                  activeTab={disassemblyWorkspaceTab}
+                  onSelect={(tab) => {
+                    setDisassemblyWorkspaceTab(tab);
+                    localStorage.setItem('hexhawk.disassemblyWorkspaceTab', tab);
+                  }}
+                />
+                <div className="wf-panel-split wf-panel-split--disassembly">
+                  <div className="wf-disasm-main-pane">
+                    <DisassemblyList
                       disassembly={disassembly}
-                      onNavigate={(addr) => handleSmartNavigation(addr, `Pattern at ${formatHex(addr)}`)}
+                      highlightedDisasmRange={highlightedDisasmRange}
+                      disassemblyAnalysis={disassemblyAnalysis}
+                      selectedDisasmAddress={selectedDisasmAddress}
+                      annotations={annotations}
+                      onSelectInstruction={(address) => { setSelectedDisasmAddress(address); selectAddress(address); }}
+                      onNavigateToFunction={(address) => { setSelectedFunction(address); }}
+                      onShowReferences={(address) => { setSelectedDisasmAddress(address); setDisassemblyWorkspaceTab('xrefs'); localStorage.setItem('hexhawk.disassemblyWorkspaceTab', 'xrefs'); setShowReferencesPanel(true); }}
+                      onInvertJump={(address) => { setDisassemblyWorkspaceTab('patches'); localStorage.setItem('hexhawk.disassemblyWorkspaceTab', 'patches'); void queueInvertJump(address); }}
+                      onNopOut={(address, count) => { setDisassemblyWorkspaceTab('patches'); localStorage.setItem('hexhawk.disassemblyWorkspaceTab', 'patches'); void queueNopSled(address, count); }}
+                      onLoadMore={disasmHasMore ? () => disassembleFile(disasmNextByteOffset ?? undefined) : undefined}
+                      hasMore={disasmHasMore}
+                      isLoadingMore={disasmIsLoadingMore}
+                      patchedAddresses={patches.length > 0 ? new Set(patches.map(p => p.address)) : undefined}
                     />
-                  )}
-                  <XRefPanel
-                    selectedAddress={selectedDisasmAddress}
-                    xrefTypes={xrefTypes}
-                    referencesMap={referencesMap}
-                    jumpTargetsMap={jumpTargetsMap}
-                    onNavigate={(addr) => handleSmartNavigation(addr, `XRef -> ${formatHex(addr)}`)}
-                  />
-                  <UnifiedAnalysisPanel
-                    analysis={disassemblyAnalysis}
-                    selectedAddress={selectedDisasmAddress}
-                    selectedFunction={selectedFunction}
-                    disassembly={disassembly}
-                    onNavigate={(addr) => handleSmartNavigation(addr, `Navigate to ${formatHex(addr)}`)}
-                  />
+                  </div>
+                  <div className="wf-disasm-sidebar">
+                    {disassemblyWorkspaceTab === 'overview' && (
+                      <>
+                        {disassemblyAnalysis.suspiciousPatterns.length > 0 && (
+                          <PatternCategoryBrowser
+                            analysis={disassemblyAnalysis}
+                            disassembly={disassembly}
+                            onNavigate={(addr) => handleSmartNavigation(addr, `Pattern at ${formatHex(addr)}`)}
+                          />
+                        )}
+                        <XRefPanel
+                          selectedAddress={selectedDisasmAddress}
+                          xrefTypes={xrefTypes}
+                          referencesMap={referencesMap}
+                          jumpTargetsMap={jumpTargetsMap}
+                          onNavigate={(addr) => handleSmartNavigation(addr, `XRef -> ${formatHex(addr)}`)}
+                        />
+                        <UnifiedAnalysisPanel
+                          analysis={disassemblyAnalysis}
+                          selectedAddress={selectedDisasmAddress}
+                          selectedFunction={selectedFunction}
+                          disassembly={disassembly}
+                          onNavigate={(addr) => handleSmartNavigation(addr, `Navigate to ${formatHex(addr)}`)}
+                        />
+                      </>
+                    )}
+                    {disassemblyWorkspaceTab === 'patches' && (
+                      <PatchPanel
+                        patches={patches as PanelPatch[]}
+                        binaryPath={binaryPath}
+                        onRemovePatch={removePatch}
+                        onTogglePatch={togglePatch}
+                        onClearAll={clearAllPatches}
+                        suggestions={patchSuggestions as any}
+                        onQueueSuggestion={(s) => void queueFromSuggestion(s as any)}
+                      />
+                    )}
+                    {disassemblyWorkspaceTab === 'xrefs' && (
+                      <XRefPanel
+                        selectedAddress={selectedDisasmAddress}
+                        xrefTypes={xrefTypes}
+                        referencesMap={referencesMap}
+                        jumpTargetsMap={jumpTargetsMap}
+                        onNavigate={(addr) => handleSmartNavigation(addr, `XRef -> ${formatHex(addr)}`)}
+                      />
+                    )}
+                    {disassemblyWorkspaceTab === 'patterns' && (
+                      <>
+                        {disassemblyAnalysis.suspiciousPatterns.length > 0 ? (
+                          <PatternCategoryBrowser
+                            analysis={disassemblyAnalysis}
+                            disassembly={disassembly}
+                            onNavigate={(addr) => handleSmartNavigation(addr, `Pattern at ${formatHex(addr)}`)}
+                          />
+                        ) : (
+                          <div className="workspace-empty-pane">No suspicious pattern categories detected for the loaded range.</div>
+                        )}
+                        <UnifiedAnalysisPanel
+                          analysis={disassemblyAnalysis}
+                          selectedAddress={selectedDisasmAddress}
+                          selectedFunction={selectedFunction}
+                          disassembly={disassembly}
+                          onNavigate={(addr) => handleSmartNavigation(addr, `Navigate to ${formatHex(addr)}`)}
+                        />
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               )
@@ -4825,7 +4971,7 @@ export default function App() {
 
             {/* ── Decompile ─────────────────────────────────────────────────── */}
             {activeView === 'decompile' && (
-              <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }} data-testid="panel-decompile">
+              <div className="workspace-view-shell workspace-view-scroll" data-testid="panel-decompile">
                 <DecompilerView
                   disassembly={disassembly} cfg={cfg} functions={disassemblyAnalysis.functions}
                   currentAddress={currentAddress}
@@ -4837,7 +4983,7 @@ export default function App() {
 
             {/* ── TALON ────────────────────────────────────────────────────── */}
             {activeView === 'talon' && gateTab('talon', 'TALON', (
-              <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }} data-testid="panel-talon">
+              <div className="workspace-view-shell" data-testid="panel-talon">
                 <TalonView
                   disassembly={disassembly}
                   cfg={cfg}
@@ -4969,7 +5115,7 @@ export default function App() {
             {/* ── NEST ──────────────────────────────────────────────────────── */}
             {activeView === 'nest' && gateTab('nest', 'NEST', (
               browserMode ? (
-                <div className="panel" data-testid="panel-nest">
+                <div className="panel workspace-view-shell workspace-view-scroll" data-testid="panel-nest">
                   <h3>NEST (Browser Simulation)</h3>
                   <p>Simulated iterative convergence mode is active. This mirrors Enterprise workflow without invoking the desktop backend.</p>
                   <button
@@ -4988,7 +5134,7 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }} data-testid="panel-nest">
+                <div className="workspace-view-shell workspace-view-scroll" data-testid="panel-nest">
                   <NestView
                     binaryPath={binaryPath} metadata={metadata} disassembly={disassembly}
                     strings={strings} disassemblyAnalysis={disassemblyAnalysis}
@@ -5087,7 +5233,7 @@ export default function App() {
 
             {/* ── REPL ─────────────────────────────────────────────────────── */}
             {activeView === 'repl' && gateTab('repl', 'REPL', (
-              <div style={{ flex: 1, overflow: 'hidden', minHeight: 0, display: 'flex', flexDirection: 'column' }} data-testid="panel-repl">
+              <div className="workspace-view-shell" data-testid="panel-repl">
                 <ReplView binaryPath={binaryPath} />
               </div>
             ))}
@@ -5417,6 +5563,15 @@ export default function App() {
                   Keys are in <code>HKHK-XXXXX-XXXXX-XXXXX-XXXXX</code> format.
                   Open the ?? key icon in the top bar to activate a license and unlock Pro or Enterprise features.
                 </p>
+
+                <h4 style={{ color: '#00d4ff' }}>Trust and Verification</h4>
+                <ul style={{ color: '#ccc', paddingLeft: '1.2rem', fontSize: '0.9rem' }}>
+                  <li><a href="https://hexhawk.ke/trust-center/" target="_blank" rel="noreferrer">Trust Center</a></li>
+                  <li><a href="https://hexhawk.ke/keys-revocations/" target="_blank" rel="noreferrer">Keys and Revocations Registry</a></li>
+                  <li><a href="https://hexhawk.ke/verify-file/" target="_blank" rel="noreferrer">Browser-side Verify File tool</a></li>
+                  <li><a href="https://hexhawk.ke/trust/keys.json" target="_blank" rel="noreferrer">Machine-readable key endpoint (JSON)</a></li>
+                  <li><a href="https://hexhawk.ke/trust/revocations.json" target="_blank" rel="noreferrer">Machine-readable revocation endpoint (JSON)</a></li>
+                </ul>
               </div>
             )}
           </div>

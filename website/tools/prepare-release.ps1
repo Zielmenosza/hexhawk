@@ -1,10 +1,12 @@
 param(
   [string]$Version,
-  [string]$WebsiteRoot = ".\website",
+  [string]$WebsiteRoot = ".\site-build",
   [string]$BundleRoot = ".\target\release\bundle",
   [string]$GitHubOwner = "Zielmenosza",
   [string]$GitHubRepo = "hexhawk",
-  [switch]$UseLocalReleaseFiles
+  [switch]$UseLocalReleaseFiles,
+  [string]$TrustSigningPrivateKeyPath = $env:HEXHAWK_TRUST_SIGNING_KEY_PATH,
+  [string]$TrustSigningKeyId = $env:HEXHAWK_TRUST_SIGNING_KEY_ID
 )
 
 Set-StrictMode -Version Latest
@@ -122,7 +124,33 @@ if ($pick.macosDmg) { $manifest.downloads.macos.dmg = To-ManifestEntry -File $pi
 $manifestJson = $manifest | ConvertTo-Json -Depth 8
 $manifestJson | Set-Content -LiteralPath $latestJsonPath -Encoding ascii
 
+$trustRefreshScript = Join-Path $PSScriptRoot "..\..\scripts\release\refresh-trust-artifacts.ps1"
+Require-Path -Path $trustRefreshScript -Message "Missing trust refresh script at $trustRefreshScript"
+
+$trustRefreshParams = @{
+  WebsiteRoot = $websiteRootFull
+  ReleaseVersion = $Version
+  ReleaseFolderName = $releaseFolderName
+  AssetRoot = $assetRoot
+  TauriConfigPath = $tauriConfigPath
+}
+
+if ($TrustSigningPrivateKeyPath) {
+  $trustRefreshParams.TrustSigningPrivateKeyPath = $TrustSigningPrivateKeyPath
+}
+
+if ($TrustSigningKeyId) {
+  $trustRefreshParams.TrustSigningKeyId = $TrustSigningKeyId
+}
+
+& powershell -NoProfile -ExecutionPolicy Bypass -File $trustRefreshScript @trustRefreshParams
+
+if ($LASTEXITCODE -ne 0) {
+  throw "Trust artifact refresh failed."
+}
+
 Write-Host "Release prepared for version $Version"
 Write-Host "Artifacts copied: $($copiedFiles.Count)"
 Write-Host "Manifest updated: $latestJsonPath"
 Write-Host "Checksums file: $shaFile"
+Write-Host "Trust endpoints refreshed under /trust and /.well-known"

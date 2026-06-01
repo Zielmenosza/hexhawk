@@ -3,7 +3,7 @@ use capstone::arch::{self, ArchOperand, x86::X86OperandType};
 use serde::Serialize;
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
-use object::{Architecture, File as ObjectFile, Object};
+use object::{Architecture, File as ObjectFile, Object, ObjectSection};
 use memmap2::MmapOptions;
 
 #[derive(Debug, Clone, Serialize)]
@@ -38,6 +38,26 @@ pub struct CfgEdge {
 pub struct CfgGraph {
     pub nodes: Vec<CfgNode>,
     pub edges: Vec<CfgEdge>,
+}
+
+fn snap_to_text_section(data: &[u8], offset: usize, length: usize) -> (usize, usize) {
+    if offset != 0 {
+        return (offset, length);
+    }
+    let Ok(obj) = ObjectFile::parse(data) else {
+        return (offset, length);
+    };
+    let sec = obj.sections().find(|s| {
+        let name = s.name().unwrap_or("").to_ascii_lowercase();
+        name == ".text" || name == ".code" || name == "__text"
+    });
+    let Some(sec) = sec else {
+        return (offset, length);
+    };
+    let Some((file_offset, file_size)) = sec.file_range() else {
+        return (offset, length);
+    };
+    (file_offset as usize, file_size as usize)
 }
 
 fn is_unconditional_jump(mnemonic: &str) -> bool {
@@ -88,8 +108,9 @@ pub fn build_cfg(path: String, offset: usize, length: usize) -> Result<CfgGraph,
         return Ok(CfgGraph { nodes: vec![], edges: vec![] });
     }
 
-    let end   = std::cmp::min(offset + length, data.len());
-    let slice = &data[offset..end];
+    let (effective_offset, effective_length) = snap_to_text_section(data, offset, length);
+    let end   = std::cmp::min(effective_offset + effective_length, data.len());
+    let slice = &data[effective_offset..end];
 
     // Auto-detect architecture; fall back to x86-64
     let detected_arch = ObjectFile::parse(data)
@@ -138,7 +159,7 @@ pub fn build_cfg(path: String, offset: usize, length: usize) -> Result<CfgGraph,
     let mut address_to_index = HashMap::new();
 
     // Block 0: Entry point
-    block_starts.insert(offset as u64);
+    block_starts.insert(effective_offset as u64);
 
     // Pass 1: Disassemble and identify block boundaries
     for (idx, ins) in instructions.iter().enumerate() {
@@ -154,7 +175,7 @@ pub fn build_cfg(path: String, offset: usize, length: usize) -> Result<CfgGraph,
 
         // Add jump targets as block starts
         if let Some(target_addr) = target {
-            if target_addr >= offset as u64 && target_addr < end as u64 {
+            if target_addr >= effective_offset as u64 && target_addr < end as u64 {
                 block_starts.insert(target_addr);
             }
         }
@@ -206,7 +227,7 @@ pub fn build_cfg(path: String, offset: usize, length: usize) -> Result<CfgGraph,
         let id = format!("block_{}", index);
         block_id_by_start.insert(start, id.clone());
         
-        let block_type = if start == offset as u64 {
+        let block_type = if start == effective_offset as u64 {
             "entry".to_string()
         } else {
             "target".to_string()

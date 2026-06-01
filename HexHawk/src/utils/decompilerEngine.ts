@@ -66,7 +66,7 @@ export type IRStmt =
   | { op: 'test'; address: number; left: IRValue; right: IRValue }
   | { op: 'cjmp'; address: number; cond: string; trueTarget: number; falseTarget: number }
   | { op: 'jmp'; address: number; target: number | null }
-  | { op: 'call'; address: number; target: number | null; name?: string }
+  | { op: 'call'; address: number; target: number | null; name?: string; args?: IRValue[]; argRecovery?: 'register-window' | 'stack-window' | 'register-stack-window' }
   | { op: 'ret'; address: number }
   | { op: 'push'; address: number; value: IRValue }
   | { op: 'pop'; address: number; dest: IRValue }
@@ -489,6 +489,8 @@ function irValEqual(a: IRValue, b: IRValue): boolean {
 
 // x86-64 System V argument registers (in order)
 const ARG_REGS_64    = ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'];
+// x86-64 Windows argument registers (in order)
+const ARG_REGS_WIN64 = ['rcx', 'rdx', 'r8', 'r9'];
 // ARM32 argument registers
 const ARG_REGS_ARM32   = ['r0', 'r1', 'r2', 'r3'];
 // AArch64 argument registers
@@ -575,7 +577,72 @@ function buildVarMap(stmts: IRStmt[], arch: Architecture = 'x86_64'): VarMap {
     map.set(`reg:${reg}`, name);
   }
 
+  applyHeuristicVarNames(stmts, map);
   return map;
+}
+
+function isGenericVarName(name: string): boolean {
+  return /^local_\d+$/.test(name) || /^arg_\d+$/.test(name) || /^param_\d+$/.test(name);
+}
+
+function applyHeuristicVarNames(stmts: IRStmt[], map: VarMap): void {
+  const used = new Set<string>([...map.values()]);
+  const counters = new Map<string, number>();
+  const loopCounterBases = ['i', 'j', 'k', 'n'];
+  let nextLoopCounter = 0;
+
+  const reserveName = (base: string): string => {
+    if (!used.has(base)) {
+      used.add(base);
+      return base;
+    }
+    const next = (counters.get(base) ?? 1) + 1;
+    counters.set(base, next);
+    const candidate = `${base}_${next}`;
+    used.add(candidate);
+    return candidate;
+  };
+
+  const renameIfGeneric = (key: string, preferredBase: string): void => {
+    const current = map.get(key);
+    if (current && !isGenericVarName(current)) return;
+    map.set(key, reserveName(preferredBase));
+  };
+
+  const toVarKey = (value: IRValue): string | null => {
+    if (value.kind === 'reg') return `reg:${value.name}`;
+    if (value.kind === 'mem') return memKey(value);
+    return null;
+  };
+
+  for (const stmt of stmts) {
+    if (stmt.op === 'binop' && stmt.dest.kind === 'reg' && stmt.left.kind === 'reg' && stmt.dest.name === stmt.left.name) {
+      const isStep = (stmt.operator === '+' || stmt.operator === '-') && stmt.right.kind === 'const' && Math.abs(stmt.right.value) <= 16;
+      if (isStep) {
+        const base = loopCounterBases[nextLoopCounter] ?? 'idx';
+        nextLoopCounter += 1;
+        renameIfGeneric(`reg:${stmt.dest.name}`, base);
+      }
+    }
+
+    if (stmt.op === 'call' && stmt.name && /malloc|calloc|realloc|new/i.test(stmt.name)) {
+      const firstArg = stmt.args?.[0];
+      if (firstArg) {
+        const k = toVarKey(firstArg);
+        if (k) renameIfGeneric(k, 'size');
+      }
+    }
+
+    if (stmt.op === 'assign' && stmt.dest.kind === 'reg' && stmt.src.kind === 'mem') {
+      renameIfGeneric(`reg:${stmt.dest.name}`, 'ptr');
+    }
+
+    visitIRValues(stmt, v => {
+      if (v.kind === 'mem' && v.index) {
+        renameIfGeneric(`reg:${v.index}`, 'idx');
+      }
+    });
+  }
 }
 
 function visitIRValues(stmt: IRStmt, fn: (v: IRValue) => void): void {
@@ -588,6 +655,164 @@ function visitIRValues(stmt: IRStmt, fn: (v: IRValue) => void): void {
     case 'pop': fn(stmt.dest); break;
     default: break;
   }
+}
+
+
+type RecentValue = { value: IRValue; instructionIndex: number };
+
+type CallArgRecovery = {
+  args: IRValue[];
+  source: 'register-window' | 'stack-window' | 'register-stack-window';
+};
+
+const CALL_ARG_LOOKBACK_INSTRUCTIONS = 25;
+const WIN64_STACK_ARG_START = 0x20;
+const MAX_STACK_ARG_SCAN_BYTES = 0x80;
+
+function canonicalRegName(name: string): string {
+  const lo = name.toLowerCase();
+  const aliases: Record<string, string> = {
+    ecx: 'rcx', cx: 'rcx', cl: 'rcx',
+    edx: 'rdx', dx: 'rdx', dl: 'rdx',
+    edi: 'rdi', di: 'rdi', dil: 'rdi',
+    esi: 'rsi', si: 'rsi', sil: 'rsi',
+    r8d: 'r8', r8w: 'r8', r8b: 'r8',
+    r9d: 'r9', r9w: 'r9', r9b: 'r9',
+    eax: 'rax', ax: 'rax', al: 'rax',
+  };
+  return aliases[lo] ?? lo;
+}
+
+function argRegsForCall(arch: Architecture, regState: Map<string, RecentValue>): string[] {
+  if (arch === 'arm32') return ARG_REGS_ARM32;
+  if (arch === 'aarch64') return ARG_REGS_AARCH64;
+
+  const hasWin64FrontArgs = ARG_REGS_WIN64.slice(0, 2).some(reg => regState.has(reg));
+  const hasSysvFrontArgs = ARG_REGS_64.slice(0, 2).some(reg => regState.has(reg));
+  if (hasWin64FrontArgs && !hasSysvFrontArgs) return ARG_REGS_WIN64;
+  return ARG_REGS_64;
+}
+
+function inferCallArguments(
+  arch: Architecture,
+  regState: Map<string, RecentValue>,
+  stackArgState: Map<number, RecentValue>,
+  callIndex: number,
+): CallArgRecovery | null {
+  const regs = argRegsForCall(arch, regState);
+  const args: IRValue[] = [];
+  let sawRegisterArg = false;
+
+  for (const reg of regs) {
+    const recent = regState.get(reg);
+    if (!recent || callIndex - recent.instructionIndex > CALL_ARG_LOOKBACK_INSTRUCTIONS) break;
+    args.push(recent.value);
+    sawRegisterArg = true;
+  }
+
+  const stackArgs = [...stackArgState.entries()]
+    .filter(([offset, recent]) =>
+      offset >= WIN64_STACK_ARG_START &&
+      offset <= MAX_STACK_ARG_SCAN_BYTES &&
+      callIndex - recent.instructionIndex <= CALL_ARG_LOOKBACK_INSTRUCTIONS
+    )
+    .sort(([a], [b]) => a - b)
+    .map(([, recent]) => recent.value);
+
+  if (stackArgs.length > 0) args.push(...stackArgs);
+  if (args.length === 0) return null;
+
+  const source = sawRegisterArg && stackArgs.length > 0
+    ? 'register-stack-window'
+    : sawRegisterArg
+    ? 'register-window'
+    : 'stack-window';
+  return { args, source };
+}
+
+function updateCallArgState(
+  stmt: IRStmt,
+  regState: Map<string, RecentValue>,
+  stackArgState: Map<number, RecentValue>,
+  instructionIndex: number,
+): void {
+  if (stmt.op === 'assign') {
+    if (stmt.dest.kind === 'reg') {
+      regState.set(canonicalRegName(stmt.dest.name), { value: stmt.src, instructionIndex });
+    } else if (stmt.dest.kind === 'mem' && STACK_REGS.has(stmt.dest.base) && stmt.dest.offset > 0) {
+      stackArgState.set(stmt.dest.offset, { value: stmt.src, instructionIndex });
+    }
+    return;
+  }
+
+  if ((stmt.op === 'binop' || stmt.op === 'uop') && stmt.dest.kind === 'reg') {
+    regState.delete(canonicalRegName(stmt.dest.name));
+    return;
+  }
+
+  if (stmt.op === 'pop' && stmt.dest.kind === 'reg') {
+    regState.delete(canonicalRegName(stmt.dest.name));
+  }
+}
+
+type IndexedStmt = {
+  globalIndex: number;
+  blockIndex: number;
+  stmtIndex: number;
+  stmt: IRStmt;
+};
+
+function recoveryStrength(source: CallArgRecovery['source'] | undefined): number {
+  switch (source) {
+    case 'register-window': return 3;
+    case 'register-stack-window': return 2;
+    case 'stack-window': return 1;
+    default: return 0;
+  }
+}
+
+function recoverCallArgumentsAcrossBlocks(blocks: IRBlock[], arch: Architecture): IRBlock[] {
+  const indexed: IndexedStmt[] = [];
+  for (let bi = 0; bi < blocks.length; bi++) {
+    for (let si = 0; si < blocks[bi].stmts.length; si++) {
+      indexed.push({ globalIndex: indexed.length, blockIndex: bi, stmtIndex: si, stmt: blocks[bi].stmts[si] });
+    }
+  }
+
+  if (indexed.length === 0) return blocks;
+
+  const nextBlocks = blocks.map(b => ({ ...b, stmts: [...b.stmts] }));
+  for (let i = 0; i < indexed.length; i++) {
+    const cur = indexed[i];
+    if (cur.stmt.op !== 'call') continue;
+
+    const regState = new Map<string, RecentValue>();
+    const stackArgState = new Map<number, RecentValue>();
+    const start = Math.max(0, i - CALL_ARG_LOOKBACK_INSTRUCTIONS);
+    for (let j = start; j < i; j++) {
+      updateCallArgState(indexed[j].stmt, regState, stackArgState, indexed[j].globalIndex);
+    }
+
+    const recovered = inferCallArguments(arch, regState, stackArgState, cur.globalIndex);
+    if (!recovered) continue;
+
+    const existing = cur.stmt;
+    const existingCount = existing.args?.length ?? 0;
+    const shouldReplace =
+      existingCount === 0 ||
+      recovered.args.length > existingCount ||
+      (recovered.args.length === existingCount && recoveryStrength(recovered.source) > recoveryStrength(existing.argRecovery));
+
+    if (shouldReplace) {
+      const updated: IRStmt = {
+        ...existing,
+        args: recovered.args,
+        argRecovery: recovered.source,
+      };
+      nextBlocks[cur.blockIndex].stmts[cur.stmtIndex] = updated;
+    }
+  }
+  return nextBlocks;
 }
 
 // ─────────────────────────────────────────────────────────
@@ -680,7 +905,9 @@ function renderStmt(stmt: IRStmt, varMap: VarMap): { text: string; uncertain?: b
         : stmt.target !== null
         ? `sub_${stmt.target.toString(16)}`
         : '*indirect';
-      return { text: `${target}();` };
+      const args = stmt.args?.map(arg => renderValue(arg, varMap)) ?? [];
+      const uncertain = stmt.argRecovery === 'stack-window' || stmt.argRecovery === 'register-stack-window';
+      return { text: `${target}(${args.join(', ')});`, uncertain };
     }
 
     case 'ret':
@@ -1235,6 +1462,8 @@ function buildIRBlocks(
     let lastCmpRight: IRValue | null = null;
     let lastTestLeft: IRValue | null = null;
     let lastTestRight: IRValue | null = null;
+    const regState = new Map<string, RecentValue>();
+    const stackArgState = new Map<number, RecentValue>();
     const stmts: IRStmt[] = [];
 
     for (let i = 0; i < blockInsns.length; i++) {
@@ -1243,9 +1472,15 @@ function buildIRBlocks(
       const ctx: LiftContext = {
         lastCmpLeft, lastCmpRight, lastTestLeft, lastTestRight, nextAddress: nextAddr
       };
-      const stmt = arch === 'arm32'   ? liftInstructionARM32(ins, ctx)
-                 : arch === 'aarch64' ? liftInstructionAArch64(ins, ctx)
-                 : liftInstruction(ins, ctx);
+      const lifted = arch === 'arm32'   ? liftInstructionARM32(ins, ctx)
+                   : arch === 'aarch64' ? liftInstructionAArch64(ins, ctx)
+                   : liftInstruction(ins, ctx);
+      const recovery = lifted.op === 'call'
+        ? inferCallArguments(arch, regState, stackArgState, i)
+        : null;
+      const stmt: IRStmt = recovery && lifted.op === 'call'
+        ? { ...lifted, args: recovery.args, argRecovery: recovery.source }
+        : lifted;
       stmts.push(stmt);
 
       // Update context
@@ -1259,6 +1494,15 @@ function buildIRBlocks(
         // Intermediate instruction — clear cmp state
         // (Conservative: only clear if the instruction writes to a flag-relevant reg)
         // For simplicity we keep it — most real code has cmp directly before j*
+      }
+
+      updateCallArgState(stmt, regState, stackArgState, i);
+      if (stmt.op === 'call') {
+        // Calls may clobber return/volatile registers; keep stack writes only for this call site.
+        for (const reg of [...ARG_REGS_WIN64, ...ARG_REGS_64, ...ARG_REGS_ARM32, ...ARG_REGS_AARCH64, 'rax', 'eax', 'x0', 'w0']) {
+          regState.delete(reg);
+        }
+        stackArgState.clear();
       }
     }
 
@@ -1274,7 +1518,121 @@ function buildIRBlocks(
     });
   }
 
-  return irBlocks;
+  return recoverCallArgumentsAcrossBlocks(irBlocks, arch);
+}
+
+function buildFallbackPartitionedIRBlocks(
+  instructions: DisassembledInstruction[],
+  arch: Architecture,
+): IRBlock[] {
+  if (instructions.length === 0) return [];
+
+  const addrSet = new Set(instructions.map(ins => ins.address));
+  const leaders = new Set<number>([instructions[0].address]);
+  const lifted: IRStmt[] = [];
+
+  let lastCmpLeft: IRValue | null = null;
+  let lastCmpRight: IRValue | null = null;
+  let lastTestLeft: IRValue | null = null;
+  let lastTestRight: IRValue | null = null;
+
+  for (let i = 0; i < instructions.length; i++) {
+    const ins = instructions[i];
+    const nextAddress = instructions[i + 1]?.address ?? (ins.address + 1);
+    const ctx: LiftContext = {
+      lastCmpLeft,
+      lastCmpRight,
+      lastTestLeft,
+      lastTestRight,
+      nextAddress,
+    };
+    const stmt = arch === 'arm32'
+      ? liftInstructionARM32(ins, ctx)
+      : arch === 'aarch64'
+      ? liftInstructionAArch64(ins, ctx)
+      : liftInstruction(ins, ctx);
+    lifted.push(stmt);
+
+    if (stmt.op === 'cmp') {
+      lastCmpLeft = stmt.left;
+      lastCmpRight = stmt.right;
+      lastTestLeft = null;
+      lastTestRight = null;
+    } else if (stmt.op === 'test') {
+      lastTestLeft = stmt.left;
+      lastTestRight = stmt.right;
+      lastCmpLeft = null;
+      lastCmpRight = null;
+    }
+
+    if (stmt.op === 'cjmp') {
+      if (addrSet.has(stmt.trueTarget)) leaders.add(stmt.trueTarget);
+      if (instructions[i + 1]) leaders.add(instructions[i + 1].address);
+    } else if (stmt.op === 'jmp') {
+      if (stmt.target !== null && addrSet.has(stmt.target)) leaders.add(stmt.target);
+      if (instructions[i + 1]) leaders.add(instructions[i + 1].address);
+    } else if (stmt.op === 'call' || stmt.op === 'ret') {
+      if (instructions[i + 1]) leaders.add(instructions[i + 1].address);
+    }
+  }
+
+  const sortedLeaders = [...leaders].sort((a, b) => a - b);
+  if (sortedLeaders.length === 0) return [];
+
+  const leaderByAddress = new Map<number, string>();
+  for (let i = 0; i < sortedLeaders.length; i++) {
+    leaderByAddress.set(sortedLeaders[i], `fallback_block_${i}`);
+  }
+
+  const findBlockStartForAddress = (address: number): number | null => {
+    for (let i = sortedLeaders.length - 1; i >= 0; i--) {
+      const start = sortedLeaders[i];
+      if (address >= start) return start;
+    }
+    return null;
+  };
+
+  const blocks: IRBlock[] = [];
+  for (let i = 0; i < sortedLeaders.length; i++) {
+    const start = sortedLeaders[i];
+    const endExclusive = sortedLeaders[i + 1] ?? (instructions[instructions.length - 1].address + 1);
+    const blockStmts = lifted.filter(s => s.address >= start && s.address < endExclusive);
+    if (blockStmts.length === 0) continue;
+
+    const successors: string[] = [];
+    const last = blockStmts[blockStmts.length - 1];
+    const pushSucc = (targetAddr: number | null) => {
+      if (targetAddr === null) return;
+      const blockStart = findBlockStartForAddress(targetAddr);
+      if (blockStart === null) return;
+      const id = leaderByAddress.get(blockStart);
+      if (!id || successors.includes(id)) return;
+      successors.push(id);
+    };
+
+    if (last.op === 'cjmp') {
+      pushSucc(last.trueTarget);
+      const fallthroughStart = sortedLeaders[i + 1] ?? null;
+      if (fallthroughStart !== null) pushSucc(fallthroughStart);
+    } else if (last.op === 'jmp') {
+      pushSucc(last.target);
+    } else if (last.op !== 'ret') {
+      const fallthroughStart = sortedLeaders[i + 1] ?? null;
+      if (fallthroughStart !== null) pushSucc(fallthroughStart);
+    }
+
+    blocks.push({
+      id: leaderByAddress.get(start) ?? `fallback_block_${i}`,
+      start,
+      end: Math.max(start, endExclusive - 1),
+      stmts: blockStmts,
+      successors,
+      allSuccessors: [...successors],
+      blockType: i === 0 ? 'entry' : 'target',
+    });
+  }
+
+  return recoverCallArgumentsAcrossBlocks(blocks, arch);
 }
 
 // ─────────────────────────────────────────────────────────
@@ -1490,9 +1848,9 @@ function canReachViaBackEdge(
 }
 
 /**
- * Try to extract a for-loop step expression by scanning the first body block
- * for an increment/decrement of `condRegName`.
- * Returns a string like `"i++"`, `"i += 4"`, or null.
+ * Try to extract a for-loop step expression by scanning the reachable loop
+ * body blocks (without crossing back-edges) for an increment/decrement of
+ * `condRegName`.
  */
 function tryExtractLoopStep(
   bodyFirstId: string,
@@ -1500,21 +1858,41 @@ function tryExtractLoopStep(
   blockMap: Map<string, IRBlock>,
   backEdges: Set<string>,
 ): string | null {
-  const body = blockMap.get(bodyFirstId);
-  if (!body) return null;
-  const reg = condRegName;
-  for (const s of body.stmts) {
-    if (s.op === 'binop' && s.dest.kind === 'reg' && s.dest.name === reg) {
-      if (s.operator === '+' && s.right.kind === 'const') {
-        return s.right.value === 1 ? `${reg}++` : `${reg} += ${s.right.value}`;
-      }
-      if (s.operator === '-' && s.right.kind === 'const') {
-        return s.right.value === 1 ? `${reg}--` : `${reg} -= ${s.right.value}`;
-      }
+  if (!blockMap.has(bodyFirstId)) return null;
+
+  const scanQueue: string[] = [bodyFirstId];
+  const scanOrder: string[] = [];
+  const seen = new Set<string>();
+  while (scanQueue.length > 0) {
+    const cur = scanQueue.shift()!;
+    if (seen.has(cur)) continue;
+    seen.add(cur);
+    scanOrder.push(cur);
+    const block = blockMap.get(cur);
+    if (!block) continue;
+    for (const succ of block.allSuccessors) {
+      if (backEdges.has(`${cur}->${succ}`)) continue;
+      if (!seen.has(succ)) scanQueue.push(succ);
     }
-    if (s.op === 'uop' && s.dest.kind === 'reg' && s.dest.name === reg) {
-      if (s.operator === 'inc') return `${reg}++`;
-      if (s.operator === 'dec') return `${reg}--`;
+  }
+
+  const reg = condRegName;
+  for (const blockId of scanOrder) {
+    const body = blockMap.get(blockId);
+    if (!body) continue;
+    for (const s of body.stmts) {
+      if (s.op === 'binop' && s.dest.kind === 'reg' && s.dest.name === reg) {
+        if (s.operator === '+' && s.right.kind === 'const') {
+          return s.right.value === 1 ? `${reg}++` : `${reg} += ${s.right.value}`;
+        }
+        if (s.operator === '-' && s.right.kind === 'const') {
+          return s.right.value === 1 ? `${reg}--` : `${reg} -= ${s.right.value}`;
+        }
+      }
+      if (s.op === 'uop' && s.dest.kind === 'reg' && s.dest.name === reg) {
+        if (s.operator === 'inc') return `${reg}++`;
+        if (s.operator === 'dec') return `${reg}--`;
+      }
     }
   }
   return null;
@@ -1979,7 +2357,15 @@ export function decompile(
 
   // Phase 3+4: Build IR blocks
   const arch = detectArch(insns);
-  const irBlocks = buildIRBlocks(insns, cfg, arch);
+  let irBlocks = buildIRBlocks(insns, cfg, arch);
+
+  if (!irBlocks.length) {
+    const fallbackBlocks = buildFallbackPartitionedIRBlocks(insns, arch);
+    if (fallbackBlocks.length > 0) {
+      irBlocks = fallbackBlocks;
+      warnings.push('CFG did not overlap disassembly range; used instruction-derived fallback partitioning.');
+    }
+  }
 
   if (!irBlocks.length) {
     return {

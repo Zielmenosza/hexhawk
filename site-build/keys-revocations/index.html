@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Keys and Revocations | HexHawk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="container nav">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
+    <nav class="links">
+      <a data-path="/" href="/">Home</a>
+      <a data-path="/features" href="/features">Features</a>
+      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
+      <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/downloads" href="/downloads">Downloads</a>
+      <a data-path="/docs" href="/docs">Docs</a>
+      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
+      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
+      <a data-path="/verify-file" href="/verify-file">Verify File</a>
+      <a data-path="/release-notes" href="/release-notes">Release Notes</a>
+    </nav>
+  </div>
+</header>
+<main class="container">
+<section class="hero"><span class="kicker">KEYS AND REVOCATIONS</span><h1>Key registry for release verification workflows.</h1><p class="lead">This registry tracks active verification keys and revoked entries so analysts can apply deterministic trust decisions.</p><div class="cta"><a class="btn primary" href="/verify-file">Open Verify Tool</a><a class="btn ghost" href="/trust-center">Trust Center</a></div></section>
+<section class="section"><h2>Active keys</h2><div class="table-wrap"><table><thead><tr><th>Key ID</th><th>Use</th><th>Algorithm</th><th>Status</th><th>Activated</th><th>Download</th><th>Notes</th></tr></thead><tbody><tr><td class="mono">HXK-UPDATER-2026-01</td><td>Updater metadata verification</td><td>Ed25519 (minisign)</td><td><span class="status ok">ACTIVE</span></td><td class="mono">2026-06-01</td><td><a href="/trust/keys/HXK-UPDATER-2026-01.minisign.pub">minisign pub</a></td><td>Configured in app updater settings for signed update metadata path.</td></tr><tr><td class="mono">HXK-REPORT-2026-01</td><td>Report bundle detached signatures</td><td>RSA-2048 / SHA-256</td><td><span class="status ok">ACTIVE</span></td><td class="mono">2026-06-01</td><td><a href="/trust/keys/HXK-REPORT-2026-01.pem">PEM public key</a></td><td>Use in browser verification workflow for signed evidence bundles.</td></tr><tr><td class="mono">HXK-PLUGIN-2026-01</td><td>Plugin package signatures</td><td>ECDSA P-256 / SHA-256</td><td><span class="status warn">PILOT</span></td><td class="mono">2026-06-01</td><td><a href="/trust/keys/HXK-PLUGIN-2026-01.pem">PEM public key</a></td><td>Pilot-use key while plugin trust policy is finalized.</td></tr></tbody></table></div></section>
+<section class="section"><h2>Revocations</h2><div class="table-wrap"><table><thead><tr><th>Key ID</th><th>Revoked</th><th>Reason</th><th>Action</th></tr></thead><tbody><tr><td class="mono">HXK-UPDATER-2025-LEGACY</td><td class="mono">2026-06-01</td><td>Lifecycle rotation after release hardening rollout.</td><td>Do not trust signatures after revocation date.</td></tr><tr><td class="mono">HXK-REPORT-2025-LEGACY</td><td class="mono">2026-06-01</td><td>Legacy test key retired for deterministic trust policy.</td><td>Reject signatures from this key for new reports.</td></tr></tbody></table></div></section>
+<section class="section"><h2>Machine-readable endpoints</h2><ul class="checklist"><li>Key registry: <a href="/trust/keys.json" class="mono">/trust/keys.json</a></li><li>Revocation feed: <a href="/trust/revocations.json" class="mono">/trust/revocations.json</a></li><li>Detached signatures: <a href="/trust/signatures/latest/signatures.json" class="mono">/trust/signatures/latest/signatures.json</a></li><li>Signed timestamps: <a href="/trust/signed-timestamps.json" class="mono">/trust/signed-timestamps.json</a></li><li>Key rotation history: <a href="/trust/key-rotations.json" class="mono">/trust/key-rotations.json</a></li><li>Discovery doc: <a href="/.well-known/hexhawk-trust.json" class="mono">/.well-known/hexhawk-trust.json</a></li></ul></section>
+<section class="section"><h2>Verification checklist</h2><ul class="checklist"><li>Validate file hash first against the published checksum ledger.</li><li>Verify detached signature with the active key and correct algorithm.</li><li>Reject signatures that map to revoked or unknown key IDs.</li></ul></section>
+</main>
+<footer class="footer">
+  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate · 2026-06-01</span></div>
+</footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>

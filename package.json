@@ -11,6 +11,8 @@
     "build": "yarn workspace hexhawk-ui build",
     "tauri:dev": "node node_modules/@tauri-apps/cli/tauri.js dev",
     "tauri:build": "node node_modules/@tauri-apps/cli/tauri.js build",
+    "release:hardening": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release/release-hardening.ps1",
+    "release:native-probe": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release/run-native-parity-probe.ps1 -MsiPath ./target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
     "test": "yarn workspace hexhawk-ui test",
     "test:coverage": "yarn workspace hexhawk-ui test:coverage",
     "typecheck": "yarn workspace hexhawk-ui exec tsc --noEmit",
@@ -23,5 +25,22 @@
   },
   "devDependencies": {
     "@types/react-window": "^2.0.0"
-  }
+  },
+  "description": "HexHawk is a native desktop reverse-engineering and binary-intelligence platform built with Rust, Tauri, React, and TypeScript.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zielmenosza/hexhawk.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Zielmenosza/hexhawk/issues"
+  },
+  "homepage": "https://github.com/Zielmenosza/hexhawk#readme"
 }

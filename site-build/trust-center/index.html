@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trust Center | HexHawk</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
+  <link rel="stylesheet" href="/assets/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="container nav">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
+    <nav class="links">
+      <a data-path="/" href="/">Home</a>
+      <a data-path="/features" href="/features">Features</a>
+      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
+      <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/downloads" href="/downloads">Downloads</a>
+      <a data-path="/docs" href="/docs">Docs</a>
+      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
+      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
+      <a data-path="/verify-file" href="/verify-file">Verify File</a>
+      <a data-path="/release-notes" href="/release-notes">Release Notes</a>
+    </nav>
+  </div>
+</header>
+<main class="container">
+<section class="hero"><span class="kicker">TRUST CENTER</span><h1>Evidence-backed release trust and verification.</h1><p class="lead">Use this page as the single source for release trust status, key lifecycle references, and browser-side verification workflows.</p><div class="cta"><a class="btn primary" href="/verify-file">Verify A File</a><a class="btn ghost" href="/keys-revocations">View Keys</a><a class="btn ghost" href="/downloads/checksums.txt">Checksums</a></div></section>
+<section class="section"><h2>Current trust posture</h2><div class="meta-grid"><div class="meta-item"><div class="meta-label">Artifact signature state</div><div class="meta-value">Artifacts are Authenticode-signed with an internal self-signed development certificate.</div></div><div class="meta-item"><div class="meta-label">Public trust chain</div><div class="meta-value">Not complete yet. Internal signatures are not public-trusted.</div></div><div class="meta-item"><div class="meta-label">Updater path</div><div class="meta-value">Updater signing artifacts are enabled; endpoint metadata host validation remains open.</div></div><div class="meta-item"><div class="meta-label">Latest trust refresh</div><div class="meta-value mono">2026-06-01 release hardening evidence set</div></div></div></section>
+<section class="section"><h2>Public scope policy</h2><ul class="checklist"><li>This site publishes only public verification material: public keys, revocations, detached signatures, and checksums.</li><li>Private signing keys, certificate private material, and internal operational secrets are never published.</li><li>Automated tools should rely on machine-readable endpoints under <span class="mono">/trust</span> and <span class="mono">/.well-known</span>.</li></ul></section>
+<section class="section"><h2>Verification workflow</h2><div class="grid"><article class="card"><h3>1) Integrity check</h3><p>Compare your file hash against published SHA-256 values from the downloads checksum ledger.</p></article><article class="card"><h3>2) Signature check</h3><p>Verify a detached signature in-browser using a published public key from the Keys and Revocations registry.</p></article><article class="card"><h3>3) Revocation check</h3><p>Confirm the signing key and release channel are not revoked before treating a build as trusted.</p></article></div></section>
+<section class="section"><h2>Automation endpoints</h2><div class="grid"><article class="card"><h3>Key registry JSON</h3><p class="mono">/trust/keys.json</p><div class="cta"><a class="btn ghost" href="/trust/keys.json">Open JSON</a></div></article><article class="card"><h3>Revocation feed JSON</h3><p class="mono">/trust/revocations.json</p><div class="cta"><a class="btn ghost" href="/trust/revocations.json">Open JSON</a></div></article><article class="card"><h3>Detached signatures</h3><p class="mono">/trust/signatures/latest/signatures.json</p><div class="cta"><a class="btn ghost" href="/trust/signatures/latest/signatures.json">Open Signatures</a></div></article><article class="card"><h3>Signed timestamps</h3><p class="mono">/trust/signed-timestamps.json</p><div class="cta"><a class="btn ghost" href="/trust/signed-timestamps.json">Open Timestamps</a></div></article><article class="card"><h3>Key rotation history</h3><p class="mono">/trust/key-rotations.json</p><div class="cta"><a class="btn ghost" href="/trust/key-rotations.json">Open History</a></div></article><article class="card"><h3>Discovery document</h3><p class="mono">/.well-known/hexhawk-trust.json</p><div class="cta"><a class="btn ghost" href="/.well-known/hexhawk-trust.json">Open Discovery</a></div></article></div></section>
+<section class="section"><h2>Recommended trust decisions</h2><ul class="checklist"><li>Internal evaluation: allow internal-signed artifacts with documented caveats.</li><li>External pilot: require sponsor acceptance of trust-chain and updater-endpoint constraints, or complete organization-trusted signing first.</li><li>Public distribution: require organization-trusted signing, endpoint health, and parity rerun on trusted-signed artifacts.</li></ul></section>
+</main>
+<footer class="footer">
+  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate · 2026-06-01</span></div>
+</footer>
+<script src="/assets/app.js"></script>
+</body>
+</html>

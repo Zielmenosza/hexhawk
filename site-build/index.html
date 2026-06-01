@@ -13,62 +13,47 @@
 <body>
 <header class="topbar">
   <div class="container nav">
-    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
-    <nav class="links">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>    <nav class="links">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
-      <a data-path="/hexhawk-lab" href="/hexhawk-lab">HexHawk Lab</a>
+      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
+      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
+      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
+      <a data-path="/verify-file" href="/verify-file">Verify File</a>
       <a data-path="/release-notes" href="/release-notes">Release Notes</a>
     </nav>
   </div>
 </header>
 <main class="container">
-  <section class="hero">
-    <span class="kicker">MALWARE RESEARCH PLATFORM</span>
-    <h1>Reverse engineering with evidence, not guesswork.</h1>
-    <p class="lead">HexHawk is the analyst-first platform for malware triage, behavior explanation, and challenge-grade validation.</p>
-    <div class="cta">
-      <a class="btn primary" href="/downloads">Get HexHawk</a>
-      <a class="btn ghost" href="/docs">Read Docs</a>
-      <a class="btn ghost" href="/hexhawk-lab">Explore HexHawk Lab</a>
-    </div>
-  </section>
-  <section class="section">
-  <h2>Why teams choose HexHawk</h2>
-  <div class="grid">
-    <article class="card"><h3>TALON static reasoning</h3><p>Explains suspicious code paths, capability indicators, and confidence in plain analyst language.</p></article>
-    <article class="card"><h3>STRIKE challenge harness</h3><p>Benchmarks detections against known adversarial samples with evidence-backed scoring.</p></article>
-    <article class="card"><h3>ECHO contradiction checks</h3><p>Cross-validates claims from disassembly, strings, runtime traces, and signatures.</p></article>
-  </div>
+<section class="hero">
+  <span class="kicker">INTERNAL TESTER CANDIDATE</span>
+  <h1>Reverse engineering with evidence, not guesswork.</h1>
+  <p class="lead">HexHawk is a local-first desktop binary-intelligence platform for malware analysts, incident responders, SOC teams, and security researchers.</p>
+  <div class="cta"><a class="btn primary" href="/docs">Investor / Board Brief</a><a class="btn ghost" href="/downloads">Build Status</a><a class="btn ghost" href="/features">Product Capabilities</a></div>
 </section>
-<section class="section" id="faq">
-  <h2>FAQ</h2>
-  <div class="grid">
-    <article class="card"><h3>Is there an offline mode?</h3><p>Yes. Core workflows run fully local. BYOK AI providers are optional.</p></article>
-    <article class="card"><h3>Can I extend analysis?</h3><p>Yes. Plugin APIs and reusable templates are included for custom detections.</p></article>
-    <article class="card"><h3>What outputs are produced?</h3><p>Reports include findings, evidence trails, confidence levels, and recommended actions.</p></article>
-  </div>
-</section>
-
-<section class="section">
-  <h2>Ready for potential clients</h2>
-  <div class="grid">
-    <article class="card"><h3>Pilot in days</h3><p>Start with a focused malware triage pilot and measurable outcomes in the first week.</p></article>
-    <article class="card"><h3>Evidence-led reporting</h3><p>Each finding can be traced to observable data, making handoffs clearer for technical and business stakeholders.</p></article>
-    <article class="card"><h3>Scales with your team</h3><p>Move from analyst-led workflows to repeatable team operations with challenge validation and policy alignment.</p></article>
-  </div>
-</section>
+<section class="section"><h2>Current proof, not hype</h2><div class="grid">
+  <article class="card"><h3>Installer path rebuilt</h3><p>Windows release executable, MSI, and NSIS installer artifacts now build successfully after the WebView2 installer configuration repair.</p></article>
+  <article class="card"><h3>Validation is current</h3><p>Latest hardening pass: authority-envelope regression test passed, native packaged GUI parity passed, consolidated release evidence was captured, and decompiler/TALON regression coverage expanded.</p></article>
+  <article class="card"><h3>Release caveat is explicit</h3><p>Artifacts are Authenticode-signed with an internal self-signed dev certificate. Trust chain is not public-trusted yet, and updater endpoint validation is still open.</p></article>
+</div></section>
+<section class="section"><h2>Decompiler quality pass</h2><div class="grid">
+  <article class="card"><h3>Address-consistency fixed</h3><p>Disassembly and CFG address handling was aligned to reduce false empty decompile outcomes from non-overlapping ranges.</p></article>
+  <article class="card"><h3>Fallback partitioning</h3><p>When CFG coverage is missing/sparse, HexHawk now partitions basic blocks directly from instruction flow to preserve readable structured output.</p></article>
+  <article class="card"><h3>Stronger call/name recovery</h3><p>Call argument recovery now spans cross-block windows, and initial variable naming heuristics promote loop/index/size/pointer semantics.</p></article>
+</div></section>
+<section class="section"><h2>Trust-safe engine model</h2><div class="grid">
+  <article class="card"><h3>GYRE</h3><p>Sole verdict authority for classification and base confidence.</p></article>
+  <article class="card"><h3>NEST</h3><p>Evidence orchestration, convergence, and GYRE-linked bundle validation.</p></article>
+  <article class="card"><h3>AETHERFRAME / Forge</h3><p>Optional bounded uplift, refinement, and lineage metadata. It does not change classification.</p></article>
+</div></section>
 </main>
 <footer class="footer">
-  <div class="container">HexHawk | Built for reverse engineers and threat hunters | <span class="mono">v1.0</span></div>
+  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate Â· 2026-06-01</span></div>
 </footer>
 <script src="/assets/app.js"></script>
 </body>
 </html>
-
-
-
 

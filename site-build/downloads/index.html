@@ -13,49 +13,32 @@
 <body>
 <header class="topbar">
   <div class="container nav">
-    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
-    <nav class="links">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>    <nav class="links">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
-      <a data-path="/hexhawk-lab" href="/hexhawk-lab">HexHawk Lab</a>
+      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
+      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
+      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
+      <a data-path="/verify-file" href="/verify-file">Verify File</a>
       <a data-path="/release-notes" href="/release-notes">Release Notes</a>
     </nav>
   </div>
 </header>
 <main class="container">
-  <section class="hero">
-    <span class="kicker">MALWARE RESEARCH PLATFORM</span>
-    <h1>Grab the latest HexHawk release.</h1>
-    <p class="lead">Choose your platform and validate integrity before running in sensitive environments.</p>
-    <div class="cta">
-      <a class="btn primary" href="/downloads">Get HexHawk</a>
-      <a class="btn ghost" href="/docs">Read Docs</a>
-    </div>
-  </section>
-  <section class="section"><h2>Downloads</h2><div class="grid">
-<article class="card"><h3>Windows</h3><p>64-bit installer with bundled runtime.</p><p class="mono">HexHawk-Setup-win64.exe</p><div class="cta"><a class="btn primary" href="https://github.com/Zielmenosza/hexhawk/releases/latest">Download Windows</a></div></article>
-<article class="card"><h3>Linux</h3><p>AppImage for modern distributions.</p><p class="mono">HexHawk-x86_64.AppImage</p><div class="cta"><a class="btn ghost" href="https://github.com/Zielmenosza/hexhawk/releases/latest">Download Linux</a></div></article>
-<article class="card"><h3>Integrity</h3><p>SHA256 checksums and signed release artifacts.</p><p class="mono">checksums.txt</p><div class="cta"><a class="btn ghost" href="/downloads/checksums.txt">View Checksums</a></div></article>
-</div></section>
-
-  <section class="section">
-    <h2>Need paid support?</h2>
-    <div class="cta">
-      <a class="btn primary" href="/pricing#checkout">Go to Payments</a>
-      <a class="btn ghost" href="mailto:sales@hexhawk.ke?subject=HexHawk%20Deployment%20Support">Contact Sales</a>
-    </div>
-  </section>
+<section class="hero"><span class="kicker">DOWNLOADS</span><h1>Current build status: controlled internal tester candidate.</h1><p class="lead">Windows artifacts are now Authenticode-signed with an internal self-signed development certificate, and packaged native GUI parity passed on the signed internal artifact. Public downloads should still wait for organization-trusted signing and updater endpoint proof.</p></section>
+<section class="section"><h2>Latest local artifacts</h2><div class="grid">
+<article class="card"><h3>Windows MSI</h3><p>Built successfully for internal testing.</p><p class="mono">HexHawk_1.0.0_x64_en-US.msi</p></article>
+<article class="card"><h3>Windows NSIS</h3><p>Built successfully for internal testing.</p><p class="mono">HexHawk_1.0.0_x64-setup.exe</p></article>
+<article class="card"><h3>Integrity</h3><p>Latest local hashes are published here for diligence reference.</p><div class="cta"><a class="btn ghost" href="/downloads/checksums.txt">View Checksums</a></div></article>
+</div></section><section class="section"><h2>Release caveats</h2><ul><li>Artifacts are signed with an internal self-signed certificate and are not publicly trusted yet.</li><li>Updater signing path is enabled, but release metadata endpoint validation is currently failing.</li><li>Packaged native GUI parity passed on signed internal artifacts and must be rerun on organization-trusted signed artifacts before external release.</li></ul></section>
 </main>
 <footer class="footer">
-  <div class="container">HexHawk | Built for reverse engineers and threat hunters | <span class="mono">v1.0</span></div>
+  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate Â· 2026-06-01</span></div>
 </footer>
 <script src="/assets/app.js"></script>
 </body>
 </html>
-
-
-
 

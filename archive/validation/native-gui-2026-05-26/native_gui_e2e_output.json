@@ -1,0 +1,1692 @@
+[
+  {
+    "path": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+    "actions": [
+      [
+        "Run next step",
+        {
+          "ok": true,
+          "text": "Run next step",
+          "cls": "triage-rail-action-btn triage-rail-action-btn--primary"
+        }
+      ],
+      [
+        "Strings",
+        {
+          "ok": true,
+          "text": "\ud835\udd4a\nStrings",
+          "cls": "wf-nav-item"
+        }
+      ],
+      [
+        "Run next step",
+        {
+          "ok": true,
+          "text": "Run next step",
+          "cls": "triage-rail-action-btn triage-rail-action-btn--primary"
+        }
+      ],
+      [
+        "Run next step_wait_error",
+        "condition timeout: window.__HEXHAWK_RUNTIME_SNAPSHOT__?.strings?.count > 0, last=False"
+      ],
+      [
+        "Scan",
+        {
+          "ok": true,
+          "text": "Scan",
+          "cls": ""
+        }
+      ],
+      [
+        "Disassembly",
+        {
+          "ok": true,
+          "text": "\u229e\nDisassembly",
+          "cls": "wf-nav-item"
+        }
+      ],
+      [
+        "Run next step",
+        {
+          "ok": true,
+          "text": "Run next step",
+          "cls": "triage-rail-action-btn triage-rail-action-btn--primary"
+        }
+      ],
+      [
+        "Run next step_wait_error",
+        "condition timeout: window.__HEXHAWK_RUNTIME_SNAPSHOT__?.disassembly?.count > 0, last=False"
+      ],
+      [
+        "Disassemble",
+        {
+          "ok": true,
+          "text": "Disassemble",
+          "cls": ""
+        }
+      ],
+      [
+        "GYRE",
+        {
+          "ok": true,
+          "text": "\u2696\nGYRE",
+          "cls": "wf-nav-item"
+        }
+      ],
+      [
+        "NEST",
+        {
+          "ok": true,
+          "text": "\u27f3\nNEST\n\ud83d\udd12",
+          "cls": "wf-nav-item wf-nav-item--locked"
+        }
+      ],
+      [
+        "Start NEST Session",
+        {
+          "ok": false,
+          "reason": "not-found",
+          "txt": "Start NEST Session",
+          "buttons": [
+            [
+              0,
+              "\u21b5",
+              "wf-topbar-console-btn",
+              false
+            ],
+            [
+              1,
+              "Upgrade \u2191",
+              "wf-upgrade-btn",
+              false
+            ],
+            [
+              2,
+              "\ud83d\udd11",
+              "wf-license-btn",
+              false
+            ],
+            [
+              3,
+              "\u21c4",
+              "wf-nav-load-btn",
+              false
+            ],
+            [
+              4,
+              "\ud83d\udcc2\nLoad Binary",
+              "wf-nav-item",
+              false
+            ],
+            [
+              5,
+              "\ud83d\uddc2\nMetadata",
+              "wf-nav-item",
+              false
+            ],
+            [
+              6,
+              "\ud83d\udd0e\nInspect",
+              "wf-nav-item",
+              false
+            ],
+            [
+              7,
+              "\u2b21\nHex Viewer",
+              "wf-nav-item",
+              false
+            ],
+            [
+              8,
+              "\ud835\udd4a\nStrings",
+              "wf-nav-item",
+              false
+            ],
+            [
+              9,
+              "\u229e\nDisassembly",
+              "wf-nav-item",
+              false
+            ],
+            [
+              10,
+              "\u2b21\nCFG",
+              "wf-nav-item",
+              false
+            ],
+            [
+              11,
+              "\u27e8/\u27e9\nVEIL",
+              "wf-nav-item",
+              false
+            ],
+            [
+              12,
+              "\ud83e\udde0\nTALON\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              13,
+              "\u2696\nGYRE",
+              "wf-nav-item",
+              false
+            ],
+            [
+              14,
+              "\ud83d\udce1\nECHO",
+              "wf-nav-item",
+              false
+            ],
+            [
+              15,
+              "\ud83d\udcca\nCREST",
+              "wf-nav-item",
+              false
+            ],
+            [
+              16,
+              "\ud83d\udd50\nSnapshot History",
+              "wf-nav-item",
+              false
+            ],
+            [
+              17,
+              "\u27f3\nNEST\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--active wf-nav-item--locked",
+              false
+            ],
+            [
+              18,
+              "\ud83d\udee1\nAssurance\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              19,
+              "\ud83d\udccb\nActivity\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              20,
+              "\ud83e\ude79\nIMP\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              21,
+              "\u2297\nBIND\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              22,
+              "\u2b21\nCAGE\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              23,
+              "\u2699\nSTRIKE\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              24,
+              "\u2295\nDELTA\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              25,
+              ">_\nREPL\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              26,
+              "\u2b22\nAEGIS\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              27,
+              "\ud83d\udce6\nVAULT\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              28,
+              "\ud83e\udd16\nDROID",
+              "wf-nav-item",
+              false
+            ],
+            [
+              29,
+              "\ud83c\udfaf\nRAKE\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              30,
+              "\ud83d\udcd0\nFORM\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              31,
+              "\ud83d\udd27\nFORGE",
+              "wf-nav-item",
+              false
+            ],
+            [
+              32,
+              "\ud83d\udce1\nTIDE\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              33,
+              "\ud83e\udeb6\nQUILL",
+              "wf-nav-item",
+              false
+            ],
+            [
+              34,
+              "?\nHelp",
+              "wf-nav-item",
+              false
+            ],
+            [
+              35,
+              "\u2139\nAbout",
+              "wf-nav-item",
+              false
+            ],
+            [
+              36,
+              "Jump",
+              "wf-status-icon-btn",
+              false
+            ],
+            [
+              37,
+              "Shortcuts",
+              "wf-status-icon-btn",
+              false
+            ],
+            [
+              38,
+              "Export",
+              "wf-status-icon-btn",
+              false
+            ],
+            [
+              39,
+              "Sources",
+              "wf-status-icon-btn ",
+              false
+            ],
+            [
+              40,
+              "\u2696\nGYRE",
+              "wf-action-btn wf-action-btn--primary",
+              false
+            ],
+            [
+              41,
+              "\ud83e\ude79\nIMP\n\ud83d\udd12",
+              "wf-action-btn wf-action-btn--locked",
+              true
+            ],
+            [
+              42,
+              "\u2699\nSTRIKE\n\ud83d\udd12",
+              "wf-action-btn wf-action-btn--locked",
+              true
+            ],
+            [
+              43,
+              "\u2193\nExport",
+              "wf-action-btn",
+              false
+            ],
+            [
+              44,
+              "\u2197\nJump to\u2026",
+              "wf-action-btn",
+              false
+            ],
+            [
+              45,
+              "Switch to PRO",
+              "tier-card-switch-btn",
+              false
+            ],
+            [
+              46,
+              "Switch to ENTERPRISE",
+              "tier-card-switch-btn",
+              false
+            ],
+            [
+              47,
+              "Open palette",
+              "triage-rail-action-btn",
+              false
+            ],
+            [
+              48,
+              "Run next step",
+              "triage-rail-action-btn triage-rail-action-btn--primary",
+              false
+            ],
+            [
+              49,
+              "Open TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.",
+              "triage-rail-step",
+              false
+            ],
+            [
+              50,
+              "Inspect metadata\nExtract hashes, imports, sections, and file traits.",
+              "triage-rail-step",
+              false
+            ],
+            [
+              51,
+              "Load binary\nOpen the next sample and establish baseline context.",
+              "triage-rail-step",
+              false
+            ]
+          ]
+        }
+      ],
+      [
+        "Export",
+        {
+          "ok": true,
+          "text": "Export",
+          "cls": "wf-status-icon-btn"
+        }
+      ]
+    ],
+    "snap_before_nest": {
+      "timestamp": "2026-05-23T08:56:02.984Z",
+      "runtime": {
+        "hasTauriRuntime": true,
+        "browserMode": false
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+      "activeView": "verdict",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "real-backend",
+        "detail": "Panel actions are served by native backend commands."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "Pe",
+        "architecture": "x64",
+        "fileSize": 2804697,
+        "sha256": "beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77",
+        "entryPoint": 5368713462
+      },
+      "strings": {
+        "count": 1,
+        "sample": [
+          {
+            "offset": 77,
+            "text": "!This program cannot be run in DOS mode.\r\r\n$"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 256,
+        "arch": "x86-64",
+        "fallback": false,
+        "sample": [
+          {
+            "address": 1536,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 1537,
+            "mnemonic": "mov",
+            "operands": "rbp, rsp"
+          },
+          {
+            "address": 1540,
+            "mnemonic": "mov",
+            "operands": "qword ptr [rbp + 0x10], rcx"
+          },
+          {
+            "address": 1544,
+            "mnemonic": "mov",
+            "operands": "qword ptr [rbp + 0x18], rdx"
+          },
+          {
+            "address": 1548,
+            "mnemonic": "mov",
+            "operands": "qword ptr [rbp + 0x20], r8"
+          },
+          {
+            "address": 1552,
+            "mnemonic": "mov",
+            "operands": "dword ptr [rbp + 0x28], r9d"
+          },
+          {
+            "address": 1556,
+            "mnemonic": "nop",
+            "operands": ""
+          },
+          {
+            "address": 1557,
+            "mnemonic": "pop",
+            "operands": "rbp"
+          },
+          {
+            "address": 1558,
+            "mnemonic": "ret",
+            "operands": ""
+          },
+          {
+            "address": 1559,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 1560,
+            "mnemonic": "mov",
+            "operands": "rbp, rsp"
+          },
+          {
+            "address": 1563,
+            "mnemonic": "sub",
+            "operands": "rsp, 0x20"
+          }
+        ]
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 1,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "APP_EVENT | Completed first-run checklist."
+        },
+        {
+          "level": "info",
+          "message": "DISASSEMBLY_COMPLETE | Disassembled D:/Project/HexHawk/Challenges/ch76/keygenme.exe from 0x0 (x86-64)"
+        },
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_COMPLETE | Scanned strings in D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0 length 256"
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_COMPLETE | Inspected file: D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_LOADED | Loaded available plugins."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_LOADED | Loaded available plugins."
+        }
+      ]
+    },
+    "body_nest": "HexHawk\nv1.1.0\nkeygenme.exe\nbeb23342145c78dc\u2026\n\u21b5\n\ud83d\udfe2 FREE\nUpgrade \u2191\n\ud83d\udd11\n\ud83d\udcc4\nkeygenme.exe\n\u21c4\nFILE\n\ud83d\udcc2\nLoad Binary\n\ud83d\uddc2\nMetadata\nANALYSIS\n\ud83d\udd0e\nInspect\n\u2b21\nHex Viewer\n\ud835\udd4a\nStrings\n\u229e\nDisassembly\n\u2b21\nCFG\n\u27e8/\u27e9\nVEIL\n\ud83e\udde0\nTALON\n\ud83d\udd12\nINTELLIGENCE\n\u2696\nGYRE\n\ud83d\udce1\nECHO\n\ud83d\udcca\nCREST\n\ud83d\udd50\nSnapshot History\n\u27f3\nNEST\n\ud83d\udd12\n\ud83d\udee1\nAssurance\n\ud83d\udd12\n\ud83d\udccb\nActivity\n\ud83d\udd12\nACTIONS\n\ud83e\ude79\nIMP\n\ud83d\udd12\n\u2297\nBIND\n\ud83d\udd12\n\u2b21\nCAGE\n\ud83d\udd12\n\u2699\nSTRIKE\n\ud83d\udd12\n\u2295\nDELTA\n\ud83d\udd12\n>_\nREPL\n\ud83d\udd12\n\u2b22\nAEGIS\n\ud83d\udd12\n\ud83d\udce6\nVAULT\n\ud83d\udd12\n\ud83e\udd16\nDROID\n\ud83c\udfaf\nRAKE\n\ud83d\udd12\n\ud83d\udcd0\nFORM\n\ud83d\udd12\n\ud83d\udd27\nFORGE\n\ud83d\udce1\nTIDE\n\ud83d\udd12\nPLUGINS\n\ud83e\udeb6\nQUILL\nHELP\n?\nHelp\n\u2139\nAbout\nFirst-run checklist complete. You are ready for full workflows.\nJump\nShortcuts\nExport\nSources\n\u2b22 3 techniques\n\u2696\nGYRE\n\ud83e\ude79\nIMP\n\ud83d\udd12\n\u2699\nSTRIKE\n\ud83d\udd12\n\u2193\nExport\n\u2197\nJump to\u2026\nData Source: REAL BACKEND\nPanel actions are served by native backend commands.\n\ud83d\udd12\n\u25c6 ENTERPRISE\u00a0feature\nNEST\nNEST iterative convergence analysis \u2014 multi-pass dampening, contradiction detection, corpus training, MalwareBazaar integration\nYou are on the\u00a0\ud83d\udfe2 FREE\u00a0tier.\n\ud83d\udfe2 FREE\nCURRENT\nADOPTION LAYER\nMetadata, hex, strings, CFG\nBasic decompilation\nPlugin results\nFiles up to 50 MB\n5 console queries / session\n\ud83d\udd35 PRO\nCORE USERS\nEverything in Free\nFull TALON (SSA, data-flow, LLM)\nSTRIKE, ECHO, Debugger\nIMP patch intelligence\nGYRE explainability chain\nKITE graph, CREST report\nBookmarks, logs, history\nUnlimited console queries\nUnlimited file size\nSwitch to PRO\n\u25c6 ENTERPRISE\nUNLOCKS THIS\nSCALE LAYER\nEverything in Pro\nNEST iterative convergence analysis\nCorpus training & MalwareBazaar import\nAPI & automation (roadmap)\nBatch console queries (roadmap)\nTeam intelligence sharing (roadmap)\nSOC integration (roadmap)\nSwitch to ENTERPRISE\nTier switching is available locally for evaluation purposes.\nRecommended now\nOpen TALON\nTALON confidence is 58% and STRIKE risk is 38.\nOpen paletteRun next step\nNext best step\nFinalize report\nOpen the verdict, TALON, or STRIKE for final decision confidence.\nEvidence converged88%\nRanked actions\nOpen TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.\nInspect metadata\nExtract hashes, imports, sections, and file traits.\nLoad binary\nOpen the next sample and establish baseline context.",
+    "snap_after_nest": {
+      "timestamp": "2026-05-23T08:56:03.503Z",
+      "runtime": {
+        "hasTauriRuntime": true,
+        "browserMode": false
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
+      "activeView": "nest",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "real-backend",
+        "detail": "Panel actions are served by native backend commands."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "Pe",
+        "architecture": "x64",
+        "fileSize": 2804697,
+        "sha256": "beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77",
+        "entryPoint": 5368713462
+      },
+      "strings": {
+        "count": 1,
+        "sample": [
+          {
+            "offset": 77,
+            "text": "!This program cannot be run in DOS mode.\r\r\n$"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 256,
+        "arch": "x86-64",
+        "fallback": false,
+        "sample": [
+          {
+            "address": 1536,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 1537,
+            "mnemonic": "mov",
+            "operands": "rbp, rsp"
+          },
+          {
+            "address": 1540,
+            "mnemonic": "mov",
+            "operands": "qword ptr [rbp + 0x10], rcx"
+          },
+          {
+            "address": 1544,
+            "mnemonic": "mov",
+            "operands": "qword ptr [rbp + 0x18], rdx"
+          },
+          {
+            "address": 1548,
+            "mnemonic": "mov",
+            "operands": "qword ptr [rbp + 0x20], r8"
+          },
+          {
+            "address": 1552,
+            "mnemonic": "mov",
+            "operands": "dword ptr [rbp + 0x28], r9d"
+          },
+          {
+            "address": 1556,
+            "mnemonic": "nop",
+            "operands": ""
+          },
+          {
+            "address": 1557,
+            "mnemonic": "pop",
+            "operands": "rbp"
+          },
+          {
+            "address": 1558,
+            "mnemonic": "ret",
+            "operands": ""
+          },
+          {
+            "address": 1559,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 1560,
+            "mnemonic": "mov",
+            "operands": "rbp, rsp"
+          },
+          {
+            "address": 1563,
+            "mnemonic": "sub",
+            "operands": "rsp, 0x20"
+          }
+        ]
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 1,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "APP_EVENT | Completed first-run checklist."
+        },
+        {
+          "level": "info",
+          "message": "DISASSEMBLY_COMPLETE | Disassembled D:/Project/HexHawk/Challenges/ch76/keygenme.exe from 0x0 (x86-64)"
+        },
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_COMPLETE | Scanned strings in D:/Project/HexHawk/Challenges/ch76/keygenme.exe at 0x0 length 256"
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_COMPLETE | Inspected file: D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_LOADED | Loaded available plugins."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_LOADED | Loaded available plugins."
+        }
+      ]
+    },
+    "download": {
+      "download": "hexhawk-analysis-keygenme-1779526564011.json",
+      "href": "blob:http://localhost:5173/782d515f-82d8-421c-b238-9b3601cd4076"
+    },
+    "export_text": "{\n  \"timestamp\": \"2026-05-23T08:56:04.010Z\",\n  \"binaryPath\": \"D:/Project/HexHawk/Challenges/ch76/keygenme.exe\",\n  \"metadata\": {\n    \"file_type\": \"Pe\",\n    \"architecture\": \"x64\",\n    \"entry_point\": \"0x1400010F6\",\n    \"file_size\": 2804697,\n    \"sha256\": \"beb23342145c78dc0f3301eaf5c6af7a7909be0b69d32018ea739a562b0e3c77\",\n    \"md5\": \"ebba5beb50949b83654821015f7e9f63\",\n    \"sections\": [\n      {\n        \"name\": \".text\",\n        \"entropy\": \"5.58\",\n        \"size\": 10824\n      },\n      {\n        \"name\": \".data\",\n        \"entropy\": \"3.66\",\n        \"size\": 1088\n      },\n      {\n        \"name\": \".rdata\",\n        \"entropy\": \"4.95\",\n        \"size\": 4096\n      },\n      {\n        \"name\": \".eh_frame\",\n        \"entropy\": \"0.00\",\n        \"size\": 4\n      },\n      {\n        \"name\": \".pdata\",\n        \"entropy\": \"3.99\",\n        \"size\": 672\n      },\n      {\n        \"name\": \".xdata\",\n        \"entropy\": \"3.70\",\n        \"size\": 684\n      },\n      {\n        \"name\": \".bss\",\n        \"entropy\": \"0.00\",\n        \"size\": 0\n      },\n      {\n        \"name\": \".idata\",\n        \"entropy\": \"4.03\",\n        \"size\": 2168\n      },\n      {\n        \"name\": \".CRT\",\n        \"entropy\": \"1.28\",\n        \"size\": 104\n      },\n      {\n        \"name\": \".tls\",\n        \"entropy\": \"0.00\",\n        \"size\": 16\n      },\n      {\n        \"name\": \".rsrc\",\n        \"entropy\": \"6.94\",\n        \"size\": 2741840\n      },\n      {\n        \"name\": \".reloc\",\n        \"entropy\": \"4.18\",\n        \"size\": 164\n      },\n      {\n        \"name\": \".debug_aranges\",\n        \"entropy\": \"1.10\",\n        \"size\": 80\n      },\n      {\n        \"name\": \".debug_info\",\n        \"entropy\": \"5.29\",\n        \"size\": 3514\n      },\n      {\n        \"name\": \".debug_abbrev\",\n        \"entropy\": \"4.53\",\n        \"size\": 175\n      },\n      {\n        \"name\": \".debug_line\",\n        \"entropy\": \"3.30\",\n        \"size\": 164\n      },\n      {\n        \"name\": \".debug_str\",\n        \"entropy\": \"4.91\",\n        \"size\": 89\n      },\n      {\n        \"name\": \".debug_line_str\",\n        \"entropy\": \"4.40\",\n        \"size\": 342\n      }\n    ],\n    \"imports\": [\n      \"KERNEL32.dll!CloseHandle\",\n      \"KERNEL32.dll!CreateFileA\",\n      \"KERNEL32.dll!CreateProcessA\",\n      \"KERNEL32.dll!CreateRemoteThread\",\n      \"KERNEL32.dll!DeleteCriticalSection\",\n      \"KERNEL32.dll!EnterCriticalSection\",\n      \"KERNEL32.dll!ExitProcess\",\n      \"KERNEL32.dll!FindResourceA\",\n      \"KERNEL32.dll!FreeLibrary\",\n      \"KERNEL32.dll!GetLastError\",\n      \"KERNEL32.dll!GetModuleHandleA\",\n      \"KERNEL32.dll!GetProcAddress\",\n      \"KERNEL32.dll!GetStartupInfoA\",\n      \"KERNEL32.dll!GetTempPathA\",\n      \"KERNEL32.dll!GetThreadContext\",\n      \"KERNEL32.dll!InitializeCriticalSection\",\n      \"KERNEL32.dll!LeaveCriticalSection\",\n      \"KERNEL32.dll!LoadLibraryA\",\n      \"KERNEL32.dll!LoadResource\",\n      \"KERNEL32.dll!ReadProcessMemory\",\n      \"KERNEL32.dll!ResumeThread\",\n      \"KERNEL32.dll!SetThreadContext\",\n      \"KERNEL32.dll!SetUnhandledExceptionFilter\",\n      \"KERNEL32.dll!SizeofResource\",\n      \"KERNEL32.dll!Sleep\",\n      \"KERNEL32.dll!TlsGetValue\",\n      \"KERNEL32.dll!VirtualAllocEx\",\n      \"KERNEL32.dll!VirtualProtect\",\n      \"KERNEL32.dll!VirtualQuery\",\n      \"KERNEL32.dll!WriteFile\",\n      \"KERNEL32.dll!WriteProcessMemory\",\n      \"msvcrt.dll!__C_specific_handler\",\n      \"msvcrt.dll!__getmainargs\",\n      \"msvcrt.dll!__initenv\",\n      \"msvcrt.dll!__iob_func\",\n      \"msvcrt.dll!__lconv_init\",\n      \"msvcrt.dll!__set_app_type\",\n      \"msvcrt.dll!__setusermatherr\",\n      \"msvcrt.dll!_acmdln\",\n      \"msvcrt.dll!_amsg_exit\",\n      \"msvcrt.dll!_cexit\",\n      \"msvcrt.dll!_commode\",\n      \"msvcrt.dll!_fmode\",\n      \"msvcrt.dll!_initterm\",\n      \"msvcrt.dll!_onexit\",\n      \"msvcrt.dll!abort\",\n      \"msvcrt.dll!calloc\",\n      \"msvcrt.dll!exit\",\n      \"msvcrt.dll!fprintf\",\n      \"msvcrt.dll!free\",\n      \"msvcrt.dll!fwrite\",\n      \"msvcrt.dll!malloc\",\n      \"msvcrt.dll!memcpy\",\n      \"msvcrt.dll!memset\",\n      \"msvcrt.dll!signal\",\n      \"msvcrt.dll!strlen\",\n      \"msvcrt.dll!strncmp\",\n      \"msvcrt.dll!vfprintf\"\n    ],\n    \"exports\": []\n  },\n  \"verdict\": {\n    \"classification\": \"suspicious\",\n    \"threatScore\": 38,\n    \"confidence\": 58,\n    \"summary\": \"Classified as Suspicious \u2014 threat score 38/100 (58% confidence). Key evidence: 3 process-injection API(s): CreateRemoteThread, VirtualAllocEx, WriteProcessMemory; 4 validation/gating logic region(s); Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hides true capabilities.\",\n    \"signals\": [\n      {\n        \"source\": \"imports\",\n        \"finding\": \"3 process-injection API(s): CreateRemoteThread, VirtualAllocEx, WriteProcessMemory\",\n        \"weight\": 9\n      },\n      {\n        \"source\": \"disassembly\",\n        \"finding\": \"4 validation/gating logic region(s)\",\n        \"weight\": 7\n      },\n      {\n        \"source\": \"imports\",\n        \"finding\": \"Dynamic API resolution (GetProcAddress, LoadLibraryA) \u2014 hides true capabilities\",\n        \"weight\": 6\n      },\n      {\n        \"source\": \"imports\",\n        \"finding\": \"2 file-system API(s): CreateFileA, WriteFile\",\n        \"weight\": 3\n      },\n      {\n        \"source\": \"imports\",\n        \"finding\": \"1 process-execution API(s): CreateProcessA\",\n        \"weight\": 3\n      },\n      {\n        \"source\": \"imports\",\n        \"finding\": \"4 thread-manipulation API(s): CreateRemoteThread, GetThreadContext, ResumeThread, SetThreadContext\",\n        \"weight\": 3\n      },\n      {\n        \"source\": \"disassembly\",\n        \"finding\": \"8 tight loops \u2014 potential encryption or data transformation\",\n        \"weight\": 3\n      },\n      {\n        \"source\": \"disassembly\",\n        \"finding\": \"4 indirect calls \u2014 hides control flow\",\n        \"weight\": 3\n      }\n    ],\n    \"negativeSignals\": [\n      {\n        \"finding\": \"18 sections with normal entropy \u2014 standard compiled binary\",\n        \"reduction\": 8\n      }\n    ],\n    \"amplifiers\": [],\n    \"dismissals\": []\n  },\n  \"strings\": [\n    {\n      \"offset\": \"0x4D\",\n      \"text\": \"!This program cannot be run in DOS mode.\\r\\r\\n$\"\n    }\n  ],\n  \"disassembly\": [\n    {\n      \"address\": \"0x600\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x601\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rbp, rsp\"\n    },\n    {\n      \"address\": \"0x604\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp + 0x10], rcx\"\n    },\n    {\n      \"address\": \"0x608\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp + 0x18], rdx\"\n    },\n    {\n      \"address\": \"0x60C\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp + 0x20], r8\"\n    },\n    {\n      \"address\": \"0x610\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp + 0x28], r9d\"\n    },\n    {\n      \"address\": \"0x614\",\n      \"mnemonic\": \"nop\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x615\",\n      \"mnemonic\": \"pop\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x616\",\n      \"mnemonic\": \"ret\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x617\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x618\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rbp, rsp\"\n    },\n    {\n      \"address\": \"0x61B\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"rsp, 0x20\"\n    },\n    {\n      \"address\": \"0x61F\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0xa80\"\n    },\n    {\n      \"address\": \"0x624\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rip + 0x7ff6], eax\"\n    },\n    {\n      \"address\": \"0x62A\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x457f]\"\n    },\n    {\n      \"address\": \"0x631\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x633\",\n      \"mnemonic\": \"test\",\n      \"operands\": \"eax, eax\"\n    },\n    {\n      \"address\": \"0x635\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x643\"\n    },\n    {\n      \"address\": \"0x637\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ecx, 2\"\n    },\n    {\n      \"address\": \"0x63C\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2e40\"\n    },\n    {\n      \"address\": \"0x641\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x64d\"\n    },\n    {\n      \"address\": \"0x643\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ecx, 1\"\n    },\n    {\n      \"address\": \"0x648\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2e40\"\n    },\n    {\n      \"address\": \"0x64D\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2ef0\"\n    },\n    {\n      \"address\": \"0x652\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, qword ptr [rip + 0x4517]\"\n    },\n    {\n      \"address\": \"0x659\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, dword ptr [rdx]\"\n    },\n    {\n      \"address\": \"0x65B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rax], edx\"\n    },\n    {\n      \"address\": \"0x65D\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2ee0\"\n    },\n    {\n      \"address\": \"0x662\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, qword ptr [rip + 0x44e7]\"\n    },\n    {\n      \"address\": \"0x669\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, dword ptr [rdx]\"\n    },\n    {\n      \"address\": \"0x66B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rax], edx\"\n    },\n    {\n      \"address\": \"0x66D\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x18a0\"\n    },\n    {\n      \"address\": \"0x672\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x43b7]\"\n    },\n    {\n      \"address\": \"0x679\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x67B\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"eax, 1\"\n    },\n    {\n      \"address\": \"0x67E\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x68f\"\n    },\n    {\n      \"address\": \"0x680\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4509]\"\n    },\n    {\n      \"address\": \"0x687\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rcx, rax\"\n    },\n    {\n      \"address\": \"0x68A\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x236a\"\n    },\n    {\n      \"address\": \"0x68F\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, 0\"\n    },\n    {\n      \"address\": \"0x694\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"rsp, 0x20\"\n    },\n    {\n      \"address\": \"0x698\",\n      \"mnemonic\": \"pop\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x699\",\n      \"mnemonic\": \"ret\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x69A\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x69B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rbp, rsp\"\n    },\n    {\n      \"address\": \"0x69E\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"rsp, 0x30\"\n    },\n    {\n      \"address\": \"0x6A2\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x44f7]\"\n    },\n    {\n      \"address\": \"0x6A9\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x6AB\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rip + 0x7f77], eax\"\n    },\n    {\n      \"address\": \"0x6B1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x44a8]\"\n    },\n    {\n      \"address\": \"0x6B8\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, dword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x6BA\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"rax, [rip + 0x7f67]\"\n    },\n    {\n      \"address\": \"0x6C1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rsp + 0x20], rax\"\n    },\n    {\n      \"address\": \"0x6C6\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r9d, edx\"\n    },\n    {\n      \"address\": \"0x6C9\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"r8, [rip + 0x7f40]\"\n    },\n    {\n      \"address\": \"0x6D0\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"rax, [rip + 0x7f31]\"\n    },\n    {\n      \"address\": \"0x6D7\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, rax\"\n    },\n    {\n      \"address\": \"0x6DA\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"rax, [rip + 0x7f23]\"\n    },\n    {\n      \"address\": \"0x6E1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rcx, rax\"\n    },\n    {\n      \"address\": \"0x6E4\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2e50\"\n    },\n    {\n      \"address\": \"0x6E9\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rip + 0x7f29], eax\"\n    },\n    {\n      \"address\": \"0x6EF\",\n      \"mnemonic\": \"nop\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x6F0\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"rsp, 0x30\"\n    },\n    {\n      \"address\": \"0x6F4\",\n      \"mnemonic\": \"pop\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x6F5\",\n      \"mnemonic\": \"ret\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x6F6\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x6F7\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rbp, rsp\"\n    },\n    {\n      \"address\": \"0x6FA\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"rsp, 0x30\"\n    },\n    {\n      \"address\": \"0x6FE\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp - 4], 0xff\"\n    },\n    {\n      \"address\": \"0x705\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x44a4]\"\n    },\n    {\n      \"address\": \"0x70C\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rax], 1\"\n    },\n    {\n      \"address\": \"0x712\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x754\"\n    },\n    {\n      \"address\": \"0x717\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp - 4], eax\"\n    },\n    {\n      \"address\": \"0x71A\",\n      \"mnemonic\": \"nop\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x71B\",\n      \"mnemonic\": \"nop\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x71C\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rbp - 4]\"\n    },\n    {\n      \"address\": \"0x71F\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"rsp, 0x30\"\n    },\n    {\n      \"address\": \"0x723\",\n      \"mnemonic\": \"pop\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x724\",\n      \"mnemonic\": \"ret\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x725\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x726\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rbp, rsp\"\n    },\n    {\n      \"address\": \"0x729\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"rsp, 0x30\"\n    },\n    {\n      \"address\": \"0x72D\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp - 4], 0xff\"\n    },\n    {\n      \"address\": \"0x734\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4475]\"\n    },\n    {\n      \"address\": \"0x73B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rax], 0\"\n    },\n    {\n      \"address\": \"0x741\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x754\"\n    },\n    {\n      \"address\": \"0x746\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp - 4], eax\"\n    },\n    {\n      \"address\": \"0x749\",\n      \"mnemonic\": \"nop\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x74A\",\n      \"mnemonic\": \"nop\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x74B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rbp - 4]\"\n    },\n    {\n      \"address\": \"0x74E\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"rsp, 0x30\"\n    },\n    {\n      \"address\": \"0x752\",\n      \"mnemonic\": \"pop\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x753\",\n      \"mnemonic\": \"ret\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x754\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x755\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rbp, rsp\"\n    },\n    {\n      \"address\": \"0x758\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"rsp, 0xe0\"\n    },\n    {\n      \"address\": \"0x75F\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 8], 0\"\n    },\n    {\n      \"address\": \"0x767\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp - 0xc], 0\"\n    },\n    {\n      \"address\": \"0x76E\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"rax, [rbp - 0xc0]\"\n    },\n    {\n      \"address\": \"0x775\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r8d, 0x68\"\n    },\n    {\n      \"address\": \"0x77B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, 0\"\n    },\n    {\n      \"address\": \"0x780\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rcx, rax\"\n    },\n    {\n      \"address\": \"0x783\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2dd0\"\n    },\n    {\n      \"address\": \"0x788\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4421]\"\n    },\n    {\n      \"address\": \"0x78F\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x791\",\n      \"mnemonic\": \"test\",\n      \"operands\": \"eax, eax\"\n    },\n    {\n      \"address\": \"0x793\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x7a8\"\n    },\n    {\n      \"address\": \"0x795\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"rax, [rbp - 0xc0]\"\n    },\n    {\n      \"address\": \"0x79C\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rcx, rax\"\n    },\n    {\n      \"address\": \"0x79F\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x90d6]\"\n    },\n    {\n      \"address\": \"0x7A6\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"rax\"\n    },\n    {\n      \"address\": \"0x7A8\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 0x18], 0\"\n    },\n    {\n      \"address\": \"0x7B0\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp - 0x24], 0x30\"\n    },\n    {\n      \"address\": \"0x7B7\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rbp - 0x24]\"\n    },\n    {\n      \"address\": \"0x7BA\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr gs:[rax]\"\n    },\n    {\n      \"address\": \"0x7BE\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 0x30], rax\"\n    },\n    {\n      \"address\": \"0x7C2\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 0x30]\"\n    },\n    {\n      \"address\": \"0x7C6\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rax + 8]\"\n    },\n    {\n      \"address\": \"0x7CA\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 0x20], rax\"\n    },\n    {\n      \"address\": \"0x7CE\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp - 0x10], 0\"\n    },\n    {\n      \"address\": \"0x7D5\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x7f8\"\n    },\n    {\n      \"address\": \"0x7D7\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 0x18]\"\n    },\n    {\n      \"address\": \"0x7DB\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"rax, qword ptr [rbp - 0x20]\"\n    },\n    {\n      \"address\": \"0x7DF\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x7ea\"\n    },\n    {\n      \"address\": \"0x7E1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp - 0x10], 1\"\n    },\n    {\n      \"address\": \"0x7E8\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x82f\"\n    },\n    {\n      \"address\": \"0x7EA\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ecx, 0x3e8\"\n    },\n    {\n      \"address\": \"0x7EF\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x90e6]\"\n    },\n    {\n      \"address\": \"0x7F6\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"rax\"\n    },\n    {\n      \"address\": \"0x7F8\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x42f1]\"\n    },\n    {\n      \"address\": \"0x7FF\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 0x38], rax\"\n    },\n    {\n      \"address\": \"0x803\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 0x20]\"\n    },\n    {\n      \"address\": \"0x807\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 0x40], rax\"\n    },\n    {\n      \"address\": \"0x80B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 0x48], 0\"\n    },\n    {\n      \"address\": \"0x813\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rcx, qword ptr [rbp - 0x40]\"\n    },\n    {\n      \"address\": \"0x817\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 0x48]\"\n    },\n    {\n      \"address\": \"0x81B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, qword ptr [rbp - 0x38]\"\n    },\n    {\n      \"address\": \"0x81F\",\n      \"mnemonic\": \"lock cmpxchg\",\n      \"operands\": \"qword ptr [rdx], rcx\"\n    },\n    {\n      \"address\": \"0x824\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 0x18], rax\"\n    },\n    {\n      \"address\": \"0x828\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"qword ptr [rbp - 0x18], 0\"\n    },\n    {\n      \"address\": \"0x82D\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x7d7\"\n    },\n    {\n      \"address\": \"0x82F\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x42ca]\"\n    },\n    {\n      \"address\": \"0x836\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x838\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"eax, 1\"\n    },\n    {\n      \"address\": \"0x83B\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x849\"\n    },\n    {\n      \"address\": \"0x83D\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ecx, 0x1f\"\n    },\n    {\n      \"address\": \"0x842\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2e30\"\n    },\n    {\n      \"address\": \"0x847\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x888\"\n    },\n    {\n      \"address\": \"0x849\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x42b0]\"\n    },\n    {\n      \"address\": \"0x850\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x852\",\n      \"mnemonic\": \"test\",\n      \"operands\": \"eax, eax\"\n    },\n    {\n      \"address\": \"0x854\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x87e\"\n    },\n    {\n      \"address\": \"0x856\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x42a3]\"\n    },\n    {\n      \"address\": \"0x85D\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rax], 1\"\n    },\n    {\n      \"address\": \"0x863\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x42d6]\"\n    },\n    {\n      \"address\": \"0x86A\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, rax\"\n    },\n    {\n      \"address\": \"0x86D\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x42bc]\"\n    },\n    {\n      \"address\": \"0x874\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rcx, rax\"\n    },\n    {\n      \"address\": \"0x877\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2e20\"\n    },\n    {\n      \"address\": \"0x87C\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x888\"\n    },\n    {\n      \"address\": \"0x87E\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rip + 0x7d9c], 1\"\n    },\n    {\n      \"address\": \"0x888\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4271]\"\n    },\n    {\n      \"address\": \"0x88F\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x891\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"eax, 1\"\n    },\n    {\n      \"address\": \"0x894\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x8bc\"\n    },\n    {\n      \"address\": \"0x896\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4283]\"\n    },\n    {\n      \"address\": \"0x89D\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, rax\"\n    },\n    {\n      \"address\": \"0x8A0\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4269]\"\n    },\n    {\n      \"address\": \"0x8A7\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rcx, rax\"\n    },\n    {\n      \"address\": \"0x8AA\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2e20\"\n    },\n    {\n      \"address\": \"0x8AF\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x424a]\"\n    },\n    {\n      \"address\": \"0x8B6\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rax], 2\"\n    },\n    {\n      \"address\": \"0x8BC\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"dword ptr [rbp - 0x10], 0\"\n    },\n    {\n      \"address\": \"0x8C0\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x8e1\"\n    },\n    {\n      \"address\": \"0x8C2\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4227]\"\n    },\n    {\n      \"address\": \"0x8C9\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 0x50], rax\"\n    },\n    {\n      \"address\": \"0x8CD\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 0x58], 0\"\n    },\n    {\n      \"address\": \"0x8D5\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, qword ptr [rbp - 0x58]\"\n    },\n    {\n      \"address\": \"0x8D9\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 0x50]\"\n    },\n    {\n      \"address\": \"0x8DD\",\n      \"mnemonic\": \"xchg\",\n      \"operands\": \"qword ptr [rax], rdx\"\n    },\n    {\n      \"address\": \"0x8E0\",\n      \"mnemonic\": \"nop\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x8E1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4188]\"\n    },\n    {\n      \"address\": \"0x8E8\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x8EB\",\n      \"mnemonic\": \"test\",\n      \"operands\": \"rax, rax\"\n    },\n    {\n      \"address\": \"0x8EE\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x90c\"\n    },\n    {\n      \"address\": \"0x8F0\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4179]\"\n    },\n    {\n      \"address\": \"0x8F7\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x8FA\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r8d, 0\"\n    },\n    {\n      \"address\": \"0x900\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, 2\"\n    },\n    {\n      \"address\": \"0x905\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ecx, 0\"\n    },\n    {\n      \"address\": \"0x90A\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"rax\"\n    },\n    {\n      \"address\": \"0x90C\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x224d\"\n    },\n    {\n      \"address\": \"0x911\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x4268]\"\n    },\n    {\n      \"address\": \"0x918\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rcx, rax\"\n    },\n    {\n      \"address\": \"0x91B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x8faa]\"\n    },\n    {\n      \"address\": \"0x922\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"rax\"\n    },\n    {\n      \"address\": \"0x924\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, qword ptr [rip + 0x41b5]\"\n    },\n    {\n      \"address\": \"0x92B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rdx], rax\"\n    },\n    {\n      \"address\": \"0x92E\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"rax, [rip - 0x335]\"\n    },\n    {\n      \"address\": \"0x935\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rcx, rax\"\n    },\n    {\n      \"address\": \"0x938\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2e90\"\n    },\n    {\n      \"address\": \"0x93D\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x1ae0\"\n    },\n    {\n      \"address\": \"0x942\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"rax, [rip + 0x871f]\"\n    },\n    {\n      \"address\": \"0x949\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, qword ptr [rip + 0x4140]\"\n    },\n    {\n      \"address\": \"0x950\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rax], rdx\"\n    },\n    {\n      \"address\": \"0x953\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x2ed0\"\n    },\n    {\n      \"address\": \"0x958\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x95B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rbp - 8], rax\"\n    },\n    {\n      \"address\": \"0x95F\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"qword ptr [rbp - 8], 0\"\n    },\n    {\n      \"address\": \"0x964\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x9cc\"\n    },\n    {\n      \"address\": \"0x966\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x985\"\n    },\n    {\n      \"address\": \"0x968\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 8]\"\n    },\n    {\n      \"address\": \"0x96C\",\n      \"mnemonic\": \"movzx\",\n      \"operands\": \"eax, byte ptr [rax]\"\n    },\n    {\n      \"address\": \"0x96F\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"al, 0x22\"\n    },\n    {\n      \"address\": \"0x971\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x980\"\n    },\n    {\n      \"address\": \"0x973\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"dword ptr [rbp - 0xc], 0\"\n    },\n    {\n      \"address\": \"0x977\",\n      \"mnemonic\": \"sete\",\n      \"operands\": \"al\"\n    },\n    {\n      \"address\": \"0x97A\",\n      \"mnemonic\": \"movzx\",\n      \"operands\": \"eax, al\"\n    },\n    {\n      \"address\": \"0x97D\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rbp - 0xc], eax\"\n    },\n    {\n      \"address\": \"0x980\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"qword ptr [rbp - 8], 1\"\n    },\n    {\n      \"address\": \"0x985\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 8]\"\n    },\n    {\n      \"address\": \"0x989\",\n      \"mnemonic\": \"movzx\",\n      \"operands\": \"eax, byte ptr [rax]\"\n    },\n    {\n      \"address\": \"0x98C\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"al, 0x20\"\n    },\n    {\n      \"address\": \"0x98E\",\n      \"mnemonic\": \"jg\",\n      \"operands\": \"0x968\"\n    },\n    {\n      \"address\": \"0x990\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 8]\"\n    },\n    {\n      \"address\": \"0x994\",\n      \"mnemonic\": \"movzx\",\n      \"operands\": \"eax, byte ptr [rax]\"\n    },\n    {\n      \"address\": \"0x997\",\n      \"mnemonic\": \"test\",\n      \"operands\": \"al, al\"\n    },\n    {\n      \"address\": \"0x999\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x9a8\"\n    },\n    {\n      \"address\": \"0x99B\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"dword ptr [rbp - 0xc], 0\"\n    },\n    {\n      \"address\": \"0x99F\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x968\"\n    },\n    {\n      \"address\": \"0x9A1\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x9a8\"\n    },\n    {\n      \"address\": \"0x9A3\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"qword ptr [rbp - 8], 1\"\n    },\n    {\n      \"address\": \"0x9A8\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 8]\"\n    },\n    {\n      \"address\": \"0x9AC\",\n      \"mnemonic\": \"movzx\",\n      \"operands\": \"eax, byte ptr [rax]\"\n    },\n    {\n      \"address\": \"0x9AF\",\n      \"mnemonic\": \"test\",\n      \"operands\": \"al, al\"\n    },\n    {\n      \"address\": \"0x9B1\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x9be\"\n    },\n    {\n      \"address\": \"0x9B3\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rbp - 8]\"\n    },\n    {\n      \"address\": \"0x9B7\",\n      \"mnemonic\": \"movzx\",\n      \"operands\": \"eax, byte ptr [rax]\"\n    },\n    {\n      \"address\": \"0x9BA\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"al, 0x20\"\n    },\n    {\n      \"address\": \"0x9BC\",\n      \"mnemonic\": \"jle\",\n      \"operands\": \"0x9a3\"\n    },\n    {\n      \"address\": \"0x9BE\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"rax, [rip + 0x869b]\"\n    },\n    {\n      \"address\": \"0x9C5\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rdx, qword ptr [rbp - 8]\"\n    },\n    {\n      \"address\": \"0x9C9\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rax], rdx\"\n    },\n    {\n      \"address\": \"0x9CC\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"rax, qword ptr [rip + 0x41dd]\"\n    },\n    {\n      \"address\": \"0x9D3\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rax]\"\n    },\n    {\n      \"address\": \"0x9D5\",\n      \"mnemonic\": \"test\",\n      \"operands\": \"eax, eax\"\n    },\n    {\n      \"address\": \"0x9D7\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x9fa\"\n    },\n    {\n      \"address\": \"0x9D9\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rbp - 0x84]\"\n    },\n    {\n      \"address\": \"0x9DF\",\n      \"mnemonic\": \"and\",\n      \"operands\": \"eax, 1\"\n    },\n    {\n      \"address\": \"0x9E2\",\n      \"mnemonic\": \"test\",\n      \"operands\": \"eax, eax\"\n    },\n    {\n      \"address\": \"0x9E4\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x9ef\"\n    },\n    {\n      \"address\": \"0x9E6\",\n      \"mnemonic\": \"movzx\",\n      \"operands\": \"eax, word ptr [rbp - 0x80]\"\n    },\n    {\n      \"address\": \"0x9EA\",\n      \"mnemonic\": \"movzx\",\n      \"operands\": \"eax, ax\"\n    },\n    {\n      \"address\": \"0x9ED\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x9f4\"\n    },\n    {\n      \"address\": \"0x9EF\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, 0xa\"\n    },\n    {\n      \"address\": \"0x9F4\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rip + 0x2c06], eax\"\n    }\n  ],\n  \"bookmarks\": [],\n  \"annotations\": []\n}"
+  },
+  {
+    "path": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+    "actions": [
+      [
+        "Run next step",
+        {
+          "ok": true,
+          "text": "Run next step",
+          "cls": "triage-rail-action-btn triage-rail-action-btn--primary"
+        }
+      ],
+      [
+        "Strings",
+        {
+          "ok": true,
+          "text": "\ud835\udd4a\nStrings",
+          "cls": "wf-nav-item"
+        }
+      ],
+      [
+        "Run next step",
+        {
+          "ok": true,
+          "text": "Run next step",
+          "cls": "triage-rail-action-btn triage-rail-action-btn--primary"
+        }
+      ],
+      [
+        "Run next step_wait_error",
+        "condition timeout: window.__HEXHAWK_RUNTIME_SNAPSHOT__?.strings?.count > 0, last=False"
+      ],
+      [
+        "Scan",
+        {
+          "ok": true,
+          "text": "\ud835\udd4a\nScan Strings",
+          "cls": "wf-action-btn"
+        }
+      ],
+      [
+        "Disassembly",
+        {
+          "ok": true,
+          "text": "\u229e\nDisassembly",
+          "cls": "wf-nav-item"
+        }
+      ],
+      [
+        "Run next step",
+        {
+          "ok": true,
+          "text": "Run next step",
+          "cls": "triage-rail-action-btn triage-rail-action-btn--primary"
+        }
+      ],
+      [
+        "Run next step_wait_error",
+        "condition timeout: window.__HEXHAWK_RUNTIME_SNAPSHOT__?.disassembly?.count > 0, last=False"
+      ],
+      [
+        "Disassemble",
+        {
+          "ok": true,
+          "text": "? Disassemble Now",
+          "cls": "wf-cta-primary-btn"
+        }
+      ],
+      [
+        "GYRE",
+        {
+          "ok": true,
+          "text": "\u2696\nGYRE",
+          "cls": "wf-nav-item"
+        }
+      ],
+      [
+        "NEST",
+        {
+          "ok": true,
+          "text": "\u27f3\nNEST\n\ud83d\udd12",
+          "cls": "wf-nav-item wf-nav-item--locked"
+        }
+      ],
+      [
+        "Start NEST Session",
+        {
+          "ok": false,
+          "reason": "not-found",
+          "txt": "Start NEST Session",
+          "buttons": [
+            [
+              0,
+              "\u21b5",
+              "wf-topbar-console-btn",
+              false
+            ],
+            [
+              1,
+              "Upgrade \u2191",
+              "wf-upgrade-btn",
+              false
+            ],
+            [
+              2,
+              "\ud83d\udd11",
+              "wf-license-btn",
+              false
+            ],
+            [
+              3,
+              "\u21c4",
+              "wf-nav-load-btn",
+              false
+            ],
+            [
+              4,
+              "\ud83d\udcc2\nLoad Binary",
+              "wf-nav-item",
+              false
+            ],
+            [
+              5,
+              "\ud83d\uddc2\nMetadata",
+              "wf-nav-item",
+              false
+            ],
+            [
+              6,
+              "\ud83d\udd0e\nInspect",
+              "wf-nav-item",
+              false
+            ],
+            [
+              7,
+              "\u2b21\nHex Viewer",
+              "wf-nav-item",
+              false
+            ],
+            [
+              8,
+              "\ud835\udd4a\nStrings",
+              "wf-nav-item",
+              false
+            ],
+            [
+              9,
+              "\u229e\nDisassembly",
+              "wf-nav-item",
+              false
+            ],
+            [
+              10,
+              "\u2b21\nCFG",
+              "wf-nav-item",
+              false
+            ],
+            [
+              11,
+              "\u27e8/\u27e9\nVEIL",
+              "wf-nav-item",
+              false
+            ],
+            [
+              12,
+              "\ud83e\udde0\nTALON\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              13,
+              "\u2696\nGYRE",
+              "wf-nav-item",
+              false
+            ],
+            [
+              14,
+              "\ud83d\udce1\nECHO",
+              "wf-nav-item",
+              false
+            ],
+            [
+              15,
+              "\ud83d\udcca\nCREST",
+              "wf-nav-item",
+              false
+            ],
+            [
+              16,
+              "\ud83d\udd50\nSnapshot History",
+              "wf-nav-item",
+              false
+            ],
+            [
+              17,
+              "\u27f3\nNEST\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--active wf-nav-item--locked",
+              false
+            ],
+            [
+              18,
+              "\ud83d\udee1\nAssurance\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              19,
+              "\ud83d\udccb\nActivity\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              20,
+              "\ud83e\ude79\nIMP\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              21,
+              "\u2297\nBIND\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              22,
+              "\u2b21\nCAGE\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              23,
+              "\u2699\nSTRIKE\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              24,
+              "\u2295\nDELTA\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              25,
+              ">_\nREPL\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              26,
+              "\u2b22\nAEGIS\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              27,
+              "\ud83d\udce6\nVAULT\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              28,
+              "\ud83e\udd16\nDROID",
+              "wf-nav-item",
+              false
+            ],
+            [
+              29,
+              "\ud83c\udfaf\nRAKE\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              30,
+              "\ud83d\udcd0\nFORM\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              31,
+              "\ud83d\udd27\nFORGE",
+              "wf-nav-item",
+              false
+            ],
+            [
+              32,
+              "\ud83d\udce1\nTIDE\n\ud83d\udd12",
+              "wf-nav-item wf-nav-item--locked",
+              false
+            ],
+            [
+              33,
+              "\ud83e\udeb6\nQUILL",
+              "wf-nav-item",
+              false
+            ],
+            [
+              34,
+              "?\nHelp",
+              "wf-nav-item",
+              false
+            ],
+            [
+              35,
+              "\u2139\nAbout",
+              "wf-nav-item",
+              false
+            ],
+            [
+              36,
+              "Jump",
+              "wf-status-icon-btn",
+              false
+            ],
+            [
+              37,
+              "Shortcuts",
+              "wf-status-icon-btn",
+              false
+            ],
+            [
+              38,
+              "Export",
+              "wf-status-icon-btn",
+              false
+            ],
+            [
+              39,
+              "Sources",
+              "wf-status-icon-btn ",
+              false
+            ],
+            [
+              40,
+              "\u2696\nGYRE",
+              "wf-action-btn wf-action-btn--primary",
+              false
+            ],
+            [
+              41,
+              "\ud83e\ude79\nIMP\n\ud83d\udd12",
+              "wf-action-btn wf-action-btn--locked",
+              true
+            ],
+            [
+              42,
+              "\u2699\nSTRIKE\n\ud83d\udd12",
+              "wf-action-btn wf-action-btn--locked",
+              true
+            ],
+            [
+              43,
+              "\u2193\nExport",
+              "wf-action-btn",
+              false
+            ],
+            [
+              44,
+              "\u2197\nJump to\u2026",
+              "wf-action-btn",
+              false
+            ],
+            [
+              45,
+              "Switch to PRO",
+              "tier-card-switch-btn",
+              false
+            ],
+            [
+              46,
+              "Switch to ENTERPRISE",
+              "tier-card-switch-btn",
+              false
+            ],
+            [
+              47,
+              "Open palette",
+              "triage-rail-action-btn",
+              false
+            ],
+            [
+              48,
+              "Run next step",
+              "triage-rail-action-btn triage-rail-action-btn--primary",
+              false
+            ],
+            [
+              49,
+              "Open TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.",
+              "triage-rail-step",
+              false
+            ],
+            [
+              50,
+              "Inspect metadata\nExtract hashes, imports, sections, and file traits.",
+              "triage-rail-step",
+              false
+            ],
+            [
+              51,
+              "Load binary\nOpen the next sample and establish baseline context.",
+              "triage-rail-step",
+              false
+            ]
+          ]
+        }
+      ],
+      [
+        "Export",
+        {
+          "ok": true,
+          "text": "Export",
+          "cls": "wf-status-icon-btn"
+        }
+      ]
+    ],
+    "snap_before_nest": {
+      "timestamp": "2026-05-23T08:58:41.500Z",
+      "runtime": {
+        "hasTauriRuntime": true,
+        "browserMode": false
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+      "activeView": "verdict",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "real-backend",
+        "detail": "Panel actions are served by native backend commands."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "Pe",
+        "architecture": "x64",
+        "fileSize": 9384960,
+        "sha256": "36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1",
+        "entryPoint": 5377950384
+      },
+      "strings": {
+        "count": 1,
+        "sample": [
+          {
+            "offset": 77,
+            "text": "!This program cannot be run in DOS mode.$"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 256,
+        "arch": "x86-64",
+        "fallback": false,
+        "sample": [
+          {
+            "address": 1024,
+            "mnemonic": "push",
+            "operands": "r15"
+          },
+          {
+            "address": 1026,
+            "mnemonic": "push",
+            "operands": "r14"
+          },
+          {
+            "address": 1028,
+            "mnemonic": "push",
+            "operands": "r13"
+          },
+          {
+            "address": 1030,
+            "mnemonic": "push",
+            "operands": "r12"
+          },
+          {
+            "address": 1032,
+            "mnemonic": "push",
+            "operands": "rsi"
+          },
+          {
+            "address": 1033,
+            "mnemonic": "push",
+            "operands": "rdi"
+          },
+          {
+            "address": 1034,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 1035,
+            "mnemonic": "push",
+            "operands": "rbx"
+          },
+          {
+            "address": 1036,
+            "mnemonic": "mov",
+            "operands": "eax, 0x5e028"
+          },
+          {
+            "address": 1041,
+            "mnemonic": "call",
+            "operands": "0x8cf400"
+          },
+          {
+            "address": 1046,
+            "mnemonic": "sub",
+            "operands": "rsp, rax"
+          },
+          {
+            "address": 1049,
+            "mnemonic": "movaps",
+            "operands": "xmmword ptr [rsp + 0x5e010], xmm8"
+          }
+        ]
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 1,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "DISASSEMBLY_COMPLETE | Disassembled D:/Project/HexHawk/Challenges/crackme_shroud.exe from 0x0 (x86-64)"
+        },
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_COMPLETE | Scanned strings in D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0 length 256"
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_COMPLETE | Inspected file: D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_LOADED | Loaded available plugins."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_LOADED | Loaded available plugins."
+        }
+      ]
+    },
+    "body_nest": "HexHawk\nv1.1.0\ncrackme_shroud.exe\n36bfae11c18fb5fa\u2026\n\u21b5\n\ud83d\udfe2 FREE\nUpgrade \u2191\n\ud83d\udd11\n\ud83d\udcc4\ncrackme_shroud.exe\n\u21c4\nFILE\n\ud83d\udcc2\nLoad Binary\n\ud83d\uddc2\nMetadata\nANALYSIS\n\ud83d\udd0e\nInspect\n\u2b21\nHex Viewer\n\ud835\udd4a\nStrings\n\u229e\nDisassembly\n\u2b21\nCFG\n\u27e8/\u27e9\nVEIL\n\ud83e\udde0\nTALON\n\ud83d\udd12\nINTELLIGENCE\n\u2696\nGYRE\n\ud83d\udce1\nECHO\n\ud83d\udcca\nCREST\n\ud83d\udd50\nSnapshot History\n\u27f3\nNEST\n\ud83d\udd12\n\ud83d\udee1\nAssurance\n\ud83d\udd12\n\ud83d\udccb\nActivity\n\ud83d\udd12\nACTIONS\n\ud83e\ude79\nIMP\n\ud83d\udd12\n\u2297\nBIND\n\ud83d\udd12\n\u2b21\nCAGE\n\ud83d\udd12\n\u2699\nSTRIKE\n\ud83d\udd12\n\u2295\nDELTA\n\ud83d\udd12\n>_\nREPL\n\ud83d\udd12\n\u2b22\nAEGIS\n\ud83d\udd12\n\ud83d\udce6\nVAULT\n\ud83d\udd12\n\ud83e\udd16\nDROID\n\ud83c\udfaf\nRAKE\n\ud83d\udd12\n\ud83d\udcd0\nFORM\n\ud83d\udd12\n\ud83d\udd27\nFORGE\n\ud83d\udce1\nTIDE\n\ud83d\udd12\nPLUGINS\n\ud83e\udeb6\nQUILL\nHELP\n?\nHelp\n\u2139\nAbout\nDisassembly loaded from 0x0 (x86-64)\nJump\nShortcuts\nExport\nSources\n\u2b22 2 techniques\n\u2696\nGYRE\n\ud83e\ude79\nIMP\n\ud83d\udd12\n\u2699\nSTRIKE\n\ud83d\udd12\n\u2193\nExport\n\u2197\nJump to\u2026\nData Source: REAL BACKEND\nPanel actions are served by native backend commands.\n\ud83d\udd12\n\u25c6 ENTERPRISE\u00a0feature\nNEST\nNEST iterative convergence analysis \u2014 multi-pass dampening, contradiction detection, corpus training, MalwareBazaar integration\nYou are on the\u00a0\ud83d\udfe2 FREE\u00a0tier.\n\ud83d\udfe2 FREE\nCURRENT\nADOPTION LAYER\nMetadata, hex, strings, CFG\nBasic decompilation\nPlugin results\nFiles up to 50 MB\n5 console queries / session\n\ud83d\udd35 PRO\nCORE USERS\nEverything in Free\nFull TALON (SSA, data-flow, LLM)\nSTRIKE, ECHO, Debugger\nIMP patch intelligence\nGYRE explainability chain\nKITE graph, CREST report\nBookmarks, logs, history\nUnlimited console queries\nUnlimited file size\nSwitch to PRO\n\u25c6 ENTERPRISE\nUNLOCKS THIS\nSCALE LAYER\nEverything in Pro\nNEST iterative convergence analysis\nCorpus training & MalwareBazaar import\nAPI & automation (roadmap)\nBatch console queries (roadmap)\nTeam intelligence sharing (roadmap)\nSOC integration (roadmap)\nSwitch to ENTERPRISE\nTier switching is available locally for evaluation purposes.\nRecommended now\nOpen TALON\nTALON confidence is 51% and STRIKE risk is 34.\nOpen paletteRun next step\nNext best step\nFinalize report\nOpen the verdict, TALON, or STRIKE for final decision confidence.\nEvidence converged88%\nRanked actions\nOpen TALON / STRIKE\nUse heatmaps and confidence strips to find the next best step.\nInspect metadata\nExtract hashes, imports, sections, and file traits.\nLoad binary\nOpen the next sample and establish baseline context.",
+    "snap_after_nest": {
+      "timestamp": "2026-05-23T08:58:42.007Z",
+      "runtime": {
+        "hasTauriRuntime": true,
+        "browserMode": false
+      },
+      "binaryPath": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
+      "activeView": "nest",
+      "workflowState": "analyzed",
+      "panelFidelity": {
+        "source": "real-backend",
+        "detail": "Panel actions are served by native backend commands."
+      },
+      "qaSubsystemStatuses": [
+        {
+          "subsystem": "File Inspect",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Hex Preview",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "String Scan",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Disassembly",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "CFG Build",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Verdict Correlation",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Plugin Runtime",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Patch Queue",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Constraint Engine",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Sandbox",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Debugger",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "NEST Session",
+          "source": "real-backend",
+          "detail": "Native Tauri backend path active."
+        },
+        {
+          "subsystem": "Export JSON",
+          "source": "ui-only",
+          "detail": "Export is generated directly by browser download APIs."
+        }
+      ],
+      "metadata": {
+        "fileType": "Pe",
+        "architecture": "x64",
+        "fileSize": 9384960,
+        "sha256": "36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1",
+        "entryPoint": 5377950384
+      },
+      "strings": {
+        "count": 1,
+        "sample": [
+          {
+            "offset": 77,
+            "text": "!This program cannot be run in DOS mode.$"
+          }
+        ]
+      },
+      "disassembly": {
+        "count": 256,
+        "arch": "x86-64",
+        "fallback": false,
+        "sample": [
+          {
+            "address": 1024,
+            "mnemonic": "push",
+            "operands": "r15"
+          },
+          {
+            "address": 1026,
+            "mnemonic": "push",
+            "operands": "r14"
+          },
+          {
+            "address": 1028,
+            "mnemonic": "push",
+            "operands": "r13"
+          },
+          {
+            "address": 1030,
+            "mnemonic": "push",
+            "operands": "r12"
+          },
+          {
+            "address": 1032,
+            "mnemonic": "push",
+            "operands": "rsi"
+          },
+          {
+            "address": 1033,
+            "mnemonic": "push",
+            "operands": "rdi"
+          },
+          {
+            "address": 1034,
+            "mnemonic": "push",
+            "operands": "rbp"
+          },
+          {
+            "address": 1035,
+            "mnemonic": "push",
+            "operands": "rbx"
+          },
+          {
+            "address": 1036,
+            "mnemonic": "mov",
+            "operands": "eax, 0x5e028"
+          },
+          {
+            "address": 1041,
+            "mnemonic": "call",
+            "operands": "0x8cf400"
+          },
+          {
+            "address": 1046,
+            "mnemonic": "sub",
+            "operands": "rsp, rax"
+          },
+          {
+            "address": 1049,
+            "mnemonic": "movaps",
+            "operands": "xmmword ptr [rsp + 0x5e010], xmm8"
+          }
+        ]
+      },
+      "cfg": {
+        "nodes": 0,
+        "edges": 0
+      },
+      "plugins": {
+        "availableCount": 1,
+        "resultCount": 0,
+        "resultSample": []
+      },
+      "patches": {
+        "queuedCount": 0,
+        "sample": []
+      },
+      "nest": {
+        "enriched": null
+      },
+      "activity": [
+        {
+          "level": "info",
+          "message": "DISASSEMBLY_COMPLETE | Disassembled D:/Project/HexHawk/Challenges/crackme_shroud.exe from 0x0 (x86-64)"
+        },
+        {
+          "level": "info",
+          "message": "STRINGS_SCAN_COMPLETE | Scanned strings in D:/Project/HexHawk/Challenges/crackme_shroud.exe at 0x0 length 256"
+        },
+        {
+          "level": "info",
+          "message": "INSPECT_COMPLETE | Inspected file: D:/Project/HexHawk/Challenges/crackme_shroud.exe"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied workflow template: malware-triage"
+        },
+        {
+          "level": "info",
+          "message": "APP_EVENT | Applied startup profile: beginner"
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_LOADED | Loaded available plugins."
+        },
+        {
+          "level": "info",
+          "message": "PLUGIN_LIST_LOADED | Loaded available plugins."
+        }
+      ]
+    },
+    "download": {
+      "download": "hexhawk-analysis-crackme_shroud-1779526722517.json",
+      "href": "blob:http://localhost:5173/474c9744-6667-4664-8ca6-848e20af4a9f"
+    },
+    "export_text": "{\n  \"timestamp\": \"2026-05-23T08:58:42.516Z\",\n  \"binaryPath\": \"D:/Project/HexHawk/Challenges/crackme_shroud.exe\",\n  \"metadata\": {\n    \"file_type\": \"Pe\",\n    \"architecture\": \"x64\",\n    \"entry_point\": \"0x1408D02B0\",\n    \"file_size\": 9384960,\n    \"sha256\": \"36bfae11c18fb5fa214110d7f17cdc92026bce53e28e9a1965b4193e59c1a6a1\",\n    \"md5\": \"06c4b806c06a0fba57a378a58f6910f7\",\n    \"sections\": [\n      {\n        \"name\": \".text\",\n        \"entropy\": \"6.07\",\n        \"size\": 9325806\n      },\n      {\n        \"name\": \".rdata\",\n        \"entropy\": \"5.09\",\n        \"size\": 41396\n      },\n      {\n        \"name\": \".data\",\n        \"entropy\": \"2.01\",\n        \"size\": 3072\n      },\n      {\n        \"name\": \".pdata\",\n        \"entropy\": \"5.36\",\n        \"size\": 4932\n      },\n      {\n        \"name\": \".gxfg\",\n        \"entropy\": \"5.15\",\n        \"size\": 5536\n      },\n      {\n        \"name\": \"_RDATA\",\n        \"entropy\": \"4.30\",\n        \"size\": 500\n      },\n      {\n        \"name\": \".reloc\",\n        \"entropy\": \"5.43\",\n        \"size\": 1644\n      }\n    ],\n    \"imports\": [\n      \"KERNEL32.dll!CloseHandle\",\n      \"KERNEL32.dll!CompareStringW\",\n      \"KERNEL32.dll!CreateFileW\",\n      \"KERNEL32.dll!DeleteCriticalSection\",\n      \"KERNEL32.dll!EncodePointer\",\n      \"KERNEL32.dll!EnterCriticalSection\",\n      \"KERNEL32.dll!ExitProcess\",\n      \"KERNEL32.dll!FindClose\",\n      \"KERNEL32.dll!FindFirstFileExW\",\n      \"KERNEL32.dll!FindNextFileW\",\n      \"KERNEL32.dll!FlsAlloc\",\n      \"KERNEL32.dll!FlsFree\",\n      \"KERNEL32.dll!FlsGetValue\",\n      \"KERNEL32.dll!FlsSetValue\",\n      \"KERNEL32.dll!FlushFileBuffers\",\n      \"KERNEL32.dll!FreeEnvironmentStringsW\",\n      \"KERNEL32.dll!FreeLibrary\",\n      \"KERNEL32.dll!GetACP\",\n      \"KERNEL32.dll!GetCPInfo\",\n      \"KERNEL32.dll!GetCommandLineA\",\n      \"KERNEL32.dll!GetCommandLineW\",\n      \"KERNEL32.dll!GetConsoleMode\",\n      \"KERNEL32.dll!GetConsoleOutputCP\",\n      \"KERNEL32.dll!GetCurrentProcess\",\n      \"KERNEL32.dll!GetCurrentProcessId\",\n      \"KERNEL32.dll!GetCurrentThreadId\",\n      \"KERNEL32.dll!GetEnvironmentStringsW\",\n      \"KERNEL32.dll!GetFileSizeEx\",\n      \"KERNEL32.dll!GetFileType\",\n      \"KERNEL32.dll!GetLastError\",\n      \"KERNEL32.dll!GetModuleFileNameW\",\n      \"KERNEL32.dll!GetModuleHandleExW\",\n      \"KERNEL32.dll!GetModuleHandleW\",\n      \"KERNEL32.dll!GetOEMCP\",\n      \"KERNEL32.dll!GetProcAddress\",\n      \"KERNEL32.dll!GetProcessHeap\",\n      \"KERNEL32.dll!GetStartupInfoW\",\n      \"KERNEL32.dll!GetStdHandle\",\n      \"KERNEL32.dll!GetStringTypeW\",\n      \"KERNEL32.dll!GetSystemTimeAsFileTime\",\n      \"KERNEL32.dll!HeapAlloc\",\n      \"KERNEL32.dll!HeapFree\",\n      \"KERNEL32.dll!HeapReAlloc\",\n      \"KERNEL32.dll!HeapSize\",\n      \"KERNEL32.dll!InitializeCriticalSectionAndSpinCount\",\n      \"KERNEL32.dll!InitializeSListHead\",\n      \"KERNEL32.dll!IsDebuggerPresent\",\n      \"KERNEL32.dll!IsProcessorFeaturePresent\",\n      \"KERNEL32.dll!IsValidCodePage\",\n      \"KERNEL32.dll!LCMapStringW\",\n      \"KERNEL32.dll!LeaveCriticalSection\",\n      \"KERNEL32.dll!LoadLibraryExW\",\n      \"KERNEL32.dll!MultiByteToWideChar\",\n      \"KERNEL32.dll!QueryPerformanceCounter\",\n      \"KERNEL32.dll!RaiseException\",\n      \"KERNEL32.dll!RtlCaptureContext\",\n      \"KERNEL32.dll!RtlLookupFunctionEntry\",\n      \"KERNEL32.dll!RtlPcToFileHeader\",\n      \"KERNEL32.dll!RtlUnwindEx\",\n      \"KERNEL32.dll!RtlVirtualUnwind\",\n      \"KERNEL32.dll!SetEnvironmentVariableW\",\n      \"KERNEL32.dll!SetFilePointerEx\",\n      \"KERNEL32.dll!SetLastError\",\n      \"KERNEL32.dll!SetStdHandle\",\n      \"KERNEL32.dll!SetUnhandledExceptionFilter\",\n      \"KERNEL32.dll!TerminateProcess\",\n      \"KERNEL32.dll!TlsAlloc\",\n      \"KERNEL32.dll!TlsFree\",\n      \"KERNEL32.dll!TlsGetValue\",\n      \"KERNEL32.dll!TlsSetValue\",\n      \"KERNEL32.dll!UnhandledExceptionFilter\",\n      \"KERNEL32.dll!WideCharToMultiByte\",\n      \"KERNEL32.dll!WriteConsoleW\",\n      \"KERNEL32.dll!WriteFile\"\n    ],\n    \"exports\": []\n  },\n  \"verdict\": {\n    \"classification\": \"unknown\",\n    \"threatScore\": 20,\n    \"confidence\": 51,\n    \"summary\": \"Classified as Unknown \u2014 threat score 20/100 (51% confidence). Key evidence: 2 critical-severity disassembly pattern(s); Dynamic API resolution (GetProcAddress) \u2014 hides true capabilities; 2 file-system API(s): CreateFileW, WriteFile.\",\n    \"signals\": [\n      {\n        \"source\": \"disassembly\",\n        \"finding\": \"2 critical-severity disassembly pattern(s)\",\n        \"weight\": 9\n      },\n      {\n        \"source\": \"imports\",\n        \"finding\": \"Dynamic API resolution (GetProcAddress) \u2014 hides true capabilities\",\n        \"weight\": 5\n      },\n      {\n        \"source\": \"imports\",\n        \"finding\": \"2 file-system API(s): CreateFileW, WriteFile\",\n        \"weight\": 3\n      },\n      {\n        \"source\": \"disassembly\",\n        \"finding\": \"7 tight loops \u2014 potential encryption or data transformation\",\n        \"weight\": 3\n      },\n      {\n        \"source\": \"imports\",\n        \"finding\": \"1 anti-debugging API(s): IsDebuggerPresent\",\n        \"weight\": 2\n      }\n    ],\n    \"negativeSignals\": [\n      {\n        \"finding\": \"7 sections with normal entropy \u2014 standard compiled binary\",\n        \"reduction\": 8\n      }\n    ],\n    \"amplifiers\": [],\n    \"dismissals\": []\n  },\n  \"strings\": [\n    {\n      \"offset\": \"0x4D\",\n      \"text\": \"!This program cannot be run in DOS mode.$\"\n    }\n  ],\n  \"disassembly\": [\n    {\n      \"address\": \"0x400\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"r15\"\n    },\n    {\n      \"address\": \"0x402\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"r14\"\n    },\n    {\n      \"address\": \"0x404\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"r13\"\n    },\n    {\n      \"address\": \"0x406\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"r12\"\n    },\n    {\n      \"address\": \"0x408\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rsi\"\n    },\n    {\n      \"address\": \"0x409\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rdi\"\n    },\n    {\n      \"address\": \"0x40A\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rbp\"\n    },\n    {\n      \"address\": \"0x40B\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rbx\"\n    },\n    {\n      \"address\": \"0x40C\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, 0x5e028\"\n    },\n    {\n      \"address\": \"0x411\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x8cf400\"\n    },\n    {\n      \"address\": \"0x416\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"rsp, rax\"\n    },\n    {\n      \"address\": \"0x419\",\n      \"mnemonic\": \"movaps\",\n      \"operands\": \"xmmword ptr [rsp + 0x5e010], xmm8\"\n    },\n    {\n      \"address\": \"0x422\",\n      \"mnemonic\": \"movaps\",\n      \"operands\": \"xmmword ptr [rsp + 0x5e000], xmm7\"\n    },\n    {\n      \"address\": \"0x42A\",\n      \"mnemonic\": \"movaps\",\n      \"operands\": \"xmmword ptr [rsp + 0x5dff0], xmm6\"\n    },\n    {\n      \"address\": \"0x432\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"qword ptr [rsp + 0x5dfd0], rdx\"\n    },\n    {\n      \"address\": \"0x43A\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5dfd8], ecx\"\n    },\n    {\n      \"address\": \"0x441\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x453\"\n    },\n    {\n      \"address\": \"0x443\",\n      \"mnemonic\": \"nop\",\n      \"operands\": \"word ptr [rax + rax + 0x174c029]\"\n    },\n    {\n      \"address\": \"0x452\",\n      \"mnemonic\": \"int3\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x453\",\n      \"mnemonic\": \"and\",\n      \"operands\": \"eax, 0\"\n    },\n    {\n      \"address\": \"0x456\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x45a\"\n    },\n    {\n      \"address\": \"0x458\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x460\"\n    },\n    {\n      \"address\": \"0x45A\",\n      \"mnemonic\": \"lea\",\n      \"operands\": \"rax, [rip + 0x411eb1df]\"\n    },\n    {\n      \"address\": \"0x461\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, ecx\"\n    },\n    {\n      \"address\": \"0x463\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"r8d, 0x34860c1\"\n    },\n    {\n      \"address\": \"0x46A\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, ecx\"\n    },\n    {\n      \"address\": \"0x46C\",\n      \"mnemonic\": \"or\",\n      \"operands\": \"eax, r8d\"\n    },\n    {\n      \"address\": \"0x46F\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, ecx\"\n    },\n    {\n      \"address\": \"0x471\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r8d\"\n    },\n    {\n      \"address\": \"0x474\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"edx, eax\"\n    },\n    {\n      \"address\": \"0x476\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5dfdc], edx\"\n    },\n    {\n      \"address\": \"0x47D\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, ecx\"\n    },\n    {\n      \"address\": \"0x47F\",\n      \"mnemonic\": \"and\",\n      \"operands\": \"eax, r8d\"\n    },\n    {\n      \"address\": \"0x482\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r10d, ecx\"\n    },\n    {\n      \"address\": \"0x485\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"r10d, eax\"\n    },\n    {\n      \"address\": \"0x488\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5dfe0], r10d\"\n    },\n    {\n      \"address\": \"0x490\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, ecx\"\n    },\n    {\n      \"address\": \"0x492\",\n      \"mnemonic\": \"and\",\n      \"operands\": \"eax, r8d\"\n    },\n    {\n      \"address\": \"0x495\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"r8d, eax\"\n    },\n    {\n      \"address\": \"0x498\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5dfe4], r8d\"\n    },\n    {\n      \"address\": \"0x4A0\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, r8d\"\n    },\n    {\n      \"address\": \"0x4A3\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r10d\"\n    },\n    {\n      \"address\": \"0x4A6\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, edx\"\n    },\n    {\n      \"address\": \"0x4A8\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, 1\"\n    },\n    {\n      \"address\": \"0x4AB\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"r9d, r9d\"\n    },\n    {\n      \"address\": \"0x4AE\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"r9d, eax\"\n    },\n    {\n      \"address\": \"0x4B1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5dfe8], r9d\"\n    },\n    {\n      \"address\": \"0x4B9\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, r9d\"\n    },\n    {\n      \"address\": \"0x4BC\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r10d\"\n    },\n    {\n      \"address\": \"0x4BF\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r8d\"\n    },\n    {\n      \"address\": \"0x4C2\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"eax, eax, 0x13\"\n    },\n    {\n      \"address\": \"0x4C5\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r11d, r10d\"\n    },\n    {\n      \"address\": \"0x4C8\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, edx\"\n    },\n    {\n      \"address\": \"0x4CB\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r11d, r11d, 0x2a\"\n    },\n    {\n      \"address\": \"0x4CF\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r11d\"\n    },\n    {\n      \"address\": \"0x4D2\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r11d, r10d\"\n    },\n    {\n      \"address\": \"0x4D5\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, r8d\"\n    },\n    {\n      \"address\": \"0x4D8\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r11d, r11d, 0xffffffed\"\n    },\n    {\n      \"address\": \"0x4DF\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r11d\"\n    },\n    {\n      \"address\": \"0x4E2\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r11d, edx\"\n    },\n    {\n      \"address\": \"0x4E5\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, r9d\"\n    },\n    {\n      \"address\": \"0x4E8\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, r10d\"\n    },\n    {\n      \"address\": \"0x4EB\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r11d, r11d, 0xffffffc0\"\n    },\n    {\n      \"address\": \"0x4F2\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r11d\"\n    },\n    {\n      \"address\": \"0x4F5\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r11d, r10d\"\n    },\n    {\n      \"address\": \"0x4F8\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, r8d\"\n    },\n    {\n      \"address\": \"0x4FB\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, edx\"\n    },\n    {\n      \"address\": \"0x4FE\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r11d, r11d, 0x16\"\n    },\n    {\n      \"address\": \"0x502\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, eax\"\n    },\n    {\n      \"address\": \"0x505\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, r9d\"\n    },\n    {\n      \"address\": \"0x508\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r8d\"\n    },\n    {\n      \"address\": \"0x50B\",\n      \"mnemonic\": \"shl\",\n      \"operands\": \"eax, 2\"\n    },\n    {\n      \"address\": \"0x50E\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r11d\"\n    },\n    {\n      \"address\": \"0x511\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r11d, r9d\"\n    },\n    {\n      \"address\": \"0x514\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, edx\"\n    },\n    {\n      \"address\": \"0x517\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r11d, r11d, 0x1a\"\n    },\n    {\n      \"address\": \"0x51B\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, eax\"\n    },\n    {\n      \"address\": \"0x51E\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"eax, r9d, 0x29\"\n    },\n    {\n      \"address\": \"0x522\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r11d, eax\"\n    },\n    {\n      \"address\": \"0x525\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, r9d\"\n    },\n    {\n      \"address\": \"0x528\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r8d\"\n    },\n    {\n      \"address\": \"0x52B\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, edx\"\n    },\n    {\n      \"address\": \"0x52D\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"eax, eax, 0xffffffe6\"\n    },\n    {\n      \"address\": \"0x533\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, r11d\"\n    },\n    {\n      \"address\": \"0x536\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r10d\"\n    },\n    {\n      \"address\": \"0x539\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r9d\"\n    },\n    {\n      \"address\": \"0x53C\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r8d\"\n    },\n    {\n      \"address\": \"0x53F\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"edx, edx, 0xfffffffe\"\n    },\n    {\n      \"address\": \"0x545\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"eax, edx\"\n    },\n    {\n      \"address\": \"0x547\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5dfec], eax\"\n    },\n    {\n      \"address\": \"0x54E\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x561\"\n    },\n    {\n      \"address\": \"0x550\",\n      \"mnemonic\": \"bndmov\",\n      \"operands\": \"xmmword ptr [rax + rax - 0xf7cfb15], bnd0\"\n    },\n    {\n      \"address\": \"0x55F\",\n      \"mnemonic\": \"push\",\n      \"operands\": \"rsp\"\n    },\n    {\n      \"address\": \"0x560\",\n      \"mnemonic\": \"hlt\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x561\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"eax, dword ptr [rsp + 0x5dfec]\"\n    },\n    {\n      \"address\": \"0x568\",\n      \"mnemonic\": \"cmp\",\n      \"operands\": \"ecx, eax\"\n    },\n    {\n      \"address\": \"0x56A\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x36dc2\"\n    },\n    {\n      \"address\": \"0x570\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r13d, dword ptr [rsp + 0x5dfd8]\"\n    },\n    {\n      \"address\": \"0x578\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x58f\"\n    },\n    {\n      \"address\": \"0x57A\",\n      \"mnemonic\": \"bndmov\",\n      \"operands\": \"xmmword ptr [rax + rax - 0x3e7cf715], bnd0\"\n    },\n    {\n      \"address\": \"0x589\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"r9, 0x68\"\n    },\n    {\n      \"address\": \"0x58D\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x58d\"\n    },\n    {\n      \"address\": \"0x58F\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"esi, esi\"\n    },\n    {\n      \"address\": \"0x591\",\n      \"mnemonic\": \"jne\",\n      \"operands\": \"0x595\"\n    },\n    {\n      \"address\": \"0x593\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x597\"\n    },\n    {\n      \"address\": \"0x595\",\n      \"mnemonic\": \"call\",\n      \"operands\": \"0x272fe25\"\n    },\n    {\n      \"address\": \"0x59A\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x5a0\"\n    },\n    {\n      \"address\": \"0x59C\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0xffffffffb974483b\"\n    },\n    {\n      \"address\": \"0x5A1\",\n      \"mnemonic\": \"retfq\",\n      \"operands\": \"\"\n    },\n    {\n      \"address\": \"0x5A3\",\n      \"mnemonic\": \"ja\",\n      \"operands\": \"0x5bf\"\n    },\n    {\n      \"address\": \"0x5A5\",\n      \"mnemonic\": \"test\",\n      \"operands\": \"ecx, ecx\"\n    },\n    {\n      \"address\": \"0x5A7\",\n      \"mnemonic\": \"je\",\n      \"operands\": \"0x5ab\"\n    },\n    {\n      \"address\": \"0x5A9\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0x5b1\"\n    },\n    {\n      \"address\": \"0x5AB\",\n      \"mnemonic\": \"movabs\",\n      \"operands\": \"rax, 0x83e8894440f48f3e\"\n    },\n    {\n      \"address\": \"0x5B5\",\n      \"mnemonic\": \"enter\",\n      \"operands\": \"0x44ff, -0x77\"\n    },\n    {\n      \"address\": \"0x5B9\",\n      \"mnemonic\": \"jmp\",\n      \"operands\": \"0xffffffff89ffe741\"\n    },\n    {\n      \"address\": \"0x5BE\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"word ptr [rax + rcx*2], fs\"\n    },\n    {\n      \"address\": \"0x5C1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dh, 5\"\n    },\n    {\n      \"address\": \"0x5C3\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"byte ptr [rcx + rcx*4 - 0x12], al\"\n    },\n    {\n      \"address\": \"0x5C7\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"esi, 0xffffffff\"\n    },\n    {\n      \"address\": \"0x5CA\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5b5ac], esi\"\n    },\n    {\n      \"address\": \"0x5D1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ecx, esi\"\n    },\n    {\n      \"address\": \"0x5D3\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"ecx, r13d\"\n    },\n    {\n      \"address\": \"0x5D6\",\n      \"mnemonic\": \"and\",\n      \"operands\": \"ecx, esi\"\n    },\n    {\n      \"address\": \"0x5D8\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r9d, esi\"\n    },\n    {\n      \"address\": \"0x5DB\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"r9d, ecx\"\n    },\n    {\n      \"address\": \"0x5DE\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5b580], r9d\"\n    },\n    {\n      \"address\": \"0x5E6\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ecx, esi\"\n    },\n    {\n      \"address\": \"0x5E8\",\n      \"mnemonic\": \"and\",\n      \"operands\": \"ecx, r13d\"\n    },\n    {\n      \"address\": \"0x5EB\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r10d, esi\"\n    },\n    {\n      \"address\": \"0x5EE\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"r10d, ecx\"\n    },\n    {\n      \"address\": \"0x5F1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5b584], r10d\"\n    },\n    {\n      \"address\": \"0x5F9\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r11d, r13d\"\n    },\n    {\n      \"address\": \"0x5FC\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"r11d, r9d\"\n    },\n    {\n      \"address\": \"0x5FF\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5b588], r11d\"\n    },\n    {\n      \"address\": \"0x607\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"ecx, ecx\"\n    },\n    {\n      \"address\": \"0x609\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"ecx, r9d\"\n    },\n    {\n      \"address\": \"0x60C\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"ecx, r10d\"\n    },\n    {\n      \"address\": \"0x60F\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"ecx, 1\"\n    },\n    {\n      \"address\": \"0x612\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"ecx, r11d\"\n    },\n    {\n      \"address\": \"0x615\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, r10d\"\n    },\n    {\n      \"address\": \"0x618\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, ecx\"\n    },\n    {\n      \"address\": \"0x61A\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r8d, edx, 0x54\"\n    },\n    {\n      \"address\": \"0x61E\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, r10d\"\n    },\n    {\n      \"address\": \"0x621\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r11d\"\n    },\n    {\n      \"address\": \"0x624\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"edx, edx, 0xffffffa9\"\n    },\n    {\n      \"address\": \"0x62A\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r8d\"\n    },\n    {\n      \"address\": \"0x62D\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r8d, r9d\"\n    },\n    {\n      \"address\": \"0x630\",\n      \"mnemonic\": \"shl\",\n      \"operands\": \"r8d, 0\"\n    },\n    {\n      \"address\": \"0x634\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edi, esi\"\n    },\n    {\n      \"address\": \"0x636\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edi, 0xe3e0\"\n    },\n    {\n      \"address\": \"0x63C\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"edi, edi\"\n    },\n    {\n      \"address\": \"0x63E\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r8d, edi\"\n    },\n    {\n      \"address\": \"0x641\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r8d, edx\"\n    },\n    {\n      \"address\": \"0x644\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, ecx\"\n    },\n    {\n      \"address\": \"0x646\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r11d\"\n    },\n    {\n      \"address\": \"0x649\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r10d\"\n    },\n    {\n      \"address\": \"0x64C\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"edx, edx, 0x57\"\n    },\n    {\n      \"address\": \"0x64F\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edi, r13d\"\n    },\n    {\n      \"address\": \"0x652\",\n      \"mnemonic\": \"or\",\n      \"operands\": \"edi, 0x9eb7e3bc\"\n    },\n    {\n      \"address\": \"0x658\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"edi, edi\"\n    },\n    {\n      \"address\": \"0x65A\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, edi\"\n    },\n    {\n      \"address\": \"0x65C\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r8d, edx\"\n    },\n    {\n      \"address\": \"0x65F\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, r13d\"\n    },\n    {\n      \"address\": \"0x662\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"edx, 0x9b8da004\"\n    },\n    {\n      \"address\": \"0x668\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edi, r13d\"\n    },\n    {\n      \"address\": \"0x66B\",\n      \"mnemonic\": \"or\",\n      \"operands\": \"edi, edx\"\n    },\n    {\n      \"address\": \"0x66D\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ebx, r13d\"\n    },\n    {\n      \"address\": \"0x670\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebx, edx\"\n    },\n    {\n      \"address\": \"0x672\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"ebx, edi\"\n    },\n    {\n      \"address\": \"0x674\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5b58c], ebx\"\n    },\n    {\n      \"address\": \"0x67B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r14d, r13d\"\n    },\n    {\n      \"address\": \"0x67E\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"r14d, ebx\"\n    },\n    {\n      \"address\": \"0x681\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5b590], r14d\"\n    },\n    {\n      \"address\": \"0x689\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"edx, ebx\"\n    },\n    {\n      \"address\": \"0x68B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"dword ptr [rsp + 0x5b594], edx\"\n    },\n    {\n      \"address\": \"0x692\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ebp, edx\"\n    },\n    {\n      \"address\": \"0x694\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r14d\"\n    },\n    {\n      \"address\": \"0x697\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, ebx\"\n    },\n    {\n      \"address\": \"0x699\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, 1\"\n    },\n    {\n      \"address\": \"0x69C\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"edi, edi\"\n    },\n    {\n      \"address\": \"0x69E\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"edi, ebp\"\n    },\n    {\n      \"address\": \"0x6A0\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r15d, ebx, 0x37\"\n    },\n    {\n      \"address\": \"0x6A4\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ebp, edx\"\n    },\n    {\n      \"address\": \"0x6A6\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, ebx\"\n    },\n    {\n      \"address\": \"0x6A8\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"ebp, ebp, 0xffffffe7\"\n    },\n    {\n      \"address\": \"0x6AE\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r15d\"\n    },\n    {\n      \"address\": \"0x6B1\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r15d, edi\"\n    },\n    {\n      \"address\": \"0x6B4\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r15d, r14d\"\n    },\n    {\n      \"address\": \"0x6B7\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r15d, r15d, 0x1e\"\n    },\n    {\n      \"address\": \"0x6BB\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r12d, r13d\"\n    },\n    {\n      \"address\": \"0x6BE\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r12d, 0x61ee6482\"\n    },\n    {\n      \"address\": \"0x6C5\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"r12d, r12d\"\n    },\n    {\n      \"address\": \"0x6C8\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r15d, r12d\"\n    },\n    {\n      \"address\": \"0x6CB\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r15d, ebp\"\n    },\n    {\n      \"address\": \"0x6CE\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ebp, edx\"\n    },\n    {\n      \"address\": \"0x6D0\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r14d\"\n    },\n    {\n      \"address\": \"0x6D3\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"ebp, ebp, 0x1c\"\n    },\n    {\n      \"address\": \"0x6D6\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r15d\"\n    },\n    {\n      \"address\": \"0x6D9\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r15d, edi, 0x45\"\n    },\n    {\n      \"address\": \"0x6DD\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r15d, ebp\"\n    },\n    {\n      \"address\": \"0x6E0\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ebp, ebx\"\n    },\n    {\n      \"address\": \"0x6E2\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r14d\"\n    },\n    {\n      \"address\": \"0x6E5\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, edi\"\n    },\n    {\n      \"address\": \"0x6E7\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"ebp, ebp, 3\"\n    },\n    {\n      \"address\": \"0x6EA\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r15d, ebp\"\n    },\n    {\n      \"address\": \"0x6ED\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ebp, r14d\"\n    },\n    {\n      \"address\": \"0x6F0\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, ebx\"\n    },\n    {\n      \"address\": \"0x6F2\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, edx\"\n    },\n    {\n      \"address\": \"0x6F4\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"ebp, ebp, 0xe\"\n    },\n    {\n      \"address\": \"0x6F7\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r15d, ebp\"\n    },\n    {\n      \"address\": \"0x6FA\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ebp, ebx\"\n    },\n    {\n      \"address\": \"0x6FC\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r14d\"\n    },\n    {\n      \"address\": \"0x6FF\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, edx\"\n    },\n    {\n      \"address\": \"0x701\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, edi\"\n    },\n    {\n      \"address\": \"0x703\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"ebp, ebp, 0x46\"\n    },\n    {\n      \"address\": \"0x706\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r12d, r13d\"\n    },\n    {\n      \"address\": \"0x709\",\n      \"mnemonic\": \"and\",\n      \"operands\": \"r12d, 0xff53a580\"\n    },\n    {\n      \"address\": \"0x710\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"r12d, r12d\"\n    },\n    {\n      \"address\": \"0x713\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r12d\"\n    },\n    {\n      \"address\": \"0x716\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r15d\"\n    },\n    {\n      \"address\": \"0x719\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r15d, edi\"\n    },\n    {\n      \"address\": \"0x71C\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r15d, r14d\"\n    },\n    {\n      \"address\": \"0x71F\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r15d, edx\"\n    },\n    {\n      \"address\": \"0x722\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r15d, r15d, 0xffffffc6\"\n    },\n    {\n      \"address\": \"0x729\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r15d\"\n    },\n    {\n      \"address\": \"0x72C\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"edx, edx, 0x37\"\n    },\n    {\n      \"address\": \"0x72F\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, ebp\"\n    },\n    {\n      \"address\": \"0x731\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"ebp, ebx\"\n    },\n    {\n      \"address\": \"0x733\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"ebp, r14d\"\n    },\n    {\n      \"address\": \"0x736\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"ebp, ebp, 0xfffffffd\"\n    },\n    {\n      \"address\": \"0x73C\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, ebp\"\n    },\n    {\n      \"address\": \"0x73E\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edi, ebx\"\n    },\n    {\n      \"address\": \"0x740\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"edi, edi, 0xffffffe2\"\n    },\n    {\n      \"address\": \"0x746\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, edi\"\n    },\n    {\n      \"address\": \"0x748\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"edx, r10d\"\n    },\n    {\n      \"address\": \"0x74C\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"esi, 0x32c6bd19\"\n    },\n    {\n      \"address\": \"0x752\",\n      \"mnemonic\": \"sub\",\n      \"operands\": \"esi, esi\"\n    },\n    {\n      \"address\": \"0x754\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, esi\"\n    },\n    {\n      \"address\": \"0x756\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r8d\"\n    },\n    {\n      \"address\": \"0x759\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r8d, r9d\"\n    },\n    {\n      \"address\": \"0x75C\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r8d, r11d\"\n    },\n    {\n      \"address\": \"0x75F\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r8d, ecx\"\n    },\n    {\n      \"address\": \"0x762\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r8d, r8d, 0x33\"\n    },\n    {\n      \"address\": \"0x766\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r8d\"\n    },\n    {\n      \"address\": \"0x769\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"r8d, ecx, 0xfffffee3\"\n    },\n    {\n      \"address\": \"0x770\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r8d\"\n    },\n    {\n      \"address\": \"0x773\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r8d, r10d\"\n    },\n    {\n      \"address\": \"0x776\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r8d, r9d\"\n    },\n    {\n      \"address\": \"0x779\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"r8d, ecx\"\n    },\n    {\n      \"address\": \"0x77C\",\n      \"mnemonic\": \"imul\",\n      \"operands\": \"esi, r8d, 0x94\"\n    },\n    {\n      \"address\": \"0x783\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"esi, edx\"\n    },\n    {\n      \"address\": \"0x785\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"edx, r9d\"\n    },\n    {\n      \"address\": \"0x788\",\n      \"mnemonic\": \"add\",\n      \"operands\": \"edx, r11d\"\n    },\n    {\n      \"address\": \"0x78B\",\n      \"mnemonic\": \"mov\",\n      \"operands\": \"r8d, r13d\"\n    },\n    {\n      \"address\": \"0x78E\",\n      \"mnemonic\": \"xor\",\n      \"operands\": \"r8d, 0x6dd17410\"\n    }\n  ],\n  \"bookmarks\": [],\n  \"annotations\": []\n}"
+  }
+]

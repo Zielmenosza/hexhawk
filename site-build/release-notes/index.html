@@ -13,41 +13,28 @@
 <body>
 <header class="topbar">
   <div class="container nav">
-    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
-    <nav class="links">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>    <nav class="links">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
-      <a data-path="/hexhawk-lab" href="/hexhawk-lab">HexHawk Lab</a>
+      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
+      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
+      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
+      <a data-path="/verify-file" href="/verify-file">Verify File</a>
       <a data-path="/release-notes" href="/release-notes">Release Notes</a>
     </nav>
   </div>
 </header>
 <main class="container">
-  <section class="hero">
-    <span class="kicker">MALWARE RESEARCH PLATFORM</span>
-    <h1>Track every HexHawk release with confidence.</h1>
-    <p class="lead">This changelog focuses on analyst impact, quality improvements, and compatibility notes.</p>
-    <div class="cta">
-      <a class="btn primary" href="/downloads">Get HexHawk</a>
-      <a class="btn ghost" href="/docs">Read Docs</a>
-    </div>
-  </section>
-  <section class="section"><h2>Recent Changes</h2><div class="grid">
-<article class="card"><h3>v1.0.0</h3><p>Initial public launch with TALON, STRIKE, ECHO, and NEST evidence contracts.</p></article>
-<article class="card"><h3>v1.0.1</h3><p>Improved challenge ingestion reliability and route consistency across deployments.</p></article>
-<article class="card"><h3>v1.1.0 (planned)</h3><p>Expanded runtime behavior graphing and threat family clustering improvements.</p></article>
-</div></section>
+<section class="hero"><span class="kicker">RELEASE NOTES</span><h1>2026-06-01 release-hardening, parity, and decompiler quality update.</h1><p class="lead">This pass combines installer hardening work with TALON/decompiler reliability upgrades targeted at C-like output quality.</p></section>
+<section class="section"><h2>What changed</h2><ul><li>Enabled Tauri updater signing path in config (`createUpdaterArtifacts: true`, updater pubkey configured, endpoint wired).</li><li>Added release-hardening automation to sign exe/MSI/NSIS and emit signer/timestamp/hash evidence JSON.</li><li>Ran packaged native GUI acceptance probe on MSI-extracted artifact (runtime proof + Open/Inspect/Analysis/NEST/Report export).</li><li>Added report-export regression gate for authority envelope fields (`source_engine`, `gyre_is_sole_verdict_source`).</li><li>Aligned disassembly/CFG address handling to reduce non-overlapping function windows.</li><li>Added instruction-derived fallback block partitioning when CFG coverage is missing or non-overlapping.</li><li>Improved call argument recovery (larger lookback + cross-block recovery pass) and first-pass semantic variable naming heuristics.</li><li>Added new decompiler regressions, including guarded real-binary tests against workspace challenge executables.</li><li>Regenerated MSI and NSIS bundles from the updated source tree in this pass.</li></ul></section><section class="section"><h2>Known caveats</h2><ul><li>Signatures currently use an internal self-signed development certificate and are not publicly trusted.</li><li>Updater endpoint metadata validation currently fails because the configured release host did not resolve in this pass.</li><li>Tauri updater signing key (`TAURI_SIGNING_PRIVATE_KEY`) is not configured in this environment, so build exits non-zero after bundle generation.</li><li>Current internal packaging pass used a no-op sign-command fallback to unblock local MSI/NSIS rebundling.</li><li>Rerun packaged GUI parity on organization-trusted signed artifacts before external release.</li></ul></section>
 </main>
 <footer class="footer">
-  <div class="container">HexHawk | Built for reverse engineers and threat hunters | <span class="mono">v1.0</span></div>
+  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate Â· 2026-06-01</span></div>
 </footer>
 <script src="/assets/app.js"></script>
 </body>
 </html>
-
-
-
 

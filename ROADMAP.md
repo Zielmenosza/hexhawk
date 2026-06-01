@@ -1,107 +1,89 @@
 # HexHawk Roadmap
 
-This roadmap reflects what HexHawk is now and what is next from the current shipped baseline.
+Last updated: 2026-06-01
 
-## Baseline Completed
+This roadmap reflects the current HexHawk source and installer state after the Windows installer rebuild.
 
-The following capability blocks are implemented and active:
+## Current Proven Baseline
 
-- Decompiler loop reconstruction improvements (while/for recovery)
-- Disassembly annotation engine with API and crypto heuristics
-- STRIKE timeline intelligence (call stack, hot blocks, execution loop detection)
-- MITRE ATT&CK mapping and IOC extraction for evidence enrichment
-- Frontend test baseline stabilized at 670 passing tests
-- STRIKE benchmark gate with deterministic challenge-derived fixtures, markdown artifacts, and committed baseline drift checks
-- Phase 2 report workflow: saved snapshot checkpoints with analyst notes, diff-focused Markdown/JSON export, and cross-file snapshot history panel
+HexHawk is an internal-tester Windows build candidate with a working native Tauri/Rust packaging path.
 
-## Current Priorities
+Validated in the latest pass:
 
-### P0 - Report and Evidence Productization
+- Report export authority regression test: passing (`IntelligenceReport` JSON envelope fields).
+- Windows release executable, MSI, and NSIS artifacts: Authenticode-signed with an internal self-signed development certificate.
+- Timestamp countersignature: present on exe/MSI/NSIS artifacts.
+- Native packaged GUI parity probe: passing (`hasTauriRuntime: true`, `browserMode: false`, workflow through report export).
+- Consolidated evidence file: `docs/release-evidence/windows_release_hardening_2026-06-01_204639.json`.
 
-Goal: turn the evidence pipeline into consistently consumable outputs for analysts and teams.
+Current limitations:
 
-- ✅ Snapshot checkpoint workflow with analyst notes, diff exports, and cross-file history browser
-- Expand CREST templates for incident and malware triage formats
-- Add configurable evidence confidence thresholds in export profiles
-- Standardize ATT&CK tactic/technique sections across all report modes
-- Add IOC de-duplication and suppression lists for cleaner exports
+- Internal signing trust only: Authenticode status is `UnknownError` because the signer chain terminates at an untrusted root.
+- Updater path is enabled in config, but endpoint metadata validation failed in this pass (`releases.hexhawk.app` DNS resolution failure).
+- Public-release distribution and procurement posture remain pending.
 
-Exit criteria:
+## Trust Hierarchy That Must Not Drift
 
-- CREST outputs are consistent across sample classes
-- ATT&CK + IOC sections require no manual cleanup for standard use cases
+1. GYRE owns final classification and base confidence.
+2. NEST orchestrates and converges evidence; it does not become verdict authority.
+3. AETHERFRAME/Forge may add bounded uplift/lineage/refinement metadata, but must not change GYRE classification.
+4. CREST packages evidence and reports.
+5. NEXUS consumes/assists and must not compute verdict truth.
 
-### P0 - Validation and Regression Hardening
+## Near-Term Priorities
 
-Goal: keep confidence high as the engines evolve.
+### P0 — Signed Internal Tester Build
 
-- Keep STRIKE benchmark fixtures, `latest.md`, and baseline drift checks current as debugger heuristics change
-- Add targeted regression tests for loop reconstruction edge cases
-- Add golden tests for disassembly annotations on known binaries
-- Add robustness tests for ATT&CK mapping and IOC extraction false positives
-- Add performance guardrails for annotation and evidence passes
+Goal: move from unsigned local build to a controlled signed internal tester candidate.
 
-Exit criteria:
-
-- No regressions in structured pseudocode output across curated fixtures
-- Stable annotation/evidence output shape under CI
-
-### P1 - Debugger Depth and Usability
-
-Goal: improve STRIKE usability for longer and noisier traces.
-
-- Add timeline filters by event class and confidence
-- Add call-stack view synchronization with disassembly and graph panels
-- Add loop-cluster visualization for repeated execution regions
-- Add bookmarkable timeline checkpoints
+- Replace internal self-signed development certificate with organization-trusted code-signing certificate.
+- Keep updater signing artifacts enabled and validate against reachable production metadata endpoint.
+- Rebuild MSI/NSIS artifacts.
+- Verify Authenticode status on executable and installers.
+- Run install, launch, CLI smoke, and native GUI export parity against installed/extracted artifacts.
 
 Exit criteria:
 
-- Analysts can isolate high-signal dynamic events in under 30 seconds on long traces
+- Signed executable and installers.
+- Hashes published.
+- Installed-artifact native GUI export parity regenerated and passing or honestly documented.
 
-### P1 - Disassembly UX Integration
+### P0 — Investor / Board Demonstration Package
 
-Goal: make annotations first-class in analyst workflows.
+Goal: make the board/investor story match current proof without overclaiming.
 
-- Add per-annotation category toggles
-- Add severity color ramp standardization across panels
-- Add source-trace links from annotation to evidence and report sections
-- Add analyst feedback controls to mark annotation quality
-
-Exit criteria:
-
-- Annotation signal-to-noise can be tuned per workflow without losing critical findings
-
-### P2 - Plugin and Extension Maturity
-
-Goal: let external logic plug into the same evidence graph safely.
-
-- Expand plugin contract docs and examples
-- Add plugin capability declarations and runtime permissions metadata
-- Add plugin-produced signal provenance in CREST outputs
-- Add plugin quality checks for malformed outputs
+- Maintain `docs/INVESTOR_ONE_PAGER.md`.
+- Maintain `docs/INVESTOR_DILIGENCE_BRIEF.md`.
+- Maintain `docs/BOARD_UPDATE_2026-05-31.md`.
+- Keep website copy aligned with current build, validation, licensing, and signing status.
 
 Exit criteria:
 
-- Third-party plugins can contribute structured findings without weakening trust boundaries
+- Docs and website present HexHawk as internal-tester ready, not broadly public-release ready.
+- Validation counts and artifact caveats match current command output.
 
-## Deferred Items
+### P1 — Native GUI Installed-Artifact Proof
 
-These remain valuable but are intentionally not in the current top priority lane:
+Goal: prove the packaged desktop GUI, not only source/dev build paths.
 
-- In-app keyboard shortcuts discovery panel refresh
-- About/version badge UX refinements
-- Additional cosmetic dashboard polish
+- Install or extract current MSI/NSIS artifacts.
+- Launch real native Tauri/WebView2 runtime.
+- Prove `hasTauriRuntime: true`, `browserMode: false`, and native internals present.
+- Run Open → Inspect → Strings → Disassembly → GYRE/NEST → Export.
+- Compare exported report against runtime evidence bundle semantics.
 
-## Success Metrics
+### P1 — Distribution and Support Readiness
 
-Roadmap execution is tracked against:
+- Publish signed checksums.
+- Document installer warnings and troubleshooting.
+- Finalize support mailbox/process.
+- Decide pricing and pilot terms.
+- Prepare paid pilot onboarding workflow.
 
-- Build health: production frontend build must stay green
-- Test health: pass rate remains 100 percent on mainline frontend suite
-- Output quality: report completeness and false-positive rate trends
-- Analyst efficiency: time-to-understanding on representative samples
+## Deferred / Backlog
 
-## Update Policy
-
-This roadmap is a living forward plan and is maintained as a current-state execution document, not a historical changelog.
+- Full procurement-ready enterprise controls.
+- Hosted team collaboration and server-side audit store.
+- Full updater infrastructure.
+- Additional external challenge/regression corpora.
+- Broader platform packaging beyond Windows.

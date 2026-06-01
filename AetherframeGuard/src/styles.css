@@ -1,0 +1,524 @@
+:root {
+  --bg-1: #050d18;
+  --bg-2: #0b1a2e;
+  --bg-3: #0f2742;
+  --panel-bg: rgba(8, 18, 34, 0.84);
+  --panel-border: rgba(132, 198, 255, 0.22);
+  --text-main: #e8f4ff;
+  --text-muted: rgba(232, 244, 255, 0.72);
+  --accent-a: #52e2da;
+  --accent-b: #57a4ff;
+
+  font-family: 'Bahnschrift', 'Segoe UI Variable', 'Segoe UI', sans-serif;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at 14% 7%, rgba(82, 226, 218, 0.20), transparent 28%),
+    radial-gradient(circle at 82% 84%, rgba(87, 164, 255, 0.24), transparent 30%),
+    linear-gradient(140deg, var(--bg-1) 0%, var(--bg-2) 54%, var(--bg-3) 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: inherit;
+  background-attachment: fixed;
+}
+
+.app {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px;
+  animation: app-fade-in 420ms ease-out;
+}
+
+@keyframes app-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h1 {
+  margin-top: 0;
+  letter-spacing: 0.8px;
+  font-size: 3rem;
+  line-height: 1.05;
+  margin-bottom: 8px;
+}
+
+.panel {
+  position: relative;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.24);
+  backdrop-filter: blur(12px);
+  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(82, 226, 218, 0.0), rgba(82, 226, 218, 0.58), rgba(87, 164, 255, 0.0));
+}
+
+.panel:hover {
+  border-color: rgba(111, 210, 255, 0.36);
+  transform: translateY(-1px);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.28);
+}
+
+button {
+  background: linear-gradient(132deg, var(--accent-a), #4cb8f8 60%, var(--accent-b));
+  border: none;
+  border-radius: 12px;
+  color: #03111f;
+  font-weight: 800;
+  padding: 11px 16px;
+  cursor: pointer;
+  transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: saturate(1.06);
+  box-shadow: 0 10px 20px rgba(80, 175, 255, 0.25);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  background:
+    linear-gradient(120deg, rgba(8, 22, 42, 0.88), rgba(6, 16, 33, 0.88)),
+    radial-gradient(circle at 70% 0%, rgba(82, 226, 218, 0.14), transparent 38%);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.72rem;
+  color: #8cc9ff;
+  margin-bottom: 10px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.odometer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.odometer-card {
+  border: 1px solid rgba(146, 198, 255, 0.20);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(14, 31, 51, 0.8);
+}
+
+.odometer-card-low {
+  border-color: rgba(255, 107, 107, 0.40);
+  background: linear-gradient(145deg, rgba(50, 14, 24, 0.9), rgba(21, 21, 37, 0.92));
+}
+
+.odometer-card-mid {
+  border-color: rgba(244, 184, 96, 0.42);
+  background: linear-gradient(145deg, rgba(55, 31, 12, 0.9), rgba(18, 24, 39, 0.92));
+}
+
+.odometer-card-high {
+  border-color: rgba(89, 228, 220, 0.35);
+}
+
+.odometer-card-accent {
+  border-color: rgba(94, 234, 212, 0.45);
+  background: linear-gradient(135deg, rgba(15, 41, 58, 0.95), rgba(9, 28, 46, 0.95));
+}
+
+.odometer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.odometer-header strong {
+  font-size: 0.95rem;
+}
+
+.odometer-header span {
+  color: rgba(237, 246, 255, 0.78);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.odometer-ring {
+  width: 102px;
+  height: 102px;
+  border-radius: 50%;
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  transition: background 220ms ease;
+}
+
+.odometer-inner {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(8, 18, 34, 0.94);
+  border: 1px solid rgba(146, 198, 255, 0.20);
+}
+
+.odometer-inner span {
+  font-size: 1.06rem;
+  font-weight: 800;
+}
+
+.odometer-subtitle {
+  margin: 10px 0 6px;
+  min-height: 36px;
+  color: rgba(237, 246, 255, 0.74);
+  font-size: 0.80rem;
+}
+
+.odometer-delta {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.odometer-delta-pos {
+  color: #6ee7b7;
+}
+
+.odometer-delta-neg {
+  color: #fca5a5;
+}
+
+.odometer-delta-neutral {
+  color: rgba(147, 197, 253, 0.80);
+}
+
+.metric {
+  border: 1px solid rgba(146, 198, 255, 0.20);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(14, 31, 51, 0.8);
+}
+
+.metric strong {
+  display: block;
+  font-size: 24px;
+  margin-top: 4px;
+}
+
+.metric small {
+  display: block;
+  color: rgba(237, 246, 255, 0.75);
+  margin-top: 6px;
+}
+
+.metric.accent {
+  border-color: rgba(94, 234, 212, 0.45);
+  background: linear-gradient(135deg, rgba(15, 41, 58, 0.95), rgba(9, 28, 46, 0.95));
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.action-card {
+  text-align: left;
+  color: #edf6ff;
+  background: linear-gradient(145deg, rgba(17, 28, 47, 0.98), rgba(10, 20, 34, 0.98));
+  border: 1px solid rgba(146, 198, 255, 0.18);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.action-card span {
+  display: block;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.action-card small {
+  color: rgba(237, 246, 255, 0.72);
+}
+
+.reco {
+  border: 1px solid rgba(146, 198, 255, 0.18);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: rgba(13, 24, 41, 0.72);
+}
+
+.reco p {
+  margin: 6px 0;
+}
+
+.success {
+  color: #78f2b7;
+}
+
+.failure {
+  color: #ff8e8e;
+}
+
+/* ── Panel header row ──────────────────────────────── */
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.panel-header h2 {
+  margin: 0;
+}
+
+.panel-desc {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 0 0 14px;
+  line-height: 1.55;
+}
+
+/* ── Scan status banner ────────────────────────────── */
+.scan-clean {
+  background: rgba(16, 185, 129, 0.14);
+  border: 1px solid rgba(16, 185, 129, 0.40);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #6ee7b7;
+  margin-bottom: 14px;
+}
+
+.scan-threats {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.38);
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #fca5a5;
+  margin-bottom: 14px;
+}
+
+/* ── Severity metric highlights ────────────────────── */
+.sev-critical {
+  border-color: rgba(220, 38, 38, 0.65);
+  background: rgba(60, 10, 10, 0.85);
+}
+
+.sev-high {
+  border-color: rgba(234, 88, 12, 0.55);
+  background: rgba(50, 20, 5, 0.85);
+}
+
+.sev-medium {
+  border-color: rgba(202, 138, 4, 0.50);
+  background: rgba(40, 28, 4, 0.85);
+}
+
+/* ── Finding cards ─────────────────────────────────── */
+.finding-critical {
+  border-color: rgba(220, 38, 38, 0.55);
+}
+
+.finding-high {
+  border-color: rgba(234, 88, 12, 0.45);
+}
+
+.finding-medium {
+  border-color: rgba(202, 138, 4, 0.40);
+}
+
+.finding-low {
+  border-color: rgba(100, 180, 255, 0.25);
+}
+
+.finding-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.mini-button {
+  margin-left: auto;
+  background: rgba(82, 226, 218, 0.18);
+  border: 1px solid rgba(82, 226, 218, 0.35);
+  color: #bff7ef;
+  border-radius: 10px;
+  padding: 5px 9px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.mini-button:hover:not(:disabled) {
+  box-shadow: none;
+}
+
+.sev-badge {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+.sev-badge-critical { background: rgba(220, 38, 38, 0.30); color: #fca5a5; }
+.sev-badge-high     { background: rgba(234, 88, 12, 0.28); color: #fdba74; }
+.sev-badge-medium   { background: rgba(202, 138, 4, 0.28); color: #fde68a; }
+.sev-badge-low      { background: rgba(100, 180, 255, 0.20); color: #93c5fd; }
+
+.finding-meta {
+  font-size: 0.80rem;
+  color: rgba(237, 246, 255, 0.65);
+  margin: 4px 0 0;
+}
+
+.finding-evidence {
+  font-size: 0.78rem;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  color: rgba(237, 246, 255, 0.50);
+  margin: 4px 0 0;
+  word-break: break-all;
+}
+
+.whitelist-strip {
+  border: 1px dashed rgba(111, 210, 255, 0.28);
+  background: rgba(6, 20, 38, 0.55);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.whitelist-strip strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  color: rgba(191, 247, 239, 0.9);
+}
+
+.chip-row {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip-button {
+  background: rgba(111, 210, 255, 0.14);
+  border: 1px solid rgba(111, 210, 255, 0.34);
+  color: #c8edff;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.chip-button:hover:not(:disabled) {
+  box-shadow: none;
+}
+
+/* ── Metric state variants ─────────────────────────── */
+.metric-ok {
+  border-color: rgba(16, 185, 129, 0.50);
+  background: rgba(5, 30, 20, 0.85);
+}
+
+.metric-warn {
+  border-color: rgba(234, 88, 12, 0.45);
+  background: rgba(40, 18, 4, 0.85);
+}
+
+/* ── Boot history entries ───────────────────────────── */
+.boot-entry {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(13, 24, 41, 0.65);
+  border: 1px solid rgba(146, 198, 255, 0.12);
+  margin-bottom: 6px;
+  font-size: 0.88rem;
+}
+
+.boot-num {
+  color: rgba(237, 246, 255, 0.55);
+  min-width: 72px;
+  font-size: 0.80rem;
+}
+
+.boot-score-pos {
+  font-weight: 700;
+  color: #6ee7b7;
+  min-width: 90px;
+}
+
+.boot-score-neg {
+  font-weight: 700;
+  color: #fca5a5;
+  min-width: 90px;
+}
+
+.boot-delta {
+  font-size: 0.78rem;
+  opacity: 0.80;
+}
+
+.boot-latency {
+  color: rgba(147, 197, 253, 0.80);
+  min-width: 60px;
+}
+
+.boot-settings-count {
+  color: rgba(237, 246, 255, 0.45);
+  font-size: 0.78rem;
+  margin-left: auto;
+}
+
+@media (max-width: 820px) {
+  .hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  h1 {
+    font-size: 2.4rem;
+  }
+}

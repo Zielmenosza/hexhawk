@@ -1,0 +1,57 @@
+{
+    "schema":  "hexhawk.trust.discovery.v1",
+    "signed_timestamps_endpoint":  "/trust/signed-timestamps.json",
+    "last_refreshed_at":  "2026-06-01T19:11:45.4922539Z",
+    "signatures_endpoint":  "/trust/signatures/latest/signatures.json",
+    "verify_tool":  "/verify-file",
+    "key_rotation_history":  [
+                                 {
+                                     "rotated_at":  "2026-06-01T20:46:00Z",
+                                     "retired_key_id":  "HXK-UPDATER-2025-LEGACY",
+                                     "replacement_key_id":  "HXK-UPDATER-2026-01",
+                                     "scope":  "updater-metadata",
+                                     "reason":  "Lifecycle rotation after release-hardening rollout."
+                                 },
+                                 {
+                                     "rotated_at":  "2026-06-01T20:46:00Z",
+                                     "retired_key_id":  "HXK-REPORT-2025-LEGACY",
+                                     "replacement_key_id":  "HXK-REPORT-2026-06",
+                                     "scope":  "report-signatures",
+                                     "reason":  "Legacy test report key retired for deterministic trust policy."
+                                 }
+                             ],
+    "checksums_endpoint":  "/downloads/checksums.txt",
+    "key_rotation_history_endpoint":  "/trust/key-rotations.json",
+    "signed_timestamps":  [
+                              {
+                                  "artifact":  "HexHawk_1.0.0_x64-setup.exe",
+                                  "artifact_sha256":  "d4e39045fcbbb29a1ee8cc45d7dc66664b061ccbd34bde1b0350738ff01397bf",
+                                  "signature_url":  "/trust/signatures/v1.0.0/HexHawk_1.0.0_x64-setup.exe.sig",
+                                  "latest_signature_url":  "/trust/signatures/latest/HexHawk_1.0.0_x64-setup.exe.sig",
+                                  "signed_at":  "2026-06-01T19:11:45.4922539Z",
+                                  "key_id":  "HXK-REPORT-2026-06",
+                                  "algorithm":  "rsa-2048-sha256"
+                              },
+                              {
+                                  "artifact":  "HexHawk_1.0.0_x64_en-US.msi",
+                                  "artifact_sha256":  "a51ddacb1753a2c48d79fe830f790436d1348e44b6bebc1552610c291d54dba0",
+                                  "signature_url":  "/trust/signatures/v1.0.0/HexHawk_1.0.0_x64_en-US.msi.sig",
+                                  "latest_signature_url":  "/trust/signatures/latest/HexHawk_1.0.0_x64_en-US.msi.sig",
+                                  "signed_at":  "2026-06-01T19:11:45.4922539Z",
+                                  "key_id":  "HXK-REPORT-2026-06",
+                                  "algorithm":  "rsa-2048-sha256"
+                              },
+                              {
+                                  "artifact":  "SHA256SUMS.txt",
+                                  "artifact_sha256":  "b68764426cea05829ba17943d01b139b675a204720adc3cb7d0385e7b916068e",
+                                  "signature_url":  "/trust/signatures/v1.0.0/SHA256SUMS.txt.sig",
+                                  "latest_signature_url":  "/trust/signatures/latest/SHA256SUMS.txt.sig",
+                                  "signed_at":  "2026-06-01T19:11:45.4922539Z",
+                                  "key_id":  "HXK-REPORT-2026-06",
+                                  "algorithm":  "rsa-2048-sha256"
+                              }
+                          ],
+    "revocations_endpoint":  "/trust/revocations.json",
+    "trust_center":  "/trust-center",
+    "keys_endpoint":  "/trust/keys.json"
+}
