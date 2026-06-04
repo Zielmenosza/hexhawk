@@ -14,17 +14,15 @@
 <header class="topbar">
   <div class="container nav">
     <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
-    <nav class="links">
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
+    <nav class="links" aria-label="Primary navigation">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
-      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
-      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
-      <a data-path="/verify-file" href="/verify-file">Verify File</a>
-      <a data-path="/release-notes" href="/release-notes">Release Notes</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
     </nav>
   </div>
 </header>
@@ -35,7 +33,33 @@
 <section class="section"><h2>Recommended process</h2><ul class="checklist"><li>Download checksums from <a href="/downloads/checksums.txt">/downloads/checksums.txt</a>.</li><li>Load trust endpoints and select a known key ID when possible.</li><li>Treat unknown or revoked keys as failed trust decisions.</li></ul></section>
 </main>
 <footer class="footer">
-  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate · 2026-06-01</span></div>
+  <div class="container footer-grid">
+    <div>
+      <strong>HexHawk</strong>
+      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
+      <p class="mono">v1.0 internal tester candidate · 2026-06-02</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <a href="/features">Features</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/downloads">Downloads</a>
+      <a href="/docs">Docs</a>
+    </div>
+    <div>
+      <h4>Trust operations</h4>
+      <a href="/trust">Trust &amp; Assurance</a>
+      <a href="/trust-center">Verification Center</a>
+      <a href="/verify-file">Verify a File</a>
+      <a href="/keys-revocations">Keys &amp; Revocations</a>
+      <a href="/release-notes">Release Notes</a>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <a href="mailto:contact@hexhawk.ke">Request Early Access</a>
+      <a href="mailto:sales@hexhawk.ke">Schedule a Demo</a>
+    </div>
+  </div>
 </footer>
 <script src="/assets/app.js"></script>
 <script>
