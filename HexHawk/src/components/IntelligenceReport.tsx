@@ -13,6 +13,10 @@ import type {
   AlternativeHypothesis,
   BehavioralTag,
 } from '../utils/correlationEngine';
+import {
+  describeHexHawkReportRefinement,
+  refineHexHawkReportMarkdown,
+} from '../utils/aetherframeReportRefinementAdapter';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -157,7 +161,18 @@ function severityColor(severity: 'high' | 'medium' | 'low'): string {
   return severity === 'high' ? '#ff4444' : severity === 'medium' ? '#ffaa00' : '#88cc00';
 }
 
-function formatMarkdown(verdict: BinaryVerdictResult, meta: Props): string {
+export type IntelligenceReportMarkdownOptions = {
+  aetherframe?: {
+    enabled: boolean;
+    reason?: string;
+  };
+};
+
+export function formatMarkdown(
+  verdict: BinaryVerdictResult,
+  meta: Props,
+  options: IntelligenceReportMarkdownOptions = {},
+): string {
   const ts = new Date().toISOString();
   const lines: string[] = [
     `# HexHawk Intelligence Report`,
@@ -274,7 +289,17 @@ function formatMarkdown(verdict: BinaryVerdictResult, meta: Props): string {
     }
   }
 
-  return lines.join('\n');
+  const baseMarkdown = lines.join('\n');
+  return refineHexHawkReportMarkdown({
+    markdown: baseMarkdown,
+    verdict: {
+      classification: verdict.classification,
+      threatScore: verdict.threatScore,
+      confidence: verdict.confidence,
+      sourceEngine: 'gyre',
+    },
+    policy: options.aetherframe ?? { enabled: true, reason: 'report-markdown-export' },
+  }).markdown;
 }
 
 function binaryNameFromPath(binaryPath?: string): string {
@@ -507,6 +532,7 @@ function AlternativesList({ alternatives }: { alternatives: AlternativeHypothesi
 export function IntelligenceReport({ verdict, binaryPath, binarySize, architecture, fileType }: Props) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [aetherframeMarkdownEnabled, setAetherframeMarkdownEnabled] = useState(true);
   const [snapshots, setSnapshots] = useState<ReportSnapshot[]>(() => loadStoredSnapshots());
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('');
 
@@ -554,6 +580,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
   const handleDownloadJSON = () => {
     const generatedAt = new Date().toISOString();
     const verdictSnapshotId = `gyre-${generatedAt}-${verdict.classification}-${verdict.threatScore}`;
+    const aetherframeReportLineage = describeHexHawkReportRefinement(markdownExportOptions.aetherframe);
     const report = {
       generatedAt,
       binary: { path: binaryPath, size: binarySize, architecture, fileType },
@@ -595,12 +622,40 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
         aetherframe_role: 'bounded-uplift-lineage-only',
         nexus_role: 'non-authoritative-assistant-layer',
       },
+      aetherframe_report_packaging: {
+        enabled: aetherframeReportLineage.applied,
+        adapter: aetherframeReportLineage.adapter,
+        pass_id: aetherframeReportLineage.passId,
+        category: aetherframeReportLineage.category,
+        mutation_scope: aetherframeReportLineage.mutationScope,
+        deterministic: aetherframeReportLineage.deterministic,
+        policy_reason: aetherframeReportLineage.policyReason,
+        protected_verdict_fields: {
+          classification: verdict.classification,
+          threat_score: verdict.threatScore,
+          confidence: verdict.confidence,
+          source_engine: 'gyre',
+          gyre_is_sole_verdict_source: true,
+        },
+        blocked_mutations: aetherframeReportLineage.blockedMutations,
+        proof_limits: aetherframeReportLineage.proofLimits,
+        note: aetherframeReportLineage.applied
+          ? 'AETHERFRAME packages report lineage and authority disclosure only; it does not change verdict truth or NEST evidence selection.'
+          : 'AETHERFRAME report packaging is disabled for this export policy; verdict truth and report body remain GYRE/NEST-derived.',
+      },
     };
     downloadText(JSON.stringify(report, null, 2), 'hexhawk-report.json', 'application/json');
   };
 
+  const markdownExportOptions: IntelligenceReportMarkdownOptions = {
+    aetherframe: {
+      enabled: aetherframeMarkdownEnabled,
+      reason: aetherframeMarkdownEnabled ? 'report-panel-analyst-enabled' : 'high-assurance-report-panel-disabled',
+    },
+  };
+
   const handleDownloadMarkdown = () => {
-    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType });
+    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType }, markdownExportOptions);
     downloadText(md, 'hexhawk-report.md', 'text/markdown');
   };
 
@@ -616,7 +671,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
   };
 
   const handleCopy = async () => {
-    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType });
+    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType }, markdownExportOptions);
     await navigator.clipboard.writeText(md);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -712,6 +767,23 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
           {binarySize && <span><span className="meta-label">Size:</span> {binarySize.toLocaleString()} bytes</span>}
         </div>
       )}
+
+      <div className="report-section" data-testid="report-aetherframe-policy">
+        <div className="report-section-title">AETHERFRAME Report Packaging Policy</div>
+        <label className="report-policy-toggle">
+          <input
+            type="checkbox"
+            checked={aetherframeMarkdownEnabled}
+            onChange={(event) => setAetherframeMarkdownEnabled(event.target.checked)}
+          />
+          <span>Apply AETHERFRAME lineage to Markdown and copy exports</span>
+        </label>
+        <p className="report-policy-note">
+          {aetherframeMarkdownEnabled
+            ? 'Enabled: AETHERFRAME may append package-only lineage, protected fields, blocked mutations, and proof limits. It does not change GYRE verdict truth.'
+            : 'High-assurance export mode: Markdown and copy exports leave the report body unchanged; use this when AETHERFRAME must be disabled.'}
+        </p>
+      </div>
 
       {relevantSnapshots.length > 0 && (
         <div className="report-section">

@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "aetherframe.evidence_graph.v1",
+  "graphId": "fixture.graph.empty",
+  "frameId": "fixture.frame.core",
+  "nodes": [],
+  "edges": []
+}

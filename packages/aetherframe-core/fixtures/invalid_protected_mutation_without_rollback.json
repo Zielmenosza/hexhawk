@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "aetherframe.mutation_ledger.v1",
+  "ledgerId": "fixture.ledger.invalid.no-rollback",
+  "frameId": "fixture.frame.core",
+  "mutations": [
+    {
+      "mutationId": "mutation-invalid-no-rollback",
+      "frameId": "fixture.frame.core",
+      "target": "classification",
+      "mutationType": "text_refinement",
+      "proposedChange": "change authoritative classification",
+      "rationale": "fixture unsafe proposal",
+      "evidenceUsed": [
+        "source-strong"
+      ],
+      "protectedFieldsTouched": [
+        "classification"
+      ],
+      "riskLevel": "high",
+      "reversibility": "none",
+      "rollbackPlan": null,
+      "requiredApproval": "human",
+      "stopConditions": [
+        "protected field touched"
+      ],
+      "expectedOutcome": "blocked",
+      "failureSignal": "mutation allowed"
+    }
+  ],
+  "appliedMutations": []
+}

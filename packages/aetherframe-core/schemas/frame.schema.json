@@ -1,0 +1,264 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aetherframe.local/schemas/frame.schema.json",
+  "title": "AetherFrame Frame v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "frameId",
+    "frameName",
+    "frameVersion",
+    "domain",
+    "objective",
+    "operatingMode",
+    "adapterKind",
+    "authorityModel",
+    "protectedFields",
+    "mutableFields",
+    "evidenceRequirements",
+    "confidencePolicy",
+    "uncertaintyPolicy",
+    "mutationPolicy",
+    "reviewPolicy",
+    "replayPolicy",
+    "exportPolicy",
+    "stopConditions",
+    "proofLimitTemplate"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "aetherframe.frame.v1"
+    },
+    "frameId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "frameName": {
+      "type": "string",
+      "minLength": 1
+    },
+    "frameVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "domain": {
+      "type": "string",
+      "minLength": 1
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operatingMode": {
+      "enum": [
+        "observe_only",
+        "package_only",
+        "advisory",
+        "guided_mutation",
+        "bounded_auto_mutation",
+        "high_assurance",
+        "research_debug"
+      ]
+    },
+    "adapterKind": {
+      "type": "string",
+      "minLength": 1
+    },
+    "authorityModel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "soleAuthorityFields",
+        "advisoryFields",
+        "derivedFields",
+        "inheritedFields",
+        "blockedFields",
+        "humanReviewRequiredFields"
+      ],
+      "properties": {
+        "soleAuthorityFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "advisoryFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "derivedFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "inheritedFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "blockedFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "humanReviewRequiredFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "protectedFields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "mutableFields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "evidenceRequirements": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidencePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maximumAllowedDelta",
+        "contradictionBlockThreshold",
+        "highUncertaintyClampThreshold",
+        "staleEvidenceHalfLifeDays"
+      ],
+      "properties": {
+        "maximumAllowedDelta": {
+          "type": "number"
+        },
+        "contradictionBlockThreshold": {
+          "type": "number"
+        },
+        "highUncertaintyClampThreshold": {
+          "type": "number"
+        },
+        "staleEvidenceHalfLifeDays": {
+          "type": "number"
+        }
+      }
+    },
+    "uncertaintyPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requireExplicitUncertainty",
+        "unknownSourceReliability"
+      ],
+      "properties": {
+        "requireExplicitUncertainty": {
+          "type": "boolean"
+        },
+        "unknownSourceReliability": {
+          "const": "conservative"
+        }
+      }
+    },
+    "mutationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowMutation",
+        "requireRollbackForDestructiveChange",
+        "allowExternalSideEffects"
+      ],
+      "properties": {
+        "allowMutation": {
+          "type": "boolean"
+        },
+        "requireRollbackForDestructiveChange": {
+          "type": "boolean"
+        },
+        "allowExternalSideEffects": {
+          "type": "boolean"
+        }
+      }
+    },
+    "reviewPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "humanReviewRequiredForProtectedFields",
+        "exportBlocksOnCriticalReview"
+      ],
+      "properties": {
+        "humanReviewRequiredForProtectedFields": {
+          "type": "boolean"
+        },
+        "exportBlocksOnCriticalReview": {
+          "type": "boolean"
+        }
+      }
+    },
+    "replayPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "strictReplayRequired",
+        "allowedGeneratedFields"
+      ],
+      "properties": {
+        "strictReplayRequired": {
+          "const": true
+        },
+        "allowedGeneratedFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "exportPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "packageOnly",
+        "includeProofLimits",
+        "includeBlockedLineage"
+      ],
+      "properties": {
+        "packageOnly": {
+          "type": "boolean"
+        },
+        "includeProofLimits": {
+          "const": true
+        },
+        "includeBlockedLineage": {
+          "type": "boolean"
+        }
+      }
+    },
+    "stopConditions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "proofLimitTemplate": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

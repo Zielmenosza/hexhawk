@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aetherframe.local/schemas/evidence_graph.schema.json",
+  "title": "AetherFrame Evidence Graph v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "graphId",
+    "frameId",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "aetherframe.evidence_graph.v1"
+    },
+    "graphId": {
+      "type": "string"
+    },
+    "frameId": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": [
+          "id",
+          "kind",
+          "timestamp",
+          "source",
+          "sourceReliability",
+          "rawValue",
+          "normalizedValue",
+          "confidence",
+          "provenance",
+          "redactionLevel",
+          "replaySafe",
+          "reportable",
+          "protectedFieldInteraction",
+          "frameId",
+          "proofLimits"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "EvidenceNode",
+              "ClaimNode",
+              "MeasurementNode",
+              "SourceNode",
+              "DerivedInferenceNode",
+              "ContradictionNode",
+              "PolicyGateNode",
+              "MutationProposalNode",
+              "MutationAppliedNode",
+              "MutationBlockedNode",
+              "ReviewCheckpointNode",
+              "UncertaintyNode",
+              "OutcomeNode",
+              "RollbackNode",
+              "ExportNode"
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "sourceReliability": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "const": "unknown"
+              }
+            ]
+          },
+          "rawValue": {},
+          "normalizedValue": {},
+          "confidence": {
+            "type": "number"
+          },
+          "uncertaintyInterval": {
+            "type": "object",
+            "required": [
+              "low",
+              "high"
+            ],
+            "properties": {
+              "low": {
+                "type": "number"
+              },
+              "high": {
+                "type": "number"
+              }
+            },
+            "additionalProperties": false
+          },
+          "provenance": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "redactionLevel": {
+            "enum": [
+              "none",
+              "low",
+              "moderate",
+              "high",
+              "secret"
+            ]
+          },
+          "replaySafe": {
+            "type": "boolean"
+          },
+          "reportable": {
+            "type": "boolean"
+          },
+          "protectedFieldInteraction": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "frameId": {
+            "type": "string"
+          },
+          "proofLimits": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "fromNodeIds",
+          "toNodeId",
+          "relationshipType",
+          "transformationName",
+          "transformationVersion",
+          "transformationKind",
+          "confidenceContribution",
+          "proofLimits"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fromNodeIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "toNodeId": {
+            "type": "string"
+          },
+          "relationshipType": {
+            "type": "string"
+          },
+          "transformationName": {
+            "type": "string"
+          },
+          "transformationVersion": {
+            "type": "string"
+          },
+          "transformationKind": {
+            "enum": [
+              "deterministic",
+              "heuristic",
+              "statistical",
+              "manual",
+              "model_assisted"
+            ]
+          },
+          "confidenceContribution": {
+            "type": "number"
+          },
+          "proofLimits": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "frame": {
+    "schemaVersion": "aetherframe.frame.v1",
+    "frameId": "fixture.frame.core",
+    "frameName": "Fixture frame",
+    "frameVersion": "0.1.0",
+    "domain": "fixture",
+    "objective": "Exercise AetherFrame bounded intelligence fixtures.",
+    "operatingMode": "package_only",
+    "adapterKind": "core",
+    "authorityModel": {
+      "soleAuthorityFields": [
+        "classification",
+        "base_confidence"
+      ],
+      "advisoryFields": [
+        "aetherframe_lineage",
+        "proof_limits"
+      ],
+      "derivedFields": [
+        "confidence_breakdown"
+      ],
+      "inheritedFields": [
+        "source_document"
+      ],
+      "blockedFields": [
+        "authoritative_truth"
+      ],
+      "humanReviewRequiredFields": [
+        "public_claim"
+      ]
+    },
+    "protectedFields": [
+      "classification",
+      "base_confidence",
+      "authoritative_truth"
+    ],
+    "mutableFields": [
+      "aetherframe_lineage",
+      "proof_limits"
+    ],
+    "evidenceRequirements": [
+      "explicit fixture source",
+      "proof-limit disclosure"
+    ],
+    "confidencePolicy": {
+      "maximumAllowedDelta": 8,
+      "contradictionBlockThreshold": 0.6,
+      "highUncertaintyClampThreshold": 0.5,
+      "staleEvidenceHalfLifeDays": 30
+    },
+    "uncertaintyPolicy": {
+      "requireExplicitUncertainty": true,
+      "unknownSourceReliability": "conservative"
+    },
+    "mutationPolicy": {
+      "allowMutation": false,
+      "requireRollbackForDestructiveChange": true,
+      "allowExternalSideEffects": false
+    },
+    "reviewPolicy": {
+      "humanReviewRequiredForProtectedFields": true,
+      "exportBlocksOnCriticalReview": true
+    },
+    "replayPolicy": {
+      "strictReplayRequired": true,
+      "allowedGeneratedFields": [
+        "generatedAt",
+        "timestamp"
+      ]
+    },
+    "exportPolicy": {
+      "packageOnly": true,
+      "includeProofLimits": true,
+      "includeBlockedLineage": true
+    },
+    "stopConditions": [
+      "protected authority mutation attempted",
+      "critical contradiction unresolved"
+    ],
+    "proofLimitTemplate": [
+      "Fixture only; not external truth.",
+      "AetherFrame does not own truth by default."
+    ]
+  },
+  "evidenceGraph": {
+    "schemaVersion": "aetherframe.evidence_graph.v1",
+    "graphId": "fixture.graph.conflict",
+    "frameId": "fixture.frame.core",
+    "nodes": [
+      {
+        "id": "source-primary",
+        "kind": "SourceNode",
+        "timestamp": "2026-06-03T00:00:00.000Z",
+        "source": "fixture",
+        "sourceReliability": 0.95,
+        "rawValue": "claim A",
+        "normalizedValue": "claim A",
+        "confidence": 0.9,
+        "uncertaintyInterval": {
+          "low": 0.8,
+          "high": 1
+        },
+        "provenance": [
+          "fixture"
+        ],
+        "redactionLevel": "none",
+        "replaySafe": true,
+        "reportable": true,
+        "protectedFieldInteraction": [],
+        "frameId": "fixture.frame.core",
+        "proofLimits": [
+          "fixture data only"
+        ]
+      },
+      {
+        "id": "contradiction-secondary",
+        "kind": "ContradictionNode",
+        "timestamp": "2026-06-03T00:00:00.000Z",
+        "source": "fixture",
+        "sourceReliability": 0.72,
+        "rawValue": "claim B conflicts",
+        "normalizedValue": "claim B conflicts",
+        "confidence": 0.7,
+        "uncertaintyInterval": {
+          "low": 0.6,
+          "high": 0.7999999999999999
+        },
+        "provenance": [
+          "fixture"
+        ],
+        "redactionLevel": "none",
+        "replaySafe": true,
+        "reportable": true,
+        "protectedFieldInteraction": [],
+        "frameId": "fixture.frame.core",
+        "proofLimits": [
+          "fixture data only"
+        ]
+      }
+    ],
+    "edges": []
+  }
+}

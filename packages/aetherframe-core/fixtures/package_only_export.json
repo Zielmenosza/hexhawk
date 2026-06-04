@@ -1,0 +1,14 @@
+{
+  "content": "authoritative content unchanged",
+  "lineage": {
+    "schemaVersion": "aetherframe.export_lineage.v1",
+    "frameId": "fixture.frame.core",
+    "operatingMode": "package_only",
+    "mutationsBlocked": [
+      "classification"
+    ],
+    "proofLimits": [
+      "package-only fixture"
+    ]
+  }
+}

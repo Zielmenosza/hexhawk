@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "aetherframe.mutation_ledger.v1",
+  "ledgerId": "fixture.ledger.protected",
+  "frameId": "fixture.frame.core",
+  "mutations": [
+    {
+      "mutationId": "fixture-mutation-protected",
+      "frameId": "fixture.frame.core",
+      "target": "classification",
+      "mutationType": "text_refinement",
+      "proposedChange": "change authoritative classification",
+      "rationale": "fixture unsafe proposal",
+      "evidenceUsed": [
+        "source-strong"
+      ],
+      "protectedFieldsTouched": [
+        "classification"
+      ],
+      "riskLevel": "high",
+      "reversibility": "manual",
+      "rollbackPlan": "No authoritative field is applied; if accidentally applied, restore classification from the preserved GYRE/NEST authority snapshot.",
+      "requiredApproval": "human",
+      "stopConditions": [
+        "protected field touched"
+      ],
+      "expectedOutcome": "blocked",
+      "failureSignal": "mutation allowed"
+    }
+  ],
+  "appliedMutations": [
+    {
+      "mutationId": "mutation-lineage-annotation-applied",
+      "frameId": "fixture.frame.core",
+      "target": "aetherframe_lineage",
+      "beforeSnapshot": {
+        "lineage": []
+      },
+      "afterSnapshot": {
+        "lineage": [
+          "package-only protected mutation attempt recorded as blocked lineage"
+        ]
+      },
+      "diff": "--- before\n+++ after\n+package-only protected mutation attempt recorded as blocked lineage",
+      "actor": "aetherframe.fixture",
+      "approvalSource": "package_only metadata policy",
+      "verificationResult": {
+        "passed": true,
+        "command": "fixture self-check",
+        "evidenceNodeIds": [
+          "source-strong"
+        ],
+        "proofLimits": [
+          "Fixture validates lineage metadata shape only."
+        ]
+      },
+      "rollbackStatus": "not_required",
+      "proofLimits": [
+        "Applied mutation is metadata-only; authoritative content is unchanged."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,607 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aetherframe.local/schemas/replay_bundle.schema.json",
+  "title": "AetherFrame Replay Bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "replayId",
+    "generatedAt",
+    "frame",
+    "evidenceGraph",
+    "mutationLog"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "aetherframe.replay_bundle.v1"
+    },
+    "replayId": {
+      "type": "string"
+    },
+    "generatedAt": {
+      "type": "string"
+    },
+    "frame": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://aetherframe.local/schemas/frame.schema.json",
+      "title": "AetherFrame Frame v1",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "frameId",
+        "frameName",
+        "frameVersion",
+        "domain",
+        "objective",
+        "operatingMode",
+        "adapterKind",
+        "authorityModel",
+        "protectedFields",
+        "mutableFields",
+        "evidenceRequirements",
+        "confidencePolicy",
+        "uncertaintyPolicy",
+        "mutationPolicy",
+        "reviewPolicy",
+        "replayPolicy",
+        "exportPolicy",
+        "stopConditions",
+        "proofLimitTemplate"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "aetherframe.frame.v1"
+        },
+        "frameId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frameName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "frameVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "domain": {
+          "type": "string",
+          "minLength": 1
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 1
+        },
+        "operatingMode": {
+          "enum": [
+            "observe_only",
+            "package_only",
+            "advisory",
+            "guided_mutation",
+            "bounded_auto_mutation",
+            "high_assurance",
+            "research_debug"
+          ]
+        },
+        "adapterKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "authorityModel": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "soleAuthorityFields",
+            "advisoryFields",
+            "derivedFields",
+            "inheritedFields",
+            "blockedFields",
+            "humanReviewRequiredFields"
+          ],
+          "properties": {
+            "soleAuthorityFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "advisoryFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "derivedFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "inheritedFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "blockedFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "humanReviewRequiredFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "protectedFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mutableFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "evidenceRequirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "confidencePolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "maximumAllowedDelta",
+            "contradictionBlockThreshold",
+            "highUncertaintyClampThreshold",
+            "staleEvidenceHalfLifeDays"
+          ],
+          "properties": {
+            "maximumAllowedDelta": {
+              "type": "number"
+            },
+            "contradictionBlockThreshold": {
+              "type": "number"
+            },
+            "highUncertaintyClampThreshold": {
+              "type": "number"
+            },
+            "staleEvidenceHalfLifeDays": {
+              "type": "number"
+            }
+          }
+        },
+        "uncertaintyPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "requireExplicitUncertainty",
+            "unknownSourceReliability"
+          ],
+          "properties": {
+            "requireExplicitUncertainty": {
+              "type": "boolean"
+            },
+            "unknownSourceReliability": {
+              "const": "conservative"
+            }
+          }
+        },
+        "mutationPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "allowMutation",
+            "requireRollbackForDestructiveChange",
+            "allowExternalSideEffects"
+          ],
+          "properties": {
+            "allowMutation": {
+              "type": "boolean"
+            },
+            "requireRollbackForDestructiveChange": {
+              "type": "boolean"
+            },
+            "allowExternalSideEffects": {
+              "type": "boolean"
+            }
+          }
+        },
+        "reviewPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "humanReviewRequiredForProtectedFields",
+            "exportBlocksOnCriticalReview"
+          ],
+          "properties": {
+            "humanReviewRequiredForProtectedFields": {
+              "type": "boolean"
+            },
+            "exportBlocksOnCriticalReview": {
+              "type": "boolean"
+            }
+          }
+        },
+        "replayPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "strictReplayRequired",
+            "allowedGeneratedFields"
+          ],
+          "properties": {
+            "strictReplayRequired": {
+              "const": true
+            },
+            "allowedGeneratedFields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "exportPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "packageOnly",
+            "includeProofLimits",
+            "includeBlockedLineage"
+          ],
+          "properties": {
+            "packageOnly": {
+              "type": "boolean"
+            },
+            "includeProofLimits": {
+              "const": true
+            },
+            "includeBlockedLineage": {
+              "type": "boolean"
+            }
+          }
+        },
+        "stopConditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "proofLimitTemplate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "evidenceGraph": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "$id": "https://aetherframe.local/schemas/evidence_graph.schema.json",
+      "title": "AetherFrame Evidence Graph v1",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "graphId",
+        "frameId",
+        "nodes",
+        "edges"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "aetherframe.evidence_graph.v1"
+        },
+        "graphId": {
+          "type": "string"
+        },
+        "frameId": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "id",
+              "kind",
+              "timestamp",
+              "source",
+              "sourceReliability",
+              "rawValue",
+              "normalizedValue",
+              "confidence",
+              "provenance",
+              "redactionLevel",
+              "replaySafe",
+              "reportable",
+              "protectedFieldInteraction",
+              "frameId",
+              "proofLimits"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "EvidenceNode",
+                  "ClaimNode",
+                  "MeasurementNode",
+                  "SourceNode",
+                  "DerivedInferenceNode",
+                  "ContradictionNode",
+                  "PolicyGateNode",
+                  "MutationProposalNode",
+                  "MutationAppliedNode",
+                  "MutationBlockedNode",
+                  "ReviewCheckpointNode",
+                  "UncertaintyNode",
+                  "OutcomeNode",
+                  "RollbackNode",
+                  "ExportNode"
+                ]
+              },
+              "timestamp": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "sourceReliability": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "const": "unknown"
+                  }
+                ]
+              },
+              "rawValue": {},
+              "normalizedValue": {},
+              "confidence": {
+                "type": "number"
+              },
+              "uncertaintyInterval": {
+                "type": "object",
+                "required": [
+                  "low",
+                  "high"
+                ],
+                "properties": {
+                  "low": {
+                    "type": "number"
+                  },
+                  "high": {
+                    "type": "number"
+                  }
+                },
+                "additionalProperties": false
+              },
+              "provenance": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "redactionLevel": {
+                "enum": [
+                  "none",
+                  "low",
+                  "moderate",
+                  "high",
+                  "secret"
+                ]
+              },
+              "replaySafe": {
+                "type": "boolean"
+              },
+              "reportable": {
+                "type": "boolean"
+              },
+              "protectedFieldInteraction": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "frameId": {
+                "type": "string"
+              },
+              "proofLimits": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "fromNodeIds",
+              "toNodeId",
+              "relationshipType",
+              "transformationName",
+              "transformationVersion",
+              "transformationKind",
+              "confidenceContribution",
+              "proofLimits"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "fromNodeIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "toNodeId": {
+                "type": "string"
+              },
+              "relationshipType": {
+                "type": "string"
+              },
+              "transformationName": {
+                "type": "string"
+              },
+              "transformationVersion": {
+                "type": "string"
+              },
+              "transformationKind": {
+                "enum": [
+                  "deterministic",
+                  "heuristic",
+                  "statistical",
+                  "manual",
+                  "model_assisted"
+                ]
+              },
+              "confidenceContribution": {
+                "type": "number"
+              },
+              "proofLimits": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "mutationLog": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mutationId",
+          "frameId",
+          "target",
+          "mutationType",
+          "proposedChange",
+          "rationale",
+          "evidenceUsed",
+          "protectedFieldsTouched",
+          "riskLevel",
+          "reversibility",
+          "rollbackPlan",
+          "requiredApproval",
+          "stopConditions",
+          "expectedOutcome",
+          "failureSignal"
+        ],
+        "properties": {
+          "mutationId": {
+            "type": "string"
+          },
+          "frameId": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "mutationType": {
+            "enum": [
+              "text_refinement",
+              "code_edit",
+              "plan_revision",
+              "recommendation_ranking",
+              "evidence_packaging",
+              "report_annotation",
+              "prompt_rewrite",
+              "configuration_suggestion",
+              "workflow_action",
+              "external_side_effect_proposal"
+            ]
+          },
+          "proposedChange": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "evidenceUsed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "protectedFieldsTouched": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "riskLevel": {
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "reversibility": {
+            "enum": [
+              "full",
+              "partial",
+              "manual",
+              "none"
+            ]
+          },
+          "rollbackPlan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requiredApproval": {
+            "enum": [
+              "none",
+              "human",
+              "authority_owner"
+            ]
+          },
+          "stopConditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expectedOutcome": {
+            "type": "string"
+          },
+          "failureSignal": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

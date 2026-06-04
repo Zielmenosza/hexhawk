@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aetherframe.local/schemas/mutation_ledger.schema.json",
+  "title": "AetherFrame Mutation Ledger v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "ledgerId",
+    "frameId",
+    "mutations",
+    "appliedMutations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "aetherframe.mutation_ledger.v1"
+    },
+    "ledgerId": {
+      "type": "string"
+    },
+    "frameId": {
+      "type": "string"
+    },
+    "mutations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mutationId",
+          "frameId",
+          "target",
+          "mutationType",
+          "proposedChange",
+          "rationale",
+          "evidenceUsed",
+          "protectedFieldsTouched",
+          "riskLevel",
+          "reversibility",
+          "rollbackPlan",
+          "requiredApproval",
+          "stopConditions",
+          "expectedOutcome",
+          "failureSignal"
+        ],
+        "properties": {
+          "mutationId": {
+            "type": "string"
+          },
+          "frameId": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "mutationType": {
+            "enum": [
+              "text_refinement",
+              "code_edit",
+              "plan_revision",
+              "recommendation_ranking",
+              "evidence_packaging",
+              "report_annotation",
+              "prompt_rewrite",
+              "configuration_suggestion",
+              "workflow_action",
+              "external_side_effect_proposal"
+            ]
+          },
+          "proposedChange": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "evidenceUsed": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "protectedFieldsTouched": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "riskLevel": {
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "reversibility": {
+            "enum": [
+              "full",
+              "partial",
+              "manual",
+              "none"
+            ]
+          },
+          "rollbackPlan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "requiredApproval": {
+            "enum": [
+              "none",
+              "human",
+              "authority_owner"
+            ]
+          },
+          "stopConditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "expectedOutcome": {
+            "type": "string"
+          },
+          "failureSignal": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "appliedMutations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mutationId",
+          "frameId",
+          "target",
+          "beforeSnapshot",
+          "afterSnapshot",
+          "diff",
+          "actor",
+          "approvalSource",
+          "verificationResult",
+          "rollbackStatus",
+          "proofLimits"
+        ],
+        "properties": {
+          "mutationId": {
+            "type": "string"
+          },
+          "frameId": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "beforeSnapshot": {},
+          "afterSnapshot": {},
+          "diff": {
+            "type": "string"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "approvalSource": {
+            "type": "string"
+          },
+          "verificationResult": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "passed",
+              "evidenceNodeIds",
+              "proofLimits"
+            ],
+            "properties": {
+              "passed": {
+                "type": "boolean"
+              },
+              "command": {
+                "type": "string"
+              },
+              "evidenceNodeIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "proofLimits": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "rollbackStatus": {
+            "enum": [
+              "not_required",
+              "available",
+              "executed",
+              "failed",
+              "manual_required"
+            ]
+          },
+          "proofLimits": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

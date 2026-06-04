@@ -711,6 +711,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@hexhawk/aetherframe-core@workspace:*, @hexhawk/aetherframe-core@workspace:packages/aetherframe-core":
+  version: 0.0.0-use.local
+  resolution: "@hexhawk/aetherframe-core@workspace:packages/aetherframe-core"
+  dependencies:
+    ajv: "npm:^8.17.1"
+    typescript: "npm:^5.5.4"
+    vitest: "npm:^2.0.0"
+  bin:
+    aetherframe: dist/src/cli.js
+  languageName: unknown
+  linkType: soft
+
 "@hexhawk/ui-components@workspace:*, @hexhawk/ui-components@workspace:packages/ui-components":
   version: 0.0.0-use.local
   resolution: "@hexhawk/ui-components@workspace:packages/ui-components"
@@ -1868,6 +1880,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"ajv@npm:^8.17.1":
+  version: 8.20.0
+  resolution: "ajv@npm:8.20.0"
+  dependencies:
+    fast-deep-equal: "npm:^3.1.3"
+    fast-uri: "npm:^3.0.1"
+    json-schema-traverse: "npm:^1.0.0"
+    require-from-string: "npm:^2.0.2"
+  checksum: 10c0/5df9a1c8f83863cde1bd3a9ddb426f599718f88e3dc9153616c79fb28e0be455335830d7f21d745576519f057b371352daa31047b6a33d7036fe08777d60cf2a
+  languageName: node
+  linkType: hard
+
 "ansi-regex@npm:^5.0.1":
   version: 5.0.1
   resolution: "ansi-regex@npm:5.0.1"
@@ -2511,6 +2535,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fast-deep-equal@npm:^3.1.3":
+  version: 3.1.3
+  resolution: "fast-deep-equal@npm:3.1.3"
+  checksum: 10c0/40dedc862eb8992c54579c66d914635afbec43350afbbe991235fdcb4e3a8d5af1b23ae7e79bef7d4882d0ecee06c3197488026998fb19f72dc95acff1d1b1d0
+  languageName: node
+  linkType: hard
+
+"fast-uri@npm:^3.0.1":
+  version: 3.1.2
+  resolution: "fast-uri@npm:3.1.2"
+  checksum: 10c0/5b35641895959f3f7ab7a7b1b5542bded159346f25ec9f256817b206d50b64eda5828e90d605a2e2fc645c90519a7259c2bab2c942ee728c88b88e5be21b090d
+  languageName: node
+  linkType: hard
+
 "fdir@npm:^6.5.0":
   version: 6.5.0
   resolution: "fdir@npm:6.5.0"
@@ -2660,6 +2698,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "hexhawk-ui@workspace:HexHawk"
   dependencies:
+    "@hexhawk/aetherframe-core": "workspace:*"
     "@hexhawk/ui-components": "workspace:*"
     "@tauri-apps/api": "npm:^2.0.0-beta"
     "@tauri-apps/cli": "npm:^2.9.5"
@@ -2879,6 +2918,13 @@ __metadata:
   bin:
     jsesc: bin/jsesc
   checksum: 10c0/531779df5ec94f47e462da26b4cbf05eb88a83d9f08aac2ba04206508fc598527a153d08bd462bae82fc78b3eaa1a908e1a4a79f886e9238641c4cdefaf118b1
+  languageName: node
+  linkType: hard
+
+"json-schema-traverse@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "json-schema-traverse@npm:1.0.0"
+  checksum: 10c0/71e30015d7f3d6dc1c316d6298047c8ef98a06d31ad064919976583eb61e1018a60a0067338f0f79cabc00d84af3fcc489bd48ce8a46ea165d9541ba17fb30c6
   languageName: node
   linkType: hard
 
