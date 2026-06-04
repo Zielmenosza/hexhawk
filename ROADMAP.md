@@ -1,25 +1,33 @@
 # HexHawk Roadmap
 
-Last updated: 2026-06-01
+Last updated: 2026-06-02
 
-This roadmap reflects the current HexHawk source and installer state after the Windows installer rebuild.
+This roadmap reflects the current HexHawk source and installer state after the controlled external signing gate check.
 
 ## Current Proven Baseline
 
 HexHawk is an internal-tester Windows build candidate with a working native Tauri/Rust packaging path.
 
-Validated in the latest pass:
+Validated in the current pass:
 
-- Report export authority regression test: passing (`IntelligenceReport` JSON envelope fields).
-- Windows release executable, MSI, and NSIS artifacts: Authenticode-signed with an internal self-signed development certificate.
-- Timestamp countersignature: present on exe/MSI/NSIS artifacts.
-- Native packaged GUI parity probe: passing (`hasTauriRuntime: true`, `browserMode: false`, workflow through report export).
-- Consolidated evidence file: `docs/release-evidence/windows_release_hardening_2026-06-01_204639.json`.
+- TypeScript typecheck: passing.
+- Production frontend build: passing.
+- Frontend tests: 40 files / 700 tests passing.
+- Rust workspace tests: 71 backend tests + 14 `nest_cli` tests passing.
+- Fresh Windows release executable, MSI, and NSIS artifacts were generated after stale artifacts were removed.
+- Authenticode status for the current exe/MSI/NSIS artifacts: unsigned / not digitally signed.
+- Native packaged GUI report/AETHERFRAME policy parity passed against the current MSI artifact hash `78bf99874acb9419525ab3012ac36252d2f8cc7605850aa773d36cc6865ec1e4`.
+- Updater key custody is now GitHub Actions repository secrets; local official-path metadata validation passes, but public-trusted Authenticode custody is absent and hosted `https://hexhawk.ke/releases/latest.json` fetches but fails expected current-artifact/signature checks.
+- Consolidated current evidence files: `docs/release-evidence/unsigned_rebuild_release_truth_2026-06-02_220000.json`, `docs/release-evidence/windows_release_truth_consolidation_2026-06-02_171415.json` and `docs/release-evidence/updater_metadata_dns_repair_2026-06-02_173000.json`, `docs/release-evidence/official_updater_custody_rehearsal_2026-06-02_181500.json`, and `docs/release-evidence/official_updater_custody_validation_2026-06-02_180900.json`, `docs/release-evidence/official_release_custody_final_validation_2026-06-02_203600.json` and `docs/release-evidence/hosted_updater_metadata_validation_2026-06-02_181100.json`.
+- Current native probe: `gui-evidence/report_aetherframe_policy_native_gui_probe_2026-06-02_170827.json`.
 
 Current limitations:
 
-- Internal signing trust only: Authenticode status is `UnknownError` because the signer chain terminates at an untrusted root.
-- Updater path is enabled in config, but endpoint metadata validation failed in this pass (`releases.hexhawk.app` DNS resolution failure).
+- No public-trusted signature is present.
+- No internal self-signed signature is present on the current target/release artifacts.
+- A prior historical evidence file recorded internal self-signed signatures for older artifact hashes; it must not be treated as current artifact proof.
+- Updater artifacts remain disabled for local unsigned builds (`createUpdaterArtifacts: false`).
+- Updater key custody is now configured as GitHub Actions repository secrets and the official scripted path can produce updater `.sig` sidecars; hosted endpoint readiness is not current proof because hosted metadata still points at older artifact/signature hashes, and Authenticode custody is not configured.
 - Public-release distribution and procurement posture remain pending.
 
 ## Trust Hierarchy That Must Not Drift
@@ -32,21 +40,30 @@ Current limitations:
 
 ## Near-Term Priorities
 
-### P0 — Signed Internal Tester Build
+### P0 — Real signing path
 
-Goal: move from unsigned local build to a controlled signed internal tester candidate.
+Goal: move from unsigned local/internal artifacts to a controlled signed internal tester candidate.
 
-- Replace internal self-signed development certificate with organization-trusted code-signing certificate.
-- Keep updater signing artifacts enabled and validate against reachable production metadata endpoint.
-- Rebuild MSI/NSIS artifacts.
+- Configure organization-trusted Windows code signing.
+- Wire signing through `scripts/release/sign-windows-artifact.ps1` or a CI signing step.
+- Rebuild MSI/NSIS artifacts from a clean tree.
 - Verify Authenticode status on executable and installers.
-- Run install, launch, CLI smoke, and native GUI export parity against installed/extracted artifacts.
+- Record hashes, signer, timestamp, and trust-chain status in a new evidence JSON.
 
 Exit criteria:
 
 - Signed executable and installers.
 - Hashes published.
-- Installed-artifact native GUI export parity regenerated and passing or honestly documented.
+- Signed-artifact native GUI export parity regenerated and passing or honestly documented.
+
+### P0 — Updater metadata and signing
+
+Goal: avoid updater overclaims until endpoint and signing are real.
+
+- Keep updater artifacts disabled for local unsigned builds.
+- Official updater key custody is now GitHub Actions repository secrets; keep local builds disabled and use `scripts/release/build-official-windows-release.ps1` for release builds.
+- Keep the configured metadata endpoint at `https://hexhawk.ke/releases/latest.json`, but replace stale hosted metadata and rerun expected artifact/signature validation before making endpoint-readiness claims.
+- Continue validating platform URL/signature fields before claiming public updater readiness.
 
 ### P0 — Investor / Board Demonstration Package
 
@@ -55,30 +72,22 @@ Goal: make the board/investor story match current proof without overclaiming.
 - Maintain `docs/INVESTOR_ONE_PAGER.md`.
 - Maintain `docs/INVESTOR_DILIGENCE_BRIEF.md`.
 - Maintain `docs/BOARD_UPDATE_2026-05-31.md`.
-- Keep website copy aligned with current build, validation, licensing, and signing status.
+- Keep website copy aligned with current build, validation, licensing, signing, and updater status.
 
 Exit criteria:
 
 - Docs and website present HexHawk as internal-tester ready, not broadly public-release ready.
 - Validation counts and artifact caveats match current command output.
 
-### P1 — Native GUI Installed-Artifact Proof
+### P1 — Native GUI artifact proof discipline
 
-Goal: prove the packaged desktop GUI, not only source/dev build paths.
+Goal: prove the exact packaged desktop GUI artifact intended for testers.
 
-- Install or extract current MSI/NSIS artifacts.
-- Launch real native Tauri/WebView2 runtime.
+- Hash the MSI first.
+- Run native GUI parity against that exact MSI.
 - Prove `hasTauriRuntime: true`, `browserMode: false`, and native internals present.
-- Run Open → Inspect → Strings → Disassembly → GYRE/NEST → Export.
-- Compare exported report against runtime evidence bundle semantics.
-
-### P1 — Distribution and Support Readiness
-
-- Publish signed checksums.
-- Document installer warnings and troubleshooting.
-- Finalize support mailbox/process.
-- Decide pricing and pilot terms.
-- Prepare paid pilot onboarding workflow.
+- Run Open -> Inspect -> Analysis -> NEST -> Export.
+- Compare exported report against authority-envelope expectations.
 
 ## Deferred / Backlog
 

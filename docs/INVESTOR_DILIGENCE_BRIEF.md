@@ -1,10 +1,10 @@
 # HexHawk Investor Diligence Brief
 
-Date: 2026-05-31
+Date: 2026-06-02
 
 ## Executive Summary
 
-HexHawk has reached a meaningful engineering milestone: the Windows Tauri installer path now builds successfully after repairing the WebView2 installer configuration. The current build is appropriate for internal/investor/board demonstration and controlled testing. It is not yet a signed public release.
+HexHawk has reached a meaningful engineering milestone: the Windows Tauri installer path builds, source validation passes, and packaged native GUI parity passes on the exact current MSI artifact. The current build is appropriate for internal/investor/board demonstration and controlled internal testing. It is not a signed public release.
 
 ## Architecture
 
@@ -32,32 +32,41 @@ This prevents AI/assistant features from silently becoming security truth.
 Commands run in the latest pass:
 
 ```bash
+yarn typecheck
+yarn build
 yarn test --reporter=dot
-yarn typecheck && yarn build && cargo check --workspace && cargo test --workspace
+cargo check --workspace
+cargo test --workspace
 yarn tauri:build
 sha256sum target/release/hexhawk-backend.exe target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe
-msiexec.exe /a HexHawk_1.0.0_x64_en-US.msi /qn TARGETDIR=<extract-dir>
-nest_cli.exe identify D:/Project/HexHawk/Challenges/ch76/keygenme.exe
+Get-AuthenticodeSignature <current exe/msi/nsis>
+powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release/run-native-parity-probe.ps1 -MsiPath ./target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi -OutputPath ./gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json
 ```
 
 Observed results:
 
-- Frontend tests: 38 passed files / 683 passed tests.
+- Frontend tests: 40 passed files / 700 passed tests.
 - Typecheck: passed.
 - Frontend build: passed.
 - Rust check: passed.
 - Rust tests: 85 passed backend/CLI tests.
 - Tauri release build: passed.
 - MSI and NSIS installers: produced successfully.
-- Authenticode: not signed.
-- MSI extraction: passed.
-- Extracted CLI smoke: passed on a real PE sample.
+- Authenticode: current artifacts are not digitally signed.
+- Native GUI parity: passed on current MSI artifact.
+- Updater metadata: GitHub Actions updater-key custody is configured and local official-path metadata validation passes, but hosted `https://hexhawk.ke/releases/latest.json` validation is blocked by stale hosted metadata and Authenticode is still absent.
 
-## Artifact Hashes
+## Current Artifact Hashes
 
-- `hexhawk-backend.exe`: `aec86545b821cc42482d092857c4238fcf5ac23ffdde10119808964f25161677`.
-- `HexHawk_1.0.0_x64_en-US.msi`: `8bf30818bbaff55b92037f716d1290f434d09b033f841257d970381f5c0870a4`.
-- `HexHawk_1.0.0_x64-setup.exe`: `69378677d84d67fa96eccf6ee5be949c89ef98fa7f2e412e67fbbc503226b6dc`.
+Rebuilt locally on 2026-06-02 21:59 UTC with `yarn tauri:build`; Authenticode remains unsigned / not digitally signed.
+
+- `hexhawk-backend.exe`: `caeb0c39abd9854d60745ff0f407744b7da4bc05312f01d2d346259037570377`.
+- `HexHawk_1.0.0_x64_en-US.msi`: `78bf99874acb9419525ab3012ac36252d2f8cc7605850aa773d36cc6865ec1e4`.
+- `HexHawk_1.0.0_x64-setup.exe`: `dbbd31edf328dc85bc40176fa19b3b5220cc62b85d74d1ab2f9969944c7fd246`.
+
+## Historical Evidence Boundary
+
+A prior evidence file recorded internal self-signed signatures for earlier artifact hashes. It remains historical provenance, but it is not current proof for the artifacts above.
 
 ## Commercial Readiness
 
@@ -66,12 +75,12 @@ Ready:
 - Internal demonstration.
 - Technical diligence walkthrough.
 - Controlled local tester evaluation.
-- Pilot packaging discussion.
+- Pilot packaging discussion with explicit unsigned/updater caveats.
 
 Not ready until resolved:
 
 - Signed public installer.
-- Signed updater artifacts.
+- Signed updater artifacts or explicitly disabled updater policy.
 - Signed-artifact native GUI export parity revalidation.
 - External support, privacy, procurement, and issue-intake process.
 
@@ -79,12 +88,12 @@ Not ready until resolved:
 
 | Risk | Status | Mitigation |
 | --- | --- | --- |
-| Windows SmartScreen warnings | Open | Code-sign executable/installers |
-| Updater distribution | Open | Configure signing key and re-enable updater artifacts |
-| GUI parity after package extraction | Repaired / pass on unsigned tester artifact | Rerun on signed artifact before external release |
-| AI/verdict overclaiming | Controlled | Maintain GYRE/NEST/AETHERFRAME boundary tests/copy |
-| Enterprise procurement | Open | Prepare signing, SBOM/provenance, support docs |
+| Windows SmartScreen warnings | Open | Code-sign executable/installers with organization-trusted certificate. |
+| Updater distribution | Open | Configure signing key and reachable release metadata endpoint. |
+| GUI parity after package extraction | Pass on current unsigned MSI | Rerun on the exact signed MSI/NSIS after public-trusted Authenticode signing before external release. |
+| AI/verdict overclaiming | Controlled | Maintain GYRE/NEST/AETHERFRAME boundary tests/copy. |
+| Enterprise procurement | Open | Prepare signing, SBOM/provenance, support docs. |
 
 ## Diligence Bottom Line
 
-HexHawk is beyond concept stage: it builds, tests, packages, extracts, performs real file-bound CLI analysis, and now has packaged native GUI parity evidence for runtime/workflow/report authority export. The remaining work is release hardening, signing, updater trust, and commercial operations.
+HexHawk is beyond concept stage: it builds, tests, packages, performs real file-bound workflows, and has packaged native GUI parity evidence for runtime/workflow/report authority export. The remaining work is release trust: real code signing, updater metadata/signing, procurement readiness, and commercial operations.

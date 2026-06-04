@@ -1,6 +1,6 @@
 # HexHawk High-Assurance Guide
 
-Date: 2026-05-31
+Date: 2026-06-02
 
 ## Goal
 
@@ -11,8 +11,10 @@ High-assurance HexHawk workflows prioritize deterministic evidence, explicit pol
 - GYRE remains final verdict authority.
 - NEST evidence bundles must preserve file identity and GYRE linkage.
 - AETHERFRAME/Forge uplift must be explicitly policy-gated.
+- Standalone AetherFrame core must remain product-agnostic and adapter-driven; AetherFrameGuard is a separate application, not the core implementation container.
 - High-assurance mode must be able to disable uplift and present base GYRE/NEST outputs directly.
 - Reports must disclose whether uplift/lineage metadata was applied.
+- AETHERFRAME report Markdown packaging must be disabled or left package-only in high-assurance contexts; disabled policy must leave the report body unchanged and record disabled lineage only in adapter metadata/tests, not in exported verdict truth. The report panel exposes this as an analyst-controlled Markdown/copy export toggle.
 
 ## Release Guidance
 

@@ -78,7 +78,7 @@ MSYS_NO_PATHCONV=1 powershell.exe -NoProfile -Command '<Get-AuthenticodeSignatur
 Observed current-session results:
 
 - TypeScript typecheck: passed.
-- Frontend tests: 38 files / 686 tests passed.
+- Frontend tests: 40 files / 700 tests passed in the 2026-06-02 website-alignment validation pass.
 - Frontend production build: passed.
 - Tauri release/installer build: passed.
 - MSI artifact produced: `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`.
@@ -106,8 +106,8 @@ Before creating these docs, `git status --short` showed multiple modified files 
 
 ## Known doc inconsistency handled conservatively
 
-- `README.md` and `ROADMAP.md` state installed-artifact native GUI export parity has not been rerun after the latest installer rebuild.
-- `docs/TESTER_RELEASE_STATUS.md` and investor docs state packaged native GUI parity passed for an unsigned tester artifact and must be rerun on a signed artifact.
+- `README.md` and `ROADMAP.md` now state packaged native GUI export parity passed for the current unsigned MSI artifact.
+- `docs/TESTER_RELEASE_STATUS.md` and investor docs state packaged native GUI parity passed for the current unsigned MSI artifact and must be rerun on a signed artifact before external/public release.
 
 The new publication treats native GUI parity as artifact-specific and says it must be rerun for each artifact that will be trusted.
 
@@ -125,7 +125,7 @@ Results:
 - `always`: 1 hit in this validation checklist context only.
 - `fully automated`: 1 hit in this validation checklist context only.
 - `public release ready`: 1 hit in this validation checklist context only.
-- `signed`: 12 hits after this update. Reviewed contexts describe internally signed artifacts with untrusted-root caveat, remaining trust-chain gaps, or the requested scan term; no claim of public-trusted release signing.
+- `signed`: reviewed after the release-truth pass; current canonical release docs state the live artifacts are unsigned and distinguish historical internal self-signed evidence from current artifact state.
 - `shell`: 3 hits. One is "Developer shell" in the capability matrix; one is the PowerShell Authenticode validation command in this report; one is this validation checklist context.
 - `flag`: 1 hit in this validation checklist context only.
 - `malware proven`: 1 hit in this validation checklist context only.

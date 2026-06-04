@@ -1,6 +1,6 @@
 # HexHawk Enterprise and Commercial Roadmap
 
-Last updated: 2026-05-31
+Last updated: 2026-06-02
 
 ## Board-Level Status
 
@@ -8,8 +8,8 @@ HexHawk is now a working native desktop binary-intelligence product with a rebui
 
 Current proof points:
 
-- 38 frontend test files / 683 tests passing.
-- Rust workspace validation passing with 85 backend/CLI tests.
+- 40 frontend test files / 700 tests passing in the 2026-06-02 release-truth pass.
+- Rust workspace validation passing with 71 backend tests plus 14 `nest_cli` tests.
 - Production frontend build passing.
 - Windows Tauri release executable builds.
 - MSI and NSIS installer artifacts build.
@@ -19,8 +19,8 @@ Current proof points:
 
 Current blockers to enterprise/public distribution:
 
-- Code signing is not configured; artifacts are unsigned.
-- Updater artifacts are disabled for the local tester build because signing credentials are not present.
+- Public-trusted code signing is not configured; current artifacts are unsigned.
+- Updater artifacts are disabled for local unsigned builds; updater-key custody exists in GitHub Actions secrets for the official release path, but hosted metadata must be refreshed and revalidated against current artifacts before endpoint-readiness claims.
 - Packaged GUI parity has passed on the unsigned tester artifact; it must be rerun on signed artifacts before external release.
 - External release provenance, support, and procurement materials need finalization.
 
@@ -52,7 +52,7 @@ Suggested pilot packaging:
 | Tier | Audience | Positioning |
 | --- | --- | --- |
 | Internal / Board Demo | Founders, board, investors | Unsigned local tester build, proof-of-product only |
-| Paid Pilot | Small analyst teams | Signed Windows build, guided onboarding, limited support |
+| Paid Pilot | Small analyst teams | Planned signed Windows build, guided onboarding, limited support after release gates |
 | Professional | Individual analysts | Local-first desktop license with report export |
 | Team | SOC / IR team | Shared process, support, onboarding, policy templates |
 | Enterprise | Regulated teams | Procurement support, SSO/activation roadmap, audit/export requirements |
@@ -86,7 +86,7 @@ Suggested pilot packaging:
 | Risk | Current status | Mitigation |
 | --- | --- | --- |
 | Unsigned installer | Open | Configure code signing before external release |
-| Updater signing | Open | Provide `TAURI_SIGNING_PRIVATE_KEY` and re-enable updater artifacts |
+| Updater signing | Open | Use official release custody, refresh hosted metadata, and validate exact current artifact/signature fields before readiness claims |
 | GUI installed parity | Pass on unsigned tester artifact | Rerun native installed-artifact export parity on signed artifact |
 | Overclaiming AI/verdict authority | Controlled | Preserve GYRE/NEST/AETHERFRAME boundaries in docs/UI/export |
 | Support burden | Open | Pilot-only release until support path is defined |
