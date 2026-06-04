@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -13,32 +13,56 @@
 <body>
 <header class="topbar">
   <div class="container nav">
-    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>    <nav class="links">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
+    <nav class="links" aria-label="Primary navigation">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
-      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
-      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
-      <a data-path="/verify-file" href="/verify-file">Verify File</a>
-      <a data-path="/release-notes" href="/release-notes">Release Notes</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
     </nav>
   </div>
 </header>
 <main class="container">
-<section class="hero"><span class="kicker">INVESTOR / BOARD BRIEF</span><h1>HexHawk is ready for controlled diligence review.</h1><p class="lead">The current story is deliberately evidence-scoped: working product, signed internal tester artifacts, native packaged parity proof, and explicit remaining trust-chain gaps.</p></section>
-<section class="section"><h2>Current diligence summary</h2><div class="grid">
-<article class="card"><h3>What is proven</h3><p>Authority-envelope regression tests pass, exe/MSI/NSIS signatures and timestamps are captured, and native packaged GUI parity passed on signed internal artifacts.</p></article>
-<article class="card"><h3>What remains</h3><p>Organization-trusted signing chain, reachable updater metadata endpoint validation, and trusted-signed artifact rerun for external release readiness.</p></article>
-<article class="card"><h3>Trust boundaries</h3><p>GYRE is verdict authority. NEST orchestrates evidence. AETHERFRAME/Forge is optional bounded uplift/lineage only.</p></article>
-</div></section><section class="section"><h2>Documents prepared</h2><ul><li>Investor One-Pager</li><li>Investor Diligence Brief</li><li>Board Update</li><li>Tester Release Status</li><li>Engine Boundary Doctrine</li><li>High-Assurance Guide</li></ul><p>Request the board/investor packet from the HexHawk team for the full Markdown/PDF source set.</p></section>
+  <section class="hero">
+    <span class="kicker">Docs</span>
+    <h1>Documentation for analysts, evaluators, and buyers</h1>
+    <p class="lead">Start with product use, release status, and trust guidance. Investor and board materials remain available, but they no longer dominate the public docs landing page.</p>
+  </section>
+  <section class="section"><div class="grid three"><article class="card"><h3>Getting started</h3><p>Start with the README and current release notes before installing or evaluating HexHawk.</p><a href="https://github.com/Zielmenosza/hexhawk/blob/main/README.md">Open README</a></article><article class="card"><h3>Release notes</h3><p>Review what changed, what is validated, and what remains blocked before using artifacts.</p><a href="/release-notes">View Release Notes</a></article><article class="card"><h3>Trust and assurance</h3><p>Understand GYRE, NEST, AETHERFRAME, NEXUS, and CREST authority boundaries.</p><a href="/trust">Read Trust &amp; Assurance</a></article><article class="card"><h3>Engine boundary doctrine</h3><p>The mandatory public-claim and authority hierarchy for HexHawk.</p><a href="https://github.com/Zielmenosza/hexhawk/blob/main/docs/ENGINE_BOUNDARY_DOCTRINE.md">Read Doctrine</a></article><article class="card"><h3>High-assurance guide</h3><p>Use deterministic outputs, explicit policy gates, and disclosed refinement metadata.</p><a href="https://github.com/Zielmenosza/hexhawk/blob/main/docs/HIGH_ASSURANCE_GUIDE.md">Read Guide</a></article><article class="card"><h3>Verification</h3><p>Use operational trust pages for checksums, keys, revocations, and browser-side verification.</p><a href="/trust-center">Open Verification Center</a></article><article class="card"><h3>Enterprise diligence</h3><p>Current readiness, caveats, and commercial proof for controlled evaluation.</p><a href="https://github.com/Zielmenosza/hexhawk/blob/main/docs/INVESTOR_DILIGENCE_BRIEF.md">Open Diligence Brief</a></article><article class="card"><h3>Investor materials</h3><p>Investor and board materials remain available, but they do not define product trust by themselves.</p><a href="https://github.com/Zielmenosza/hexhawk/blob/main/docs/INVESTOR_ONE_PAGER.md">Open One-Pager</a></article></div></section>
 </main>
 <footer class="footer">
-  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate Â· 2026-06-01</span></div>
+  <div class="container footer-grid">
+    <div>
+      <strong>HexHawk</strong>
+      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
+      <p class="mono">v1.0 internal tester candidate · 2026-06-02</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <a href="/features">Features</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/downloads">Downloads</a>
+      <a href="/docs">Docs</a>
+    </div>
+    <div>
+      <h4>Trust operations</h4>
+      <a href="/trust">Trust &amp; Assurance</a>
+      <a href="/trust-center">Verification Center</a>
+      <a href="/verify-file">Verify a File</a>
+      <a href="/keys-revocations">Keys &amp; Revocations</a>
+      <a href="/release-notes">Release Notes</a>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <a href="mailto:contact@hexhawk.ke">Request Early Access</a>
+      <a href="mailto:sales@hexhawk.ke">Schedule a Demo</a>
+    </div>
+  </div>
 </footer>
 <script src="/assets/app.js"></script>
 </body>
 </html>
-

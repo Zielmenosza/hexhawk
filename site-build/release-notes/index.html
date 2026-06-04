@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -13,28 +13,56 @@
 <body>
 <header class="topbar">
   <div class="container nav">
-    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>    <nav class="links">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
+    <nav class="links" aria-label="Primary navigation">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
-      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
-      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
-      <a data-path="/verify-file" href="/verify-file">Verify File</a>
-      <a data-path="/release-notes" href="/release-notes">Release Notes</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
     </nav>
   </div>
 </header>
 <main class="container">
-<section class="hero"><span class="kicker">RELEASE NOTES</span><h1>2026-06-01 release-hardening, parity, and decompiler quality update.</h1><p class="lead">This pass combines installer hardening work with TALON/decompiler reliability upgrades targeted at C-like output quality.</p></section>
-<section class="section"><h2>What changed</h2><ul><li>Enabled Tauri updater signing path in config (`createUpdaterArtifacts: true`, updater pubkey configured, endpoint wired).</li><li>Added release-hardening automation to sign exe/MSI/NSIS and emit signer/timestamp/hash evidence JSON.</li><li>Ran packaged native GUI acceptance probe on MSI-extracted artifact (runtime proof + Open/Inspect/Analysis/NEST/Report export).</li><li>Added report-export regression gate for authority envelope fields (`source_engine`, `gyre_is_sole_verdict_source`).</li><li>Aligned disassembly/CFG address handling to reduce non-overlapping function windows.</li><li>Added instruction-derived fallback block partitioning when CFG coverage is missing or non-overlapping.</li><li>Improved call argument recovery (larger lookback + cross-block recovery pass) and first-pass semantic variable naming heuristics.</li><li>Added new decompiler regressions, including guarded real-binary tests against workspace challenge executables.</li><li>Regenerated MSI and NSIS bundles from the updated source tree in this pass.</li></ul></section><section class="section"><h2>Known caveats</h2><ul><li>Signatures currently use an internal self-signed development certificate and are not publicly trusted.</li><li>Updater endpoint metadata validation currently fails because the configured release host did not resolve in this pass.</li><li>Tauri updater signing key (`TAURI_SIGNING_PRIVATE_KEY`) is not configured in this environment, so build exits non-zero after bundle generation.</li><li>Current internal packaging pass used a no-op sign-command fallback to unblock local MSI/NSIS rebundling.</li><li>Rerun packaged GUI parity on organization-trusted signed artifacts before external release.</li></ul></section>
+  <section class="hero">
+    <span class="kicker">Release notes</span>
+    <h1>2026-06-02 release-truth and website alignment update</h1>
+    <p class="lead">This update keeps public release language aligned with the current unsigned internal-tester build candidate and documented updater/signing gates.</p>
+  </section>
+  <section class="section"><h2>What changed in the latest release-truth pass</h2><ul class="checklist"><li>Current rebuilt Windows executable, MSI, and NSIS artifacts are unsigned according to Authenticode.</li><li>The prior internal self-signed evidence is historical and applies to older artifact hashes, not the current rebuilt artifacts.</li><li>The no-op Tauri signing command was removed.</li><li>Local unsigned builds keep updater artifacts disabled.</li><li>Updater key custody is present in GitHub Actions secrets and official-path metadata can be produced, but hosted metadata must match the current artifacts before endpoint-readiness claims.</li><li>Native packaged GUI report/AETHERFRAME policy parity is documented for the current unsigned MSI evidence.</li></ul></section><section class="section"><h2>Known caveats</h2><ul class="checklist"><li>Not a public-trusted general-availability release.</li><li>Expect Windows trust warnings until real code signing is configured and verified.</li><li>Rerun native GUI parity on the exact signed artifact intended for external testers or public release.</li><li>Do not treat stale hosted updater metadata or historical self-signed evidence as current release proof.</li></ul></section>
 </main>
 <footer class="footer">
-  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate Â· 2026-06-01</span></div>
+  <div class="container footer-grid">
+    <div>
+      <strong>HexHawk</strong>
+      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
+      <p class="mono">v1.0 internal tester candidate · 2026-06-02</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <a href="/features">Features</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/downloads">Downloads</a>
+      <a href="/docs">Docs</a>
+    </div>
+    <div>
+      <h4>Trust operations</h4>
+      <a href="/trust">Trust &amp; Assurance</a>
+      <a href="/trust-center">Verification Center</a>
+      <a href="/verify-file">Verify a File</a>
+      <a href="/keys-revocations">Keys &amp; Revocations</a>
+      <a href="/release-notes">Release Notes</a>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <a href="mailto:contact@hexhawk.ke">Request Early Access</a>
+      <a href="mailto:sales@hexhawk.ke">Schedule a Demo</a>
+    </div>
+  </div>
 </footer>
 <script src="/assets/app.js"></script>
 </body>
 </html>
-
