@@ -3,7 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HexHawk Lab | HexHawk</title>
+  <title>HexHawk Lab | Validation Without Overclaiming</title>
+  <meta name="description" content="Review HexHawk Lab notes for challenge-grade validation discipline, native proof expectations, and exploitability language boundaries.">
+  <link rel="canonical" href="https://hexhawk.ke/hexhawk-lab/">
+  <meta property="og:title" content="HexHawk Lab | Validation Without Overclaiming">
+  <meta property="og:description" content="Review HexHawk Lab notes for challenge-grade validation discipline, native proof expectations, and exploitability language boundaries.">
+  <meta property="og:url" content="https://hexhawk.ke/hexhawk-lab/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HexHawk">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="HexHawk Lab | Validation Without Overclaiming">
+  <meta name="twitter:description" content="Review HexHawk Lab notes for challenge-grade validation discipline, native proof expectations, and exploitability language boundaries.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -11,11 +21,12 @@
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="topbar">
   <div class="container nav">
     <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
-    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
-    <nav class="links" aria-label="Primary navigation">
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-controls="primary-navigation" aria-expanded="false">Menu</button>
+    <nav class="links" id="primary-navigation" aria-label="Primary navigation">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
@@ -26,7 +37,7 @@
     </nav>
   </div>
 </header>
-<main class="container">
+<main id="main-content" class="container">
 <section class="hero"><span class="kicker">HEXHAWK LAB</span><h1>Challenge-grade validation without overclaiming.</h1><p class="lead">HexHawk Lab is the evidence and benchmark lane for real files, challenge binaries, regression fixtures, and native GUI/runtime validation.</p></section>
 <section class="section"><h2>Validation principles</h2><div class="grid">
 <article class="card"><h3>File-bound evidence</h3><p>Reports and bundles should bind findings to actual file identity and size/hash proof.</p></article>

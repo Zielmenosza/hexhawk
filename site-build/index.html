@@ -3,19 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Home | HexHawk</title>
+  <title>HexHawk | Evidence-Grade Binary Analysis</title>
+  <meta name="description" content="HexHawk is a local-first reverse-engineering and binary-intelligence workbench for analysts who need reviewable evidence, clear verdict authority, and exportable reports.">
+  <link rel="canonical" href="https://hexhawk.ke/">
+  <meta property="og:title" content="HexHawk | Evidence-Grade Binary Analysis">
+  <meta property="og:description" content="HexHawk is a local-first reverse-engineering and binary-intelligence workbench for analysts who need reviewable evidence, clear verdict authority, and exportable reports.">
+  <meta property="og:url" content="https://hexhawk.ke/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HexHawk">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="HexHawk | Evidence-Grade Binary Analysis">
+  <meta name="twitter:description" content="HexHawk is a local-first reverse-engineering and binary-intelligence workbench for analysts who need reviewable evidence, clear verdict authority, and exportable reports.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
   <link rel="stylesheet" href="/assets/styles.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"HexHawk","url":"https://hexhawk.ke","description":"Local-first binary intelligence with explicit evidence and authority boundaries.","sameAs":["https://github.com/Zielmenosza/hexhawk"]}</script>
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="topbar">
   <div class="container nav">
     <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
-    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
-    <nav class="links" aria-label="Primary navigation">
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-controls="primary-navigation" aria-expanded="false">Menu</button>
+    <nav class="links" id="primary-navigation" aria-label="Primary navigation">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
@@ -26,7 +38,7 @@
     </nav>
   </div>
 </header>
-<main class="container">
+<main id="main-content" class="container">
   <section class="hero">
     <span class="kicker">Evidence-grade binary analysis</span>
     <h1>Reverse engineering with evidence you can review</h1>

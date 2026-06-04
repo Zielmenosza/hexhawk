@@ -3,7 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Pricing | HexHawk</title>
+  <title>Pricing | HexHawk Plans for Analysts and Teams</title>
+  <meta name="description" content="Review HexHawk Community, Professional, Team, and Enterprise paths with clear availability badges and explicit internal-tester release caveats.">
+  <link rel="canonical" href="https://hexhawk.ke/pricing/">
+  <meta property="og:title" content="Pricing | HexHawk Plans for Analysts and Teams">
+  <meta property="og:description" content="Review HexHawk Community, Professional, Team, and Enterprise paths with clear availability badges and explicit internal-tester release caveats.">
+  <meta property="og:url" content="https://hexhawk.ke/pricing/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="HexHawk">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Pricing | HexHawk Plans for Analysts and Teams">
+  <meta name="twitter:description" content="Review HexHawk Community, Professional, Team, and Enterprise paths with clear availability badges and explicit internal-tester release caveats.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -11,11 +21,12 @@
   <link rel="stylesheet" href="/assets/styles.css">
 </head>
 <body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
 <header class="topbar">
   <div class="container nav">
     <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
-    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
-    <nav class="links" aria-label="Primary navigation">
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-controls="primary-navigation" aria-expanded="false">Menu</button>
+    <nav class="links" id="primary-navigation" aria-label="Primary navigation">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
@@ -26,14 +37,14 @@
     </nav>
   </div>
 </header>
-<main class="container">
+<main id="main-content" class="container">
   <section class="hero">
     <span class="kicker">Plans</span>
     <h1>Plans for individuals, teams, and enterprise buyers</h1>
     <p class="lead">Choose the HexHawk path that matches your workflow, release needs, and assurance requirements. Current public release posture remains explicit, and enterprise controls are described only where available or clearly scoped.</p>
   </section>
   <section class="status-strip"><strong>Release caveat:</strong> Windows internal-tester build candidate. Current rebuilt artifacts are unsigned according to Authenticode; no current internal self-signed signature is present. Local unsigned builds keep updater artifacts disabled, and hosted updater metadata must be refreshed and revalidated before release-readiness claims. Public-trusted signing remains incomplete.</section>
-  <section class="section pricing-grid"><article class="card tier"><span class="badge">Internal tester</span><h2>Community</h2><p>For learners, individual researchers, and early evaluators.</p><ul><li>Core local-first workflow for binary inspection.</li><li>Evidence review and basic export.</li><li>Controlled-environment evaluation recommended.</li></ul><a class="btn primary" href="/downloads">Download Free Version</a></article><article class="card tier"><span class="badge planned">Planned</span><h2>Professional</h2><p>For solo analysts and independent reverse engineers.</p><ul><li>Advanced desktop workflows.</li><li>Exportable evidence and deeper analyst tooling.</li><li>Commercial packaging pending release gates.</li></ul><a class="btn ghost" href="mailto:sales@hexhawk.ke">Contact Sales</a></article><article class="card tier"><span class="badge roadmap">Enterprise roadmap</span><h2>Team</h2><p>For SOC, IR, and boutique security teams.</p><ul><li>Shared workflow standards.</li><li>Repeatable handoff expectations.</li><li>Support-ready deployment guidance when pilot-ready.</li></ul><a class="btn ghost" href="mailto:contact@hexhawk.ke">Talk to Us</a></article><article class="card tier" id="enterprise"><span class="badge roadmap">Enterprise roadmap</span><h2>Enterprise</h2><p>For regulated organizations and teams with governance or procurement needs.</p><ul><li>Deployment guidance and assurance materials.</li><li>Support expectations and roadmap-led engagement.</li><li>No unverified SSO, hosted collaboration, or offline license-server claims.</li></ul><a class="btn primary" href="mailto:sales@hexhawk.ke">Schedule a Demo</a></article></section>
+  <section class="section pricing-grid"><article class="card tier"><span class="badge">Internal tester</span><h2>Community</h2><p>For learners, individual researchers, and early evaluators.</p><ul><li>Core local-first workflow for binary inspection.</li><li>Evidence review and basic export.</li><li>Controlled-environment evaluation recommended.</li></ul><a class="btn primary" href="/downloads">Download Free Version</a></article><article class="card tier"><span class="badge planned">Planned</span><h2>Professional</h2><p>For solo analysts and independent reverse engineers.</p><ul><li>Advanced desktop workflows.</li><li>Exportable evidence and deeper analyst tooling.</li><li>Commercial packaging pending release gates.</li></ul><a class="btn ghost" href="mailto:sales@hexhawk.ke">Contact Sales</a></article><article class="card tier"><span class="badge roadmap">Enterprise roadmap</span><h2>Team</h2><p>For SOC, IR, and boutique security teams.</p><ul><li>Shared workflow standards.</li><li>Repeatable handoff expectations.</li><li>Support-ready deployment guidance when pilot-ready.</li></ul><a class="btn ghost" href="mailto:contact@hexhawk.ke">Talk to Us</a></article><article class="card tier" id="enterprise"><span class="badge roadmap">Enterprise roadmap</span><h2>Enterprise</h2><p>For regulated organizations and teams with governance or procurement needs.</p><ul><li>Deployment guidance and assurance materials.</li><li>Support expectations and roadmap-led engagement.</li><li>Identity, collaboration, and offline licensing controls remain roadmap-scoped unless separately validated.</li></ul><a class="btn primary" href="mailto:sales@hexhawk.ke">Schedule a Demo</a></article></section>
   <section class="section caveat"><h2>About pricing</h2><p>Public numeric prices are not finalized, so this page does not invent them. If you need a validated build for diligence or pilot planning, request early access or contact the team for current release materials.</p></section>
 </main>
 <footer class="footer">
