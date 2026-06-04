@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -13,47 +13,69 @@
 <body>
 <header class="topbar">
   <div class="container nav">
-    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>    <nav class="links">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
+    <nav class="links" aria-label="Primary navigation">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
-      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
-      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
-      <a data-path="/verify-file" href="/verify-file">Verify File</a>
-      <a data-path="/release-notes" href="/release-notes">Release Notes</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
     </nav>
   </div>
 </header>
 <main class="container">
-<section class="hero">
-  <span class="kicker">INTERNAL TESTER CANDIDATE</span>
-  <h1>Reverse engineering with evidence, not guesswork.</h1>
-  <p class="lead">HexHawk is a local-first desktop binary-intelligence platform for malware analysts, incident responders, SOC teams, and security researchers.</p>
-  <div class="cta"><a class="btn primary" href="/docs">Investor / Board Brief</a><a class="btn ghost" href="/downloads">Build Status</a><a class="btn ghost" href="/features">Product Capabilities</a></div>
-</section>
-<section class="section"><h2>Current proof, not hype</h2><div class="grid">
-  <article class="card"><h3>Installer path rebuilt</h3><p>Windows release executable, MSI, and NSIS installer artifacts now build successfully after the WebView2 installer configuration repair.</p></article>
-  <article class="card"><h3>Validation is current</h3><p>Latest hardening pass: authority-envelope regression test passed, native packaged GUI parity passed, consolidated release evidence was captured, and decompiler/TALON regression coverage expanded.</p></article>
-  <article class="card"><h3>Release caveat is explicit</h3><p>Artifacts are Authenticode-signed with an internal self-signed dev certificate. Trust chain is not public-trusted yet, and updater endpoint validation is still open.</p></article>
-</div></section>
-<section class="section"><h2>Decompiler quality pass</h2><div class="grid">
-  <article class="card"><h3>Address-consistency fixed</h3><p>Disassembly and CFG address handling was aligned to reduce false empty decompile outcomes from non-overlapping ranges.</p></article>
-  <article class="card"><h3>Fallback partitioning</h3><p>When CFG coverage is missing/sparse, HexHawk now partitions basic blocks directly from instruction flow to preserve readable structured output.</p></article>
-  <article class="card"><h3>Stronger call/name recovery</h3><p>Call argument recovery now spans cross-block windows, and initial variable naming heuristics promote loop/index/size/pointer semantics.</p></article>
-</div></section>
-<section class="section"><h2>Trust-safe engine model</h2><div class="grid">
-  <article class="card"><h3>GYRE</h3><p>Sole verdict authority for classification and base confidence.</p></article>
-  <article class="card"><h3>NEST</h3><p>Evidence orchestration, convergence, and GYRE-linked bundle validation.</p></article>
-  <article class="card"><h3>AETHERFRAME / Forge</h3><p>Optional bounded uplift, refinement, and lineage metadata. It does not change classification.</p></article>
-</div></section>
+  <section class="hero">
+    <span class="kicker">Evidence-grade binary analysis</span>
+    <h1>Reverse engineering with evidence you can review</h1>
+    <p class="lead">HexHawk is a local-first desktop platform for malware analysts, incident responders, security researchers, and firmware teams. Inspect binaries, work through disassembly and decompiler output, converge evidence with NEST, preserve GYRE as final verdict authority, and export reviewable reports from one analyst workflow.</p>
+  </section>
+  <div class="cta hero-cta"><a class="btn primary" href="/downloads">Download Free Version</a><a class="btn ghost" href="mailto:contact@hexhawk.ke">Request Early Access</a><a class="btn ghost" href="mailto:sales@hexhawk.ke">Schedule a Demo</a></div>
+  <section class="status-strip"><strong>Current release status:</strong> Windows internal-tester build candidate. Current rebuilt artifacts are unsigned according to Authenticode; no current internal self-signed signature is present. Local unsigned builds keep updater artifacts disabled, and hosted updater metadata must be refreshed and revalidated before release-readiness claims. Public-trusted signing remains incomplete.</section>
+  <section class="section"><div class="section-heading"><span class="kicker">ANALYST WORKFLOW</span><h2>One local workflow for binary evidence.</h2></div><div class="grid three">
+    <article class="card"><h3>Analyze binaries in one local workflow</h3><p>Inspect file identity, hashes, sections, entropy, imports, strings, and architecture-aware metadata without making cloud detonation the center of the workflow.</p></article>
+    <article class="card"><h3>Review disassembly and decompiler output</h3><p>Move between disassembly, control-flow context, and TALON decompiler assistance while preserving evidence context.</p></article>
+    <article class="card"><h3>Converge evidence with NEST</h3><p>Gather signals into reviewable bundles that can be validated, compared, and handed off to another analyst.</p></article>
+    <article class="card"><h3>Preserve GYRE-linked verdict authority</h3><p>GYRE remains the sole source of final classification and base confidence in HexHawk outputs.</p></article>
+    <article class="card"><h3>Export CREST reports</h3><p>Package findings for triage, review, diligence, and communication with explicit source and authority markers.</p></article>
+    <article class="card"><h3>Keep refinement policy-gated</h3><p>AETHERFRAME adds optional bounded metadata only when policy allows it. It does not replace GYRE or become final truth.</p></article>
+  </div></section>
+  <section class="section split"><div><span class="kicker">TRUST MODEL</span><h2>Built for evidence, not opaque guesses.</h2><p>HexHawk keeps authority boundaries explicit. GYRE decides. NEST organizes and validates evidence. AETHERFRAME adds optional policy-gated refinement metadata without changing classification. NEXUS assists the analyst without becoming the verdict source.</p><div class="cta"><a class="btn ghost" href="/trust">Read the Trust Guide</a><a class="btn ghost" href="/trust-center">Open Verification Center</a></div></div><div class="authority-card"><div><strong>GYRE</strong><span>final classification and base confidence</span></div><div><strong>NEST</strong><span>evidence organization and validation</span></div><div><strong>AETHERFRAME</strong><span>optional policy-gated metadata</span></div><div><strong>NEXUS</strong><span>analyst assistance only</span></div><div><strong>CREST</strong><span>reviewable report packaging</span></div></div></section>
+  <section class="section"><div class="section-heading"><span class="kicker">PLANS</span><h2>Paths for individuals, teams, and diligence.</h2></div><div class="grid four"><article class="card"><span class="badge">Internal tester</span><h3>Community</h3><p>Early evaluation for learners and individual researchers.</p></article><article class="card"><span class="badge planned">Planned</span><h3>Professional</h3><p>Advanced local workflows and exportable evidence for solo analysts.</p></article><article class="card"><span class="badge roadmap">Enterprise roadmap</span><h3>Team</h3><p>Repeatable handoff and support-ready deployment guidance for SOC and IR teams.</p></article><article class="card"><span class="badge roadmap">Enterprise roadmap</span><h3>Enterprise</h3><p>Diligence materials, governance expectations, and roadmap-led engagement.</p></article></div></section>
+  <section class="section"><div class="section-heading"><span class="kicker">WORKFLOW VIEW</span><h2>Evidence flow, not a fabricated screenshot.</h2><p>No mock product screenshots are presented here. Real UI screenshots should be added only from the latest validated native build.</p></div><div class="flow"><span>Inspect file identity, imports, sections, and evidence markers</span><span>Review disassembly and decompiler output</span><span>Use NEST to organize signals before GYRE-linked output</span><span>Export CREST reports for review and handoff</span></div></section>
+  <section class="section final-cta"><h2>Evaluate HexHawk with the right expectations.</h2><p>Use a controlled environment, verify artifacts, and contact the team if you need current release materials for pilot planning.</p><div class="cta"><a class="btn primary" href="/downloads">Download Free Version</a><a class="btn ghost" href="mailto:contact@hexhawk.ke">Request Early Access</a><a class="btn ghost" href="/release-notes">View Release Notes</a></div></section>
 </main>
 <footer class="footer">
-  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate Â· 2026-06-01</span></div>
+  <div class="container footer-grid">
+    <div>
+      <strong>HexHawk</strong>
+      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
+      <p class="mono">v1.0 internal tester candidate · 2026-06-02</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <a href="/features">Features</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/downloads">Downloads</a>
+      <a href="/docs">Docs</a>
+    </div>
+    <div>
+      <h4>Trust operations</h4>
+      <a href="/trust">Trust &amp; Assurance</a>
+      <a href="/trust-center">Verification Center</a>
+      <a href="/verify-file">Verify a File</a>
+      <a href="/keys-revocations">Keys &amp; Revocations</a>
+      <a href="/release-notes">Release Notes</a>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <a href="mailto:contact@hexhawk.ke">Request Early Access</a>
+      <a href="mailto:sales@hexhawk.ke">Schedule a Demo</a>
+    </div>
+  </div>
 </footer>
 <script src="/assets/app.js"></script>
 </body>
 </html>
-
