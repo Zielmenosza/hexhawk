@@ -165,7 +165,8 @@ $revocationsDoc.release_blocks = Ensure-Array -Value $revocationsDoc.release_blo
 $nowIso = (Get-Date).ToUniversalTime().ToString("o")
 
 $updaterKey = $keysDoc.keys | Where-Object {
-  $_.metadata -and $_.metadata.tauri_updater_key_id -eq $updaterKeyFingerprint
+  $metadataProp = $_.PSObject.Properties['metadata']
+  $metadataProp -and $metadataProp.Value -and $metadataProp.Value.tauri_updater_key_id -eq $updaterKeyFingerprint
 } | Select-Object -First 1
 
 if (-not $updaterKey) {
@@ -229,6 +230,7 @@ if ($hasOpenSsl -and (Test-Path -LiteralPath $TrustSigningPrivateKeyPath)) {
     $signingKey.fingerprint_sha256 = $trustSigningFingerprint.Trim().ToLowerInvariant()
   }
 
+  Get-ChildItem -LiteralPath $signaturesVersionDir -File | Remove-Item -Force
   Get-ChildItem -LiteralPath $signaturesLatestDir -File | Remove-Item -Force
   $assetFiles = Get-ChildItem -LiteralPath $assetRootFull -File
   foreach ($asset in $assetFiles) {

@@ -5,6 +5,8 @@ param(
   [string]$GitHubOwner = "Zielmenosza",
   [string]$GitHubRepo = "hexhawk",
   [switch]$UseLocalReleaseFiles,
+  [switch]$TauriUpdaterMetadata,
+  [string]$ReleaseNotes = "HexHawk release candidate. Verify release evidence before distribution.",
   [string]$TrustSigningPrivateKeyPath = $env:HEXHAWK_TRUST_SIGNING_KEY_PATH,
   [string]$TrustSigningKeyId = $env:HEXHAWK_TRUST_SIGNING_KEY_ID
 )
@@ -31,9 +33,10 @@ function To-ManifestEntry {
   }
 }
 
+$tauriConfigPath = Join-Path $PSScriptRoot "..\..\src-tauri\tauri.conf.json"
+Require-Path -Path $tauriConfigPath -Message "Could not find tauri.conf.json at $tauriConfigPath"
+
 if (-not $Version) {
-  $tauriConfigPath = Join-Path $PSScriptRoot "..\..\src-tauri\tauri.conf.json"
-  Require-Path -Path $tauriConfigPath -Message "Could not find tauri.conf.json at $tauriConfigPath"
   $tauriConfig = Get-Content -Raw -LiteralPath $tauriConfigPath | ConvertFrom-Json
   $Version = [string]$tauriConfig.version
 }
@@ -54,9 +57,16 @@ $assetRoot = Join-Path $releaseRoot "assets"
 $latestJsonPath = Join-Path $websiteRootFull "releases\latest.json"
 
 New-Item -ItemType Directory -Path $assetRoot -Force | Out-Null
+Get-ChildItem -LiteralPath $assetRoot -File | Remove-Item -Force
 
 $extensions = @("*.msi", "*.exe", "*.dmg", "*.deb", "*.AppImage", "*.appimage", "*.rpm", "*.zip", "*.tar.gz")
+if ($TauriUpdaterMetadata) {
+  $extensions += "*.sig"
+}
 $bundleFiles = Get-ChildItem -Path $bundleRootFull -Recurse -File | Where-Object {
+  $relativePath = $_.FullName.Substring($bundleRootFull.Length).TrimStart([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+  if ($relativePath -match '(^|[\\/])admin-image([\\/]|$)') { return $false }
+
   $name = $_.Name
   foreach ($pattern in $extensions) {
     if ($name -like $pattern) { return $true }
@@ -100,26 +110,58 @@ $pick.linuxDeb = $copiedFiles | Where-Object { $_.Extension -eq ".deb" } | Sort-
 $pick.linuxRpm = $copiedFiles | Where-Object { $_.Extension -eq ".rpm" } | Sort-Object Name | Select-Object -First 1
 $pick.macosDmg = $copiedFiles | Where-Object { $_.Extension -eq ".dmg" } | Sort-Object Name | Select-Object -First 1
 
-$manifest = [ordered]@{
-  version = $Version
-  releasedAt = (Get-Date).ToUniversalTime().ToString("o")
-  notesUrl = "https://github.com/$GitHubOwner/$GitHubRepo/releases/tag/$releaseFolderName"
-  checksumsUrl = "/releases/$releaseFolderName/SHA256SUMS.txt"
-  downloads = [ordered]@{
-    windows = [ordered]@{}
-    linux = [ordered]@{}
-    macos = [ordered]@{}
+if ($TauriUpdaterMetadata) {
+  if (-not $pick.windowsInstaller) {
+    throw "Tauri updater metadata requires a Windows NSIS setup .exe artifact."
   }
-}
 
-if ($pick.windowsInstaller) { $manifest.downloads.windows.installer = To-ManifestEntry -File $pick.windowsInstaller -BaseUrl $releaseBaseUrl }
-if ($pick.windowsMsi) { $manifest.downloads.windows.msi = To-ManifestEntry -File $pick.windowsMsi -BaseUrl $releaseBaseUrl }
-if (-not $pick.windowsInstaller -and $pick.windowsExe) { $manifest.downloads.windows.installer = To-ManifestEntry -File $pick.windowsExe -BaseUrl $releaseBaseUrl }
-if ($pick.windowsPortable) { $manifest.downloads.windows.portable = To-ManifestEntry -File $pick.windowsPortable -BaseUrl $releaseBaseUrl }
-if ($pick.linuxAppImage) { $manifest.downloads.linux.appImage = To-ManifestEntry -File $pick.linuxAppImage -BaseUrl $releaseBaseUrl }
-if ($pick.linuxDeb) { $manifest.downloads.linux.deb = To-ManifestEntry -File $pick.linuxDeb -BaseUrl $releaseBaseUrl }
-if ($pick.linuxRpm) { $manifest.downloads.linux.rpm = To-ManifestEntry -File $pick.linuxRpm -BaseUrl $releaseBaseUrl }
-if ($pick.macosDmg) { $manifest.downloads.macos.dmg = To-ManifestEntry -File $pick.macosDmg -BaseUrl $releaseBaseUrl }
+  $signaturePath = "$($pick.windowsInstaller.FullName).sig"
+  if (-not (Test-Path -LiteralPath $signaturePath)) {
+    throw "Tauri updater metadata requires a matching signature file: $signaturePath. Build with official TAURI_SIGNING_PRIVATE_KEY custody and updater artifacts enabled."
+  }
+
+  $installerHash = Get-FileHash -LiteralPath $pick.windowsInstaller.FullName -Algorithm SHA256
+  $signature = (Get-Content -LiteralPath $signaturePath -Raw).Trim()
+  $manifest = [ordered]@{
+    version = $Version
+    notes = $ReleaseNotes
+    pub_date = (Get-Date).ToUniversalTime().ToString("o")
+    platforms = [ordered]@{
+      "windows-x86_64" = [ordered]@{
+        signature = $signature
+        url = "$releaseBaseUrl/$($pick.windowsInstaller.Name)"
+      }
+    }
+    hexhawk_release_truth = [ordered]@{
+      authenticode_signed = $null
+      public_release = $false
+      artifact_sha256 = $installerHash.Hash.ToLowerInvariant()
+      signature_generated_by = "official release process using TAURI_SIGNING_PRIVATE_KEY from secure release custody"
+      proof_limit = "Updater metadata proves Tauri updater signature presence for the configured public key; it does not by itself prove Authenticode signing or public-release readiness."
+    }
+  }
+} else {
+  $manifest = [ordered]@{
+    version = $Version
+    releasedAt = (Get-Date).ToUniversalTime().ToString("o")
+    notesUrl = "https://github.com/$GitHubOwner/$GitHubRepo/releases/tag/$releaseFolderName"
+    checksumsUrl = "/releases/$releaseFolderName/SHA256SUMS.txt"
+    downloads = [ordered]@{
+      windows = [ordered]@{}
+      linux = [ordered]@{}
+      macos = [ordered]@{}
+    }
+  }
+
+  if ($pick.windowsInstaller) { $manifest.downloads.windows.installer = To-ManifestEntry -File $pick.windowsInstaller -BaseUrl $releaseBaseUrl }
+  if ($pick.windowsMsi) { $manifest.downloads.windows.msi = To-ManifestEntry -File $pick.windowsMsi -BaseUrl $releaseBaseUrl }
+  if (-not $pick.windowsInstaller -and $pick.windowsExe) { $manifest.downloads.windows.installer = To-ManifestEntry -File $pick.windowsExe -BaseUrl $releaseBaseUrl }
+  if ($pick.windowsPortable) { $manifest.downloads.windows.portable = To-ManifestEntry -File $pick.windowsPortable -BaseUrl $releaseBaseUrl }
+  if ($pick.linuxAppImage) { $manifest.downloads.linux.appImage = To-ManifestEntry -File $pick.linuxAppImage -BaseUrl $releaseBaseUrl }
+  if ($pick.linuxDeb) { $manifest.downloads.linux.deb = To-ManifestEntry -File $pick.linuxDeb -BaseUrl $releaseBaseUrl }
+  if ($pick.linuxRpm) { $manifest.downloads.linux.rpm = To-ManifestEntry -File $pick.linuxRpm -BaseUrl $releaseBaseUrl }
+  if ($pick.macosDmg) { $manifest.downloads.macos.dmg = To-ManifestEntry -File $pick.macosDmg -BaseUrl $releaseBaseUrl }
+}
 
 $manifestJson = $manifest | ConvertTo-Json -Depth 8
 $manifestJson | Set-Content -LiteralPath $latestJsonPath -Encoding ascii

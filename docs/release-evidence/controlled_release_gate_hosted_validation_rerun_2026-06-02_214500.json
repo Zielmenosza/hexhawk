@@ -1,0 +1,113 @@
+{
+    "schema":  "hexhawk.updater_metadata_validation.v1",
+    "generated_at_utc":  "2026-06-02T21:41:53.1232200Z",
+    "metadata_url":  "https://hexhawk.ke/releases/latest.json",
+    "expected_version":  "1.0.0",
+    "expected_platform":  "windows-x86_64",
+    "fetch":  {
+                  "ok":  true,
+                  "status":  200,
+                  "bytes":  1281,
+                  "sha256":  "44bd9c582aa7d9c21e62500ae5079fb7dbeee2b0526fb43430a475aed14a6624",
+                  "finalUrl":  "https://hexhawk.ke/releases/latest.json",
+                  "error":  null
+              },
+    "checks":  [
+                   {
+                       "name":  "metadata_fetch_ok",
+                       "ok":  true,
+                       "detail":  {
+                                      "ok":  true,
+                                      "status":  200,
+                                      "bytes":  1281,
+                                      "sha256":  "44bd9c582aa7d9c21e62500ae5079fb7dbeee2b0526fb43430a475aed14a6624",
+                                      "finalUrl":  "https://hexhawk.ke/releases/latest.json",
+                                      "error":  null
+                                  }
+                   },
+                   {
+                       "name":  "metadata_has_version",
+                       "ok":  true,
+                       "detail":  "1.0.0"
+                   },
+                   {
+                       "name":  "metadata_version_matches_expected",
+                       "ok":  true,
+                       "detail":  {
+                                      "expected":  "1.0.0",
+                                      "actual":  "1.0.0"
+                                  }
+                   },
+                   {
+                       "name":  "metadata_has_pub_date",
+                       "ok":  true,
+                       "detail":  "2026-06-02T17:36:35Z"
+                   },
+                   {
+                       "name":  "metadata_has_platforms",
+                       "ok":  true,
+                       "detail":  null
+                   },
+                   {
+                       "name":  "metadata_has_expected_platform",
+                       "ok":  true,
+                       "detail":  "windows-x86_64"
+                   },
+                   {
+                       "name":  "platform_has_url",
+                       "ok":  true,
+                       "detail":  "https://hexhawk.ke/releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe"
+                   },
+                   {
+                       "name":  "platform_has_signature",
+                       "ok":  true,
+                       "detail":  {
+                                      "len":  416
+                                  }
+                   },
+                   {
+                       "name":  "signature_decodes_as_tauri_payload",
+                       "ok":  true,
+                       "detail":  {
+                                      "decodes":  true,
+                                      "contains_tauri_comment":  true,
+                                      "contains_trusted_comment":  true
+                                  }
+                   },
+                   {
+                       "name":  "signature_sha256_matches_expected",
+                       "ok":  false,
+                       "detail":  {
+                                      "expected":  "d3404fb901159c2188f63a013b7a56c4eb62fcae3b9feae0563391ebbcab180b",
+                                      "actual":  "f33c1e8553104d189d740212ecc06d45d560ef5675513e651b88b36ddee77891"
+                                  }
+                   },
+                   {
+                       "name":  "artifact_sha256_matches_expected",
+                       "ok":  false,
+                       "detail":  {
+                                      "expected":  "074026abad11aded0d454e1fe453f1eb5b1b065ea80715585d0de7226cdc683f",
+                                      "actual":  "1ac7c99f5a2f85c874df452966c5812d1501eced316ac10c78e1088de3efa824"
+                                  }
+                   },
+                   {
+                       "name":  "configured_pubkey_present",
+                       "ok":  true,
+                       "detail":  {
+                                      "configured_pubkey_present":  true,
+                                      "sha256":  "a9deb55589b533121a77a528f5cdea55116809f3ec8ce41301da0663d77e752b"
+                                  }
+                   },
+                   {
+                       "name":  "platform_asset_url_fetchable",
+                       "ok":  true,
+                       "detail":  {
+                                      "status":  200,
+                                      "content_length":  "14765861",
+                                      "content_range":  null,
+                                      "content_type":  "application/x-msdownload"
+                                  }
+                   }
+               ],
+    "all_checks_ok":  false
+}

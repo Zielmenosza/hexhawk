@@ -1,0 +1,163 @@
+{
+  "schema": "hexhawk.updater_repair_validation.v1",
+  "generated_at_utc": "2026-06-02T17:37:36Z",
+  "endpoint": "https://hexhawk.ke/releases/latest.json",
+  "configured_pubkey_sha256": "c92d80ed7f8159c7723fc38d722b269e1263e1063f62eb1bfbb368125c204c0c",
+  "checks": [
+    {
+      "name": "endpoint_dns_resolves",
+      "ok": true,
+      "detail": [
+        "102.210.146.74"
+      ]
+    },
+    {
+      "name": "endpoint_fetch_ok",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "bytes": 1281
+      }
+    },
+    {
+      "name": "metadata_has_version",
+      "ok": true,
+      "detail": "1.0.0"
+    },
+    {
+      "name": "metadata_has_pub_date",
+      "ok": true,
+      "detail": "2026-06-02T17:36:35Z"
+    },
+    {
+      "name": "metadata_has_windows_x86_64",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "name": "metadata_has_platform_url",
+      "ok": true,
+      "detail": "https://hexhawk.ke/releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe"
+    },
+    {
+      "name": "metadata_has_platform_signature",
+      "ok": true,
+      "detail": {
+        "len": 416
+      }
+    },
+    {
+      "name": "signature_decodes_as_tauri_minisign_payload",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "contains_tauri_comment": true,
+        "contains_file_name": true
+      }
+    },
+    {
+      "name": "platform_asset_url_fetchable",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "status": 206,
+        "content_length": "1",
+        "content_range": "bytes 0-0/14765861",
+        "content_type": "application/x-msdownload"
+      }
+    }
+  ],
+  "dns": {
+    "ok": true,
+    "host": "hexhawk.ke",
+    "addresses": [
+      "102.210.146.74"
+    ]
+  },
+  "fetch": {
+    "ok": true,
+    "status": 200,
+    "final_url": "https://hexhawk.ke/releases/latest.json",
+    "content_type": "application/json",
+    "bytes": 1281,
+    "sha256": "44bd9c582aa7d9c21e62500ae5079fb7dbeee2b0526fb43430a475aed14a6624"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "notes": "HexHawk 1.0.0 internal tester candidate. Updater metadata is reachable and signed, but Windows artifacts remain unsigned for Authenticode/public-release purposes.",
+    "pub_date": "2026-06-02T17:36:35Z",
+    "platforms": {
+      "windows-x86_64": {
+        "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRNlZzRGZFcXVkdjhRL0duUUZqQXUvd1d4LzBmZ3dPbnp0TUxMY1RtcUY0bDZQcjlGcnd6VUwwZ1NCeEdmYldWNHpDbDR4aUZ2Y25PZXdwOHdGdjBSRTVyNTh5c04ySEFrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwNDIxNzk1CWZpbGU6SGV4SGF3a18xLjAuMF94NjQtc2V0dXAuZXhlCnJuV2FtMEw2d2pLK09pbWljeUFEdnU4ampkSDBrZW9sQlNtWnNGdGlZaE5aU1daRi9YM0M2d1RTb1pEN0wwaDBhVEJncXUvWldlVlpLaVMyNVRUMUJBPT0K",
+        "url": "https://hexhawk.ke/releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe"
+      }
+    },
+    "hexhawk_release_truth": {
+      "authenticode_signed": false,
+      "public_release": false,
+      "artifact_sha256": "1ac7c99f5a2f85c874df452966c5812d1501eced316ac10c78e1088de3efa824",
+      "signature_generated_by": "tauri signer sign using local uncommitted updater key generated 2026-06-02",
+      "proof_limit": "This is valid updater metadata for the configured updater public key; it does not make the Windows installer Authenticode-signed."
+    }
+  },
+  "signature_decode_probe": {
+    "ok": true,
+    "contains_tauri_comment": true,
+    "contains_file_name": true
+  },
+  "platform_asset_head_probe": {
+    "ok": true,
+    "status": 206,
+    "content_length": "1",
+    "content_range": "bytes 0-0/14765861",
+    "content_type": "application/x-msdownload"
+  },
+  "dns_repair_actions": {
+    "directadmin_domain": "hexhawk.ke",
+    "added_record": {
+      "name": "releases",
+      "type": "A",
+      "value": "102.210.146.74",
+      "ttl": 3600,
+      "api_result": "error=0&text=Record Added"
+    },
+    "configured_endpoint_uses": "https://hexhawk.ke/releases/latest.json",
+    "reason_configured_endpoint_uses_apex": "hexhawk.ke already has working HTTPS and resolves through the default resolver; releases.hexhawk.ke DNS resolves through public resolvers but was not used as the Tauri endpoint in this pass because HTTPS virtual-host/certificate readiness was not separately proven.",
+    "public_resolver_observations": [
+      {
+        "resolver": "8.8.8.8",
+        "exit_code": 0,
+        "output": "Server:  dns.google\nAddress:  8.8.8.8\n\nName:    releases.hexhawk.ke\nAddress:  102.210.146.74"
+      },
+      {
+        "resolver": "1.1.1.1",
+        "exit_code": 0,
+        "output": "Server:  one.one.one.one\nAddress:  1.1.1.1\n\nDNS request timed out.\n    timeout was 2 seconds.\nName:    releases.hexhawk.ke\nAddress:  102.210.146.74"
+      }
+    ]
+  },
+  "all_checks_ok": true,
+  "release_claims": {
+    "updater_metadata_reachable_and_structurally_valid": true,
+    "authenticode_signed": false,
+    "public_release": false,
+    "note": "Updater metadata validation does not change unsigned Windows artifact status."
+  },
+  "authenticode_status": [
+    {
+      "Path": "D:/Project/HexHawk/target/release/hexhawk-backend.exe",
+      "Status": "NotSigned",
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170"
+    },
+    {
+      "Path": "D:/Project/HexHawk/target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "Status": "NotSigned",
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170"
+    },
+    {
+      "Path": "D:/Project/HexHawk/target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "Status": "NotSigned",
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170"
+    }
+  ]
+}

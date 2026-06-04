@@ -4,6 +4,7 @@ import json
 import sys
 import time
 import urllib.request
+import hashlib
 from pathlib import Path
 
 import websockets
@@ -17,7 +18,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--output', default=str(DEFAULT_OUT), help='Path to write the probe JSON evidence file.')
     parser.add_argument('--sample', default=DEFAULT_SAMPLE, help='Sample path to inject into the Load Binary input.')
     parser.add_argument('--port', type=int, default=9223, help='Remote debugging port for WebView2 CDP.')
+    parser.add_argument('--artifact', help='Exact packaged artifact path being probed, such as the MSI extracted by the wrapper.')
     return parser.parse_args()
+
+
+def artifact_record(path_text: str | None):
+    if not path_text:
+        return None
+    path = Path(path_text)
+    record = {
+        'path': str(path),
+        'exists': path.exists(),
+    }
+    if path.exists():
+        data = path.read_bytes()
+        record.update({
+            'size': path.stat().st_size,
+            'sha256': hashlib.sha256(data).hexdigest(),
+            'mtime': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(path.stat().st_mtime)),
+        })
+    return record
 
 
 def get_ws(port: int):
@@ -40,6 +60,11 @@ async def main(args: argparse.Namespace):
         'remote_debug_port': args.port,
         'checks': [],
         'downloads': [],
+        'artifact': artifact_record(args.artifact),
+        'assertions': {
+            'aetherframe_report_packaging_required': True,
+            'typed_nest_evidence_bundle_must_not_be_fabricated_by_report_export': True,
+        },
     }
     async with websockets.connect(ws, max_size=50_000_000) as sock:
         cid = 0
@@ -164,28 +189,94 @@ async def main(args: argparse.Namespace):
         await asyncio.sleep(1)
         report_buttons = await evalv("Array.from(document.querySelectorAll('button')).map((e,i)=>({i,text:e.innerText,disabled:e.disabled})).filter(x=>/JSON|Markdown|Export|Download|↓/.test(x.text)).slice(0,20)")
         results['report_buttons'] = report_buttons
-        clicked = await evalv("(() => { const b=Array.from(document.querySelectorAll('button')).find(e=>/JSON/.test(e.innerText)); if(!b) return 'missing'; if(b.disabled) return 'disabled'; b.click(); return 'clicked'; })()")
-        results['checks'].append({'name': 'report_json_export_click', 'ok': clicked == 'clicked', 'detail': clicked})
-        await asyncio.sleep(2)
-        downloads = await evalv("window.__hexhawkCapturedDownloads || []")
-        results['downloads'] = downloads
-        if downloads:
-            text = downloads[-1].get('text', '')
-            for marker in ['source_engine', 'gyre_is_sole_verdict_source', 'final_verdict_snapshot', 'nestEvidenceBundle', 'nest_evidence']:
-                results['checks'].append({'name': 'export_contains_' + marker, 'ok': marker in text, 'detail': 'present' if marker in text else 'missing'})
+
+        async def export_json(label):
+            before_count = await evalv("(window.__hexhawkCapturedDownloads || []).length")
+            clicked = await evalv("(() => { const b=Array.from(document.querySelectorAll('button')).find(e=>/JSON/.test(e.innerText)); if(!b) return 'missing'; if(b.disabled) return 'disabled'; b.click(); return 'clicked'; })()")
+            results['checks'].append({'name': f'{label}_report_json_export_click', 'ok': clicked == 'clicked', 'detail': clicked})
+            await asyncio.sleep(2)
+            downloads_now = await evalv("window.__hexhawkCapturedDownloads || []")
+            results['downloads'] = downloads_now
+            if len(downloads_now) <= before_count:
+                results['checks'].append({'name': f'{label}_export_captured', 'ok': False, 'detail': {'before': before_count, 'after': len(downloads_now)}})
+                return None
+            download = downloads_now[-1]
+            text = download.get('text', '')
+            results['checks'].append({'name': f'{label}_export_captured', 'ok': True, 'detail': {'type': download.get('type'), 'size': download.get('size')}})
             try:
                 data = json.loads(text)
-                results['export_top_keys'] = list(data.keys())
-                results['export_verdict_classification'] = data.get('verdict', {}).get('classification')
             except Exception as exc:
-                results['export_parse_error'] = str(exc)
-        else:
-            results['checks'].append({'name': 'export_captured', 'ok': False, 'detail': 'No Blob download captured'})
+                results['checks'].append({'name': f'{label}_export_json_parse_ok', 'ok': False, 'detail': str(exc)})
+                return None
+            results['checks'].append({'name': f'{label}_export_json_parse_ok', 'ok': True, 'detail': list(data.keys())})
+            results[f'{label}_export_top_keys'] = list(data.keys())
+            results[f'{label}_export_verdict_classification'] = data.get('verdict', {}).get('classification')
+            return data
 
+        def add_semantic_export_checks(label, data, expected_enabled, expected_pass_id, expected_scope):
+            if data is None:
+                return
+            snapshot = data.get('final_verdict_snapshot') or {}
+            packaging = data.get('aetherframe_report_packaging') or {}
+            nest_camel = data.get('nestEvidenceBundle', 'missing')
+            nest_snake = data.get('nest_evidence_bundle', 'missing')
+            status = data.get('nest_evidence_bundle_status', '')
+            protected = packaging.get('protected_verdict_fields') or {}
+            checks = [
+                (f'{label}_source_engine_is_gyre', snapshot.get('source_engine') == 'gyre', snapshot.get('source_engine')),
+                (f'{label}_gyre_sole_verdict_source', snapshot.get('gyre_is_sole_verdict_source') is True, snapshot.get('gyre_is_sole_verdict_source')),
+                (f'{label}_export_contains_aetherframe_report_packaging', isinstance(packaging, dict) and bool(packaging), packaging),
+                (f'{label}_aetherframe_enabled_expected', packaging.get('enabled') is expected_enabled, packaging.get('enabled')),
+                (f'{label}_aetherframe_pass_id_expected', packaging.get('pass_id') == expected_pass_id, packaging.get('pass_id')),
+                (f'{label}_aetherframe_mutation_scope_expected', packaging.get('mutation_scope') == expected_scope, packaging.get('mutation_scope')),
+                (f'{label}_aetherframe_policy_reason_present', isinstance(packaging.get('policy_reason'), str) and bool(packaging.get('policy_reason')), packaging.get('policy_reason')),
+                (f'{label}_aetherframe_protected_source_engine_gyre', protected.get('source_engine') == 'gyre', protected.get('source_engine')),
+                (f'{label}_aetherframe_protected_gyre_sole_source', protected.get('gyre_is_sole_verdict_source') is True, protected.get('gyre_is_sole_verdict_source')),
+                (f'{label}_aetherframe_blocks_nest_evidence_selection', 'nestEvidenceSelection' in (packaging.get('blocked_mutations') or []), packaging.get('blocked_mutations')),
+                (f'{label}_aetherframe_proof_limits_present', len(packaging.get('proof_limits') or []) > 0, packaging.get('proof_limits')),
+                (f'{label}_report_export_does_not_fabricate_camel_nest_bundle', nest_camel is None, nest_camel),
+                (f'{label}_report_export_does_not_fabricate_snake_nest_bundle', nest_snake is None, nest_snake),
+                (f'{label}_nest_bundle_status_points_to_real_nest_export', 'use NEST evidence export' in status, status),
+            ]
+            for name, ok, detail in checks:
+                results['checks'].append({'name': name, 'ok': ok, 'detail': detail})
+
+        enabled_export = await export_json('enabled_policy')
+        add_semantic_export_checks(
+            'enabled_policy',
+            enabled_export,
+            expected_enabled=True,
+            expected_pass_id='hexhawk-report-authority-lineage-package',
+            expected_scope='package',
+        )
+
+        toggle_result = await evalv("""
+        (() => {
+          const section = document.querySelector('[data-testid="report-aetherframe-policy"]');
+          const input = section ? section.querySelector('input[type="checkbox"]') : null;
+          if (!section) return 'section-missing';
+          if (!input) return 'toggle-missing';
+          if (input.checked) input.click();
+          return input.checked ? 'still-enabled' : 'disabled';
+        })()
+        """)
+        results['checks'].append({'name': 'disable_aetherframe_report_policy_toggle', 'ok': toggle_result == 'disabled', 'detail': toggle_result})
+        disabled_export = await export_json('disabled_policy')
+        add_semantic_export_checks(
+            'disabled_policy',
+            disabled_export,
+            expected_enabled=False,
+            expected_pass_id='aetherframe-disabled',
+            expected_scope='none',
+        )
+
+    bad = [c for c in results['checks'] if not c.get('ok')]
+    results['all_checks_ok'] = not bad
     out.write_text(json.dumps(results, indent=2), encoding='utf-8')
     print(str(out))
     print(json.dumps({'runtime': results.get('runtime'), 'checks': results['checks']}, indent=2)[:12000])
-    bad = [c for c in results['checks'] if c['name'].startswith('export_contains_') and not c['ok']]
+    if bad:
+        print(json.dumps({'failed_checks': bad}, indent=2)[:12000])
     sys.exit(1 if bad else 0)
 
 

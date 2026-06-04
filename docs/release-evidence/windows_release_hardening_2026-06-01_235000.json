@@ -1,0 +1,247 @@
+{
+  "generatedAt": "2026-06-01T21:55:42.691618+00:00",
+  "git": {
+    "commit": "bb7edd2feafce72db565b0ebc49a0264fa5b3e94",
+    "branch": "main",
+    "status_short": " M .gitignore\n M ENTERPRISE_ROADMAP.md\n M FINAL_EVALUATION.md\n M README.md\n M ROADMAP.md\nD  docs/.~lock.HEXHAWK_FOR_DUMMIES.docx#\n M docs/EXTERNAL_TESTER_KNOWN_ISSUES.md\n M docs/HEXHAWK_FOR_DUMMIES.md\n M docs/HEXHAWK_FOR_DUMMIES_CAPABILITY_INVENTORY.md\n M docs/HEXHAWK_FOR_DUMMIES_SOURCE_MAP.md\n M docs/HEXHAWK_FOR_DUMMIES_VALIDATION_REPORT.md\n M docs/INVESTOR_DILIGENCE_BRIEF.md\n M docs/INVESTOR_ONE_PAGER.md\n M docs/PILOT_READINESS_CHECKLIST.md\n M docs/RELEASE_SIGNING_AND_UPDATER_PLAN.md\n M docs/RELEASE_VALIDATION_2026-06-01.md\n M docs/TESTER_RELEASE_STATUS.md\nD  docs/credentials.md\nD  hexhawk-enterprise.wixobj\nD  scripts/__pycache__/capture_hexhawk_screenshots.cpython-311.pyc\nD  scripts/__pycache__/export_dummies_docx.cpython-311.pyc\nD  scripts/validation/native-gui/__pycache__/native_gui_e2e.cpython-311.pyc\nD  scripts/validation/native-gui/__pycache__/native_gui_export_parity_gate.cpython-311.pyc\n M site-build/docs/index.html\n M site-build/downloads/checksums.txt\n M site-build/downloads/index.html\n M site-build/index.html\n M site-build/pricing/index.html\n M site-build/release-notes/index.html\nD  site-build/releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe\nD  site-build/releases/v1.0.0/assets/HexHawk_1.0.0_x64_en-US.msi\n M site-build/trust-center/index.html\n M src-tauri/tauri.conf.json\n?? docs/release-evidence/windows_release_hardening_2026-06-01_235000.json\n?? gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json\n?? nexus-assistant/\n"
+  },
+  "tauriConfigState": {
+    "createUpdaterArtifacts": false,
+    "windowsSignCommandPresent": false,
+    "updaterPubkeyConfigured": true,
+    "updaterEndpoints": [
+      "https://releases.hexhawk.app/releases/latest.json"
+    ]
+  },
+  "validationCommands": [
+    {
+      "command": "rm stale target/release artifacts",
+      "exit_code": 0
+    },
+    {
+      "command": "yarn typecheck && yarn build && yarn test --reporter=dot && cargo check --workspace && cargo test --workspace",
+      "exit_code": 0,
+      "summary": "typecheck/build/frontend tests/Rust check/Rust tests passed; frontend: 39 files, 690 tests; Rust: 71 backend + 14 nest_cli tests; warnings only"
+    },
+    {
+      "command": "yarn tauri:build",
+      "exit_code": 0,
+      "summary": "MSI and NSIS bundles generated; updater artifacts disabled in tauri.conf.json for local unsigned build"
+    },
+    {
+      "command": "sha256sum target/release/hexhawk-backend.exe target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "exit_code": 0
+    },
+    {
+      "command": "Get-AuthenticodeSignature on exe/MSI/NSIS",
+      "exit_code": 0
+    },
+    {
+      "command": "updater DNS/fetch check for releases.hexhawk.app",
+      "exit_code": 1
+    },
+    {
+      "command": "scripts/release/run-native-parity-probe.ps1 on current MSI",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check && git diff --cached --check",
+      "exit_code": 0,
+      "summary": "DIFF_CHECK_OK after doc/config/hygiene changes"
+    },
+    {
+      "command": "python -m json.tool src-tauri/tauri.conf.json",
+      "exit_code": 0,
+      "summary": "TAURI_JSON_OK after removing no-op signCommand and disabling updater artifacts"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe",
+      "relative_path": "target/release/hexhawk-backend.exe",
+      "exists": true,
+      "size": 46463432,
+      "mtime": "2026-06-01T21:48:17.389482+00:00",
+      "sha256": "6e1f2521480af887f2b79efa3f302912938a46c1d1fe30f3c4cd96912691bad3"
+    },
+    {
+      "path": "D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi",
+      "relative_path": "target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "exists": true,
+      "size": 21278720,
+      "mtime": "2026-06-01T21:47:50.997000+00:00",
+      "sha256": "e0c12587befda246c39cc21e7f65ae5c36bd21abd1c9bfd74030f2626b17e220"
+    },
+    {
+      "path": "D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe",
+      "relative_path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "exists": true,
+      "size": 14772423,
+      "mtime": "2026-06-01T21:48:17.323448+00:00",
+      "sha256": "3eec437b01488efc09c10e0eb3f3f88cf0f8ba9c0a5d6a09234467bee95394c6"
+    }
+  ],
+  "authenticode": {
+    "command_exit_code": 0,
+    "results": [
+      {
+        "Path": "D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe",
+        "Status": 2,
+        "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+        "SignerCertificate": null,
+        "TimeStamperCertificate": null
+      },
+      {
+        "Path": "D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi",
+        "Status": 2,
+        "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+        "SignerCertificate": null,
+        "TimeStamperCertificate": null
+      },
+      {
+        "Path": "D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe",
+        "Status": 2,
+        "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+        "SignerCertificate": null,
+        "TimeStamperCertificate": null
+      }
+    ]
+  },
+  "updaterValidation": {
+    "endpoint": "https://releases.hexhawk.app/releases/latest.json",
+    "dns_ok": false,
+    "fetch_ok": false,
+    "error": "dns: gaierror(11001, 'getaddrinfo failed')",
+    "fetch_error": "URLError(gaierror(11001, 'getaddrinfo failed'))"
+  },
+  "nativeGuiParity": {
+    "path": "D:\\Project\\HexHawk\\gui-evidence\\release_hardening_native_gui_probe_2026-06-01_234839.json",
+    "relative_path": "gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json",
+    "exists": true,
+    "runtime": {
+      "hasTauriRuntime": true,
+      "browserMode": false,
+      "tauriInternalsType": "object",
+      "url": "http://tauri.localhost/",
+      "title": "HexHawk"
+    },
+    "all_checks_ok": true,
+    "checks": [
+      {
+        "name": "hasTauriRuntime",
+        "ok": true,
+        "detail": true
+      },
+      {
+        "name": "browserMode",
+        "ok": true,
+        "detail": false
+      },
+      {
+        "name": "tauriInternalsType",
+        "ok": true,
+        "detail": "object"
+      },
+      {
+        "name": "click nav-load",
+        "ok": true,
+        "detail": "clicked"
+      },
+      {
+        "name": "click load-apply-path",
+        "ok": true,
+        "detail": "clicked"
+      },
+      {
+        "name": "click action-inspect-file",
+        "ok": true,
+        "detail": "clicked"
+      },
+      {
+        "name": "metadata_present",
+        "ok": true,
+        "detail": true
+      },
+      {
+        "name": "click action-run-analysis",
+        "ok": true,
+        "detail": "clicked"
+      },
+      {
+        "name": "verdict_or_disasm_present",
+        "ok": true,
+        "detail": true
+      },
+      {
+        "name": "click nav-nest",
+        "ok": true,
+        "detail": "clicked"
+      },
+      {
+        "name": "click nav-nest",
+        "ok": true,
+        "detail": "clicked"
+      },
+      {
+        "name": "native_nest_completion_visible",
+        "ok": true,
+        "detail": true
+      },
+      {
+        "name": "click nav-report",
+        "ok": true,
+        "detail": "clicked"
+      },
+      {
+        "name": "report_json_export_click",
+        "ok": true,
+        "detail": "clicked"
+      },
+      {
+        "name": "export_contains_source_engine",
+        "ok": true,
+        "detail": "present"
+      },
+      {
+        "name": "export_contains_gyre_is_sole_verdict_source",
+        "ok": true,
+        "detail": "present"
+      },
+      {
+        "name": "export_contains_final_verdict_snapshot",
+        "ok": true,
+        "detail": "present"
+      },
+      {
+        "name": "export_contains_nestEvidenceBundle",
+        "ok": true,
+        "detail": "present"
+      },
+      {
+        "name": "export_contains_nest_evidence",
+        "ok": true,
+        "detail": "present"
+      }
+    ],
+    "sample_path": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe"
+  },
+  "historicalEvidenceSupersededByCurrentArtifacts": [
+    "docs/release-evidence/windows_release_hardening_2026-06-01_204639.json",
+    "gui-evidence/release_hardening_native_gui_probe_2026-06-01_retry.json"
+  ],
+  "classification": {
+    "source_validated": true,
+    "artifacts_built": true,
+    "artifacts_signed": false,
+    "public_trusted_signature": false,
+    "updater_metadata_valid": false,
+    "native_gui_parity_passed_for_exact_artifact": true,
+    "recommended_release_posture": "internal tester candidate only; controlled external pilot conditional on explicit unsigned/updater-disabled acceptance; public release candidate no"
+  },
+  "notes": [
+    "The current artifacts are unsigned according to Get-AuthenticodeSignature.",
+    "The no-op signCommand was removed; createUpdaterArtifacts is false for local unsigned builds.",
+    "releases.hexhawk.app did not resolve in this pass.",
+    "Native GUI parity passed against the current MSI hash recorded in artifacts[1]."
+  ]
+}

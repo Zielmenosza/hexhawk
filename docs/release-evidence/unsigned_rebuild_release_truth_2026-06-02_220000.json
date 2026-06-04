@@ -1,0 +1,204 @@
+{
+  "schema": "hexhawk.unsigned_rebuild_release_truth.v1",
+  "generated_at_utc": "2026-06-02T22:01:36.132927+00:00",
+  "git": {
+    "branch": "main",
+    "head": "bb7edd2feafce72db565b0ebc49a0264fa5b3e94",
+    "status_short": [
+      "M .github/workflows/release.yml",
+      " M .gitignore",
+      " M ENTERPRISE_ROADMAP.md",
+      " M FINAL_EVALUATION.md",
+      " M HexHawk/src/components/IntelligenceReport.tsx",
+      " M HexHawk/src/components/__tests__/IntelligenceReport.test.tsx",
+      " M README.md",
+      " M ROADMAP.md",
+      "D  docs/.~lock.HEXHAWK_FOR_DUMMIES.docx#",
+      " M docs/ENGINE_BOUNDARY_DOCTRINE.md",
+      " M docs/EXTERNAL_TESTER_KNOWN_ISSUES.md",
+      " M docs/HEXHAWK_FOR_DUMMIES.md",
+      " M docs/HEXHAWK_FOR_DUMMIES_CAPABILITY_INVENTORY.md",
+      " M docs/HEXHAWK_FOR_DUMMIES_SOURCE_MAP.md",
+      " M docs/HEXHAWK_FOR_DUMMIES_VALIDATION_REPORT.md",
+      " M docs/HIGH_ASSURANCE_GUIDE.md",
+      " M docs/INVESTOR_DILIGENCE_BRIEF.md",
+      " M docs/INVESTOR_ONE_PAGER.md",
+      " M docs/PILOT_READINESS_CHECKLIST.md",
+      " M docs/RELEASE_SIGNING_AND_UPDATER_PLAN.md",
+      " M docs/RELEASE_VALIDATION_2026-06-01.md",
+      " M docs/TESTER_RELEASE_STATUS.md",
+      "D  docs/credentials.md",
+      "D  hexhawk-enterprise.wixobj",
+      " M prepare-release.ps1",
+      "D  scripts/__pycache__/capture_hexhawk_screenshots.cpython-311.pyc",
+      "D  scripts/__pycache__/export_dummies_docx.cpython-311.pyc",
+      " M scripts/native_gui_parity_probe.py",
+      " M scripts/release/refresh-trust-artifacts.ps1",
+      " M scripts/release/run-native-parity-probe.ps1",
+      "D  scripts/validation/native-gui/__pycache__/native_gui_e2e.cpython-311.pyc",
+      "D  scripts/validation/native-gui/__pycache__/native_gui_export_parity_gate.cpython-311.pyc",
+      " M site-build/.well-known/hexhawk-trust.json",
+      " M site-build/docs/index.html",
+      " M site-build/downloads/checksums.txt",
+      " M site-build/downloads/index.html",
+      " M site-build/index.html",
+      " M site-build/pricing/index.html",
+      " M site-build/release-notes/index.html",
+      " M site-build/releases/latest.json",
+      " M site-build/releases/v1.0.0/SHA256SUMS.txt",
+      "D  site-build/releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe",
+      "D  site-build/releases/v1.0.0/assets/HexHawk_1.0.0_x64_en-US.msi",
+      " M site-build/trust-center/index.html",
+      " M site-build/trust/key-rotations.json",
+      " M site-build/trust/keys.json",
+      " M site-build/trust/revocations.json",
+      " M site-build/trust/signatures/latest/HexHawk_1.0.0_x64-setup.exe.sig",
+      " M site-build/trust/signatures/latest/HexHawk_1.0.0_x64_en-US.msi.sig",
+      " M site-build/trust/signatures/latest/SHA256SUMS.txt.sig",
+      " M site-build/trust/signatures/latest/signatures.json",
+      " M site-build/trust/signatures/v1.0.0/HexHawk_1.0.0_x64-setup.exe.sig",
+      " M site-build/trust/signatures/v1.0.0/HexHawk_1.0.0_x64_en-US.msi.sig",
+      " M site-build/trust/signatures/v1.0.0/SHA256SUMS.txt.sig",
+      " M site-build/trust/signatures/v1.0.0/signatures.json",
+      " M site-build/trust/signed-timestamps.json",
+      " M src-tauri/tauri.conf.json",
+      " M website/tools/prepare-release.ps1",
+      "?? HexHawk/src/utils/__tests__/aetherframeReportRefinementAdapter.test.ts",
+      "?? HexHawk/src/utils/aetherframeReportRefinementAdapter.ts",
+      "?? docs/plans/",
+      "?? docs/release-evidence/controlled_release_gate_blocked_2026-06-02_213700.json",
+      "?? docs/release-evidence/controlled_release_gate_hosted_validation_2026-06-02_204500.json",
+      "?? docs/release-evidence/controlled_release_gate_hosted_validation_rerun_2026-06-02_214500.json",
+      "?? docs/release-evidence/hosted_updater_metadata_validation_2026-06-02_181100.json",
+      "?? docs/release-evidence/official_release_custody_final_validation_2026-06-02_203600.json",
+      "?? docs/release-evidence/official_updater_custody_rehearsal_2026-06-02_181500.json",
+      "?? docs/release-evidence/official_updater_custody_validation_2026-06-02_180900.json",
+      "?? docs/release-evidence/updater_metadata_dns_repair_2026-06-02_173000.json",
+      "?? docs/release-evidence/windows_release_hardening_2026-06-01_235000.json",
+      "?? docs/release-evidence/windows_release_truth_consolidation_2026-06-02_171415.json",
+      "?? gui-evidence/controlled_release_gate_unsigned_native_gui_probe_2026-06-02_213600.json",
+      "?? gui-evidence/official_updater_custody_native_gui_probe_2026-06-02_181500.json",
+      "?? gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json",
+      "?? gui-evidence/report_aetherframe_policy_native_gui_probe_2026-06-02_170827.json",
+      "?? nexus-assistant/",
+      "?? scripts/release/build-official-windows-release.ps1",
+      "?? scripts/release/validate-updater-metadata.ps1",
+      "?? site-build/trust/keys/HXK-UPDATER-2026-06.minisign.pub",
+      "?? site-build/trust/signatures/latest/HexHawk_1.0.0_x64-setup.exe.sig.sig",
+      "?? site-build/trust/signatures/latest/HexHawk_1.0.0_x64_en-US.msi.sig.sig",
+      "?? site-build/trust/signatures/v1.0.0/HexHawk_1.0.0_x64-setup.exe.sig.sig",
+      "?? site-build/trust/signatures/v1.0.0/HexHawk_1.0.0_x64_en-US.msi.sig.sig"
+    ]
+  },
+  "commands_run": [
+    "rm -f target/release/hexhawk-backend.exe target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+    "yarn typecheck",
+    "yarn build",
+    "yarn tauri:build",
+    "sha256sum target/release/hexhawk-backend.exe target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+    "Get-AuthenticodeSignature <rebuilt exe/msi/nsis>",
+    "yarn test src/components/__tests__/IntelligenceReport.test.tsx src/utils/__tests__/aetherframeReportRefinementAdapter.test.ts --reporter=dot",
+    "git diff --check && git diff --cached --check"
+  ],
+  "artifact_rebuild": {
+    "artifacts_built": true,
+    "artifacts": [
+      {
+        "path": "target/release/hexhawk-backend.exe",
+        "exists": true,
+        "size": 46463998,
+        "mtime_utc": "2026-06-02T21:59:50.141432+00:00",
+        "sha256": "caeb0c39abd9854d60745ff0f407744b7da4bc05312f01d2d346259037570377"
+      },
+      {
+        "path": "target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+        "exists": true,
+        "size": 21278720,
+        "mtime_utc": "2026-06-02T21:59:19.594000+00:00",
+        "sha256": "78bf99874acb9419525ab3012ac36252d2f8cc7605850aa773d36cc6865ec1e4"
+      },
+      {
+        "path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+        "exists": true,
+        "size": 14767570,
+        "mtime_utc": "2026-06-02T21:59:50.064178+00:00",
+        "sha256": "dbbd31edf328dc85bc40176fa19b3b5220cc62b85d74d1ab2f9969944c7fd246"
+      }
+    ]
+  },
+  "authenticode": [
+    {
+      "Path": "D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe",
+      "Status": 2,
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+      "SignerSubject": null,
+      "SignerThumbprint": null,
+      "TimestampSubject": null
+    },
+    {
+      "Path": "D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi",
+      "Status": 2,
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+      "SignerSubject": null,
+      "SignerThumbprint": null,
+      "TimestampSubject": null
+    },
+    {
+      "Path": "D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe",
+      "Status": 2,
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+      "SignerSubject": null,
+      "SignerThumbprint": null,
+      "TimestampSubject": null
+    }
+  ],
+  "authenticode_summary": {
+    "artifacts_signed": false,
+    "public_trusted_signature": false,
+    "status": "unsigned / not digitally signed"
+  },
+  "release_custody": {
+    "github_secrets_present_by_name": [
+      "TAURI_SIGNING_PRIVATE_KEY",
+      "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+    ],
+    "updater_custody_present_in_github_secrets": true,
+    "authenticode_custody_present_in_github_secrets": false,
+    "local_env_authenticode_custody_checked_previous_gate": "absent",
+    "local_internal_dev_cert_not_accepted_for_external_gate": true
+  },
+  "updater_signature_sidecar": {
+    "path": "target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe.sig",
+    "exists": true,
+    "size": 416,
+    "mtime_utc": "2026-06-02T18:08:14.418016+00:00",
+    "note": "stale sidecar retained from earlier updater-custody rehearsal; local rebuild used createUpdaterArtifacts=false and did not regenerate updater signature"
+  },
+  "final_classification": {
+    "source_validated_subset": true,
+    "artifacts_built": true,
+    "artifacts_signed": false,
+    "public_trusted_signature": false,
+    "updater_metadata_valid_for_rebuilt_hashes": false,
+    "native_gui_parity_passed_for_exact_rebuilt_artifact": false,
+    "internal_tester_candidate": "YES_WITH_UNSIGNED_CAVEATS",
+    "controlled_external_signed_tester_candidate": "NO",
+    "public_release_candidate": "NO"
+  },
+  "proof_limits": [
+    "Native GUI parity was not rerun after this rebuild.",
+    "The NSIS .sig sidecar exists but predates the rebuild and must not be treated as current updater proof.",
+    "No commit/tag/publish was performed.",
+    "Hosted updater metadata fetches but fails expected rebuilt artifact/signature hash checks; metadata was not republished."
+  ],
+  "hosted_updater_metadata_validation_after_rebuild": {
+    "path": "docs/release-evidence/hosted_updater_metadata_validation_rebuilt_unsigned_2026-06-02_220500.json",
+    "metadata_fetch_ok": true,
+    "all_checks_ok": false,
+    "artifact_sha256_expected": "dbbd31edf328dc85bc40176fa19b3b5220cc62b85d74d1ab2f9969944c7fd246",
+    "artifact_sha256_hosted": "1ac7c99f5a2f85c874df452966c5812d1501eced316ac10c78e1088de3efa824",
+    "signature_sha256_expected_from_stale_local_sidecar": "d3404fb901159c2188f63a013b7a56c4eb62fcae3b9feae0563391ebbcab180b",
+    "signature_sha256_hosted": "f33c1e8553104d189d740212ecc06d45d560ef5675513e651b88b36ddee77891",
+    "note": "Local sidecar predates rebuild; validation still proves hosted metadata does not match rebuilt artifact hash."
+  }
+}

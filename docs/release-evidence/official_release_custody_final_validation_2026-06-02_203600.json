@@ -1,0 +1,124 @@
+{
+  "schema": "hexhawk.official_release_custody_final_validation.v1",
+  "generated_at_utc": "2026-06-02T20:36:33Z",
+  "custody_decision": "secure CI secret: GitHub Actions repository secrets",
+  "secret_names_present": [
+    "TAURI_SIGNING_PRIVATE_KEY",
+    "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+  ],
+  "configured_updater_pubkey_sha256": "a9deb55589b533121a77a528f5cdea55116809f3ec8ce41301da0663d77e752b",
+  "official_release_process_files": [
+    ".github/workflows/release.yml",
+    "scripts/release/build-official-windows-release.ps1",
+    "website/tools/prepare-release.ps1",
+    "scripts/release/validate-updater-metadata.ps1"
+  ],
+  "artifacts": [
+    {
+      "path": "target/release/hexhawk-backend.exe",
+      "exists": true,
+      "bytes": 46463998,
+      "sha256": "1a8ad20ba5c5af8201e8de155e5a10069bc5d674b6ec169e4f53bed30ee5e02c"
+    },
+    {
+      "path": "target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "exists": true,
+      "bytes": 21278720,
+      "sha256": "28384f498da8779996d576dd26a03d65cdee7150f14b0d3af7769bbecfa61964"
+    },
+    {
+      "path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "exists": true,
+      "bytes": 14766552,
+      "sha256": "074026abad11aded0d454e1fe453f1eb5b1b065ea80715585d0de7226cdc683f"
+    },
+    {
+      "path": "target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi.sig",
+      "exists": true,
+      "bytes": 416,
+      "sha256": "8e4ab56a6a7475b437810bb07b076fe8144ab1935662b112e2172db10ddb7230"
+    },
+    {
+      "path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe.sig",
+      "exists": true,
+      "bytes": 416,
+      "sha256": "d3404fb901159c2188f63a013b7a56c4eb62fcae3b9feae0563391ebbcab180b"
+    }
+  ],
+  "authenticode": [
+    {
+      "Path": "target/release/hexhawk-backend.exe",
+      "Status": 2,
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+      "SignerSubject": null,
+      "SignerThumbprint": null
+    },
+    {
+      "Path": "target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "Status": 2,
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+      "SignerSubject": null,
+      "SignerThumbprint": null
+    },
+    {
+      "Path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "Status": 2,
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+      "SignerSubject": null,
+      "SignerThumbprint": null
+    }
+  ],
+  "updater_metadata_validation": {
+    "local_official_custody_metadata_all_checks_ok": true,
+    "hosted_metadata_all_checks_ok": false,
+    "hosted_failure_checks": [
+      {
+        "name": "signature_sha256_matches_expected",
+        "ok": false,
+        "detail": {
+          "expected": "d3404fb901159c2188f63a013b7a56c4eb62fcae3b9feae0563391ebbcab180b",
+          "actual": "f33c1e8553104d189d740212ecc06d45d560ef5675513e651b88b36ddee77891"
+        }
+      },
+      {
+        "name": "artifact_sha256_matches_expected",
+        "ok": false,
+        "detail": {
+          "expected": "074026abad11aded0d454e1fe453f1eb5b1b065ea80715585d0de7226cdc683f",
+          "actual": "1ac7c99f5a2f85c874df452966c5812d1501eced316ac10c78e1088de3efa824"
+        }
+      }
+    ],
+    "local_metadata_evidence": "docs/release-evidence/official_updater_custody_validation_2026-06-02_180900.json",
+    "hosted_metadata_evidence": "docs/release-evidence/hosted_updater_metadata_validation_2026-06-02_181100.json"
+  },
+  "native_gui_probe": {
+    "evidence": "gui-evidence/official_updater_custody_native_gui_probe_2026-06-02_181500.json",
+    "artifact_sha256": "28384f498da8779996d576dd26a03d65cdee7150f14b0d3af7769bbecfa61964",
+    "runtime": {
+      "hasTauriRuntime": true,
+      "browserMode": false,
+      "tauriInternalsType": "object",
+      "url": "http://tauri.localhost/",
+      "title": "HexHawk"
+    },
+    "all_checks_ok": true,
+    "check_count": 48
+  },
+  "release_claims": {
+    "updater_key_custody_moved_to_secure_ci_secret": true,
+    "app_rebuilt_with_configured_public_key": true,
+    "official_process_generates_updater_metadata": true,
+    "authenticode_signed": false,
+    "hosted_metadata_matches_current_official_artifact": false,
+    "native_gui_probe_ran_on_exact_current_msi": true,
+    "native_gui_probe_ran_on_signed_msi": false,
+    "public_release_ready": false
+  },
+  "proof_limits": [
+    "GitHub Actions secret names are visible but secret values cannot be read back for proof.",
+    "Authenticode code-signing secrets are not configured; exe/MSI/NSIS remain NotSigned.",
+    "Hosted metadata fetches but still points to older artifact/signature hashes, so it is not proof of the current official-custody artifact.",
+    "Native GUI proof ran on the exact current MSI hash, but that MSI is unsigned; there is no exact signed MSI/NSIS for testers yet."
+  ]
+}

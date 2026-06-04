@@ -1,0 +1,108 @@
+{
+    "schema":  "hexhawk.updater_metadata_validation.v1",
+    "generated_at_utc":  "2026-06-02T20:35:22.5252358Z",
+    "metadata_url":  "./site-build/releases/latest.json",
+    "expected_version":  "1.0.0",
+    "expected_platform":  "windows-x86_64",
+    "fetch":  {
+                  "ok":  true,
+                  "status":  200,
+                  "bytes":  1690,
+                  "sha256":  "436d2d0ec59457d47f9e8845b0749750620e3b6299806a307d990cfc31dfbe66",
+                  "finalUrl":  "./site-build/releases/latest.json",
+                  "error":  null
+              },
+    "checks":  [
+                   {
+                       "name":  "metadata_fetch_ok",
+                       "ok":  true,
+                       "detail":  {
+                                      "ok":  true,
+                                      "status":  200,
+                                      "bytes":  1690,
+                                      "sha256":  "436d2d0ec59457d47f9e8845b0749750620e3b6299806a307d990cfc31dfbe66",
+                                      "finalUrl":  "./site-build/releases/latest.json",
+                                      "error":  null
+                                  }
+                   },
+                   {
+                       "name":  "metadata_has_version",
+                       "ok":  true,
+                       "detail":  "1.0.0"
+                   },
+                   {
+                       "name":  "metadata_version_matches_expected",
+                       "ok":  true,
+                       "detail":  {
+                                      "expected":  "1.0.0",
+                                      "actual":  "1.0.0"
+                                  }
+                   },
+                   {
+                       "name":  "metadata_has_pub_date",
+                       "ok":  true,
+                       "detail":  "2026-06-02T18:10:19.1636415Z"
+                   },
+                   {
+                       "name":  "metadata_has_platforms",
+                       "ok":  true,
+                       "detail":  null
+                   },
+                   {
+                       "name":  "metadata_has_expected_platform",
+                       "ok":  true,
+                       "detail":  "windows-x86_64"
+                   },
+                   {
+                       "name":  "platform_has_url",
+                       "ok":  true,
+                       "detail":  "/releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe"
+                   },
+                   {
+                       "name":  "platform_has_signature",
+                       "ok":  true,
+                       "detail":  {
+                                      "len":  416
+                                  }
+                   },
+                   {
+                       "name":  "signature_decodes_as_tauri_payload",
+                       "ok":  true,
+                       "detail":  {
+                                      "decodes":  true,
+                                      "contains_tauri_comment":  true,
+                                      "contains_trusted_comment":  true
+                                  }
+                   },
+                   {
+                       "name":  "signature_sha256_matches_expected",
+                       "ok":  true,
+                       "detail":  {
+                                      "expected":  "d3404fb901159c2188f63a013b7a56c4eb62fcae3b9feae0563391ebbcab180b",
+                                      "actual":  "d3404fb901159c2188f63a013b7a56c4eb62fcae3b9feae0563391ebbcab180b"
+                                  }
+                   },
+                   {
+                       "name":  "artifact_sha256_matches_expected",
+                       "ok":  true,
+                       "detail":  {
+                                      "expected":  "074026abad11aded0d454e1fe453f1eb5b1b065ea80715585d0de7226cdc683f",
+                                      "actual":  "074026abad11aded0d454e1fe453f1eb5b1b065ea80715585d0de7226cdc683f"
+                                  }
+                   },
+                   {
+                       "name":  "configured_pubkey_present",
+                       "ok":  true,
+                       "detail":  {
+                                      "configured_pubkey_present":  true,
+                                      "sha256":  "a9deb55589b533121a77a528f5cdea55116809f3ec8ce41301da0663d77e752b"
+                                  }
+                   },
+                   {
+                       "name":  "platform_asset_url_fetchable",
+                       "ok":  true,
+                       "detail":  "local asset URL not fetched: /releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe"
+                   }
+               ],
+    "all_checks_ok":  true
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "hexhawk.official_updater_custody_rehearsal.v1",
+  "generated_at_utc": "2026-06-02T18:16:40Z",
+  "custody_decision": "GitHub Actions repository secrets for updater key custody",
+  "github_secret_names_present": [
+    "TAURI_SIGNING_PRIVATE_KEY",
+    "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+  ],
+  "configured_pubkey_sha256": "a9deb55589b533121a77a528f5cdea55116809f3ec8ce41301da0663d77e752b",
+  "official_build_script": "scripts/release/build-official-windows-release.ps1",
+  "official_metadata_script": "website/tools/prepare-release.ps1 -TauriUpdaterMetadata",
+  "local_rehearsal": {
+    "used_official_updater_key_after_uploading_it_to_github_secret": true,
+    "authenticode_signing_skipped": true,
+    "reason_authenticode_skipped": "No HEXHAWK_CODESIGN_THUMBPRINT/HEXHAWK_CODESIGN_PFX_PATH secret is configured.",
+    "local_private_key_scratch_removed_after_secret_upload": true
+  },
+  "artifacts": [
+    {
+      "path": "D:/Project/HexHawk/target/release/hexhawk-backend.exe",
+      "exists": true,
+      "bytes": 46463998,
+      "sha256": "1a8ad20ba5c5af8201e8de155e5a10069bc5d674b6ec169e4f53bed30ee5e02c"
+    },
+    {
+      "path": "D:/Project/HexHawk/target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "exists": true,
+      "bytes": 21278720,
+      "sha256": "28384f498da8779996d576dd26a03d65cdee7150f14b0d3af7769bbecfa61964"
+    },
+    {
+      "path": "D:/Project/HexHawk/target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "exists": true,
+      "bytes": 14766552,
+      "sha256": "074026abad11aded0d454e1fe453f1eb5b1b065ea80715585d0de7226cdc683f"
+    },
+    {
+      "path": "D:/Project/HexHawk/target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi.sig",
+      "exists": true,
+      "bytes": 416,
+      "sha256": "8e4ab56a6a7475b437810bb07b076fe8144ab1935662b112e2172db10ddb7230"
+    },
+    {
+      "path": "D:/Project/HexHawk/target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe.sig",
+      "exists": true,
+      "bytes": 416,
+      "sha256": "d3404fb901159c2188f63a013b7a56c4eb62fcae3b9feae0563391ebbcab180b"
+    }
+  ],
+  "release_claims": {
+    "official_updater_key_custody_configured": true,
+    "authenticode_signed": false,
+    "hosted_metadata_published_from_this_pass": false,
+    "public_release": false
+  },
+  "proof_limits": [
+    "GitHub secret names can be listed but secret values cannot be read back for proof.",
+    "The local rehearsal proves the scripted release path can enable updater artifacts and produce .sig sidecars, but it is not a completed GitHub Actions tag release.",
+    "Authenticode signing remains blocked until organization code-signing material is configured.",
+    "Hosted hexhawk.ke endpoint now fetches, but current validation shows it still serves older artifact/signature hashes; hosted updater readiness is not current proof until replaced and revalidated."
+  ]
+}

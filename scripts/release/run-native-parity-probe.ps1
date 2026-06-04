@@ -82,7 +82,7 @@ try {
     throw "Python launcher was not found (expected 'py' or 'python')."
   }
 
-  $probeArgs = @($resolvedProbe, "--output", $OutputPath, "--sample", $SamplePath, "--port", "$RemoteDebugPort")
+  $probeArgs = @($resolvedProbe, "--output", $OutputPath, "--sample", $SamplePath, "--port", "$RemoteDebugPort", "--artifact", $resolvedMsi)
   $probeProc = Start-Process -FilePath $pythonCommand -ArgumentList $probeArgs -Wait -PassThru -NoNewWindow
   if ($probeProc.ExitCode -ne 0) {
     throw "native_gui_parity_probe.py failed with exit code $($probeProc.ExitCode)."

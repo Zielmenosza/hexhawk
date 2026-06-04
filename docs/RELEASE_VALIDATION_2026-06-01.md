@@ -4,91 +4,95 @@
 
 HexHawk remains a controlled internal-tester Windows candidate.
 
-As of this validation pass:
+As of the current release-truth pass:
 
-- Artifacts were Authenticode-signed with an internal self-signed development certificate.
-- Timestamp countersignature is present on exe/MSI/NSIS artifacts.
-- Trust status is not public-trusted (`UnknownError` / untrusted root), so this is not a public-release signature posture.
-- Native packaged GUI acceptance flow passed on the signed internal artifact.
-- Updater signing path is enabled in config, but release metadata endpoint validation failed due endpoint DNS resolution failure.
+- Fresh target/release artifacts were generated after stale artifacts were deleted.
+- The current exe/MSI/NSIS artifacts are unsigned / not digitally signed according to `Get-AuthenticodeSignature`.
+- There is no current public-trusted signature posture.
+- The no-op Tauri signing command was removed.
+- Tauri updater artifacts are disabled for local unsigned builds with `bundle.createUpdaterArtifacts: false`.
+- Updater endpoint validation failed because `releases.hexhawk.app` did not resolve.
+- Native packaged GUI acceptance flow passed on the exact current MSI artifact.
 
-## Commands Executed
+## Current Evidence Artifacts
 
-```bash
-yarn workspace hexhawk-ui test src/components/__tests__/IntelligenceReport.test.tsx
-powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release/release-hardening.ps1 -UseSelfSignedDevCert
-powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release/run-native-parity-probe.ps1 -MsiPath ./target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi -OutputPath ./gui-evidence/release_hardening_native_gui_probe_2026-06-01_retry.json
-```
+- Current consolidated release evidence:
+  - `docs/release-evidence/windows_release_hardening_2026-06-01_235000.json`
+- Current native packaged GUI parity probe:
+  - `gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json`
 
-## Evidence Artifacts
+## Historical Evidence Boundary
 
-- Consolidated release evidence:
+- Historical consolidated release evidence:
   - `docs/release-evidence/windows_release_hardening_2026-06-01_204639.json`
-- Native packaged GUI parity probe:
-  - `gui-evidence/release_hardening_native_gui_probe_2026-06-01_204631.json`
+- Historical native GUI parity probe:
   - `gui-evidence/release_hardening_native_gui_probe_2026-06-01_retry.json`
 
-## Signing Provenance (from evidence JSON)
+That historical pass recorded internal self-signed signatures and native parity for older artifact hashes. It remains useful provenance, but it is not current proof for the freshly rebuilt artifacts listed below.
 
-- Signer subject: `CN=HexHawk Internal Dev Code Signing`
-- Signer thumbprint: `7373D2D0A1260F63A9D9CF51AD50681314595C70`
-- Timestamp subject: `CN=DigiCert SHA256 RSA4096 Timestamp Responder 2025 1, O="DigiCert, Inc.", C=US`
-- Signature trust status for exe/MSI/NSIS: `UnknownError` (`untrusted root`)
+## Commands Executed In Current Pass
 
-## Artifact SHA-256 (from evidence JSON)
+```bash
+rm stale target/release artifacts
+yarn typecheck
+yarn build
+yarn test --reporter=dot
+cargo check --workspace
+cargo test --workspace
+yarn tauri:build
+sha256sum target/release/hexhawk-backend.exe target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe
+Get-AuthenticodeSignature <current exe/msi/nsis>
+python DNS/fetch check for https://releases.hexhawk.app/releases/latest.json
+powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release/run-native-parity-probe.ps1 -MsiPath ./target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi -OutputPath ./gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json
+```
+
+## Current Artifact SHA-256
 
 - `target/release/hexhawk-backend.exe`
-  - `4c3bac2a7c1507e6ebd595a2e62212e5436e5e89f7ac4a9b20936d74deb85c7c`
+  - `6e1f2521480af887f2b79efa3f302912938a46c1d1fe30f3c4cd96912691bad3`
 - `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`
-  - `a51ddacb1753a2c48d79fe830f790436d1348e44b6bebc1552610c291d54dba0`
+  - `e0c12587befda246c39cc21e7f65ae5c36bd21abd1c9bfd74030f2626b17e220`
 - `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`
-  - `d4e39045fcbbb29a1ee8cc45d7dc66664b061ccbd34bde1b0350738ff01397bf`
+  - `3eec437b01488efc09c10e0eb3f3f88cf0f8ba9c0a5d6a09234467bee95394c6`
+
+## Current Authenticode Outcome
+
+- `hexhawk-backend.exe`: not digitally signed.
+- `HexHawk_1.0.0_x64_en-US.msi`: not digitally signed.
+- `HexHawk_1.0.0_x64-setup.exe`: not digitally signed.
 
 ## Updater Validation Outcome
 
 - `src-tauri/tauri.conf.json` now has:
-  - `bundle.createUpdaterArtifacts: true`
-  - `bundle.windows.signCommand` configured
-  - `plugins.updater.pubkey` populated
+  - `bundle.createUpdaterArtifacts: false`
+  - no `bundle.windows.signCommand`
+  - populated `plugins.updater.pubkey`
   - `plugins.updater.endpoints[0] = https://releases.hexhawk.app/releases/latest.json`
 - Endpoint metadata validation result:
-  - `fetchOk: false`
-  - Error: `The remote name could not be resolved: 'releases.hexhawk.app'`
+  - DNS: failed
+  - Fetch: failed
+  - Metadata valid: false
 
 ## Native Acceptance Flow Outcome
 
-Packaged MSI-extracted app passed:
+The packaged MSI-extracted app passed:
 
-- Native runtime proof (`hasTauriRuntime=true`, `browserMode=false`, `tauriInternalsType=object`)
-- Open -> Inspect -> Run Analysis -> NEST -> Report JSON export
+- Native runtime proof (`hasTauriRuntime=true`, `browserMode=false`, `tauriInternalsType=object`).
+- Open -> Inspect -> Run Analysis -> NEST -> Report JSON export.
 - Export authority markers present:
   - `source_engine`
   - `gyre_is_sole_verdict_source`
   - `final_verdict_snapshot`
+  - `nestEvidenceBundle` / `nest_evidence` status fields.
 
-## Regression Gate Added
+## Release Posture
 
-- `HexHawk/src/components/__tests__/IntelligenceReport.test.tsx` now enforces report JSON authority envelope fields:
-  - `final_verdict_snapshot.source_engine === 'gyre'`
-  - `final_verdict_snapshot.gyre_is_sole_verdict_source === true`
-  - `final_verdict_snapshot.nest_linkage.gyre_is_sole_verdict_source === true`
-  - `authority_doctrine.gyre_is_sole_verdict_source === true`
-
-## Decompiler/TALON Hardening Added
-
-- Address consistency improved across disassembly and CFG surfaces (text-section snap alignment + decoded-range-aware CFG requests).
-- Decompiler now includes an instruction-derived fallback block partitioner when CFG does not overlap the decoded function window.
-- Call argument recovery window expanded from `10` to `25` instructions and enhanced with a cross-block recovery pass.
-- First-pass variable naming heuristics now promote generic names toward loop/index/size/pointer semantics where safe.
-- Added regression tests:
-  - `HexHawk/src/__tests__/decompilerRegressionRealBinaries.test.ts`
-  - Includes guarded real-binary coverage for workspace challenge executables through `nest_cli`.
-
-## Installer Rebuild Outcome (Current Pass)
-
-- Rebuilt MSI and NSIS bundles from current source:
-  - `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi` (updated 2026-06-01 22:13:34)
-  - `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe` (updated 2026-06-01 22:14:30)
-- Tauri build exits non-zero after bundling because updater private signing key is not configured:
-  - `TAURI_SIGNING_PRIVATE_KEY` missing.
-- For this internal pass, bundle signing command was switched to a no-op fallback to unblock local bundle generation in the current environment where PowerShell-sign command spawning failed.
+- Source validated: YES.
+- Artifacts built: YES.
+- Artifacts signed: NO.
+- Public-trusted signature: NO.
+- Updater metadata valid for current hosted release hashes: NO.
+- Native GUI parity passed for exact artifact: YES.
+- Internal tester candidate: YES.
+- Controlled external signed-tester gate: NO, blocked by absent public-trusted Authenticode custody, unsigned artifacts, stale hosted updater metadata, and no signed-artifact native GUI proof.
+- Public release candidate: NO.

@@ -1,0 +1,156 @@
+{
+  "schema": "hexhawk.release_truth_evidence.v1",
+  "generated_at_utc": "2026-06-02T17:14:15Z",
+  "purpose": "Tie freshly rebuilt Windows artifacts to current Authenticode status, updater DNS/fetch status, and native GUI report/AETHERFRAME policy proof without changing release readiness claims.",
+  "source_control": {
+    "branch": "main",
+    "head": "bb7edd2feafce72db565b0ebc49a0264fa5b3e94",
+    "working_tree_dirty": true
+  },
+  "inputs": {
+    "tauri_config": "src-tauri/tauri.conf.json",
+    "native_gui_proof": "gui-evidence/report_aetherframe_policy_native_gui_probe_2026-06-02_170827.json"
+  },
+  "artifact_hashes_and_signing": [
+    {
+      "label": "backend_exe",
+      "path": "target/release/hexhawk-backend.exe",
+      "exists": true,
+      "size": 46464386,
+      "mtime_utc": "2026-06-02T17:08:12Z",
+      "sha256": "669094edf6223a9865955a6dcb4d27547217cbfed7b74ad092eac2fc370a09e7",
+      "authenticode": {
+        "Path": "D:/Project/HexHawk/target/release/hexhawk-backend.exe",
+        "Status": "NotSigned",
+        "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+        "SignerSubject": null,
+        "SignerThumbprint": null,
+        "TimeStamperSubject": null
+      }
+    },
+    {
+      "label": "msi",
+      "path": "target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "exists": true,
+      "size": 21278720,
+      "mtime_utc": "2026-06-02T17:07:45Z",
+      "sha256": "e406e47809567626fe2f5adbc654c2ef1d4e9bef2e0671df6361a3821004dc26",
+      "authenticode": {
+        "Path": "D:/Project/HexHawk/target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+        "Status": "NotSigned",
+        "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+        "SignerSubject": null,
+        "SignerThumbprint": null,
+        "TimeStamperSubject": null
+      }
+    },
+    {
+      "label": "nsis",
+      "path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "exists": true,
+      "size": 14765861,
+      "mtime_utc": "2026-06-02T17:08:12Z",
+      "sha256": "1ac7c99f5a2f85c874df452966c5812d1501eced316ac10c78e1088de3efa824",
+      "authenticode": {
+        "Path": "D:/Project/HexHawk/target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+        "Status": "NotSigned",
+        "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+        "SignerSubject": null,
+        "SignerThumbprint": null,
+        "TimeStamperSubject": null
+      }
+    }
+  ],
+  "signing_summary": {
+    "all_artifacts_exist": true,
+    "all_artifacts_authenticode_valid": false,
+    "statuses": {
+      "backend_exe": "NotSigned",
+      "msi": "NotSigned",
+      "nsis": "NotSigned"
+    },
+    "public_trusted_signature": false,
+    "reason": "Get-AuthenticodeSignature returned NotSigned for exe, MSI, and NSIS artifacts in this session."
+  },
+  "updater_configuration": {
+    "createUpdaterArtifacts": false,
+    "pubkey_configured": true,
+    "endpoints": [
+      "https://releases.hexhawk.app/releases/latest.json"
+    ],
+    "dialog": true,
+    "windows": {
+      "installMode": "passive"
+    }
+  },
+  "updater_validation": {
+    "results": [
+      {
+        "endpoint": "https://releases.hexhawk.app/releases/latest.json",
+        "host": "releases.hexhawk.app",
+        "dns_ok": false,
+        "dns_error": {
+          "type": "gaierror",
+          "message": "[Errno 11001] getaddrinfo failed"
+        },
+        "fetch_ok": false,
+        "http_status": null,
+        "fetch_error": {
+          "type": "URLError",
+          "message": "<urlopen error [Errno 11001] getaddrinfo failed>"
+        }
+      }
+    ],
+    "dns_ok_all": false,
+    "fetch_ok_all": false,
+    "updater_metadata_valid": false,
+    "readiness_claim_changed": false,
+    "reason": "Configured endpoint did not resolve/fetch in this session and createUpdaterArtifacts remains false."
+  },
+  "native_gui_report_aetherframe_policy_proof": {
+    "evidence_path": "gui-evidence/report_aetherframe_policy_native_gui_probe_2026-06-02_170827.json",
+    "exists": true,
+    "all_checks_ok": true,
+    "check_count": 48,
+    "failed_checks": [],
+    "runtime": {
+      "hasTauriRuntime": true,
+      "browserMode": false,
+      "tauriInternalsType": "object",
+      "url": "http://tauri.localhost/",
+      "title": "HexHawk"
+    },
+    "artifact": {
+      "path": "D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi",
+      "exists": true,
+      "size": 21278720,
+      "sha256": "e406e47809567626fe2f5adbc654c2ef1d4e9bef2e0671df6361a3821004dc26",
+      "mtime": "2026-06-02T17:07:45Z"
+    }
+  },
+  "release_readiness_truth": {
+    "internal_tester_candidate": true,
+    "controlled_external_pilot": "conditional_only_if_unsigned_artifacts_and_unready_updater_are_explicitly_accepted_or_after_real_gates_complete",
+    "public_release": false,
+    "docs_update_required": false,
+    "reason": "New evidence confirms the existing docs posture: exact artifact GUI proof passes, but artifacts are unsigned and updater DNS/fetch is not ready."
+  },
+  "trust_boundary_status": {
+    "gyre_sole_verdict_authority": "unchanged; native GUI proof checks final_verdict_snapshot.source_engine=gyre and gyre_is_sole_verdict_source=true",
+    "nest_evidence": "unchanged; report export did not fabricate typed NEST evidence bundles in native GUI proof",
+    "aetherframe": "bounded to package-only report lineage when enabled; disabled path records aetherframe-disabled",
+    "nexus": "not involved"
+  },
+  "commands_run": [
+    "sha256sum target/release/hexhawk-backend.exe target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+    "Get-AuthenticodeSignature for exe/MSI/NSIS via powershell.exe",
+    "DNS getaddrinfo and urllib fetch for configured updater endpoint",
+    "python -m json.tool docs/release-evidence/windows_release_truth_consolidation_2026-06-02_171415.json"
+  ],
+  "proof_limits": [
+    "This evidence does not sign artifacts.",
+    "This evidence does not repair DNS, updater metadata, or update hosting.",
+    "This evidence does not validate public release readiness.",
+    "Native GUI proof is tied to the referenced current-session evidence JSON and MSI hash only."
+  ]
+}

@@ -1,0 +1,273 @@
+{
+  "schema": "hexhawk.controlled_release_gate_attempt.v1",
+  "generated_at_utc": "2026-06-02T21:36:43Z",
+  "requested_gate": [
+    "real_authenticode_path",
+    "github_actions_tag_release",
+    "hosted_publication",
+    "authenticode_checks",
+    "hosted_updater_validation",
+    "native_gui_probe_on_exact_signed_tester_artifact",
+    "tester_docs_upgrade_only_if_gate_passes"
+  ],
+  "gate_result": "blocked_not_released",
+  "blockers": [
+    {
+      "name": "missing_real_authenticode_identity",
+      "detail": "No public/organization-trusted Authenticode identity is configured. GitHub lacks HEXHAWK_CODESIGN_* secrets; no PFX/P12 was discovered; signtool is unavailable; the only local code-signing cert found is self-issued HexHawk Internal Dev Code Signing and its chain fails with UntrustedRoot."
+    },
+    {
+      "name": "hosted_metadata_stale_against_current_artifact",
+      "detail": "Hosted metadata fetches, but expected current NSIS artifact/signature SHA-256 checks fail."
+    },
+    {
+      "name": "no_exact_signed_tester_artifact",
+      "detail": "Current exe/MSI/NSIS artifacts are NotSigned, so native GUI proof on an exact signed tester artifact cannot be produced."
+    },
+    {
+      "name": "tag_release_not_run",
+      "detail": "Release workflow is tag-push only; running it now without Authenticode secrets would fail or publish unsigned artifacts. The working tree is also dirty and includes unreleased source/process changes."
+    }
+  ],
+  "github_secret_names_present": [
+    "TAURI_SIGNING_PRIVATE_KEY",
+    "TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+  ],
+  "github_secret_names_missing": [
+    "HEXHAWK_CODESIGN_THUMBPRINT",
+    "HEXHAWK_CODESIGN_PFX_PATH",
+    "HEXHAWK_CODESIGN_PFX_PASSWORD"
+  ],
+  "local_codesigning_cert_probe": {
+    "current_user_code_signing_private_key_certs": [
+      {
+        "subject": "CN=HexHawk Internal Dev Code Signing",
+        "issuer": "CN=HexHawk Internal Dev Code Signing",
+        "thumbprint": "7373D2D0A1260F63A9D9CF51AD50681314595C70",
+        "chain_ok": false,
+        "chain_status": [
+          "UntrustedRoot"
+        ],
+        "release_gate_acceptable": false
+      }
+    ],
+    "local_machine_code_signing_private_key_count": 0
+  },
+  "authenticode": [
+    {
+      "Path": "target/release/hexhawk-backend.exe",
+      "Status": 2,
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\hexhawk-backend.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+      "SignerSubject": null,
+      "SignerThumbprint": null,
+      "TimestampSubject": null
+    },
+    {
+      "Path": "target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "Status": 2,
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\msi\\HexHawk_1.0.0_x64_en-US.msi is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+      "SignerSubject": null,
+      "SignerThumbprint": null,
+      "TimestampSubject": null
+    },
+    {
+      "Path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "Status": 2,
+      "StatusMessage": "The file D:\\Project\\HexHawk\\target\\release\\bundle\\nsis\\HexHawk_1.0.0_x64-setup.exe is not digitally signed. You cannot run this script on the current system. For more information about running scripts and setting execution policy, see about_Execution_Policies at https:/go.microsoft.com/fwlink/?LinkID=135170",
+      "SignerSubject": null,
+      "SignerThumbprint": null,
+      "TimestampSubject": null
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "target/release/hexhawk-backend.exe",
+      "exists": true,
+      "bytes": 46463998,
+      "sha256": "1a8ad20ba5c5af8201e8de155e5a10069bc5d674b6ec169e4f53bed30ee5e02c"
+    },
+    {
+      "path": "target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "exists": true,
+      "bytes": 21278720,
+      "sha256": "28384f498da8779996d576dd26a03d65cdee7150f14b0d3af7769bbecfa61964"
+    },
+    {
+      "path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "exists": true,
+      "bytes": 14766552,
+      "sha256": "074026abad11aded0d454e1fe453f1eb5b1b065ea80715585d0de7226cdc683f"
+    },
+    {
+      "path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe.sig",
+      "exists": true,
+      "bytes": 416,
+      "sha256": "d3404fb901159c2188f63a013b7a56c4eb62fcae3b9feae0563391ebbcab180b"
+    },
+    {
+      "path": "site-build/releases/latest.json",
+      "exists": true,
+      "bytes": 1690,
+      "sha256": "436d2d0ec59457d47f9e8845b0749750620e3b6299806a307d990cfc31dfbe66"
+    }
+  ],
+  "hosted_updater_validation": {
+    "evidence": "docs/release-evidence/controlled_release_gate_hosted_validation_2026-06-02_204500.json",
+    "all_checks_ok": false,
+    "failed_checks": [
+      {
+        "name": "signature_sha256_matches_expected",
+        "ok": false,
+        "detail": {
+          "expected": "d3404fb901159c2188f63a013b7a56c4eb62fcae3b9feae0563391ebbcab180b",
+          "actual": "f33c1e8553104d189d740212ecc06d45d560ef5675513e651b88b36ddee77891"
+        }
+      },
+      {
+        "name": "artifact_sha256_matches_expected",
+        "ok": false,
+        "detail": {
+          "expected": "074026abad11aded0d454e1fe453f1eb5b1b065ea80715585d0de7226cdc683f",
+          "actual": "1ac7c99f5a2f85c874df452966c5812d1501eced316ac10c78e1088de3efa824"
+        }
+      }
+    ]
+  },
+  "native_gui_probe": {
+    "evidence": "gui-evidence/controlled_release_gate_unsigned_native_gui_probe_2026-06-02_213600.json",
+    "artifact_requirement_satisfied": "no_exact_signed_artifact_available; probe ran on current unsigned MSI only",
+    "runtime": {
+      "hasTauriRuntime": true,
+      "browserMode": false,
+      "tauriInternalsType": "object",
+      "url": "http://tauri.localhost/",
+      "title": "HexHawk"
+    },
+    "all_checks_ok": true,
+    "check_count": 48
+  },
+  "github_release_runs_recent": [
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-05-01T16:51:17Z",
+      "databaseId": 25223518333,
+      "displayTitle": "release: automate website payload generation and root prepare script",
+      "event": "push",
+      "headBranch": "v1.0.1",
+      "headSha": "b296a06ab8445d6a9e7b72261658986a693470a8",
+      "status": "completed"
+    }
+  ],
+  "working_tree_status_sample": [
+    "## main...origin/main",
+    " M .github/workflows/release.yml",
+    " M .gitignore",
+    " M ENTERPRISE_ROADMAP.md",
+    " M FINAL_EVALUATION.md",
+    " M HexHawk/src/components/IntelligenceReport.tsx",
+    " M HexHawk/src/components/__tests__/IntelligenceReport.test.tsx",
+    " M README.md",
+    " M ROADMAP.md",
+    "D  docs/.~lock.HEXHAWK_FOR_DUMMIES.docx#",
+    " M docs/ENGINE_BOUNDARY_DOCTRINE.md",
+    " M docs/EXTERNAL_TESTER_KNOWN_ISSUES.md",
+    " M docs/HEXHAWK_FOR_DUMMIES.md",
+    " M docs/HEXHAWK_FOR_DUMMIES_CAPABILITY_INVENTORY.md",
+    " M docs/HEXHAWK_FOR_DUMMIES_SOURCE_MAP.md",
+    " M docs/HEXHAWK_FOR_DUMMIES_VALIDATION_REPORT.md",
+    " M docs/HIGH_ASSURANCE_GUIDE.md",
+    " M docs/INVESTOR_DILIGENCE_BRIEF.md",
+    " M docs/INVESTOR_ONE_PAGER.md",
+    " M docs/PILOT_READINESS_CHECKLIST.md",
+    " M docs/RELEASE_SIGNING_AND_UPDATER_PLAN.md",
+    " M docs/RELEASE_VALIDATION_2026-06-01.md",
+    " M docs/TESTER_RELEASE_STATUS.md",
+    "D  docs/credentials.md",
+    "D  hexhawk-enterprise.wixobj",
+    " M prepare-release.ps1",
+    "D  scripts/__pycache__/capture_hexhawk_screenshots.cpython-311.pyc",
+    "D  scripts/__pycache__/export_dummies_docx.cpython-311.pyc",
+    " M scripts/native_gui_parity_probe.py",
+    " M scripts/release/refresh-trust-artifacts.ps1",
+    " M scripts/release/run-native-parity-probe.ps1",
+    "D  scripts/validation/native-gui/__pycache__/native_gui_e2e.cpython-311.pyc",
+    "D  scripts/validation/native-gui/__pycache__/native_gui_export_parity_gate.cpython-311.pyc",
+    " M site-build/.well-known/hexhawk-trust.json",
+    " M site-build/docs/index.html",
+    " M site-build/downloads/checksums.txt",
+    " M site-build/downloads/index.html",
+    " M site-build/index.html",
+    " M site-build/pricing/index.html",
+    " M site-build/release-notes/index.html",
+    " M site-build/releases/latest.json",
+    " M site-build/releases/v1.0.0/SHA256SUMS.txt",
+    "D  site-build/releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe",
+    "D  site-build/releases/v1.0.0/assets/HexHawk_1.0.0_x64_en-US.msi",
+    " M site-build/trust-center/index.html",
+    " M site-build/trust/key-rotations.json",
+    " M site-build/trust/keys.json",
+    " M site-build/trust/revocations.json",
+    " M site-build/trust/signatures/latest/HexHawk_1.0.0_x64-setup.exe.sig",
+    " M site-build/trust/signatures/latest/HexHawk_1.0.0_x64_en-US.msi.sig",
+    " M site-build/trust/signatures/latest/SHA256SUMS.txt.sig",
+    " M site-build/trust/signatures/latest/signatures.json",
+    " M site-build/trust/signatures/v1.0.0/HexHawk_1.0.0_x64-setup.exe.sig",
+    " M site-build/trust/signatures/v1.0.0/HexHawk_1.0.0_x64_en-US.msi.sig",
+    " M site-build/trust/signatures/v1.0.0/SHA256SUMS.txt.sig",
+    " M site-build/trust/signatures/v1.0.0/signatures.json",
+    " M site-build/trust/signed-timestamps.json",
+    " M src-tauri/tauri.conf.json",
+    " M website/tools/prepare-release.ps1",
+    "?? HexHawk/src/utils/__tests__/aetherframeReportRefinementAdapter.test.ts",
+    "?? HexHawk/src/utils/aetherframeReportRefinementAdapter.ts",
+    "?? docs/plans/",
+    "?? docs/release-evidence/controlled_release_gate_hosted_validation_2026-06-02_204500.json",
+    "?? docs/release-evidence/hosted_updater_metadata_validation_2026-06-02_181100.json",
+    "?? docs/release-evidence/official_release_custody_final_validation_2026-06-02_203600.json",
+    "?? docs/release-evidence/official_updater_custody_rehearsal_2026-06-02_181500.json",
+    "?? docs/release-evidence/official_updater_custody_validation_2026-06-02_180900.json",
+    "?? docs/release-evidence/updater_metadata_dns_repair_2026-06-02_173000.json",
+    "?? docs/release-evidence/windows_release_hardening_2026-06-01_235000.json",
+    "?? docs/release-evidence/windows_release_truth_consolidation_2026-06-02_171415.json",
+    "?? gui-evidence/controlled_release_gate_unsigned_native_gui_probe_2026-06-02_213600.json",
+    "?? gui-evidence/official_updater_custody_native_gui_probe_2026-06-02_181500.json",
+    "?? gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json",
+    "?? gui-evidence/report_aetherframe_policy_native_gui_probe_2026-06-02_170827.json",
+    "?? nexus-assistant/",
+    "?? scripts/release/build-official-windows-release.ps1",
+    "?? scripts/release/validate-updater-metadata.ps1",
+    "?? site-build/trust/keys/HXK-UPDATER-2026-06.minisign.pub",
+    "?? site-build/trust/signatures/latest/HexHawk_1.0.0_x64-setup.exe.sig.sig",
+    "?? site-build/trust/signatures/latest/HexHawk_1.0.0_x64_en-US.msi.sig.sig"
+  ],
+  "publication_decision": "not_published_as_controlled_release_gate_because_authenticode_has_no trusted release identity and hosted metadata is stale",
+  "tester_docs_decision": "not_upgraded_to_stronger_controlled_external_tester_posture",
+  "required_next_inputs": [
+    {
+      "option": "certificate_store_thumbprint",
+      "needed": [
+        "Install an organization-trusted Windows code-signing certificate with private key on the controlled release machine or CI runner",
+        "Set HEXHAWK_CODESIGN_THUMBPRINT to the certificate thumbprint"
+      ]
+    },
+    {
+      "option": "pfx_in_ci_secret_store",
+      "needed": [
+        "Store the PFX as a secure CI secret or secure file available only to release workflow",
+        "Set HEXHAWK_CODESIGN_PFX_PATH and HEXHAWK_CODESIGN_PFX_PASSWORD in release custody",
+        "Do not commit the PFX"
+      ]
+    },
+    {
+      "option": "then_release",
+      "needed": [
+        "Commit/review release-process changes",
+        "push a version tag",
+        "verify GitHub Actions Release succeeds",
+        "publish generated website-release-payload to hexhawk.ke",
+        "rerun hosted metadata expected hash validation",
+        "rerun native GUI proof on signed MSI/NSIS"
+      ]
+    }
+  ]
+}

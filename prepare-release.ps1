@@ -5,6 +5,8 @@ param(
   [string]$GitHubOwner = "Zielmenosza",
   [string]$GitHubRepo = "hexhawk",
   [switch]$UseLocalReleaseFiles,
+  [switch]$TauriUpdaterMetadata,
+  [string]$ReleaseNotes = "HexHawk release candidate. Verify release evidence before distribution.",
   [string]$TrustSigningPrivateKeyPath = $env:HEXHAWK_TRUST_SIGNING_KEY_PATH,
   [string]$TrustSigningKeyId = $env:HEXHAWK_TRUST_SIGNING_KEY_ID
 )
@@ -29,6 +31,14 @@ if ($PSBoundParameters.ContainsKey('Version') -and $Version) {
 
 if ($UseLocalReleaseFiles) {
   $params.UseLocalReleaseFiles = $true
+}
+
+if ($TauriUpdaterMetadata) {
+  $params.TauriUpdaterMetadata = $true
+}
+
+if ($PSBoundParameters.ContainsKey('ReleaseNotes') -and $ReleaseNotes) {
+  $params.ReleaseNotes = $ReleaseNotes
 }
 
 & $scriptPath @params

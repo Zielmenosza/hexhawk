@@ -67,7 +67,7 @@ This map ties the main claims in `HEXHAWK_FOR_DUMMIES.md` and `HEXHAWK_FOR_DUMMI
 | BYOK provider support for OpenAI, Anthropic, Ollama | `docs/m11_byok_ai.md`, `src-tauri/src/commands/llm.rs` |
 | LLM approval, remote endpoint, context/token/timeout guardrails | `docs/m10_ai_backbone.md`, `src-tauri/src/commands/llm.rs` |
 | Stronghold-backed provider key storage | `docs/m10_ai_backbone.md`, `docs/m11_byok_ai.md`, `src-tauri/src/commands/llm.rs` |
-| Updater path configured (`createUpdaterArtifacts: true`, pubkey present, endpoint set), with release-time endpoint/metadata validation still required | `src-tauri/tauri.conf.json`, `docs/RELEASE_SIGNING_AND_UPDATER_PLAN.md`, `docs/RELEASE_VALIDATION_2026-06-01.md` |
+| Updater pubkey/endpoint configured, but local unsigned builds use `createUpdaterArtifacts: false`; endpoint/metadata validation failed in the current release-truth pass | `src-tauri/tauri.conf.json`, `docs/RELEASE_SIGNING_AND_UPDATER_PLAN.md`, `docs/RELEASE_VALIDATION_2026-06-01.md` |
 
 ## Plugin and extension claims
 

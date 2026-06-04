@@ -156,16 +156,16 @@ HexHawk does not claim to:
 
 ## Current release posture
 
-Repository docs describe HexHawk as an internal-tester Windows build candidate. It is still not a broadly trusted public release. Current artifacts are Authenticode-signed with an internal/self-signed chain, so trust validation can still show untrusted-root warnings on external systems.
+Repository docs describe HexHawk as an internal-tester Windows build candidate. It is still not a broadly trusted public release. Current target/release artifacts are unsigned according to Authenticode checks; a prior internal self-signed evidence pass is historical and does not describe the current artifacts.
 
 Updater path status in current config:
 
-- updater artifacts are enabled (`createUpdaterArtifacts: true`)
+- updater artifacts are disabled for local unsigned builds (`createUpdaterArtifacts: false`)
 - updater pubkey is configured
 - updater endpoint is configured
 - endpoint health/metadata validation still needs to be treated as a per-release gate
 
-Note: some current docs say packaged native GUI parity passed for an unsigned tester artifact, while README/ROADMAP are more conservative. For this guide, treat packaged GUI parity as something to rerun for every build you intend to trust.
+Note: packaged native GUI parity passed for the current unsigned MSI artifact in `gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json`. Rerun parity for every build you intend to trust, especially after signing.
 
 ## The HexHawk mental model
 
@@ -698,10 +698,10 @@ Key settings:
 - frontend dist: `../HexHawk/dist`
 - bundle targets: all
 - Windows WebView install mode: embedded bootstrapper, silent
-- updater artifacts: enabled by `createUpdaterArtifacts: true`
-- signing command: configured to call `scripts/release/sign-windows-artifact.ps1`
+- updater artifacts: disabled for local unsigned builds by `createUpdaterArtifacts: false`
+- signing command: not configured in `tauri.conf.json` for local unsigned builds; use a real release signing step/script before claiming signed artifacts
 - updater pubkey: configured
-- updater endpoint: `https://releases.hexhawk.app/releases/latest.json`
+- updater endpoint: `https://hexhawk.ke/releases/latest.json`
 
 ## Tier and license configuration
 
@@ -979,7 +979,7 @@ Escalate: if packaged app fails but dev app works.
 ## Windows trust warning
 
 Symptom: Windows warns about unknown publisher.
-Likely cause: artifacts are internally signed but the chain terminates at an untrusted root for that host policy.
+Likely cause: the current local artifacts are unsigned, or a future signed build uses a chain not trusted by that host policy.
 Fix: for internal testing, document and approve exception policy; for external release, use organization/public-trusted signing chain and rerun release validation.
 
 ## CLI not found
