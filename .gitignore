@@ -31,14 +31,28 @@ build/
 scripts/release/.generated/
 *.pem.key
 
-# Logs and temp files
+# Logs, temp files, and generated local artifacts
 *.log
 *.tmp
 *.bak
+*.wixobj
+*.~lock.*#
+__pycache__/
+**/__pycache__/
+*.pyc
 nest_run_output.txt
 src-tauri/cargo_log.txt
 src-tauri/cargo_output.txt
 HexHawk/output.txt
+
+# Local credentials and adjacent assistant projects must not be tracked
+/docs/credentials.md
+/nexus-assistant/
+
+# Generated/static-hosted binary release payloads are published artifacts, not source
+/site-build/releases/*/assets/*.exe
+/site-build/releases/*/assets/*.msi
+/site-build/releases/*/assets/*.sig
 
 # NEST test sessions / analysis output
 nest_tests/
@@ -52,3 +66,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+# Local updater-key generation scratch files
+/.hermes_official_updater_tmp_path
+/.official-updater-key.pub.tmp
+/.official-updater-release.env
