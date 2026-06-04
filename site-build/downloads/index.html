@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -13,32 +13,58 @@
 <body>
 <header class="topbar">
   <div class="container nav">
-    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>    <nav class="links">
+    <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
+    <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">Menu</button>
+    <nav class="links" aria-label="Primary navigation">
       <a data-path="/" href="/">Home</a>
       <a data-path="/features" href="/features">Features</a>
-      <a data-path="/hexhawk-lab" href="/hexhawk-lab">Lab</a>
       <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/trust-center" href="/trust-center">Trust Center</a>
-      <a data-path="/keys-revocations" href="/keys-revocations">Keys</a>
-      <a data-path="/verify-file" href="/verify-file">Verify File</a>
-      <a data-path="/release-notes" href="/release-notes">Release Notes</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
     </nav>
   </div>
 </header>
 <main class="container">
-<section class="hero"><span class="kicker">DOWNLOADS</span><h1>Current build status: controlled internal tester candidate.</h1><p class="lead">Windows artifacts are now Authenticode-signed with an internal self-signed development certificate, and packaged native GUI parity passed on the signed internal artifact. Public downloads should still wait for organization-trusted signing and updater endpoint proof.</p></section>
-<section class="section"><h2>Latest local artifacts</h2><div class="grid">
-<article class="card"><h3>Windows MSI</h3><p>Built successfully for internal testing.</p><p class="mono">HexHawk_1.0.0_x64_en-US.msi</p></article>
-<article class="card"><h3>Windows NSIS</h3><p>Built successfully for internal testing.</p><p class="mono">HexHawk_1.0.0_x64-setup.exe</p></article>
-<article class="card"><h3>Integrity</h3><p>Latest local hashes are published here for diligence reference.</p><div class="cta"><a class="btn ghost" href="/downloads/checksums.txt">View Checksums</a></div></article>
-</div></section><section class="section"><h2>Release caveats</h2><ul><li>Artifacts are signed with an internal self-signed certificate and are not publicly trusted yet.</li><li>Updater signing path is enabled, but release metadata endpoint validation is currently failing.</li><li>Packaged native GUI parity passed on signed internal artifacts and must be rerun on organization-trusted signed artifacts before external release.</li></ul></section>
+  <section class="hero">
+    <span class="kicker">Downloads</span>
+    <h1>Download HexHawk with the right release expectations</h1>
+    <p class="lead">HexHawk’s current Windows build is intended for internal testing and controlled evaluation. It is not a public-trusted general-availability release until signing and updater validation are complete.</p>
+  </section>
+  <section class="status-strip"><strong>Current build status:</strong> Windows internal-tester build candidate. Current rebuilt artifacts are unsigned according to Authenticode; no current internal self-signed signature is present. Local unsigned builds keep updater artifacts disabled, and hosted updater metadata must be refreshed and revalidated before release-readiness claims. Public-trusted signing remains incomplete.</section>
+  <section class="section split"><div><h2>Before you install</h2><p>Use a test machine or controlled environment. Expect Windows trust warnings until public-trusted signing is in place. Verify checksums and review release notes before use.</p><ul class="checklist"><li>Windows internal-tester build candidate.</li><li>Current rebuilt artifacts are unsigned according to Authenticode.</li><li>No current internal self-signed signature is present.</li><li>Native packaged GUI parity is documented for the current unsigned MSI in repo evidence.</li><li>Public-trusted signing and hosted updater validation remain pending.</li></ul></div><div class="card"><h3>Actions</h3><div class="stacked-actions"><a class="btn primary" href="/downloads/checksums.txt">Download Free Version</a><a class="btn ghost" href="mailto:contact@hexhawk.ke">Request Early Access</a><a class="btn ghost" href="/downloads/checksums.txt">View Checksums</a><a class="btn ghost" href="/verify-file">Verify a File</a><a class="btn ghost" href="/release-notes">Read Release Notes</a></div></div></section>
+  <section class="section"><h2>Known current artifacts</h2><div class="table-wrap"><table><thead><tr><th>Artifact</th><th>SHA-256</th><th>Status</th></tr></thead><tbody><tr><td class="mono">hexhawk-backend.exe</td><td class="mono small">caeb0c39abd9854d60745ff0f407744b7da4bc05312f01d2d346259037570377</td><td><span class="status warn">Unsigned</span></td></tr><tr><td class="mono">HexHawk_1.0.0_x64_en-US.msi</td><td class="mono small">78bf99874acb9419525ab3012ac36252d2f8cc7605850aa773d36cc6865ec1e4</td><td><span class="status warn">Unsigned</span></td></tr><tr><td class="mono">HexHawk_1.0.0_x64-setup.exe</td><td class="mono small">dbbd31edf328dc85bc40176fa19b3b5220cc62b85d74d1ab2f9969944c7fd246</td><td><span class="status warn">Unsigned</span></td></tr></tbody></table></div></section>
 </main>
 <footer class="footer">
-  <div class="container">HexHawk | Local-first binary intelligence | <span class="mono">v1.0 internal tester candidate Â· 2026-06-01</span></div>
+  <div class="container footer-grid">
+    <div>
+      <strong>HexHawk</strong>
+      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
+      <p class="mono">v1.0 internal tester candidate · 2026-06-02</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <a href="/features">Features</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/downloads">Downloads</a>
+      <a href="/docs">Docs</a>
+    </div>
+    <div>
+      <h4>Trust operations</h4>
+      <a href="/trust">Trust &amp; Assurance</a>
+      <a href="/trust-center">Verification Center</a>
+      <a href="/verify-file">Verify a File</a>
+      <a href="/keys-revocations">Keys &amp; Revocations</a>
+      <a href="/release-notes">Release Notes</a>
+    </div>
+    <div>
+      <h4>Contact</h4>
+      <a href="mailto:contact@hexhawk.ke">Request Early Access</a>
+      <a href="mailto:sales@hexhawk.ke">Schedule a Demo</a>
+    </div>
+  </div>
 </footer>
 <script src="/assets/app.js"></script>
 </body>
 </html>
-
