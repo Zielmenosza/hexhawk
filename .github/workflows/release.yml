@@ -31,6 +31,20 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Configure Windows Authenticode signing identity
+        shell: pwsh
+        env:
+          HEXHAWK_CODESIGN_PFX_BASE64: ${{ secrets.HEXHAWK_CODESIGN_PFX_BASE64 }}
+          HEXHAWK_CODESIGN_PFX_PATH_SECRET: ${{ secrets.HEXHAWK_CODESIGN_PFX_PATH }}
+        run: |
+          if ($env:HEXHAWK_CODESIGN_PFX_BASE64) {
+            $pfxPath = Join-Path $env:RUNNER_TEMP "hexhawk-codesign.pfx"
+            [IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:HEXHAWK_CODESIGN_PFX_BASE64))
+            Add-Content -LiteralPath $env:GITHUB_ENV -Value "HEXHAWK_CODESIGN_PFX_PATH=$pfxPath"
+          } elseif ($env:HEXHAWK_CODESIGN_PFX_PATH_SECRET) {
+            Add-Content -LiteralPath $env:GITHUB_ENV -Value "HEXHAWK_CODESIGN_PFX_PATH=$env:HEXHAWK_CODESIGN_PFX_PATH_SECRET"
+          }
+
       - name: Official Windows build, updater signature, and Authenticode signing
         shell: pwsh
         run: ./scripts/release/build-official-windows-release.ps1
@@ -38,7 +52,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           HEXHAWK_CODESIGN_THUMBPRINT: ${{ secrets.HEXHAWK_CODESIGN_THUMBPRINT }}
-          HEXHAWK_CODESIGN_PFX_PATH: ${{ secrets.HEXHAWK_CODESIGN_PFX_PATH }}
           HEXHAWK_CODESIGN_PFX_PASSWORD: ${{ secrets.HEXHAWK_CODESIGN_PFX_PASSWORD }}
 
       - name: Upload release assets (Windows)

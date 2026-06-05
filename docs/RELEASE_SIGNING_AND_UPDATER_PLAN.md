@@ -36,7 +36,10 @@ June 1-2 evidence files recorded previous rebuilds, updater rehearsals, hosted m
 3. Choose signing mechanism:
    - Tauri `bundle.windows.signCommand` calling `scripts/release/sign-windows-artifact.ps1`, or
    - CI signing step after Tauri build.
-4. Configure signing without committing secrets.
+4. Configure signing without committing secrets. The GitHub Actions Windows release job supports:
+   - `HEXHAWK_CODESIGN_THUMBPRINT` when a public/organization-trusted certificate with private key is already installed on the runner;
+   - `HEXHAWK_CODESIGN_PFX_BASE64` plus `HEXHAWK_CODESIGN_PFX_PASSWORD` for GitHub-hosted runners, where the workflow materializes the PFX only under `$RUNNER_TEMP`;
+   - `HEXHAWK_CODESIGN_PFX_PATH` plus `HEXHAWK_CODESIGN_PFX_PASSWORD` only for controlled runners where that path already exists.
 5. Include a trusted timestamp server.
 6. Rebuild artifacts from a clean release build.
 7. Verify with PowerShell Authenticode verification.
