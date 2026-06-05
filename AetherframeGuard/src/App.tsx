@@ -704,8 +704,9 @@ export function App() {
           <p className="eyebrow">Guided CS2 FPS and PC safety helper</p>
           <h1>AetherFrameGuard</h1>
           <p>
-            Use this app in five simple steps: 1) measure your current FPS, 2) review suggested changes,
-            3) apply only safe settings, 4) restart CS2 or Windows if the app says so, and 5) measure again.
+            Simple flow: 1) start CS2 first and wait until the menu or a match is visible, 2) click Measure,
+            3) review the CS2 diagnostics, 4) apply only safe settings if you want them, 5) fully close and relaunch CS2,
+            then 6) measure again. If FPS says n/a, open C:\ProgramData\AetherframeGuard\counter_strike_diagnostics.log.
             Scores are advisory only; GYRE remains the only HexHawk verdict authority.
           </p>
         </div>

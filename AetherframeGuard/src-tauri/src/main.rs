@@ -1433,6 +1433,10 @@ fn counter_strike_fps_diagnostics_path() -> PathBuf {
     aetherframe_data_dir().join("counter_strike_fps_diagnostics.json")
 }
 
+fn counter_strike_diagnostics_log_path() -> PathBuf {
+    aetherframe_data_dir().join("counter_strike_diagnostics.log")
+}
+
 fn default_counter_strike_capture_diagnostics(
     cs2_process_found: bool,
 ) -> CounterStrikeCaptureDiagnostics {
@@ -1456,6 +1460,149 @@ fn save_counter_strike_fps_diagnostics(diagnostics: &CounterStrikeCaptureDiagnos
 
 fn load_counter_strike_fps_diagnostics() -> Option<CounterStrikeCaptureDiagnostics> {
     load_json(counter_strike_fps_diagnostics_path())
+}
+
+fn write_counter_strike_diagnostic_report() -> Result<String, String> {
+    let signals = collect_host_signals();
+    let launch_status = counter_strike_launch_status();
+    let mut diagnostics = default_counter_strike_capture_diagnostics(signals.counter_strike_active);
+
+    if let Some(presentmon) = discover_presentmon_binary() {
+        diagnostics.presentmon_found = true;
+        diagnostics.presentmon_path = Some(presentmon.to_string_lossy().to_string());
+    } else {
+        diagnostics.capture_error = Some(
+            "PresentMon was not found. Install Intel PresentMon or place the console executable in the configured compatibility path.".to_string(),
+        );
+    }
+
+    if signals.counter_strike_active {
+        if let Some(sample) = capture_counter_strike_fps_telemetry(signals.avg_ping_ms) {
+            diagnostics = load_counter_strike_fps_diagnostics()
+                .unwrap_or_else(|| default_counter_strike_capture_diagnostics(true));
+            diagnostics.avg_fps = sample.avg_fps;
+            diagnostics.avg_frametime_ms = sample.avg_frametime_ms;
+            diagnostics.pc_latency_ms = sample.pc_latency_ms;
+        } else if diagnostics.capture_error.is_none() {
+            diagnostics = load_counter_strike_fps_diagnostics()
+                .unwrap_or_else(|| default_counter_strike_capture_diagnostics(true));
+            if diagnostics.capture_error.is_none() {
+                diagnostics.capture_error = Some(
+                    "CS2 is running, but PresentMon did not produce valid FPS/frametime/latency samples. Keep CS2 in an active match/menu scene for several seconds and retry.".to_string(),
+                );
+            }
+        }
+    } else {
+        diagnostics.capture_error = Some(
+            "CS2 is not running. Launch CS2 first, wait until the menu or a match is visible, then click Measure/Re-test or run --diagnose-cs2 again.".to_string(),
+        );
+    }
+
+    save_counter_strike_fps_diagnostics(&diagnostics);
+
+    let report_path = aetherframe_data_dir().join("counter_strike_diagnostics.json");
+    let report = serde_json::json!({
+        "schema": "aetherframeguard.counter_strike_diagnostics.v1",
+        "generatedAt": chrono_like_timestamp(),
+        "readOnly": true,
+        "cs2ProcessNames": signals.counter_strike_process_names.clone(),
+        "counterStrikeActive": signals.counter_strike_active,
+        "presentMonFound": diagnostics.presentmon_found,
+        "presentMonPath": diagnostics.presentmon_path.clone(),
+        "captureAttempted": diagnostics.capture_attempted,
+        "captureSucceeded": diagnostics.capture_succeeded,
+        "captureError": diagnostics.capture_error.clone(),
+        "avgFps": diagnostics.avg_fps,
+        "avgFrametimeMs": diagnostics.avg_frametime_ms,
+        "pcLatencyMs": diagnostics.pc_latency_ms,
+        "networkLatencyMs": signals.avg_ping_ms,
+        "preferredLaunch": launch_status.clone(),
+        "diagnosticsJsonPath": counter_strike_fps_diagnostics_path().to_string_lossy(),
+        "humanLogPath": counter_strike_diagnostics_log_path().to_string_lossy(),
+        "nextSteps": [
+            "Launch CS2 using the preferred CS2_Affinity.bat shortcut or Steam.",
+            "Wait until the CS2 menu or a match is visible; do not test from a closed game.",
+            "Click Step 1: Measure Current FPS / PC State, or run aetherframe-guard-backend.exe --diagnose-cs2.",
+            "If FPS is still n/a, open C:\\ProgramData\\AetherframeGuard\\counter_strike_diagnostics.log and check PresentMon/CS2/capture fields."
+        ]
+    });
+    save_json(report_path.clone(), &report);
+
+    let log = format!(
+        "AetherFrameGuard CS2 diagnostics\n\
+Generated: {}\n\
+Read-only: yes\n\
+\n\
+CS2 process: {}\n\
+Detected process names: {}\n\
+Preferred launcher: {}\n\
+Launcher found/readable: {}/{}\n\
+Launcher checks: Steam app 730={} | high priority={}\n\
+\n\
+PresentMon found: {}\n\
+PresentMon path: {}\n\
+Capture attempted: {}\n\
+Capture succeeded: {}\n\
+Capture error: {}\n\
+Last FPS: {}\n\
+Last frametime ms: {}\n\
+Last PC latency ms: {}\n\
+\n\
+What to do next:\n\
+1. Start CS2 and wait until the menu or a match is visible.\n\
+2. In AetherFrameGuard click Step 1: Measure Current FPS / PC State.\n\
+3. If FPS still says n/a, click Re-test Now after CS2 has been visible for 10+ seconds.\n\
+4. If capture still fails, confirm PresentMon path above exists and run this diagnostic again.\n\
+\n\
+Machine-readable details: {}\n",
+        chrono_like_timestamp(),
+        if signals.counter_strike_active {
+            "running"
+        } else {
+            "not running"
+        },
+        if signals.counter_strike_process_names.is_empty() {
+            "none".to_string()
+        } else {
+            signals.counter_strike_process_names.join(", ")
+        },
+        launch_status.preferred_launch_path,
+        launch_status.exists,
+        launch_status.readable,
+        launch_status.uses_steam_applaunch_730,
+        launch_status.uses_high_priority,
+        diagnostics.presentmon_found,
+        diagnostics
+            .presentmon_path
+            .clone()
+            .unwrap_or_else(|| "n/a".to_string()),
+        diagnostics.capture_attempted,
+        diagnostics.capture_succeeded,
+        diagnostics
+            .capture_error
+            .clone()
+            .unwrap_or_else(|| "none".to_string()),
+        diagnostics
+            .avg_fps
+            .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "n/a".to_string()),
+        diagnostics
+            .avg_frametime_ms
+            .map(|v| format!("{v:.2}"))
+            .unwrap_or_else(|| "n/a".to_string()),
+        diagnostics
+            .pc_latency_ms
+            .map(|v| format!("{v:.2}"))
+            .unwrap_or_else(|| "n/a".to_string()),
+        report_path.to_string_lossy()
+    );
+
+    let log_path = counter_strike_diagnostics_log_path();
+    if let Some(parent) = log_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(&log_path, &log).map_err(|e| e.to_string())?;
+    Ok(log)
 }
 
 fn counter_strike_launch_flags_from_text(text: &str) -> (bool, bool, bool) {
@@ -4795,6 +4942,16 @@ fn main() {
     }
     if args.iter().any(|a| a == "--auto-cycle") {
         let _ = run_auto_cycle_internal();
+        return;
+    }
+    if args.iter().any(|a| a == "--diagnose-cs2") {
+        match write_counter_strike_diagnostic_report() {
+            Ok(log) => println!("{}", log),
+            Err(err) => {
+                eprintln!("AetherFrameGuard CS2 diagnostic failed: {}", err);
+                std::process::exit(1);
+            }
+        }
         return;
     }
 
