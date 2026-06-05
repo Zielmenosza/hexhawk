@@ -1,33 +1,30 @@
 # HexHawk Roadmap
 
-Last updated: 2026-06-02
+Last updated: 2026-06-04
 
-This roadmap reflects the current HexHawk source and installer state after the controlled external signing gate check.
+This roadmap reflects the current HexHawk source, documentation, live-site, and local installer state after the June 4 docs alignment and unsigned installer rebuild.
 
 ## Current Proven Baseline
 
 HexHawk is an internal-tester Windows build candidate with a working native Tauri/Rust packaging path.
 
-Validated in the current pass:
+Validated in the June 4 rebuild pass:
 
 - TypeScript typecheck: passing.
-- Production frontend build: passing.
-- Frontend tests: 40 files / 700 tests passing.
-- Rust workspace tests: 71 backend tests + 14 `nest_cli` tests passing.
-- Fresh Windows release executable, MSI, and NSIS artifacts were generated after stale artifacts were removed.
-- Authenticode status for the current exe/MSI/NSIS artifacts: unsigned / not digitally signed.
-- Native packaged GUI report/AETHERFRAME policy parity passed against the current MSI artifact hash `78bf99874acb9419525ab3012ac36252d2f8cc7605850aa773d36cc6865ec1e4`.
-- Updater key custody is now GitHub Actions repository secrets; local official-path metadata validation passes, but public-trusted Authenticode custody is absent and hosted `https://hexhawk.ke/releases/latest.json` fetches but fails expected current-artifact/signature checks.
-- Consolidated current evidence files: `docs/release-evidence/unsigned_rebuild_release_truth_2026-06-02_220000.json`, `docs/release-evidence/windows_release_truth_consolidation_2026-06-02_171415.json` and `docs/release-evidence/updater_metadata_dns_repair_2026-06-02_173000.json`, `docs/release-evidence/official_updater_custody_rehearsal_2026-06-02_181500.json`, and `docs/release-evidence/official_updater_custody_validation_2026-06-02_180900.json`, `docs/release-evidence/official_release_custody_final_validation_2026-06-02_203600.json` and `docs/release-evidence/hosted_updater_metadata_validation_2026-06-02_181100.json`.
-- Current native probe: `gui-evidence/report_aetherframe_policy_native_gui_probe_2026-06-02_170827.json`.
+- Production frontend build: passing, with existing Vite chunk/import warnings.
+- Windows Tauri release build: passing, with existing Rust warnings.
+- Fresh Windows release executable, MSI, and NSIS artifacts were generated after stale local outputs were removed.
+- Authenticode status for the rebuilt exe/MSI/NSIS artifacts: `NotSigned`.
+- Hosted updater metadata fetches from `https://hexhawk.ke/releases/latest.json`, but release/trust endpoints were intentionally not refreshed and are not validated against the June 4 rebuilt NSIS hash.
+- Exact-artifact native GUI parity was not rerun for the June 4 rebuilt artifacts; previous GUI proof is historical for its recorded MSI hash.
+- Current evidence file: `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json`.
 
 Current limitations:
 
 - No public-trusted signature is present.
 - No internal self-signed signature is present on the current target/release artifacts.
-- A prior historical evidence file recorded internal self-signed signatures for older artifact hashes; it must not be treated as current artifact proof.
 - Updater artifacts remain disabled for local unsigned builds (`createUpdaterArtifacts: false`).
-- Updater key custody is now configured as GitHub Actions repository secrets and the official scripted path can produce updater `.sig` sidecars; hosted endpoint readiness is not current proof because hosted metadata still points at older artifact/signature hashes, and Authenticode custody is not configured.
+- Hosted updater metadata must be regenerated/published and validated against exact official signed artifacts before endpoint-readiness claims.
 - Public-release distribution and procurement posture remain pending.
 
 ## Trust Hierarchy That Must Not Drift
@@ -61,9 +58,9 @@ Exit criteria:
 Goal: avoid updater overclaims until endpoint and signing are real.
 
 - Keep updater artifacts disabled for local unsigned builds.
-- Official updater key custody is now GitHub Actions repository secrets; keep local builds disabled and use `scripts/release/build-official-windows-release.ps1` for release builds.
+- Use the official release custody script only when updater signing key custody is present.
 - Keep the configured metadata endpoint at `https://hexhawk.ke/releases/latest.json`, but replace stale hosted metadata and rerun expected artifact/signature validation before making endpoint-readiness claims.
-- Continue validating platform URL/signature fields before claiming public updater readiness.
+- Continue validating platform URL/signature fields before upload or release claims.
 
 ### P0 — Investor / Board Demonstration Package
 
@@ -71,7 +68,7 @@ Goal: make the board/investor story match current proof without overclaiming.
 
 - Maintain `docs/INVESTOR_ONE_PAGER.md`.
 - Maintain `docs/INVESTOR_DILIGENCE_BRIEF.md`.
-- Maintain `docs/BOARD_UPDATE_2026-05-31.md`.
+- Maintain `docs/BOARD_UPDATE_2026-05-31.md` or supersede it with a dated board update.
 - Keep website copy aligned with current build, validation, licensing, signing, and updater status.
 
 Exit criteria:

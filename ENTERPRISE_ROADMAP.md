@@ -1,27 +1,26 @@
 # HexHawk Enterprise and Commercial Roadmap
 
-Last updated: 2026-06-02
+Last updated: 2026-06-04
 
 ## Board-Level Status
 
-HexHawk is now a working native desktop binary-intelligence product with a rebuilt Windows installer path. It is suitable for controlled demos and internal tester distribution, but not yet a signed public enterprise release.
+HexHawk is a working native desktop binary-intelligence product with a repeatable Windows installer build path. It is suitable for controlled demos and internal tester distribution, but not yet a signed public enterprise release.
 
 Current proof points:
 
-- 40 frontend test files / 700 tests passing in the 2026-06-02 release-truth pass.
-- Rust workspace validation passing with 71 backend tests plus 14 `nest_cli` tests.
-- Production frontend build passing.
+- TypeScript typecheck passing in the June 4 rebuild pass.
+- Production frontend build passing with existing chunk/import warnings.
 - Windows Tauri release executable builds.
 - MSI and NSIS installer artifacts build.
-- MSI extracts expected executable, CLI, and WebView2 loader payloads.
-- Extracted CLI can identify a real PE challenge file.
-- Packaged native GUI parity passes on an MSI-extracted app path, including native runtime proof and report JSON authority markers.
+- Current rebuilt artifacts are Authenticode `NotSigned`.
+- Prior packaged native GUI parity evidence exists, but exact-artifact GUI proof was not rerun for the June 4 rebuilt hashes.
+- Live public site was deployed separately with current internal-tester caveats; this docs/rebuild pass did not redeploy it.
 
 Current blockers to enterprise/public distribution:
 
 - Public-trusted code signing is not configured; current artifacts are unsigned.
-- Updater artifacts are disabled for local unsigned builds; updater-key custody exists in GitHub Actions secrets for the official release path, but hosted metadata must be refreshed and revalidated against current artifacts before endpoint-readiness claims.
-- Packaged GUI parity has passed on the unsigned tester artifact; it must be rerun on signed artifacts before external release.
+- Updater artifacts are disabled for local unsigned builds; hosted metadata must be refreshed and revalidated against exact official artifacts before endpoint-readiness claims.
+- Packaged GUI parity must be rerun on the exact artifact intended for external testers, especially after signing.
 - External release provenance, support, and procurement materials need finalization.
 
 ## Market Position
@@ -62,16 +61,16 @@ Suggested pilot packaging:
 ### M1 — Signed Controlled Tester Build
 
 - Configure signing keys.
-- Re-enable updater artifacts.
+- Keep updater artifacts disabled until official signing custody is present.
 - Rebuild MSI/NSIS.
 - Publish checksums and signing state.
 - Rerun installed-artifact GUI export parity on signed artifacts.
 
 ### M2 — Investor / Board Package
 
-- Maintain one-pager, diligence brief, board update, and website copy.
+- Maintain one-pager, diligence brief, board update, competitive landscape, and website copy.
 - Keep claims evidence-scoped and current.
-- Avoid claiming public-release readiness until signing and updater trust-chain proof pass; packaged native GUI parity now has release-hardening evidence, but distribution trust remains incomplete.
+- Avoid claiming public-release readiness until signing and updater trust-chain proof pass.
 
 ### M3 — Paid Pilot Readiness
 
@@ -86,7 +85,7 @@ Suggested pilot packaging:
 | Risk | Current status | Mitigation |
 | --- | --- | --- |
 | Unsigned installer | Open | Configure code signing before external release |
-| Updater signing | Open | Use official release custody, refresh hosted metadata, and validate exact current artifact/signature fields before readiness claims |
-| GUI installed parity | Pass on unsigned tester artifact | Rerun native installed-artifact export parity on signed artifact |
+| Updater signing/metadata | Open | Use official release custody, refresh hosted metadata, and validate exact artifact/signature fields before readiness claims |
+| GUI installed parity | Historical proof only for older hashes | Rerun native installed-artifact export parity on the exact rebuilt/signed artifact |
 | Overclaiming AI/verdict authority | Controlled | Preserve GYRE/NEST/AETHERFRAME boundaries in docs/UI/export |
 | Support burden | Open | Pilot-only release until support path is defined |

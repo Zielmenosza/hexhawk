@@ -1,81 +1,70 @@
-# HexHawk Release Validation (2026-06-01)
+# HexHawk Release Validation (rolling status, updated 2026-06-04)
 
 ## Canonical Status
 
 HexHawk remains a controlled internal-tester Windows candidate.
 
-As of the current release-truth pass:
+As of the June 4 docs/rebuild pass:
 
-- Fresh target/release artifacts were generated after stale artifacts were deleted.
-- The current exe/MSI/NSIS artifacts are unsigned / not digitally signed according to `Get-AuthenticodeSignature`.
+- Fresh target/release artifacts were generated after stale executable/MSI/NSIS outputs were deleted.
+- The current exe/MSI/NSIS artifacts are `NotSigned` according to `Get-AuthenticodeSignature`.
 - There is no current public-trusted signature posture.
-- The no-op Tauri signing command was removed.
+- The no-op Tauri signing command remains removed.
 - Tauri updater artifacts are disabled for local unsigned builds with `bundle.createUpdaterArtifacts: false`.
-- Updater endpoint validation failed because `releases.hexhawk.app` did not resolve.
-- Native packaged GUI acceptance flow passed on the exact current MSI artifact.
+- Hosted updater metadata at `https://hexhawk.ke/releases/latest.json` fetches, but release/trust endpoints were not refreshed or validated against the June 4 rebuilt NSIS hash in this pass.
+- Native packaged GUI acceptance flow was not rerun on the June 4 rebuilt MSI; previous native evidence is historical for exact older hashes.
 
 ## Current Evidence Artifacts
 
-- Current consolidated release evidence:
-  - `docs/release-evidence/windows_release_hardening_2026-06-01_235000.json`
-- Current native packaged GUI parity probe:
-  - `gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json`
+- Current unsigned rebuild evidence:
+  - `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json`
 
 ## Historical Evidence Boundary
 
-- Historical consolidated release evidence:
-  - `docs/release-evidence/windows_release_hardening_2026-06-01_204639.json`
-- Historical native GUI parity probe:
-  - `gui-evidence/release_hardening_native_gui_probe_2026-06-01_retry.json`
-
-That historical pass recorded internal self-signed signatures and native parity for older artifact hashes. It remains useful provenance, but it is not current proof for the freshly rebuilt artifacts listed below.
+Historical June 1-2 evidence files remain useful provenance, but they do not prove the current artifacts unless the hash matches exactly.
 
 ## Commands Executed In Current Pass
 
 ```bash
-rm stale target/release artifacts
+rm stale target/release executable and installer outputs
 yarn typecheck
 yarn build
-yarn test --reporter=dot
-cargo check --workspace
-cargo test --workspace
 yarn tauri:build
 sha256sum target/release/hexhawk-backend.exe target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe
 Get-AuthenticodeSignature <current exe/msi/nsis>
-python DNS/fetch check for https://releases.hexhawk.app/releases/latest.json
-powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/release/run-native-parity-probe.ps1 -MsiPath ./target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi -OutputPath ./gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json
+fetch https://hexhawk.ke/releases/latest.json
 ```
 
 ## Current Artifact SHA-256
 
 - `target/release/hexhawk-backend.exe`
-  - `6e1f2521480af887f2b79efa3f302912938a46c1d1fe30f3c4cd96912691bad3`
+  - `cd1c3f3a43fa1d67d8ffb66890e7a9516a939207b9b6b4eb6a47cdbf6aee7431`
 - `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`
-  - `e0c12587befda246c39cc21e7f65ae5c36bd21abd1c9bfd74030f2626b17e220`
+  - `a460902c47ce3a5bffae38006bad4e9938bb317ec7a9afb0c1381635ddc596a0`
 - `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`
-  - `3eec437b01488efc09c10e0eb3f3f88cf0f8ba9c0a5d6a09234467bee95394c6`
+  - `8412322cc2d5646a5b08b390825440b1dfef29fe128dc8992c0c8df844f59512`
 
 ## Current Authenticode Outcome
 
-- `hexhawk-backend.exe`: not digitally signed.
-- `HexHawk_1.0.0_x64_en-US.msi`: not digitally signed.
-- `HexHawk_1.0.0_x64-setup.exe`: not digitally signed.
+- `hexhawk-backend.exe`: `NotSigned`.
+- `HexHawk_1.0.0_x64_en-US.msi`: `NotSigned`.
+- `HexHawk_1.0.0_x64-setup.exe`: `NotSigned`.
 
 ## Updater Validation Outcome
 
-- `src-tauri/tauri.conf.json` now has:
+- `src-tauri/tauri.conf.json` has:
   - `bundle.createUpdaterArtifacts: false`
-  - no `bundle.windows.signCommand`
+  - no no-op `bundle.windows.signCommand`
   - populated `plugins.updater.pubkey`
-  - `plugins.updater.endpoints[0] = https://releases.hexhawk.app/releases/latest.json`
-- Endpoint metadata validation result:
-  - DNS: failed
-  - Fetch: failed
-  - Metadata valid: false
+  - `plugins.updater.endpoints[0] = https://hexhawk.ke/releases/latest.json`
+- Endpoint fetch result in this pass:
+  - HTTP: 200
+  - Metadata JSON parsed: yes
+  - Release-ready for June 4 rebuilt artifact: no; hosted artifact/signature validation was not completed and release/trust endpoints were intentionally left untouched.
 
 ## Native Acceptance Flow Outcome
 
-The packaged MSI-extracted app passed:
+Not rerun for the June 4 rebuilt artifact. Before external tester distribution, rerun the native packaged GUI probe on the exact MSI/NSIS artifact intended for testers and verify:
 
 - Native runtime proof (`hasTauriRuntime=true`, `browserMode=false`, `tauriInternalsType=object`).
 - Open -> Inspect -> Run Analysis -> NEST -> Report JSON export.
@@ -83,16 +72,16 @@ The packaged MSI-extracted app passed:
   - `source_engine`
   - `gyre_is_sole_verdict_source`
   - `final_verdict_snapshot`
-  - `nestEvidenceBundle` / `nest_evidence` status fields.
+  - truthful `nestEvidenceBundle` / `nest_evidence` status fields.
 
 ## Release Posture
 
-- Source validated: YES.
+- Source/package build validated in this pass: YES.
 - Artifacts built: YES.
 - Artifacts signed: NO.
 - Public-trusted signature: NO.
 - Updater metadata valid for current hosted release hashes: NO.
-- Native GUI parity passed for exact artifact: YES.
-- Internal tester candidate: YES.
-- Controlled external signed-tester gate: NO, blocked by absent public-trusted Authenticode custody, unsigned artifacts, stale hosted updater metadata, and no signed-artifact native GUI proof.
+- Native GUI parity passed for exact June 4 artifact: NOT RERUN.
+- Internal tester candidate: YES, with caveats.
+- Controlled external signed-tester gate: NO.
 - Public release candidate: NO.

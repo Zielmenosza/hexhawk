@@ -1,6 +1,6 @@
 # HexHawk Engine Boundary Doctrine
 
-Date: 2026-06-02
+Date: 2026-06-04
 
 This doctrine is mandatory for HexHawk code, documents, website copy, investor materials, and board reporting.
 

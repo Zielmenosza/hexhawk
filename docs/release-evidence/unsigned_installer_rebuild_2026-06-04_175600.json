@@ -1,0 +1,77 @@
+{
+  "schema": "hexhawk.release_evidence.unsigned_installer_rebuild.v1",
+  "generated_at_utc": "2026-06-04T20:20:00Z",
+  "task": "Docs alignment and local unsigned Windows installer rebuild after live-site deployment",
+  "classification": {
+    "internal_tester_candidate": true,
+    "controlled_external_signed_tester_gate": false,
+    "public_release_candidate": false,
+    "reason": "Artifacts rebuild locally but remain Authenticode NotSigned; hosted updater metadata is reachable but not validated against the rebuilt NSIS hash; exact-artifact native GUI parity was not rerun for this rebuild."
+  },
+  "commands": [
+    "git diff --check",
+    "rm -f target/release/hexhawk-backend.exe target/release/bundle/msi/*.msi target/release/bundle/nsis/*setup.exe target/release/bundle/nsis/*setup.exe.sig target/release/bundle/msi/*.sig",
+    "yarn typecheck",
+    "yarn build",
+    "yarn tauri:build",
+    "Get-AuthenticodeSignature <rebuilt exe/msi/nsis>",
+    "fetch https://hexhawk.ke/releases/latest.json"
+  ],
+  "validation": {
+    "yarn_typecheck": "passed",
+    "yarn_build": "passed with existing Vite chunk/import warnings",
+    "yarn_tauri_build": "passed with existing Rust warnings and Tauri macOS identifier warning",
+    "yarn_test": "not rerun in this docs/rebuild pass; previous June 4 deployment validation passed 40 files / 700 tests",
+    "cargo_test_workspace": "not rerun in this docs/rebuild pass; previous June 4 deployment validation passed 71 backend tests + 14 nest_cli tests",
+    "git_diff_check": "passed"
+  },
+  "artifacts": [
+    {
+      "name": "hexhawk-backend.exe",
+      "path": "target/release/hexhawk-backend.exe",
+      "bytes": 46463998,
+      "mtime_utc": "2026-06-04T20:19:18.348950Z",
+      "sha256": "cd1c3f3a43fa1d67d8ffb66890e7a9516a939207b9b6b4eb6a47cdbf6aee7431",
+      "authenticode_status": "NotSigned"
+    },
+    {
+      "name": "HexHawk_1.0.0_x64_en-US.msi",
+      "path": "target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "bytes": 21278720,
+      "mtime_utc": "2026-06-04T20:18:51.333000Z",
+      "sha256": "a460902c47ce3a5bffae38006bad4e9938bb317ec7a9afb0c1381635ddc596a0",
+      "authenticode_status": "NotSigned"
+    },
+    {
+      "name": "HexHawk_1.0.0_x64-setup.exe",
+      "path": "target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "bytes": 14768354,
+      "mtime_utc": "2026-06-04T20:19:18.277281Z",
+      "sha256": "8412322cc2d5646a5b08b390825440b1dfef29fe128dc8992c0c8df844f59512",
+      "authenticode_status": "NotSigned"
+    }
+  ],
+  "hosted_updater_metadata": {
+    "url": "https://hexhawk.ke/releases/latest.json",
+    "http_status": 200,
+    "metadata_sha256": "44bd9c582aa7d9c21e62500ae5079fb7dbeee2b0526fb43430a475aed14a6624",
+    "version": "1.0.0",
+    "windows_url": "https://hexhawk.ke/releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe",
+    "signature_present": true,
+    "rebuilt_nsis_sha256": "8412322cc2d5646a5b08b390825440b1dfef29fe128dc8992c0c8df844f59512",
+    "current_release_ready": false,
+    "reason": "Endpoint fetches, but this pass did not publish or validate hosted asset/signature fields against the rebuilt unsigned NSIS artifact; release/trust endpoints were intentionally left untouched."
+  },
+  "trust_boundaries": {
+    "gyre": "sole verdict authority",
+    "nest": "evidence orchestrator, not verdict authority",
+    "aetherframe": "optional policy-gated refinement/lineage; cannot change GYRE classification",
+    "nexus": "advisory/assistant only"
+  },
+  "proof_limits": [
+    "No public-trusted Authenticode signature is present.",
+    "No updater readiness claim is made.",
+    "No exact-artifact native GUI parity proof was regenerated for the June 4 rebuilt MSI/NSIS.",
+    "No live deployment was performed as part of this docs/rebuild pass."
+  ]
+}

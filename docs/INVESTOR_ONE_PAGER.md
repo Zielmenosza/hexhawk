@@ -1,6 +1,6 @@
 # HexHawk Investor One-Pager
 
-Date: 2026-06-02
+Date: 2026-06-04
 
 ## What HexHawk Is
 
@@ -18,21 +18,19 @@ HexHawk’s wedge is an integrated analyst workstation that keeps evidence, conf
 
 Latest local validation and packaging pass proves:
 
-- 700 frontend tests passing across 40 files.
-- Rust workspace validation passing with 85 backend/CLI tests.
 - Typecheck and production frontend build passing.
 - Windows release executable builds.
 - MSI and NSIS installers build.
 - Current artifacts are unsigned according to Authenticode checks.
-- Native packaged GUI parity passes on the current MSI artifact, including native runtime proof and report JSON authority markers.
-- Updater key custody is now in GitHub Actions secrets and local official-path metadata validation passes with Tauri `windows-x86_64` URL/signature fields; public-trusted Authenticode custody is absent, and hosted `https://hexhawk.ke/releases/latest.json` fetches but is stale against current official-custody metadata and is not external/public-release proof.
-- Current release evidence: `docs/release-evidence/unsigned_rebuild_release_truth_2026-06-02_220000.json`, `docs/release-evidence/windows_release_truth_consolidation_2026-06-02_171415.json` and `docs/release-evidence/updater_metadata_dns_repair_2026-06-02_173000.json`.
+- Hosted updater metadata fetches, but has not been refreshed/validated against the June 4 rebuilt NSIS hash.
+- Prior native packaged GUI parity evidence exists, but exact-artifact proof was not rerun for the June 4 rebuilt artifact.
+- Current release evidence: `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json`.
 
 ## Current Product Status
 
 - Status: internal-tester Windows build candidate.
 - Good for: board demos, investor demos, controlled internal testing, technical diligence.
-- Not yet for the stronger controlled external signed-tester gate: real public-trusted Authenticode custody, signed GitHub Actions artifacts, hosted metadata validation, and exact signed-artifact native GUI proof are still required.
+- Not yet for the stronger controlled external signed-tester gate: real public-trusted Authenticode custody, signed artifacts, hosted metadata validation, and exact signed-artifact native GUI proof are still required.
 - Not yet for: broad public download, procurement-ready enterprise rollout, automatic updater distribution.
 
 ## Differentiation
@@ -54,6 +52,6 @@ Latest local validation and packaging pass proves:
 ## Key Caveats
 
 - Current installer artifacts are unsigned.
-- Updater metadata generation now has an official release-custody script path backed by GitHub Actions secrets, but hosted endpoint readiness remains blocked by stale hosted metadata and public-trusted Authenticode custody remains absent.
-- Native GUI parity passed on the current unsigned tester artifact and must be rerun on signed artifacts before external/public release.
+- Updater metadata generation has an official-path plan, but hosted endpoint readiness remains blocked until exact hosted artifact/signature validation passes.
+- Native GUI parity must be rerun on the exact artifact intended for testers before external/public release.
 - HexHawk does not claim to detonate malware, bypass protections, prove exploitability, or let AI replace deterministic verdict authority.

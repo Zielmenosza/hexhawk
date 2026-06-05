@@ -1,52 +1,47 @@
 # HexHawk Tester Release Status
 
-Date: 2026-06-02
+Date: 2026-06-04
 
 ## Recommendation
 
 Internal tester candidate: YES, with caveats.
 
-Controlled external signed-tester gate: NO. Public-trusted Authenticode custody is absent, current artifacts are unsigned, hosted updater metadata is stale against current artifact/signature hashes, and native proof has not been rerun on signed artifacts.
+Controlled external signed-tester gate: NO. Public-trusted Authenticode custody is absent, current artifacts are unsigned, hosted updater metadata was not refreshed/validated against the June 4 rebuilt NSIS hash, and native proof has not been rerun on the June 4 rebuilt artifacts or any signed artifacts.
 
 Public release: NO.
 
 ## Current Build
 
 - Product version: 1.0.0.
-- Current target/release artifacts were rebuilt in this pass after stale artifacts were removed.
+- Current target/release artifacts were rebuilt on 2026-06-04 after stale local outputs were removed.
 - Current target/release artifacts are not digitally signed according to `Get-AuthenticodeSignature`.
-- The previous no-op `bundle.windows.signCommand` (`cmd /C echo signed`) was removed.
+- The previous no-op `bundle.windows.signCommand` remains removed.
 - `bundle.createUpdaterArtifacts` is currently `false` for local unsigned builds.
-- Local generated updater metadata validation passes for the official custody path; hosted `https://hexhawk.ke/releases/latest.json` fetches, but failed expected current artifact/signature checks and is not current endpoint proof. Rerun evidence: `docs/release-evidence/hosted_updater_metadata_validation_rebuilt_unsigned_2026-06-02_220500.json`.
-- Updater signing key custody is present in GitHub Actions repository secrets (`TAURI_SIGNING_PRIVATE_KEY` and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`); Authenticode code-signing secrets (`HEXHAWK_CODESIGN_THUMBPRINT` or `HEXHAWK_CODESIGN_PFX_PATH`/`HEXHAWK_CODESIGN_PFX_PASSWORD`) are not present. Hosted metadata publication/update is not current proof because the live endpoint still serves older artifact/signature hashes.
-- Packaged native GUI report/AETHERFRAME policy parity passed against the exact current MSI artifact.
-- Current release evidence files: `docs/release-evidence/unsigned_rebuild_release_truth_2026-06-02_220000.json`, `docs/release-evidence/windows_release_truth_consolidation_2026-06-02_171415.json` and `docs/release-evidence/updater_metadata_dns_repair_2026-06-02_173000.json`, `docs/release-evidence/official_updater_custody_rehearsal_2026-06-02_181500.json`, and `docs/release-evidence/official_updater_custody_validation_2026-06-02_180900.json`, `docs/release-evidence/official_release_custody_final_validation_2026-06-02_203600.json` and `docs/release-evidence/hosted_updater_metadata_validation_2026-06-02_181100.json`.
-- Current native GUI policy evidence: `gui-evidence/report_aetherframe_policy_native_gui_probe_2026-06-02_170827.json`.
+- Hosted `https://hexhawk.ke/releases/latest.json` fetches, but this pass did not publish or validate hosted release/trust endpoints against the rebuilt NSIS hash.
+- Packaged native GUI report/AETHERFRAME policy parity was not rerun against the June 4 rebuilt MSI; prior proof is historical for its exact artifact hash.
+- Current release evidence file: `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json`.
 
 ## Current Artifact Hashes
 
-Rebuilt locally on 2026-06-02 21:59 UTC with `yarn tauri:build`; Authenticode remains unsigned / not digitally signed.
+Rebuilt locally on 2026-06-04 with `yarn tauri:build`; Authenticode remains `NotSigned`.
 
-- `target/release/hexhawk-backend.exe`: `caeb0c39abd9854d60745ff0f407744b7da4bc05312f01d2d346259037570377`
-- `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`: `78bf99874acb9419525ab3012ac36252d2f8cc7605850aa773d36cc6865ec1e4`
-- `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`: `dbbd31edf328dc85bc40176fa19b3b5220cc62b85d74d1ab2f9969944c7fd246`
+- `target/release/hexhawk-backend.exe`: `cd1c3f3a43fa1d67d8ffb66890e7a9516a939207b9b6b4eb6a47cdbf6aee7431`
+- `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`: `a460902c47ce3a5bffae38006bad4e9938bb317ec7a9afb0c1381635ddc596a0`
+- `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`: `8412322cc2d5646a5b08b390825440b1dfef29fe128dc8992c0c8df844f59512`
 
 ## Historical Evidence Boundary
 
-Prior evidence in `docs/release-evidence/windows_release_hardening_2026-06-01_204639.json` recorded internal self-signed Authenticode signatures and native packaged GUI parity for older artifact hashes. That evidence is historical and must not be used to describe the current target/release artifacts.
+Prior June 1-2 evidence recorded tests, updater custody rehearsals, hosted metadata checks, and native GUI parity for earlier artifact hashes. Those files remain historical provenance and must not be used as proof for the June 4 rebuilt artifacts unless the exact hash matches.
 
 ## Validation Summary
 
 - `yarn typecheck`: passed.
-- `yarn build`: passed.
-- `yarn test --reporter=dot`: passed, 40 files / 700 tests.
-- `cargo check --workspace`: passed with warnings.
-- `cargo test --workspace`: passed, 71 backend tests + 14 `nest_cli` tests.
+- `yarn build`: passed with existing Vite warnings.
 - `yarn tauri:build`: passed and produced current exe/MSI/NSIS artifacts.
-- `sha256sum`: recorded hashes above.
-- `Get-AuthenticodeSignature`: current artifacts are not digitally signed.
-- Local updater metadata validation: passed for generated official-custody metadata. Hosted endpoint validation: fetch passed, but expected current artifact/signature checks failed, including the controlled-release-gate rerun.
-- Native GUI parity probe: passed on current MSI.
+- `sha256sum`/Python SHA-256: recorded hashes above.
+- `Get-AuthenticodeSignature`: current artifacts are `NotSigned`.
+- Hosted updater metadata fetch: HTTP 200, but not release-ready for the rebuilt artifact.
+- Native GUI parity probe: not rerun for the June 4 artifact.
 
 ## Decompiler/TALON Status
 
@@ -60,6 +55,6 @@ Prior evidence in `docs/release-evidence/windows_release_hardening_2026-06-01_20
 
 - Configure real organization-trusted code signing.
 - Rebuild and verify signed artifacts.
-- Add real public-trusted Authenticode custody to the release runner or GitHub secrets, then run a real GitHub Actions tag release with updater and Authenticode secrets, publish the generated website-release-payload, validate hosted metadata against exact hashes, and rerun native GUI proof before treating external tester distribution as ready.
-- Rerun native parity on the signed artifact intended for testers.
+- Publish hosted release/trust metadata only for exact signed artifacts.
+- Rerun native parity on the exact signed artifact intended for testers.
 - Confirm export retains GYRE sole verdict authority and truthful NEST evidence-bundle status.

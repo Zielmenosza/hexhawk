@@ -1,23 +1,24 @@
 # HexHawk External Tester Known Issues
 
-Date: 2026-06-02
+Date: 2026-06-04
 Current audience: internal testers and controlled pilot candidates only
 
 ## Release blockers
 
 1. Current Windows artifacts are unsigned.
-   - `Get-AuthenticodeSignature` reports the current exe/MSI/NSIS artifacts as not digitally signed.
+   - `Get-AuthenticodeSignature` reports the June 4 rebuilt exe/MSI/NSIS artifacts as `NotSigned`.
    - Expected effect: SmartScreen or enterprise endpoint controls may warn or block.
    - Status: unresolved for public distribution.
 
-2. Previous internal self-signed evidence is historical only.
-   - `docs/release-evidence/windows_release_hardening_2026-06-01_204639.json` recorded internal self-signed signatures for older artifact hashes.
-   - Current artifact hashes are recorded in `docs/release-evidence/windows_release_truth_consolidation_2026-06-02_171415.json` and are unsigned.
+2. Previous internal self-signed or native GUI evidence is historical only.
+   - Prior evidence files apply only to their recorded artifact hashes.
+   - Current artifact hashes are recorded in `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json` and are unsigned.
+   - Exact-artifact native GUI proof was not rerun for the June 4 rebuilt artifacts.
 
-3. Updater metadata is reachable but key custody is not yet public-release ready.
+3. Updater metadata is reachable but not release-ready for the rebuilt artifact.
    - `bundle.createUpdaterArtifacts` is currently false for local unsigned builds.
-   - Configured endpoint `https://hexhawk.ke/releases/latest.json` resolves, fetches, and returns Tauri-style `windows-x86_64` URL/signature metadata.
-   - Status: acceptable for internal tester proof with caveat; unresolved for public release until updater signing key custody is moved into a secure official release environment or rotated there.
+   - Configured endpoint `https://hexhawk.ke/releases/latest.json` fetches.
+   - This pass did not publish or validate hosted release/trust metadata against the June 4 rebuilt NSIS hash.
 
 4. Full enterprise procurement package is not complete.
    - Support intake exists.
@@ -26,18 +27,17 @@ Current audience: internal testers and controlled pilot candidates only
 ## Non-blocking warnings observed
 
 - Tauri warns that identifier `com.hexhawk.app` ends with `.app`; this is not recommended for macOS bundle naming. Current pilot target is Windows.
-- Vite warns that the main JavaScript chunk is larger than 500 kB. This is a polish/performance item, not a current correctness blocker.
-- Rust build emits existing unused/dead-code warnings. Current build/test gates pass, but cleanup should be scheduled.
+- Vite warns that the main JavaScript chunk is larger than 500 kB.
+- Vite warns that `talonLLMPass` is both dynamically and statically imported.
+- Rust build emits existing unused/dead-code warnings. Current build gates pass, but cleanup should be scheduled.
 
 ## Recently proven in current pass
 
-- Fresh artifacts were built after stale artifacts were removed.
-- Packaged native GUI runtime proof passed from an MSI-extracted app path for current MSI hash `78bf99874acb9419525ab3012ac36252d2f8cc7605850aa773d36cc6865ec1e4`.
-- Report JSON export preserves GYRE authority markers:
-  - `source_engine: gyre`
-  - `gyre_is_sole_verdict_source: true`
-  - `final_verdict_snapshot`
-- Report JSON includes NEST evidence-bundle status fields without fabricating typed NEST evidence.
+- Stale local executable/MSI/NSIS outputs were removed before rebuild.
+- `yarn typecheck` passed.
+- `yarn build` passed.
+- `yarn tauri:build` produced June 4 executable, MSI, and NSIS artifacts.
+- Artifact hashes and `NotSigned` Authenticode status were recorded.
 
 ## Tester copy limits
 
@@ -45,13 +45,15 @@ Do not claim:
 
 - publicly trusted signed release
 - signed current artifacts
-- public release ready
-- production ready
-- updater public-release ready
-- enterprise ready
+- broad public distribution readiness
+- production distribution readiness
+- updater readiness for public distribution
+- enterprise/procurement distribution readiness
+- native GUI proof for the June 4 artifacts until rerun on those exact hashes
 
 Acceptable wording:
 
 - internal-tester Windows product candidate
-- controlled external pilot candidate only after pilot sponsor accepts unsigned/updater-key-custody constraints or organization-trusted signing and official updater key custody are completed
+- local unsigned rebuild
+- controlled external pilot candidate only after pilot sponsor accepts unsigned/updater constraints or organization-trusted signing and hosted updater validation are completed
 - market readiness: controlled only

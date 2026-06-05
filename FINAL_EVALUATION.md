@@ -1,31 +1,29 @@
 # HexHawk Current Evaluation
 
-Date: 2026-06-02
+Date: 2026-06-04
 
 ## Executive Summary
 
-HexHawk has moved from prototype packaging risk to a working Windows internal-tester build path. The latest documented source validation, installer rebuild, and native packaged GUI parity evidence show that the frontend, Rust backend, CLI, MSI package, NSIS package, and current MSI GUI workflow are functioning for controlled evaluation.
+HexHawk has a working Windows internal-tester build path and a live public website that accurately caveats the current release status. The latest local rebuild proves the Rust/Tauri packaging path still produces executable, MSI, and NSIS artifacts after stale outputs are removed.
 
-This is not yet a signed public release. It is suitable for board/investor demonstration, technical diligence, and controlled internal testing with explicit unsigned-build and updater caveats.
+This is not a signed public release. It is suitable for board/investor demonstration, technical diligence, and controlled internal testing with explicit unsigned-build and updater caveats. The June 4 rebuilt artifacts need exact-artifact native GUI proof before they should be used as a release-quality tester package.
 
 ## Verified Engineering Status
 
-Latest validated results recorded in the current 2026-06-02 release evidence:
+Latest validated results recorded in `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json`:
 
-- Frontend tests: 40 files, 700 tests passing.
 - Frontend typecheck: passing.
-- Frontend production build: passing.
-- Rust workspace check: passing.
-- Rust workspace tests: 71 backend tests plus 14 `nest_cli` tests passing.
-- Tauri Windows release build: passing.
+- Frontend production build: passing with existing Vite warnings.
+- Tauri Windows release build: passing with existing Rust warnings.
 - MSI artifact: produced successfully.
 - NSIS artifact: produced successfully.
-- Current Authenticode status: executable, MSI, and NSIS artifacts are unsigned / not digitally signed.
-- Native packaged GUI report/AETHERFRAME policy parity: passing on the current unsigned MSI artifact.
+- Current Authenticode status: executable, MSI, and NSIS artifacts are `NotSigned`.
+- Hosted updater metadata: fetches, but this pass did not refresh release/trust endpoints and did not validate hosted metadata against the rebuilt NSIS hash.
+- Native packaged GUI parity: not rerun for the June 4 rebuilt artifacts; prior proof is historical for prior hashes.
 
 ## Current Build Artifacts
 
-Current artifacts rebuilt locally on 2026-06-02:
+Current artifacts rebuilt locally on 2026-06-04:
 
 - Release executable: `target/release/hexhawk-backend.exe`.
 - MSI: `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`.
@@ -33,9 +31,9 @@ Current artifacts rebuilt locally on 2026-06-02:
 
 Current hashes:
 
-- `hexhawk-backend.exe`: `caeb0c39abd9854d60745ff0f407744b7da4bc05312f01d2d346259037570377`.
-- `HexHawk_1.0.0_x64_en-US.msi`: `78bf99874acb9419525ab3012ac36252d2f8cc7605850aa773d36cc6865ec1e4`.
-- `HexHawk_1.0.0_x64-setup.exe`: `dbbd31edf328dc85bc40176fa19b3b5220cc62b85d74d1ab2f9969944c7fd246`.
+- `hexhawk-backend.exe`: `cd1c3f3a43fa1d67d8ffb66890e7a9516a939207b9b6b4eb6a47cdbf6aee7431`.
+- `HexHawk_1.0.0_x64_en-US.msi`: `a460902c47ce3a5bffae38006bad4e9938bb317ec7a9afb0c1381635ddc596a0`.
+- `HexHawk_1.0.0_x64-setup.exe`: `8412322cc2d5646a5b08b390825440b1dfef29fe128dc8992c0c8df844f59512`.
 
 ## Product Assessment
 
@@ -45,14 +43,16 @@ Strengths:
 - Evidence-first reverse-engineering workflow.
 - GYRE/NEST/AETHERFRAME authority boundaries are explicit and testable.
 - Native Windows installer build path is working.
-- Rust CLI and packaged GUI evidence exist for controlled internal testing.
+- Rust CLI and packaged GUI evidence discipline exist for controlled internal testing.
+- Public website copy now presents release/trust caveats without claiming public readiness.
 
 Remaining gaps:
 
 - Current artifacts are unsigned and will trigger Windows trust warnings.
 - No current internal self-signed signature is present; prior self-signed evidence applies only to older artifact hashes.
 - Local unsigned builds keep updater artifacts disabled.
-- GitHub Actions updater-key custody and official-path metadata generation exist, but hosted updater metadata must be refreshed and revalidated against the current artifacts before endpoint-readiness claims.
+- Hosted updater metadata must be refreshed and revalidated against exact official artifacts before endpoint-readiness claims.
+- Exact-artifact native GUI proof must be rerun for every rebuilt/signed tester artifact.
 - Public download/payment/support operations need final release-process proof.
 
 ## Conclusion
