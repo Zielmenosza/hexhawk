@@ -32,6 +32,15 @@ AetherframeGuard does not promise a 100% FPS increase. It records measured signa
 observed safe state as the comparison point. If a new result is worse, the app reports a guardrail note and suggests
 rollback/manual review instead of pretending the change worked.
 
+When settings are applied, the UI and `C:\ProgramData\AetherframeGuard` change log now show a structured audit trail:
+
+- what CS2 config hook/cvars were refreshed;
+- which Windows registry-backed gaming settings changed, including before/after values when readable;
+- which PC power-plan setting was selected;
+- what networking latency was measured before and after;
+- what FPS, 1% low, stability, stutter, PC-latency, network-latency, scene-classification, and objective-score difference was observed.
+
+If one settings run outperforms the others, it becomes the current **Best observed** recommendation to keep, not an irreversible permanent setting. Keep it only after repeated gameplay/practice-map re-tests confirm that it beats the baseline and does not trigger the regression guardrail. Registry, networking, power, and CS2 profile changes remain backed up/reversible where the app applies them automatically.
 
 ## CS2 iterative optimizer model
 

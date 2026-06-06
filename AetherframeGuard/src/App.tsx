@@ -124,12 +124,35 @@ type ActionResult = {
   message: string;
 };
 
+type SettingChangeDetail = {
+  domain: string;
+  setting: string;
+  before: string;
+  after: string;
+  evidence: string;
+  restartRequired: boolean;
+};
+
+type PerformanceComparison = {
+  avgFpsDelta: number | null;
+  fps1pctLowDelta: number | null;
+  stabilityDelta: number | null;
+  pcLatencyDelta: number | null;
+  networkLatencyDelta: number | null;
+  objectiveScoreDelta: number;
+  summary: string[];
+  bestObservedSummary: string;
+  selectedSettingPolicy: string;
+};
+
 type SuggestedFpsSettingsResult = {
   appliedAt: string;
   success: boolean;
   message: string;
   backupDir: string;
   appliedChanges: string[];
+  detailedSettingChanges: SettingChangeDetail[];
+  performanceComparison: PerformanceComparison;
   warnings: string[];
   cs2RestartRequired: boolean;
   windowsRestartRequired: boolean;
@@ -301,6 +324,11 @@ type BenchmarkSession = {
   pcLatencyMs: number | null;
   networkLatencyMs: number | null;
   systemLatencyMs: number | null;
+  fps1pctLow: number | null;
+  fps01pctLow: number | null;
+  stutterCount: number;
+  stabilityScore: number;
+  sceneClassification: string;
   confidence: number;
   objectiveScore: number;
   notes: string[];
@@ -527,6 +555,18 @@ export function App() {
         message: err instanceof Error ? err.message : String(err),
         backupDir: '',
         appliedChanges: [],
+        detailedSettingChanges: [],
+        performanceComparison: {
+          avgFpsDelta: null,
+          fps1pctLowDelta: null,
+          stabilityDelta: null,
+          pcLatencyDelta: null,
+          networkLatencyDelta: null,
+          objectiveScoreDelta: 0,
+          summary: [],
+          bestObservedSummary: 'No benchmark comparison available because the settings action failed.',
+          selectedSettingPolicy: 'Do not keep or treat this failed run as a recommended setting.',
+        },
         warnings: [err instanceof Error ? err.message : String(err)],
         cs2RestartRequired: true,
         windowsRestartRequired: false,
@@ -718,7 +758,7 @@ export function App() {
         <div>
           <p className="eyebrow">CS2 FPS helper</p>
           <h1>AetherFrameGuard</h1>
-          <p className="panel-desc simple-lead">Measure → Apply safe settings → Re-test. Advanced tools are collapsed below.</p>
+          <p className="panel-desc simple-lead">Measure live for 20 seconds → Apply safe settings → Re-test. Advanced tools are collapsed below.</p>
         </div>
         <button onClick={runAnalysis} disabled={systemActionBusy}>{loading ? 'Measuring…' : 'Measure'}</button>
       </div>
@@ -730,7 +770,7 @@ export function App() {
         </div>
         <div className="action-grid three-step-grid">
           <button className="action-card" onClick={runAnalysis} disabled={systemActionBusy}>
-            <span>1. Measure</span><small>{loading ? 'Working…' : 'Read current FPS/PC state'}</small>
+            <span>1. Measure</span><small>{loading ? 'Capturing live data…' : '20 sec live FPS/PC capture'}</small>
           </button>
           <button className="action-card" onClick={applySuggestedFpsSettings} disabled={systemActionBusy}>
             <span>2. Apply safe CS2 settings</span><small>Backs up files first</small>
@@ -741,6 +781,29 @@ export function App() {
         </div>
         {error ? <p className="failure">{error}</p> : null}
         {suggestedFpsAction ? <p className={suggestedFpsAction.success ? 'success' : 'failure'}>{suggestedFpsAction.message}{suggestedFpsAction.cs2RestartRequired ? ' Relaunch CS2 before re-testing.' : ''}</p> : null}
+        {suggestedFpsAction ? (
+          <details className="details-panel inline-details" open>
+            <summary>What changed and what performance did</summary>
+            <div className="advanced-section">
+              <h3>Settings changed</h3>
+              {suggestedFpsAction.detailedSettingChanges.length > 0 ? (
+                suggestedFpsAction.detailedSettingChanges.map((change, index) => (
+                  <div key={`${change.domain}-${change.setting}-${index}`} className="boot-entry detail-entry">
+                    <span className="boot-num">{change.domain}</span>
+                    <span className="boot-score-pos">{change.setting}</span>
+                    <span className="boot-latency">{change.before} → {change.after}{change.restartRequired ? ' (restart/relaunch)' : ''}</span>
+                    <small className="panel-desc short-note">{change.evidence}</small>
+                  </div>
+                ))
+              ) : <p className="panel-desc">No structured setting-change details were returned.</p>}
+              <h3>Measured difference</h3>
+              {suggestedFpsAction.performanceComparison.summary.map((line) => <p key={line} className="panel-desc short-note">{line}</p>)}
+              <p className="success short-note">{suggestedFpsAction.performanceComparison.bestObservedSummary}</p>
+              <p className="panel-desc short-note">{suggestedFpsAction.performanceComparison.selectedSettingPolicy}</p>
+              <p className="panel-desc short-note">A winning setting is not made permanent blindly. It becomes the recommended setting to keep only after repeated gameplay/practice-map re-tests confirm better FPS, 1% lows, stability, latency, and no guardrail regression.</p>
+            </div>
+          </details>
+        ) : null}
         {benchmarkAction ? <p className={benchmarkAction.success ? 'success' : 'failure'}>{benchmarkAction.message}</p> : null}
       </div>
 
@@ -770,7 +833,7 @@ export function App() {
               <div key={label} className="boot-entry">
                 <span className="boot-num">{label}</span>
                 <span className="boot-score-pos">{session?.avgFps !== null && session?.avgFps !== undefined ? `${session.avgFps.toFixed(1)} FPS` : 'FPS n/a'}</span>
-                <span className="boot-latency">{session ? `${session.confidence.toFixed(0)}% conf` : ''}</span>
+                <span className="boot-latency">{session ? `${session.confidence.toFixed(0)}% conf · ${session.objectiveScore.toFixed(1)} obj · ${session.stabilityScore.toFixed(0)}% stable · ${session.sceneClassification || 'unknown'}` : ''}</span>
               </div>
             );
           })}

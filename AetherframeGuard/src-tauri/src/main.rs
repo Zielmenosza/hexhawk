@@ -567,12 +567,39 @@ struct BenchmarkStatus {
 
 #[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
+struct SettingChangeDetail {
+    domain: String,
+    setting: String,
+    before: String,
+    after: String,
+    evidence: String,
+    restart_required: bool,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct PerformanceComparison {
+    avg_fps_delta: Option<f64>,
+    fps_1pct_low_delta: Option<f64>,
+    stability_delta: Option<f64>,
+    pc_latency_delta: Option<f64>,
+    network_latency_delta: Option<f64>,
+    objective_score_delta: f64,
+    summary: Vec<String>,
+    best_observed_summary: String,
+    selected_setting_policy: String,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 struct SuggestedFpsSettingsResult {
     applied_at: String,
     success: bool,
     message: String,
     backup_dir: String,
     applied_changes: Vec<String>,
+    detailed_setting_changes: Vec<SettingChangeDetail>,
+    performance_comparison: PerformanceComparison,
     warnings: Vec<String>,
     cs2_restart_required: bool,
     windows_restart_required: bool,
@@ -609,6 +636,8 @@ const PRESENTMON_BINARY_NAMES: &[&str] = &[
     "PresentMon-2.4.1-x64.exe",
     "PresentMon_x64.exe",
 ];
+const CS2_LIVE_CAPTURE_SECONDS: u64 = 20;
+const CS2_LIVE_CAPTURE_TIMEOUT_SECONDS: u64 = CS2_LIVE_CAPTURE_SECONDS + 15;
 const CS2_AFFINITY_LAUNCH_PATH: &str = r"C:\Users\Ziel\Desktop\CS2_Affinity.bat";
 const POWER_PLAN_CHRIS_TITUS_TOKENS: &[&str] = &[
     "chris",
@@ -3470,7 +3499,7 @@ fn capture_counter_strike_fps_telemetry(
         "--process_name".to_string(),
         "cs2.exe".to_string(),
         "--timed".to_string(),
-        "6".to_string(),
+        CS2_LIVE_CAPTURE_SECONDS.to_string(),
         "--output_file".to_string(),
         output_csv.to_string_lossy().to_string(),
         "--terminate_after_timed".to_string(),
@@ -3484,7 +3513,7 @@ fn capture_counter_strike_fps_telemetry(
             &output_csv,
             network_latency_ms,
             system_latency_ms,
-            20,
+            CS2_LIVE_CAPTURE_TIMEOUT_SECONDS,
         ) {
             Ok(metrics) => {
                 diagnostics.capture_succeeded = true;
@@ -4746,7 +4775,7 @@ fn open_command(command: &str, args: &[&str]) -> Result<String, String> {
 
 #[tauri::command]
 fn analyze_host() -> AnalysisResponse {
-    analyze_host_internal(false)
+    analyze_host_internal(true)
 }
 
 fn analyze_host_internal(force_counter_strike_capture: bool) -> AnalysisResponse {
@@ -5038,6 +5067,241 @@ fn get_auto_monitor_status() -> AutoMonitorStatus {
     }
 }
 
+fn fmt_optional_f64(value: Option<f64>, suffix: &str) -> String {
+    value
+        .map(|v| format!("{:.1}{}", v, suffix))
+        .unwrap_or_else(|| "not captured".to_string())
+}
+
+fn fmt_optional_u32(value: Option<u32>) -> String {
+    value
+        .map(|v| v.to_string())
+        .unwrap_or_else(|| "not captured".to_string())
+}
+
+fn fmt_optional_bool(value: Option<bool>) -> String {
+    value
+        .map(|v| if v { "enabled" } else { "disabled" }.to_string())
+        .unwrap_or_else(|| "not captured".to_string())
+}
+
+fn optional_delta(after: Option<f64>, before: Option<f64>) -> Option<f64> {
+    match (after, before) {
+        (Some(a), Some(b)) => Some(a - b),
+        _ => None,
+    }
+}
+
+fn setting_detail(
+    domain: &str,
+    setting: &str,
+    before: String,
+    after: String,
+    evidence: String,
+    restart_required: bool,
+) -> SettingChangeDetail {
+    SettingChangeDetail {
+        domain: domain.to_string(),
+        setting: setting.to_string(),
+        before,
+        after,
+        evidence,
+        restart_required,
+    }
+}
+
+fn build_suggested_setting_details(
+    snapshot: &ProfileSnapshot,
+    after_snapshot: &ProfileSnapshot,
+    before: &AnalysisResponse,
+    after: &AnalysisResponse,
+    steam_sync: &CounterStrikeSteamSyncState,
+) -> Vec<SettingChangeDetail> {
+    let mut details = Vec::new();
+
+    details.push(setting_detail(
+        "CS2 config",
+        "Managed CS2 profile hook",
+        format!(
+            "{} configured Steam account(s); existing user config backed up where writable",
+            steam_sync.total_accounts
+        ),
+        format!(
+            "{} account(s) synced with '{}' and '{}' autoexec hook",
+            steam_sync.synced_accounts,
+            COUNTER_STRIKE_STEAM_MANAGED_CFG,
+            COUNTER_STRIKE_STEAM_AUTOEXEC_HOOK
+        ),
+        "This changes Steam userdata config files only after backup; it does not edit CS2 memory or bypass anti-cheat.".to_string(),
+        true,
+    ));
+
+    details.push(setting_detail(
+        "CS2 config",
+        "Managed FPS/network/telemetry cvars",
+        "Existing user cvars preserved in backed-up config files".to_string(),
+        "AetherFrameGuard-managed cfg refreshes fps_max 0, high rate, FPS/telemetry visibility, and low-latency sleep-after-client-tick recommendations".to_string(),
+        "Actual FPS effect must be judged from the next gameplay/practice-map PresentMon benchmark, not from menu FPS.".to_string(),
+        true,
+    ));
+
+    details.push(setting_detail(
+        "PC registry",
+        "HKCU GameDVR_Enabled",
+        fmt_optional_u32(snapshot.game_dvr_enabled),
+        fmt_optional_u32(after_snapshot.game_dvr_enabled),
+        "Backed up in windows_profile_snapshot.json before writing. Value 0 reduces Windows Game DVR background capture contention while gaming.".to_string(),
+        false,
+    ));
+
+    details.push(setting_detail(
+        "PC registry",
+        "HKCU AppCaptureEnabled",
+        fmt_optional_u32(snapshot.app_capture_enabled),
+        fmt_optional_u32(after_snapshot.app_capture_enabled),
+        "Backed up in windows_profile_snapshot.json before writing. Value 0 disables app capture overlays that can add frame-time variance.".to_string(),
+        false,
+    ));
+
+    details.push(setting_detail(
+        "PC power",
+        "Active power plan",
+        snapshot
+            .active_power_plan
+            .clone()
+            .unwrap_or_else(|| before.signals.active_power_plan.clone()),
+        after.signals.active_power_plan.clone(),
+        "Uses the configured Chris Titus / high-performance plan when available; power-plan changes are reversible through the saved snapshot or Windows power settings.".to_string(),
+        false,
+    ));
+
+    details.push(setting_detail(
+        "Networking",
+        "Measured network path / latency",
+        fmt_optional_f64(before.signals.avg_ping_ms, " ms"),
+        fmt_optional_f64(after.signals.avg_ping_ms, " ms"),
+        "The suggested FPS flow records the network measurement for comparison. It does not silently make broad TCP/adapter registry changes in this button.".to_string(),
+        false,
+    ));
+
+    details.push(setting_detail(
+        "PC security",
+        "Remote Desktop exposure",
+        fmt_optional_bool(snapshot.remote_desktop_enabled),
+        fmt_optional_bool(after_snapshot.remote_desktop_enabled),
+        "The game FPS button does not intentionally change Remote Desktop; hardened profile controls this separately.".to_string(),
+        false,
+    ));
+
+    details
+}
+
+fn build_performance_comparison(
+    before: &BenchmarkSession,
+    after: &BenchmarkSession,
+    status: &BenchmarkStatus,
+) -> PerformanceComparison {
+    let avg_fps_delta = optional_delta(after.avg_fps, before.avg_fps);
+    let fps_1pct_low_delta = optional_delta(after.fps_1pct_low, before.fps_1pct_low);
+    let stability_delta = Some(after.stability_score - before.stability_score);
+    let pc_latency_delta = optional_delta(after.pc_latency_ms, before.pc_latency_ms);
+    let network_latency_delta = optional_delta(after.network_latency_ms, before.network_latency_ms);
+    let objective_score_delta = after.objective_score - before.objective_score;
+
+    let mut summary = Vec::new();
+    match avg_fps_delta {
+        Some(delta) => summary.push(format!(
+            "Average FPS: {} -> {} ({:+.1} FPS)",
+            fmt_optional_f64(before.avg_fps, ""),
+            fmt_optional_f64(after.avg_fps, ""),
+            delta
+        )),
+        None => summary.push("Average FPS difference: not available until both before and after captures have valid FPS.".to_string()),
+    }
+    match fps_1pct_low_delta {
+        Some(delta) => summary.push(format!(
+            "1% low FPS: {} -> {} ({:+.1} FPS)",
+            fmt_optional_f64(before.fps_1pct_low, ""),
+            fmt_optional_f64(after.fps_1pct_low, ""),
+            delta
+        )),
+        None => summary.push(
+            "1% low difference: not available until both captures include frame-time samples."
+                .to_string(),
+        ),
+    }
+    summary.push(format!(
+        "Stability: {:.0}% -> {:.0}% ({:+.0} points); stutter candidates {} -> {}",
+        before.stability_score,
+        after.stability_score,
+        after.stability_score - before.stability_score,
+        before.stutter_count,
+        after.stutter_count
+    ));
+    if let Some(delta) = pc_latency_delta {
+        summary.push(format!(
+            "PC render/display latency: {} -> {} ({:+.1} ms; lower is better)",
+            fmt_optional_f64(before.pc_latency_ms, ""),
+            fmt_optional_f64(after.pc_latency_ms, ""),
+            delta
+        ));
+    }
+    if let Some(delta) = network_latency_delta {
+        summary.push(format!(
+            "Network latency: {} -> {} ({:+.1} ms; lower is better)",
+            fmt_optional_f64(before.network_latency_ms, ""),
+            fmt_optional_f64(after.network_latency_ms, ""),
+            delta
+        ));
+    }
+    summary.push(format!(
+        "Overall objective score: {:.1} -> {:.1} ({:+.1}); scene {} -> {}",
+        before.objective_score,
+        after.objective_score,
+        objective_score_delta,
+        before.scene_classification,
+        after.scene_classification
+    ));
+
+    let best_observed_summary = status
+        .best
+        .as_ref()
+        .map(|best| {
+            format!(
+                "Best observed so far: {:.1} objective score, {}, {:.0}% stability, scene {} from {}.",
+                best.objective_score,
+                fmt_optional_f64(best.avg_fps, " FPS"),
+                best.stability_score,
+                best.scene_classification,
+                best.source
+            )
+        })
+        .unwrap_or_else(|| "Best observed state is not established yet.".to_string());
+
+    let selected_setting_policy = if status
+        .best
+        .as_ref()
+        .map(|best| best.id == after.id)
+        .unwrap_or(false)
+    {
+        "This run is currently the best observed state. Treat it as the recommended profile to keep only after a relaunch and repeated gameplay/practice-map re-tests confirm it stays ahead.".to_string()
+    } else {
+        "This run did not beat every prior observed state, or confidence is incomplete. Keep comparing against Best observed and roll back/review if later gameplay tests are worse.".to_string()
+    };
+
+    PerformanceComparison {
+        avg_fps_delta,
+        fps_1pct_low_delta,
+        stability_delta,
+        pc_latency_delta,
+        network_latency_delta,
+        objective_score_delta,
+        summary,
+        best_observed_summary,
+        selected_setting_policy,
+    }
+}
+
 fn persist_cs2_change_log(result: &SuggestedFpsSettingsResult) {
     save_json(cs2_change_log_path(), result);
 }
@@ -5052,6 +5316,7 @@ fn apply_suggested_fps_settings() -> SuggestedFpsSettingsResult {
         &before,
         vec!["Before applying suggested CS2 FPS settings".to_string()],
     );
+    let before_session_for_comparison = before_session.clone();
     push_benchmark_session(before_session);
 
     let mut applied_changes = Vec::new();
@@ -5106,6 +5371,7 @@ fn apply_suggested_fps_settings() -> SuggestedFpsSettingsResult {
     warnings.extend(game_warnings);
 
     let after = analyze_host();
+    let after_snapshot = capture_profile_snapshot();
     let after_session = build_benchmark_session(
         "suggested-after",
         &after,
@@ -5124,9 +5390,17 @@ fn apply_suggested_fps_settings() -> SuggestedFpsSettingsResult {
             note
         ));
     }
+    let after_session_for_comparison = after_session.clone();
     push_benchmark_session(after_session);
 
     let status = benchmark_status_from_state(&load_benchmark_state());
+    let detailed_setting_changes =
+        build_suggested_setting_details(&snapshot, &after_snapshot, &before, &after, &steam_sync);
+    let performance_comparison = build_performance_comparison(
+        &before_session_for_comparison,
+        &after_session_for_comparison,
+        &status,
+    );
     let success =
         warnings.is_empty() || steam_sync.synced_accounts > 0 || !applied_changes.is_empty();
     let message = if success {
@@ -5140,6 +5414,8 @@ fn apply_suggested_fps_settings() -> SuggestedFpsSettingsResult {
         message,
         backup_dir: redact_sensitive_text(&backup_dir.to_string_lossy()),
         applied_changes,
+        detailed_setting_changes,
+        performance_comparison,
         warnings,
         cs2_restart_required: true,
         windows_restart_required: false,
