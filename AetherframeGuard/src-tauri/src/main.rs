@@ -5,7 +5,8 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use sysinfo::System;
 
@@ -16,6 +17,8 @@ use std::os::windows::process::CommandExt;
 use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 #[cfg(windows)]
 use winreg::RegKey;
+
+static CS2_CAPTURE_IN_PROGRESS: AtomicBool = AtomicBool::new(false);
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -143,6 +146,16 @@ struct CounterStrikeSummary {
     network_latency_ms: Option<f64>,
     fps_capture_source: Option<String>,
     last_fps_capture_at: Option<String>,
+    #[serde(default)]
+    fps_1pct_low: Option<f64>,
+    #[serde(default)]
+    fps_0_1pct_low: Option<f64>,
+    #[serde(default)]
+    stutter_count: u64,
+    #[serde(default)]
+    stability_score: f64,
+    #[serde(default)]
+    scene_classification: String,
     telemetry_diagnostics: CounterStrikeCaptureDiagnostics,
     launch_status: CounterStrikeLaunchStatus,
 }
@@ -155,7 +168,32 @@ struct CounterStrikeFpsTelemetry {
     avg_frametime_ms: Option<f64>,
     pc_latency_ms: Option<f64>,
     network_latency_ms: Option<f64>,
+    #[serde(default)]
+    fps_1pct_low: Option<f64>,
+    #[serde(default)]
+    fps_0_1pct_low: Option<f64>,
+    #[serde(default)]
+    stutter_count: u64,
+    #[serde(default)]
+    stability_score: f64,
+    #[serde(default)]
+    scene_classification: String,
     source: String,
+}
+
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CounterStrikeOptimizationMetrics {
+    avg_fps: Option<f64>,
+    avg_frametime_ms: Option<f64>,
+    pc_latency_ms: Option<f64>,
+    network_latency_ms: Option<f64>,
+    system_latency_ms: Option<f64>,
+    fps_1pct_low: Option<f64>,
+    fps_0_1pct_low: Option<f64>,
+    stutter_count: u64,
+    stability_score: f64,
+    scene_classification: String,
 }
 
 #[derive(Debug, Clone, Serialize, serde::Deserialize)]
@@ -171,6 +209,16 @@ struct CounterStrikeCaptureDiagnostics {
     avg_fps: Option<f64>,
     avg_frametime_ms: Option<f64>,
     pc_latency_ms: Option<f64>,
+    #[serde(default)]
+    fps_1pct_low: Option<f64>,
+    #[serde(default)]
+    fps_0_1pct_low: Option<f64>,
+    #[serde(default)]
+    stutter_count: u64,
+    #[serde(default)]
+    stability_score: f64,
+    #[serde(default)]
+    scene_classification: String,
 }
 
 #[derive(Debug, Clone, Serialize, serde::Deserialize)]
@@ -478,6 +526,16 @@ struct BenchmarkSession {
     pc_latency_ms: Option<f64>,
     network_latency_ms: Option<f64>,
     system_latency_ms: Option<f64>,
+    #[serde(default)]
+    fps_1pct_low: Option<f64>,
+    #[serde(default)]
+    fps_0_1pct_low: Option<f64>,
+    #[serde(default)]
+    stutter_count: u64,
+    #[serde(default)]
+    stability_score: f64,
+    #[serde(default)]
+    scene_classification: String,
     confidence: f64,
     objective_score: f64,
     notes: Vec<String>,
@@ -1194,6 +1252,13 @@ fn score_gaming(signals: &HostSignals) -> ModuleSummary {
 }
 
 fn score_counter_strike(signals: &HostSignals) -> CounterStrikeSummary {
+    score_counter_strike_with_capture_mode(signals, false)
+}
+
+fn score_counter_strike_with_capture_mode(
+    signals: &HostSignals,
+    force_capture: bool,
+) -> CounterStrikeSummary {
     let mut score = if signals.counter_strike_active {
         54.0
     } else {
@@ -1206,6 +1271,11 @@ fn score_counter_strike(signals: &HostSignals) -> CounterStrikeSummary {
     let mut pc_latency_ms = None;
     let mut fps_capture_source = None;
     let mut last_fps_capture_at = None;
+    let mut fps_1pct_low = None;
+    let mut fps_0_1pct_low = None;
+    let mut stutter_count = 0_u64;
+    let mut stability_score = 0.0_f64;
+    let mut scene_classification = "unknown".to_string();
     let telemetry_diagnostics;
 
     if signals.counter_strike_active {
@@ -1214,12 +1284,30 @@ fn score_counter_strike(signals: &HostSignals) -> CounterStrikeSummary {
             signals.counter_strike_process_names.join(", ")
         ));
 
-        if let Some(telemetry) = capture_counter_strike_fps_telemetry(signals.avg_ping_ms) {
+        if let Some(telemetry) = capture_counter_strike_fps_telemetry(
+            signals.avg_ping_ms,
+            signals.system_latency_ms,
+            force_capture,
+        ) {
             telemetry_diagnostics = load_counter_strike_fps_diagnostics()
                 .unwrap_or_else(|| default_counter_strike_capture_diagnostics(true));
             avg_fps = telemetry.avg_fps;
             avg_frametime_ms = telemetry.avg_frametime_ms;
             pc_latency_ms = telemetry.pc_latency_ms;
+            fps_1pct_low = telemetry.fps_1pct_low;
+            fps_0_1pct_low = telemetry.fps_0_1pct_low;
+            stutter_count = telemetry.stutter_count;
+            stability_score = telemetry.stability_score;
+            scene_classification = if telemetry.scene_classification.is_empty() {
+                classify_counter_strike_scene(
+                    telemetry.avg_fps,
+                    telemetry.avg_frametime_ms,
+                    telemetry.network_latency_ms,
+                    signals.system_latency_ms,
+                )
+            } else {
+                telemetry.scene_classification.clone()
+            };
             fps_capture_source = Some(telemetry.source.clone());
             last_fps_capture_at = Some(telemetry.captured_at.clone());
 
@@ -1258,6 +1346,43 @@ fn score_counter_strike(signals: &HostSignals) -> CounterStrikeSummary {
                     blockers.push(format!("High render/display latency {:.2}ms", pc_lat));
                 }
                 signals_list.push(format!("PC render/display latency {:.2}ms", pc_lat));
+            }
+
+            if let Some(low) = telemetry.fps_1pct_low {
+                if low >= 180.0 {
+                    score += 7.0;
+                } else if low < 100.0 {
+                    score -= 7.0;
+                    blockers.push(format!(
+                        "1% low FPS is weak for CS2 consistency ({:.1})",
+                        low
+                    ));
+                }
+                signals_list.push(format!("Measured 1% low FPS {:.1}", low));
+            }
+
+            if telemetry.stability_score >= 85.0 {
+                score += 8.0;
+                signals_list.push(format!(
+                    "Frame pacing stability {:.0}%",
+                    telemetry.stability_score
+                ));
+            } else if telemetry.stability_score > 0.0 && telemetry.stability_score < 60.0 {
+                score -= 8.0;
+                blockers.push(format!(
+                    "Frame pacing stability is low ({:.0}%, {} stutter spike candidates)",
+                    telemetry.stability_score, telemetry.stutter_count
+                ));
+            }
+
+            if scene_classification == "menu_or_lobby" {
+                blockers.push("Telemetry looks like CS2 menu/lobby rather than gameplay; optimize using a live match/practice-map sample.".to_string());
+            } else if scene_classification == "gameplay_candidate" {
+                score += 5.0;
+                signals_list.push(
+                    "Telemetry resembles a gameplay sample rather than a menu-only FPS snapshot"
+                        .to_string(),
+                );
             }
         } else {
             telemetry_diagnostics = load_counter_strike_fps_diagnostics()
@@ -1371,28 +1496,14 @@ fn score_counter_strike(signals: &HostSignals) -> CounterStrikeSummary {
         network_latency_ms: signals.avg_ping_ms,
         fps_capture_source,
         last_fps_capture_at,
+        fps_1pct_low,
+        fps_0_1pct_low,
+        stutter_count,
+        stability_score,
+        scene_classification,
         telemetry_diagnostics,
         launch_status: counter_strike_launch_status(),
     }
-}
-
-#[derive(Serialize, serde::Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct ThreatScoringRequest {
-    signals: HostSignals,
-    findings: Vec<ThreatFinding>,
-    promotion: AetherframePromotionBreakdown,
-    counter_strike: CounterStrikeSummary,
-}
-
-#[derive(Serialize, serde::Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-struct ThreatScoringResult {
-    security_score: f64,
-    network_score: f64,
-    performance_score: f64,
-    gaming_score: f64,
-    threat_score: f64,
 }
 
 const DEFAULT_AETHERFRAME_PROMOTION_CONFIG: AetherframePromotionConfig =
@@ -1451,6 +1562,11 @@ fn default_counter_strike_capture_diagnostics(
         avg_fps: None,
         avg_frametime_ms: None,
         pc_latency_ms: None,
+        fps_1pct_low: None,
+        fps_0_1pct_low: None,
+        stutter_count: 0,
+        stability_score: 0.0,
+        scene_classification: "unknown".to_string(),
     }
 }
 
@@ -1477,12 +1593,21 @@ fn write_counter_strike_diagnostic_report() -> Result<String, String> {
     }
 
     if signals.counter_strike_active {
-        if let Some(sample) = capture_counter_strike_fps_telemetry(signals.avg_ping_ms) {
+        if let Some(sample) = capture_counter_strike_fps_telemetry(
+            signals.avg_ping_ms,
+            signals.system_latency_ms,
+            false,
+        ) {
             diagnostics = load_counter_strike_fps_diagnostics()
                 .unwrap_or_else(|| default_counter_strike_capture_diagnostics(true));
             diagnostics.avg_fps = sample.avg_fps;
             diagnostics.avg_frametime_ms = sample.avg_frametime_ms;
             diagnostics.pc_latency_ms = sample.pc_latency_ms;
+            diagnostics.fps_1pct_low = sample.fps_1pct_low;
+            diagnostics.fps_0_1pct_low = sample.fps_0_1pct_low;
+            diagnostics.stutter_count = sample.stutter_count;
+            diagnostics.stability_score = sample.stability_score;
+            diagnostics.scene_classification = sample.scene_classification;
         } else if diagnostics.capture_error.is_none() {
             diagnostics = load_counter_strike_fps_diagnostics()
                 .unwrap_or_else(|| default_counter_strike_capture_diagnostics(true));
@@ -1515,6 +1640,11 @@ fn write_counter_strike_diagnostic_report() -> Result<String, String> {
         "avgFps": diagnostics.avg_fps,
         "avgFrametimeMs": diagnostics.avg_frametime_ms,
         "pcLatencyMs": diagnostics.pc_latency_ms,
+        "fps1pctLow": diagnostics.fps_1pct_low,
+        "fps01pctLow": diagnostics.fps_0_1pct_low,
+        "stutterCount": diagnostics.stutter_count,
+        "stabilityScore": diagnostics.stability_score,
+        "sceneClassification": diagnostics.scene_classification.clone(),
         "networkLatencyMs": signals.avg_ping_ms,
         "preferredLaunch": launch_status.clone(),
         "diagnosticsJsonPath": counter_strike_fps_diagnostics_path().to_string_lossy(),
@@ -1547,6 +1677,11 @@ Capture error: {}\n\
 Last FPS: {}\n\
 Last frametime ms: {}\n\
 Last PC latency ms: {}\n\
+1% low FPS: {}\n\
+0.1% low FPS: {}\n\
+Frame stability: {}\n\
+Stutter candidates: {}\n\
+Scene classification: {}\n\
 \n\
 What to do next:\n\
 1. Start CS2 and wait until the menu or a match is visible.\n\
@@ -1594,6 +1729,25 @@ Machine-readable details: {}\n",
             .pc_latency_ms
             .map(|v| format!("{v:.2}"))
             .unwrap_or_else(|| "n/a".to_string()),
+        diagnostics
+            .fps_1pct_low
+            .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "n/a".to_string()),
+        diagnostics
+            .fps_0_1pct_low
+            .map(|v| format!("{v:.1}"))
+            .unwrap_or_else(|| "n/a".to_string()),
+        if diagnostics.stability_score > 0.0 {
+            format!("{:.0}%", diagnostics.stability_score)
+        } else {
+            "n/a".to_string()
+        },
+        diagnostics.stutter_count,
+        if diagnostics.scene_classification.is_empty() {
+            "unknown".to_string()
+        } else {
+            diagnostics.scene_classification.clone()
+        },
         report_path.to_string_lossy()
     );
 
@@ -1703,17 +1857,76 @@ fn benchmark_confidence(analysis: &AnalysisResponse) -> f64 {
 }
 
 fn benchmark_objective_score(session: &BenchmarkSession) -> f64 {
-    let fps_term = session
-        .avg_fps
-        .map(|fps| (fps / 3.0).min(40.0))
-        .unwrap_or(-10.0);
-    let frame_penalty = session.avg_frametime_ms.map(|v| v * 2.2).unwrap_or(18.0);
-    let pc_penalty = session.pc_latency_ms.unwrap_or(20.0);
-    let net_penalty = session.network_latency_ms.unwrap_or(60.0) * 0.35;
-    let sys_penalty = session.system_latency_ms.unwrap_or(5.0) * 1.5;
-    let blend = (session.counter_strike_score * 0.55) + (session.promotion_score * 0.45);
+    let metrics = CounterStrikeOptimizationMetrics {
+        avg_fps: session.avg_fps,
+        avg_frametime_ms: session.avg_frametime_ms,
+        pc_latency_ms: session.pc_latency_ms,
+        network_latency_ms: session.network_latency_ms,
+        system_latency_ms: session.system_latency_ms,
+        fps_1pct_low: session.fps_1pct_low,
+        fps_0_1pct_low: session.fps_0_1pct_low,
+        stutter_count: session.stutter_count,
+        stability_score: session.stability_score,
+        scene_classification: if session.scene_classification.is_empty() {
+            "unknown".to_string()
+        } else {
+            session.scene_classification.clone()
+        },
+    };
+    let optimizer_term = cs2_optimization_objective_score(&metrics);
+    let blend = (session.counter_strike_score * 0.35) + (session.promotion_score * 0.25);
+    clamp((optimizer_term * 0.55) + blend, 0.0, 100.0)
+}
+
+fn classify_counter_strike_scene(
+    avg_fps: Option<f64>,
+    avg_frametime_ms: Option<f64>,
+    network_latency_ms: Option<f64>,
+    system_latency_ms: Option<f64>,
+) -> String {
+    let Some(fps) = avg_fps else {
+        return "unknown".to_string();
+    };
+    let frame = avg_frametime_ms.unwrap_or_else(|| if fps > 0.0 { 1000.0 / fps } else { 0.0 });
+    let network = network_latency_ms.unwrap_or(999.0);
+    let system = system_latency_ms.unwrap_or(0.0);
+
+    if fps >= 360.0 && frame <= 3.5 && (network >= 70.0 || system <= 0.2) {
+        "menu_or_lobby".to_string()
+    } else if fps >= 55.0 && frame <= 24.0 && network <= 85.0 && system >= 0.2 {
+        "gameplay_candidate".to_string()
+    } else {
+        "unknown".to_string()
+    }
+}
+
+fn cs2_optimization_objective_score(metrics: &CounterStrikeOptimizationMetrics) -> f64 {
+    let avg = metrics.avg_fps.unwrap_or(0.0);
+    let low_1 = metrics.fps_1pct_low.unwrap_or(avg * 0.72);
+    let low_01 = metrics.fps_0_1pct_low.unwrap_or(avg * 0.55);
+    let frame_penalty = metrics.avg_frametime_ms.unwrap_or(16.7) * 1.4;
+    let pc_penalty = metrics.pc_latency_ms.unwrap_or(22.0) * 0.7;
+    let net_penalty = metrics.network_latency_ms.unwrap_or(65.0) * 0.18;
+    let sys_penalty = metrics.system_latency_ms.unwrap_or(4.0) * 2.0;
+    let stutter_penalty = (metrics.stutter_count as f64 * 2.4).min(28.0);
+    let stability = metrics.stability_score.clamp(0.0, 100.0) * 0.42;
+    let scene_adjust = match metrics.scene_classification.as_str() {
+        "gameplay_candidate" => 10.0,
+        "menu_or_lobby" => -32.0,
+        _ => -8.0,
+    };
+
     clamp(
-        blend + fps_term - frame_penalty - pc_penalty - net_penalty - sys_penalty,
+        (avg.min(360.0) * 0.08)
+            + (low_1.min(300.0) * 0.14)
+            + (low_01.min(240.0) * 0.10)
+            + stability
+            + scene_adjust
+            - frame_penalty
+            - pc_penalty
+            - net_penalty
+            - sys_penalty
+            - stutter_penalty,
         0.0,
         100.0,
     )
@@ -1736,6 +1949,11 @@ fn build_benchmark_session(
         pc_latency_ms: analysis.counter_strike.pc_latency_ms,
         network_latency_ms: analysis.counter_strike.network_latency_ms,
         system_latency_ms: analysis.signals.system_latency_ms,
+        fps_1pct_low: analysis.counter_strike.fps_1pct_low,
+        fps_0_1pct_low: analysis.counter_strike.fps_0_1pct_low,
+        stutter_count: analysis.counter_strike.stutter_count,
+        stability_score: analysis.counter_strike.stability_score,
+        scene_classification: analysis.counter_strike.scene_classification.clone(),
         confidence: benchmark_confidence(analysis),
         objective_score: 0.0,
         notes,
@@ -2933,12 +3151,63 @@ fn split_csv_line(line: &str) -> Vec<String> {
     fields
 }
 
-fn parse_presentmon_csv_text(text: &str) -> Option<(f64, f64, f64)> {
+fn percentile_fps_from_frame_samples(frame_samples: &[f64], percentile: f64) -> Option<f64> {
+    if frame_samples.is_empty() {
+        return None;
+    }
+    let mut sorted = frame_samples
+        .iter()
+        .copied()
+        .filter(|v| (0.2..=1000.0).contains(v))
+        .collect::<Vec<_>>();
+    if sorted.is_empty() {
+        return None;
+    }
+    sorted.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+    let idx = ((sorted.len() as f64 * percentile).ceil() as usize)
+        .saturating_sub(1)
+        .min(sorted.len() - 1);
+    let frame = sorted[idx];
+    if frame > 0.0 {
+        Some(1000.0 / frame)
+    } else {
+        None
+    }
+}
+
+fn stability_from_frame_samples(frame_samples: &[f64]) -> (f64, u64) {
+    if frame_samples.is_empty() {
+        return (0.0, 0);
+    }
+    let avg = frame_samples.iter().sum::<f64>() / frame_samples.len() as f64;
+    if avg <= 0.0 {
+        return (0.0, 0);
+    }
+    let variance =
+        frame_samples.iter().map(|v| (v - avg).powi(2)).sum::<f64>() / frame_samples.len() as f64;
+    let std_dev = variance.sqrt();
+    let stutters = frame_samples
+        .iter()
+        .filter(|v| **v >= 18.0 || **v >= avg * 2.0)
+        .count() as u64;
+    let jitter_penalty = (std_dev / avg) * 55.0;
+    let stutter_penalty = (stutters as f64 * 2.0).min(35.0);
+    (
+        clamp(100.0 - jitter_penalty - stutter_penalty, 0.0, 100.0),
+        stutters,
+    )
+}
+
+fn parse_presentmon_csv_metrics(
+    text: &str,
+    network_latency_ms: Option<f64>,
+    system_latency_ms: Option<f64>,
+) -> Option<CounterStrikeOptimizationMetrics> {
     let mut lines = text.lines();
     let header = lines.next()?;
     let cols = split_csv_line(header);
     let idx_frame = cols.iter().position(|c| {
-        let col = c.trim();
+        let col = c.trim().trim_start_matches('\u{feff}');
         col.eq_ignore_ascii_case("msBetweenPresents")
             || col.eq_ignore_ascii_case("msBetweenDisplayChange")
             || col.eq_ignore_ascii_case("msInPresentAPI")
@@ -2947,7 +3216,7 @@ fn parse_presentmon_csv_text(text: &str) -> Option<(f64, f64, f64)> {
         .iter()
         .enumerate()
         .filter_map(|(idx, c)| {
-            let col = c.trim();
+            let col = c.trim().trim_start_matches('\u{feff}');
             if col.eq_ignore_ascii_case("msUntilDisplayed")
                 || col.eq_ignore_ascii_case("msUntilRenderComplete")
                 || col.eq_ignore_ascii_case("msAllInputToPhotonLatency")
@@ -2974,7 +3243,7 @@ fn parse_presentmon_csv_text(text: &str) -> Option<(f64, f64, f64)> {
             continue;
         }
         if let Ok(v) = values[idx_frame].trim().parse::<f64>() {
-            if (0.2..=100.0).contains(&v) {
+            if (0.2..=1000.0).contains(&v) {
                 frame_samples.push(v);
             }
         }
@@ -2990,51 +3259,201 @@ fn parse_presentmon_csv_text(text: &str) -> Option<(f64, f64, f64)> {
             }
         }
     }
-    if frame_samples.is_empty() || pc_latency_samples.is_empty() {
+    if frame_samples.is_empty() {
         return None;
     }
     let avg_frame = frame_samples.iter().sum::<f64>() / frame_samples.len() as f64;
-    let avg_pc_latency = pc_latency_samples.iter().sum::<f64>() / pc_latency_samples.len() as f64;
+    let avg_pc_latency = if pc_latency_samples.is_empty() {
+        None
+    } else {
+        Some(pc_latency_samples.iter().sum::<f64>() / pc_latency_samples.len() as f64)
+    };
     if avg_frame <= 0.0 {
         return None;
     }
-    Some((1000.0 / avg_frame, avg_frame, avg_pc_latency))
+    let avg_fps = 1000.0 / avg_frame;
+    let (stability_score, stutter_count) = stability_from_frame_samples(&frame_samples);
+    let fps_1pct_low = percentile_fps_from_frame_samples(&frame_samples, 0.01);
+    let fps_0_1pct_low = percentile_fps_from_frame_samples(&frame_samples, 0.001);
+    let scene_classification = classify_counter_strike_scene(
+        Some(avg_fps),
+        Some(avg_frame),
+        network_latency_ms,
+        system_latency_ms,
+    );
+    Some(CounterStrikeOptimizationMetrics {
+        avg_fps: Some(avg_fps),
+        avg_frametime_ms: Some(avg_frame),
+        pc_latency_ms: avg_pc_latency,
+        network_latency_ms,
+        system_latency_ms,
+        fps_1pct_low,
+        fps_0_1pct_low,
+        stutter_count,
+        stability_score,
+        scene_classification,
+    })
 }
 
+#[cfg(test)]
+fn parse_presentmon_csv_text(text: &str) -> Option<(f64, f64, f64)> {
+    let metrics = parse_presentmon_csv_metrics(text, None, None)?;
+    Some((
+        metrics.avg_fps?,
+        metrics.avg_frametime_ms?,
+        metrics.pc_latency_ms?,
+    ))
+}
+
+#[cfg(test)]
 fn parse_presentmon_csv(path: &PathBuf) -> Option<(f64, f64, f64)> {
     let text = fs::read_to_string(path).ok()?;
     parse_presentmon_csv_text(&text)
 }
 
-fn capture_counter_strike_fps_telemetry(
+fn parse_presentmon_csv_metrics_from_path(
+    path: &PathBuf,
     network_latency_ms: Option<f64>,
-) -> Option<CounterStrikeFpsTelemetry> {
-    let now = chrono_like_timestamp();
-    if let Some(existing) = load_counter_strike_fps_telemetry() {
-        if let (Ok(now_secs), Ok(sample_secs)) =
-            (now.parse::<u64>(), existing.captured_at.parse::<u64>())
-        {
-            if now_secs.saturating_sub(sample_secs) <= 90 {
-                let mut diagnostics = default_counter_strike_capture_diagnostics(true);
-                diagnostics.presentmon_found = existing.source.starts_with("presentmon:");
-                diagnostics.presentmon_path = existing
-                    .source
-                    .strip_prefix("presentmon:")
-                    .map(|s| s.to_string());
-                diagnostics.capture_succeeded = true;
-                diagnostics.avg_fps = existing.avg_fps;
-                diagnostics.avg_frametime_ms = existing.avg_frametime_ms;
-                diagnostics.pc_latency_ms = existing.pc_latency_ms;
-                save_counter_strike_fps_diagnostics(&diagnostics);
-                return Some(existing);
+    system_latency_ms: Option<f64>,
+) -> Option<CounterStrikeOptimizationMetrics> {
+    let text = fs::read_to_string(path).ok()?;
+    parse_presentmon_csv_metrics(&text, network_latency_ms, system_latency_ms)
+}
+
+fn run_presentmon_capture_for_metrics(
+    presentmon: &Path,
+    args: &[String],
+    output_csv: &PathBuf,
+    network_latency_ms: Option<f64>,
+    system_latency_ms: Option<f64>,
+    timeout_secs: u64,
+) -> Result<CounterStrikeOptimizationMetrics, String> {
+    let _ = fs::remove_file(output_csv);
+    let mut command = Command::new(presentmon);
+    command.args(args.iter().map(|s| s.as_str()));
+    command.stdout(Stdio::null()).stderr(Stdio::null());
+    let mut child = command
+        .spawn()
+        .map_err(|err| format!("PresentMon failed to launch: {}", err))?;
+    let started = SystemTime::now();
+    let mut exited = false;
+
+    loop {
+        if let Some(metrics) = parse_presentmon_csv_metrics_from_path(
+            output_csv,
+            network_latency_ms,
+            system_latency_ms,
+        ) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Ok(metrics);
+        }
+
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                exited = true;
+                if !status.success() {
+                    return Err(format!("PresentMon exited with status {}", status));
+                }
+                break;
+            }
+            Ok(None) => {}
+            Err(err) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(format!("PresentMon wait failed: {}", err));
             }
         }
+
+        let elapsed = started
+            .elapsed()
+            .map(|d| d.as_secs())
+            .unwrap_or(timeout_secs + 1);
+        if elapsed >= timeout_secs {
+            let _ = child.kill();
+            let _ = child.wait();
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(250));
+    }
+
+    if let Some(metrics) =
+        parse_presentmon_csv_metrics_from_path(output_csv, network_latency_ms, system_latency_ms)
+    {
+        return Ok(metrics);
+    }
+
+    let csv_state = if output_csv.exists() {
+        "CSV parser failed or found no valid CS2 samples"
+    } else if exited {
+        "PresentMon exited without writing the expected CSV"
+    } else {
+        "PresentMon timed out before writing a usable CSV"
+    };
+    Err(csv_state.to_string())
+}
+
+fn capture_counter_strike_fps_telemetry(
+    network_latency_ms: Option<f64>,
+    system_latency_ms: Option<f64>,
+    force_refresh: bool,
+) -> Option<CounterStrikeFpsTelemetry> {
+    let now = chrono_like_timestamp();
+    if !force_refresh {
+        if let Some(existing) = load_counter_strike_fps_telemetry() {
+            if let (Ok(now_secs), Ok(sample_secs)) =
+                (now.parse::<u64>(), existing.captured_at.parse::<u64>())
+            {
+                if now_secs.saturating_sub(sample_secs) <= 90 {
+                    let mut diagnostics = default_counter_strike_capture_diagnostics(true);
+                    diagnostics.presentmon_found = existing.source.starts_with("presentmon:");
+                    diagnostics.presentmon_path = existing
+                        .source
+                        .strip_prefix("presentmon:")
+                        .map(|s| s.to_string());
+                    diagnostics.capture_succeeded = true;
+                    diagnostics.avg_fps = existing.avg_fps;
+                    diagnostics.avg_frametime_ms = existing.avg_frametime_ms;
+                    diagnostics.pc_latency_ms = existing.pc_latency_ms;
+                    diagnostics.fps_1pct_low = existing.fps_1pct_low;
+                    diagnostics.fps_0_1pct_low = existing.fps_0_1pct_low;
+                    diagnostics.stutter_count = existing.stutter_count;
+                    diagnostics.stability_score = existing.stability_score;
+                    diagnostics.scene_classification = if existing.scene_classification.is_empty() {
+                        classify_counter_strike_scene(
+                            existing.avg_fps,
+                            existing.avg_frametime_ms,
+                            existing.network_latency_ms,
+                            system_latency_ms,
+                        )
+                    } else {
+                        existing.scene_classification.clone()
+                    };
+                    save_counter_strike_fps_diagnostics(&diagnostics);
+                    return Some(existing);
+                }
+            }
+        }
+    }
+
+    if CS2_CAPTURE_IN_PROGRESS
+        .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+        .is_err()
+    {
+        let mut diagnostics = default_counter_strike_capture_diagnostics(true);
+        diagnostics.capture_error = Some(
+            "A CS2 FPS capture is already running. Wait for it to finish, then re-test."
+                .to_string(),
+        );
+        save_counter_strike_fps_diagnostics(&diagnostics);
+        return load_counter_strike_fps_telemetry();
     }
 
     let mut diagnostics = default_counter_strike_capture_diagnostics(true);
     let Some(presentmon) = discover_presentmon_binary() else {
         diagnostics.capture_error = Some("PresentMon missing or not discoverable; searched configured Intel/compatibility/PATH locations".to_string());
         save_counter_strike_fps_diagnostics(&diagnostics);
+        CS2_CAPTURE_IN_PROGRESS.store(false, Ordering::SeqCst);
         return None;
     };
 
@@ -3045,77 +3464,61 @@ fn capture_counter_strike_fps_telemetry(
 
     let mut captured = None;
     let mut last_error = None;
-    let arg_sets = [
-        vec![
-            "--process_name".to_string(),
-            "cs2.exe".to_string(),
-            "--timed".to_string(),
-            "6".to_string(),
-            "--output_file".to_string(),
-            output_csv.to_string_lossy().to_string(),
-            "--terminate_after_timed".to_string(),
-        ],
-        vec![
-            "-process_name".to_string(),
-            "cs2.exe".to_string(),
-            "-timed".to_string(),
-            "6".to_string(),
-            "-output_file".to_string(),
-            output_csv.to_string_lossy().to_string(),
-        ],
-    ];
+    let arg_sets = [vec![
+        "--session_name".to_string(),
+        format!("AetherFrameGuardCS2{}", now),
+        "--process_name".to_string(),
+        "cs2.exe".to_string(),
+        "--timed".to_string(),
+        "6".to_string(),
+        "--output_file".to_string(),
+        output_csv.to_string_lossy().to_string(),
+        "--terminate_after_timed".to_string(),
+        "--no_console_stats".to_string(),
+    ]];
 
     for args in arg_sets {
-        match silent_command(&presentmon)
-            .args(args.iter().map(|s| s.as_str()))
-            .output()
-        {
-            Ok(output) if output.status.success() => {
-                if let Some((avg_fps, avg_frametime_ms, pc_latency_ms)) =
-                    parse_presentmon_csv(&output_csv)
-                {
-                    diagnostics.capture_succeeded = true;
-                    diagnostics.capture_error = None;
-                    diagnostics.avg_fps = Some(avg_fps);
-                    diagnostics.avg_frametime_ms = Some(avg_frametime_ms);
-                    diagnostics.pc_latency_ms = Some(pc_latency_ms);
-                    captured = Some(CounterStrikeFpsTelemetry {
-                        captured_at: now.clone(),
-                        avg_fps: Some(avg_fps),
-                        avg_frametime_ms: Some(avg_frametime_ms),
-                        pc_latency_ms: Some(pc_latency_ms),
-                        network_latency_ms,
-                        source: format!("presentmon:{}", presentmon.to_string_lossy()),
-                    });
-                    break;
-                }
-                let csv_state = if output_csv.exists() {
-                    "CSV parser failed or found no valid CS2 samples"
-                } else {
-                    "PresentMon completed but did not write the expected CSV"
-                };
-                last_error = Some(format!(
-                    "{}; stdout='{}'; stderr='{}'",
-                    csv_state,
-                    String::from_utf8_lossy(&output.stdout).trim(),
-                    String::from_utf8_lossy(&output.stderr).trim()
-                ));
-            }
-            Ok(output) => {
-                last_error = Some(format!(
-                    "PresentMon capture failed with status {}; stdout='{}'; stderr='{}'",
-                    output.status,
-                    String::from_utf8_lossy(&output.stdout).trim(),
-                    String::from_utf8_lossy(&output.stderr).trim()
-                ));
+        match run_presentmon_capture_for_metrics(
+            &presentmon,
+            &args,
+            &output_csv,
+            network_latency_ms,
+            system_latency_ms,
+            20,
+        ) {
+            Ok(metrics) => {
+                diagnostics.capture_succeeded = true;
+                diagnostics.capture_error = None;
+                diagnostics.avg_fps = metrics.avg_fps;
+                diagnostics.avg_frametime_ms = metrics.avg_frametime_ms;
+                diagnostics.pc_latency_ms = metrics.pc_latency_ms;
+                diagnostics.fps_1pct_low = metrics.fps_1pct_low;
+                diagnostics.fps_0_1pct_low = metrics.fps_0_1pct_low;
+                diagnostics.stutter_count = metrics.stutter_count;
+                diagnostics.stability_score = metrics.stability_score;
+                diagnostics.scene_classification = metrics.scene_classification.clone();
+                captured = Some(CounterStrikeFpsTelemetry {
+                    captured_at: now.clone(),
+                    avg_fps: metrics.avg_fps,
+                    avg_frametime_ms: metrics.avg_frametime_ms,
+                    pc_latency_ms: metrics.pc_latency_ms,
+                    network_latency_ms,
+                    fps_1pct_low: metrics.fps_1pct_low,
+                    fps_0_1pct_low: metrics.fps_0_1pct_low,
+                    stutter_count: metrics.stutter_count,
+                    stability_score: metrics.stability_score,
+                    scene_classification: metrics.scene_classification,
+                    source: format!("presentmon:{}", presentmon.to_string_lossy()),
+                });
+                break;
             }
             Err(err) => {
-                last_error = Some(format!("Failed to launch PresentMon: {}", err));
+                last_error = Some(err);
             }
         }
     }
 
-    if let Some(sample) = captured {
+    let result = if let Some(sample) = captured {
         save_counter_strike_fps_telemetry(&sample);
         save_counter_strike_fps_diagnostics(&diagnostics);
         Some(sample)
@@ -3124,7 +3527,9 @@ fn capture_counter_strike_fps_telemetry(
             last_error.or_else(|| Some("PresentMon capture failed".to_string()));
         save_counter_strike_fps_diagnostics(&diagnostics);
         None
-    }
+    };
+    CS2_CAPTURE_IN_PROGRESS.store(false, Ordering::SeqCst);
+    result
 }
 
 fn discover_nvidia_artifacts() -> (Option<PathBuf>, Option<PathBuf>, Option<PathBuf>) {
@@ -4341,9 +4746,14 @@ fn open_command(command: &str, args: &[&str]) -> Result<String, String> {
 
 #[tauri::command]
 fn analyze_host() -> AnalysisResponse {
+    analyze_host_internal(false)
+}
+
+fn analyze_host_internal(force_counter_strike_capture: bool) -> AnalysisResponse {
     let signals = collect_host_signals();
     let modules = build_module_collection(&signals);
-    let counter_strike = score_counter_strike(&signals);
+    let counter_strike =
+        score_counter_strike_with_capture_mode(&signals, force_counter_strike_capture);
     let inputs = promotion_inputs_from_signals(&signals);
     let promotion = compute_aetherframe_promotion(inputs, DEFAULT_AETHERFRAME_PROMOTION_CONFIG);
     let recommendations = build_recommendations(&signals, &modules, &promotion, &counter_strike);
@@ -4760,7 +5170,7 @@ fn get_counter_strike_steam_sync_status() -> CounterStrikeSteamSyncStatus {
 
 #[tauri::command]
 fn run_benchmark_capture() -> ActionResult {
-    let analysis = analyze_host();
+    let analysis = analyze_host_internal(true);
     let session = build_benchmark_session(
         "manual",
         &analysis,
@@ -4770,7 +5180,7 @@ fn run_benchmark_capture() -> ActionResult {
     ActionResult {
         id: "run_benchmark_capture".to_string(),
         success: true,
-        message: "Captured benchmark snapshot".to_string(),
+        message: "Re-test complete".to_string(),
     }
 }
 
@@ -4923,6 +5333,54 @@ start "" /high "C:\Program Files (x86)\Steam\steam.exe" -applaunch 730 +exec aut
         ));
         assert!(contains_risky_cs2_config_line("bind mouse1 +attack"));
         assert!(!contains_risky_cs2_config_line("fps_max 0\nrate 786432"));
+    }
+
+    #[test]
+    fn cs2_scene_classifier_separates_menu_from_gameplay() {
+        assert_eq!(
+            classify_counter_strike_scene(Some(480.0), Some(2.1), Some(95.0), Some(0.0)),
+            "menu_or_lobby"
+        );
+        assert_eq!(
+            classify_counter_strike_scene(Some(238.0), Some(4.2), Some(31.0), Some(1.4)),
+            "gameplay_candidate"
+        );
+        assert_eq!(
+            classify_counter_strike_scene(None, None, None, None),
+            "unknown"
+        );
+    }
+
+    #[test]
+    fn cs2_optimizer_prefers_stable_gameplay_lows_over_raw_menu_fps() {
+        let menu = CounterStrikeOptimizationMetrics {
+            avg_fps: Some(480.0),
+            avg_frametime_ms: Some(2.1),
+            pc_latency_ms: Some(12.0),
+            network_latency_ms: Some(95.0),
+            system_latency_ms: Some(4.0),
+            fps_1pct_low: Some(180.0),
+            fps_0_1pct_low: Some(120.0),
+            stutter_count: 18,
+            stability_score: 52.0,
+            scene_classification: "menu_or_lobby".to_string(),
+        };
+        let gameplay = CounterStrikeOptimizationMetrics {
+            avg_fps: Some(238.0),
+            avg_frametime_ms: Some(4.2),
+            pc_latency_ms: Some(10.0),
+            network_latency_ms: Some(31.0),
+            system_latency_ms: Some(1.3),
+            fps_1pct_low: Some(205.0),
+            fps_0_1pct_low: Some(176.0),
+            stutter_count: 1,
+            stability_score: 92.0,
+            scene_classification: "gameplay_candidate".to_string(),
+        };
+
+        assert!(
+            cs2_optimization_objective_score(&gameplay) > cs2_optimization_objective_score(&menu)
+        );
     }
 
     #[test]

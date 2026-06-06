@@ -9,7 +9,7 @@ HexHawk classification, base confidence, or security truth.
 
 ## Features
 
-- Guided CS2/PC optimizer flow: measure, review, apply safe settings, restart/relaunch if needed, and re-test.
+- Guided CS2/PC optimizer flow: measure repeatedly, classify likely menu/lobby vs gameplay samples, review stability/1% lows, apply safe settings, restart/relaunch if needed, and re-test.
 - Host signal collection: firewall, Defender realtime, power plan, process load, baseline ping.
 - Bounded AETHERFRAME-style promotion/ranking model for advisory optimization only.
 - Ranked recommendations for security, latency, and performance.
@@ -26,11 +26,24 @@ HexHawk classification, base confidence, or security truth.
 2. Review the recommendations and warnings.
 3. Click **Apply Suggested FPS Settings** only if you accept the listed changes.
 4. Relaunch CS2 when the app says a CS2 restart is required. Restart Windows only when a Windows-level action says so.
-5. Click **Re-test Now** and compare **Baseline**, **Latest**, and **Best observed**.
+5. Click **Re-test Now** and compare **Baseline**, **Latest**, and **Best observed**. Prefer gameplay/practice-map captures over menu FPS.
 
 AetherframeGuard does not promise a 100% FPS increase. It records measured signals and keeps using the best
 observed safe state as the comparison point. If a new result is worse, the app reports a guardrail note and suggests
 rollback/manual review instead of pretending the change worked.
+
+
+## CS2 iterative optimizer model
+
+The CS2 path now scores more than raw average FPS. Each PresentMon-backed sample records:
+
+- average FPS and frametime;
+- estimated 1% low and 0.1% low FPS from frame-time samples;
+- frame-pacing stability and stutter-spike candidates;
+- a conservative scene classifier: `gameplay_candidate`, `menu_or_lobby`, or `unknown`;
+- PC/network/system latency context when available.
+
+Menu/lobby FPS can be much higher than real gameplay FPS, so AetherframeGuard penalizes likely menu-only samples when choosing the best observed state. The best result is the safest observed gameplay-like trial, not necessarily the highest average FPS number.
 
 ## Apply Suggested FPS Settings button
 

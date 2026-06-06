@@ -58,6 +58,11 @@ type CounterStrikeCaptureDiagnostics = {
   avgFps: number | null;
   avgFrametimeMs: number | null;
   pcLatencyMs: number | null;
+  fps1pctLow: number | null;
+  fps01pctLow: number | null;
+  stutterCount: number;
+  stabilityScore: number;
+  sceneClassification: string;
 };
 
 type CounterStrikeLaunchStatus = {
@@ -81,6 +86,11 @@ type CounterStrikeSummary = {
   networkLatencyMs: number | null;
   fpsCaptureSource: string | null;
   lastFpsCaptureAt: string | null;
+  fps1pctLow: number | null;
+  fps01pctLow: number | null;
+  stutterCount: number;
+  stabilityScore: number;
+  sceneClassification: string;
   telemetryDiagnostics: CounterStrikeCaptureDiagnostics;
   launchStatus: CounterStrikeLaunchStatus;
 };
@@ -329,6 +339,7 @@ export function App() {
   const [steamSyncAction, setSteamSyncAction] = useState<ActionResult | null>(null);
   const [benchmarkStatus, setBenchmarkStatus] = useState<BenchmarkStatus | null>(null);
   const [benchmarkAction, setBenchmarkAction] = useState<ActionResult | null>(null);
+  const [benchmarkBusy, setBenchmarkBusy] = useState(false);
   const [suggestedFpsAction, setSuggestedFpsAction] = useState<SuggestedFpsSettingsResult | null>(null);
 
   async function runAnalysis() {
@@ -532,6 +543,8 @@ export function App() {
   }
 
   async function runBenchmarkCapture() {
+    if (loading || benchmarkBusy || scanning || calibrating) return;
+    setBenchmarkBusy(true);
     setBenchmarkAction(null);
     try {
       const result = await invoke<ActionResult>('run_benchmark_capture');
@@ -544,6 +557,8 @@ export function App() {
         success: false,
         message: err instanceof Error ? err.message : String(err),
       });
+    } finally {
+      setBenchmarkBusy(false);
     }
   }
 
@@ -695,622 +710,120 @@ export function App() {
     { id: 'hardened', title: 'Hardened', description: 'Security-biased baseline with firewall, Defender, and RDP hardening.' },
   ];
 
-  const systemActionBusy = loading || scanning || calibrating;
+  const systemActionBusy = loading || scanning || calibrating || benchmarkBusy;
 
   return (
-    <div className="app">
+    <div className="app app-simple">
       <div className="hero panel">
         <div>
-          <p className="eyebrow">Guided CS2 FPS and PC safety helper</p>
+          <p className="eyebrow">CS2 FPS helper</p>
           <h1>AetherFrameGuard</h1>
-          <p>
-            Simple flow: 1) start CS2 first and wait until the menu or a match is visible, 2) click Measure,
-            3) review the CS2 diagnostics, 4) apply only safe settings if you want them, 5) fully close and relaunch CS2,
-            then 6) measure again. If FPS says n/a, open C:\ProgramData\AetherframeGuard\counter_strike_diagnostics.log.
-            Scores are advisory only; GYRE remains the only HexHawk verdict authority.
-          </p>
+          <p className="panel-desc simple-lead">Measure → Apply safe settings → Re-test. Advanced tools are collapsed below.</p>
         </div>
-        <button onClick={runAnalysis} disabled={loading}>
-          {loading ? 'Measuring...' : 'Step 1: Measure Current FPS / PC State'}
-        </button>
+        <button onClick={runAnalysis} disabled={systemActionBusy}>{loading ? 'Measuring…' : 'Measure'}</button>
       </div>
 
-      <div className="panel">
+      <div className="panel simple-flow">
         <div className="panel-header">
-          <h2>Security Scan</h2>
-          <button onClick={runSecurityScan} disabled={scanning || loading}>
-            {scanning ? 'Scanning…' : 'Run Security Scan'}
+          <h2>Main flow</h2>
+          <small className="muted-text">Keep CS2 open and visible while measuring.</small>
+        </div>
+        <div className="action-grid three-step-grid">
+          <button className="action-card" onClick={runAnalysis} disabled={systemActionBusy}>
+            <span>1. Measure</span><small>{loading ? 'Working…' : 'Read current FPS/PC state'}</small>
+          </button>
+          <button className="action-card" onClick={applySuggestedFpsSettings} disabled={systemActionBusy}>
+            <span>2. Apply safe CS2 settings</span><small>Backs up files first</small>
+          </button>
+          <button className="action-card" onClick={runBenchmarkCapture} disabled={systemActionBusy}>
+            <span>3. Re-test</span><small>{benchmarkBusy ? 'Capturing…' : 'Compare latest vs best'}</small>
           </button>
         </div>
-        <p className="panel-desc">
-          Click this when you want a safety check before changing settings. It looks for obvious local risks,
-          overlay/capture tools, suspicious startup entries, and CS2 config lines that deserve review. It does not
-          collect passwords, does not replace antivirus, and does not make final malware verdicts.
-        </p>
-        {safeProcesses.length > 0 ? (
-          <div className="whitelist-strip">
-            <strong>Safe Multi-Instance Whitelist</strong>
-            <div className="chip-row">
-              {safeProcesses.map((name) => (
-                <button
-                  key={name}
-                  className="chip-button"
-                  onClick={() => removeSafeProcess(name)}
-                  title="Remove from whitelist"
-                >
-                  {name} ×
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        {scanResult ? (
-          <>
-            <div className={`scan-status ${scanResult.clean ? 'scan-clean' : 'scan-threats'}`}>
-              {scanResult.clean
-                ? 'No local security findings from the current defensive checks.'
-                : `${scanResult.totalFindings} security finding${scanResult.totalFindings !== 1 ? 's' : ''} detected. Review severity, evidence, and advisory/confirmed status below.`}
-            </div>
-            <div className="grid">
-              <div className="metric accent">
-                AETHERFRAME Advisory Signal
-                <strong>{scanResult.threatPromotion.promoted.toFixed(1)}%</strong>
-                <small>Host-defense triage signal only; not a malware verdict or HexHawk authority</small>
-              </div>
-              <div className={`metric ${scanResult.criticalFindings > 0 ? 'sev-critical' : ''}`}>
-                Critical
-                <strong>{scanResult.criticalFindings}</strong>
-              </div>
-              <div className={`metric ${scanResult.highFindings > 0 ? 'sev-high' : ''}`}>
-                High
-                <strong>{scanResult.highFindings}</strong>
-              </div>
-              <div className={`metric ${scanResult.mediumFindings > 0 ? 'sev-medium' : ''}`}>
-                Medium
-                <strong>{scanResult.mediumFindings}</strong>
-              </div>
-              <div className="metric">
-                Low
-                <strong>{scanResult.lowFindings}</strong>
-              </div>
-            </div>
-            <div style={{ marginTop: 14 }}>
-              {scanResult.findings.map(finding => (
-                <div key={finding.id} className={`reco finding-${finding.severity}`}>
-                  <div className="finding-header">
-                    <span className={`sev-badge sev-badge-${finding.severity}`}>{finding.severity.toUpperCase()}</span>
-                    <strong>{finding.title}</strong>
-                    {whitelistCandidateFromFinding(finding) ? (
-                      <button
-                        className="mini-button"
-                        onClick={() => addSafeProcess(whitelistCandidateFromFinding(finding)!)}
-                        title="Trust this known app and suppress future replication alerts"
-                      >
-                        Trust App
-                      </button>
-                    ) : null}
-                  </div>
-                  <p>{finding.description}</p>
-                  <p className="finding-meta">Category: {finding.category} &nbsp;|&nbsp; Status: {finding.confirmed ? 'confirmed local observation' : 'advisory'} &nbsp;|&nbsp; Source: {finding.source} &nbsp;|&nbsp; Observed: {finding.observedAt} &nbsp;|&nbsp; Confidence: {finding.confidence.toFixed(1)}%</p>
-                  <p className="finding-evidence">Evidence: {finding.evidence}</p>
-                  <p className="finding-evidence">Recommendation: {finding.recommendation}</p>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <p className="panel-desc">No scan run yet. Click “Run Security Scan” to analyse processes, network connections, and startup persistence.</p>
-        )}
-      </div>
-      {/* ── System Integration ─────────────────────────────────── */}
-      <div className="panel">
-        <div className="panel-header">
-          <h2>System Integration</h2>
-          <button onClick={loadIntegrationStatus} disabled={calibrating}>Refresh</button>
-        </div>
-        <p className="panel-desc">
-          Optional advanced automation. Start with the simple CS2 button below. Install background tasks only if you
-          understand they run with high Windows privileges and may need Administrator approval. Restart requirements
-          are shown after each action.
-        </p>
-
-        {integrationStatus ? (
-          <div className="grid" style={{ marginBottom: 14 }}>
-            <div className={`metric ${integrationStatus.bootServiceInstalled ? 'metric-ok' : 'metric-warn'}`}>
-              Boot Service
-              <strong>{integrationStatus.bootServiceInstalled ? 'Installed' : 'Not installed'}</strong>
-              <small>{integrationStatus.serviceTaskName}</small>
-            </div>
-            <div className="metric">
-              Calibrated
-              <strong>{integrationStatus.calibrated ? 'Yes' : 'No'}</strong>
-              <small>Run calibration to baseline and apply optimisations</small>
-            </div>
-            <div className="metric accent">
-              Boots Optimised
-              <strong>{integrationStatus.totalBootsOptimized}</strong>
-              <small>Best AETHERFRAME: {integrationStatus.bestPromotionEver.toFixed(1)}%</small>
-            </div>
-            {integrationStatus.lastBootPromotion !== null ? (
-              <div className="metric">
-                Last Boot Score
-                <strong>{integrationStatus.lastBootPromotion!.toFixed(1)}%</strong>
-                <small>Tracked in boot history</small>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div className="reco" style={{ marginBottom: 12 }}>
-          <strong>NVIDIA Profile Inspector Learning Engine</strong>
-          <p>
-            Target tools path: {nvidiaStatus?.toolsPath ?? 'C:/Users/Ziel/Desktop/Tools/NvidiaInspector'}.
-            On each cycle, AetherframeGuard measures before/after gaming and network module scores,
-            applies NVIDIA tuning by CLI import when available, and stores iterative learning in ProgramData.
-            Scheduled/background cycles do not open the NVIDIA Inspector GUI; use the manual button below when GUI review is needed.
-          </p>
-          {nvidiaStatus ? (
-            <p>
-              Found: {nvidiaStatus.found ? 'Yes' : 'No'} | CLI: {nvidiaStatus.cliFound ? 'Yes' : 'No'} |
-              GUI: {nvidiaStatus.guiFound ? 'Yes' : 'No'} | Profile: {nvidiaStatus.profileFound ? 'Yes' : 'No'} |
-              Iterations: {nvidiaStatus.totalIterations} | Best delta: {nvidiaStatus.bestDelta.toFixed(2)}
-              {nvidiaStatus.lastDelta !== null ? ` | Last delta: ${nvidiaStatus.lastDelta.toFixed(2)}` : ''}
-            </p>
-          ) : null}
-          {nvidiaStatus?.lastNotes && nvidiaStatus.lastNotes.length > 0 ? (
-            <p className="finding-evidence" style={{ whiteSpace: 'pre-wrap' }}>
-              {nvidiaStatus.lastNotes.join('\n')}
-            </p>
-          ) : null}
-          <button onClick={runNvidiaTuningCycle} disabled={systemActionBusy}>
-            Run NVIDIA Tuning Cycle
-          </button>
-          {nvidiaActionState ? (
-            <p className={nvidiaActionState.success ? 'success' : 'failure'}>
-              {nvidiaActionState.success ? 'NVIDIA cycle: ' : 'NVIDIA cycle failed: '}
-              {nvidiaActionState.message}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="reco" style={{ marginBottom: 12 }}>
-          <strong>Step 3: Apply safe CS2 FPS settings</strong>
-          <p>
-            This is the main beginner-friendly action. It backs up your CS2 config, writes a small managed CS2 profile,
-            disables Windows capture overlays for gaming, records the change, and then asks you to relaunch CS2 and measure again.
-          </p>
-          {steamSyncStatus ? (
-            <p>
-              Accounts: {steamSyncStatus.syncedAccounts}/{steamSyncStatus.totalAccounts} synced
-              {' '}| Sync runs: {steamSyncStatus.totalSyncs}
-              {steamSyncStatus.lastScore !== null ? ` | Last score: ${steamSyncStatus.lastScore.toFixed(1)}%` : ''}
-              {steamSyncStatus.lastSyncedAt ? ` | Last sync: ${steamSyncStatus.lastSyncedAt}` : ''}
-            </p>
-          ) : null}
-          <div className="chip-row">
-            <button onClick={applySuggestedFpsSettings} disabled={systemActionBusy}>Apply Suggested FPS Settings</button>
-            <button onClick={runCounterStrikeSteamSync} disabled={systemActionBusy}>Only Refresh CS2 Profile Hook</button>
-          </div>
-          <p className="panel-desc">
-            Applies now: CS2 config hook and Windows capture overlay setting. Requires: relaunch CS2 before judging FPS.
-            Windows restart: not normally required for this button. Manual action: close heavy overlays if the scan reports them.
-          </p>
-          {suggestedFpsAction ? (
-            <div className={suggestedFpsAction.success ? 'success' : 'failure'}>
-              <p>{suggestedFpsAction.message}</p>
-              {suggestedFpsAction.backupDir ? <p>Backup folder: {suggestedFpsAction.backupDir}</p> : null}
-              <p>Restart needed: {suggestedFpsAction.cs2RestartRequired ? 'Relaunch CS2' : 'No CS2 restart'}{suggestedFpsAction.windowsRestartRequired ? ' + restart Windows' : ''}</p>
-              {suggestedFpsAction.appliedChanges.length > 0 ? <p>Changed: {suggestedFpsAction.appliedChanges.slice(0, 8).join('; ')}</p> : null}
-              {suggestedFpsAction.warnings.length > 0 ? <p>Warnings: {suggestedFpsAction.warnings.join('; ')}</p> : null}
-            </div>
-          ) : null}
-          {steamSyncAction ? (
-            <p className={steamSyncAction.success ? 'success' : 'failure'}>
-              {steamSyncAction.message}
-            </p>
-          ) : null}
-          {steamSyncStatus?.accounts?.length ? (
-            <div style={{ marginTop: 8 }}>
-              {steamSyncStatus.accounts.map((account) => (
-                <div key={account.accountId} className="boot-entry">
-                  <span className="boot-num">{account.accountId}</span>
-                  <span className={account.synced ? 'boot-score-pos' : 'boot-score-neg'}>
-                    {account.synced ? 'Synced' : 'Needs attention'}
-                  </span>
-                  <span className="boot-latency">{account.autoexecHookPresent ? 'Hooked' : 'Hook missing'}</span>
-                  <span className="boot-settings-count">{account.managedProfileWritten ? 'Profile updated' : 'Profile unchanged'}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="reco" style={{ marginBottom: 12 }}>
-          <strong>Automatic Monitoring & Setting Changes</strong>
-          <p>
-            Enable auto-monitor only after you have tested the manual flow. Each cycle re-measures host state, repairs
-            Steam CS userdata profiles, applies supported tuning, runs a security scan, and logs before/after deltas.
-            It aims for the best observed safe state, but cannot guarantee FPS improvement.
-          </p>
-          {autoMonitor ? (
-            <p>
-              Task: {autoMonitor.taskInstalled ? 'Installed' : 'Not installed'}
-              {autoMonitor.taskInstalled ? ` (${autoMonitor.taskName})` : ''}
-              {' '}| Running: {autoMonitor.taskRunning ? 'Yes' : 'No'}
-              {' '}| Cycles: {autoMonitor.totalCycles}
-              {' '}| Best promotion: {autoMonitor.bestPromotion.toFixed(1)}%
-              {autoMonitor.lastThreatScore !== null ? ` | Last security signal: ${autoMonitor.lastThreatScore.toFixed(1)}%` : ''}
-            </p>
-          ) : null}
-          <p className="panel-desc">
-            System-changing action: installing auto-monitor creates/removes a Windows Scheduled Task and running a
-            cycle can write Steam CS profiles, tuning state, diagnostics, and network/NVIDIA optimization results.
-            Use benchmark history and diagnostics to verify any real improvement.
-          </p>
-
-          <div className="chip-row">
-            <button onClick={installAutoMonitorTask} disabled={systemActionBusy}>Install Auto Monitor</button>
-            <button onClick={uninstallAutoMonitorTask} disabled={systemActionBusy}>Remove Auto Monitor</button>
-            <button onClick={runAutoCycleNow} disabled={systemActionBusy}>Run Auto Cycle Now</button>
-          </div>
-
-          {autoMonitorAction ? (
-            <p className={autoMonitorAction.success ? 'success' : 'failure'}>
-              {autoMonitorAction.message}
-            </p>
-          ) : null}
-
-          {autoMonitor?.recentCycles?.length ? (
-            <div style={{ marginTop: 8 }}>
-              {autoMonitor.recentCycles.slice(0, 4).map((cycle) => (
-                <div key={cycle.cycleNumber} className="boot-entry">
-                  <span className="boot-num">Cycle #{cycle.cycleNumber}</span>
-                  <span className={cycle.promotionDelta >= 0 ? 'boot-score-pos' : 'boot-score-neg'}>
-                    {cycle.afterPromotion.toFixed(1)}% ({cycle.promotionDelta >= 0 ? '+' : ''}{cycle.promotionDelta.toFixed(1)})
-                  </span>
-                  <span className="boot-latency">Security signal {cycle.threatScore.toFixed(1)}%</span>
-                  <span className="boot-settings-count">{cycle.totalFindings} findings</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <div className="reco" style={{ marginBottom: 12 }}>
-          <strong>Step 5: Measure again and compare</strong>
-          <p>
-            Use this after launching CS2, after applying settings, and after any restart. Compare Baseline, Latest,
-            and Best observed. More samples mean more trustworthy results.
-          </p>
-          {benchmarkStatus ? (
-            <p>
-              Sessions: {benchmarkStatus.totalSessions}
-              {' '}| Guardrail: {benchmarkStatus.regressionGuardrailActive ? 'Triggered' : 'Clear'}
-              {benchmarkStatus.lastGuardrailNote ? ` | Last note: ${benchmarkStatus.lastGuardrailNote}` : ''}
-            </p>
-          ) : null}
-          <div className="chip-row">
-            <button onClick={runBenchmarkCapture} disabled={systemActionBusy}>Re-test Now</button>
-          </div>
-          {benchmarkAction ? (
-            <p className={benchmarkAction.success ? 'success' : 'failure'}>
-              {benchmarkAction.message}
-            </p>
-          ) : null}
-          {benchmarkStatus ? (
-            <div style={{ marginTop: 8 }}>
-              {[
-                { label: 'Baseline', session: benchmarkStatus.baseline },
-                { label: 'Latest', session: benchmarkStatus.latest },
-                { label: 'Best', session: benchmarkStatus.best },
-              ].map(({ label, session }) => (
-                <div key={label} className="boot-entry">
-                  <span className="boot-num">{label}</span>
-                  <span className="boot-score-pos">{session ? `${session.objectiveScore.toFixed(1)} objective` : 'n/a'}</span>
-                  <span className="boot-latency">{session?.avgFps !== null && session?.avgFps !== undefined ? `${session.avgFps.toFixed(1)} FPS` : 'FPS n/a'}</span>
-                  <span className="boot-settings-count">{session ? `conf ${session.confidence.toFixed(0)}%` : ''}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        <p className="panel-desc">
-          Advanced buttons below can change Windows settings or scheduled tasks. Use the CS2 button first.
-          Verify every change with Re-test Now; the app reports best observed results, not guaranteed gains.
-        </p>
-        <div className="action-grid" style={{ marginBottom: 12 }}>
-          <button className="action-card" onClick={installBootService} disabled={systemActionBusy}>
-            <span>Install Boot Service</span>
-            <small>SYSTEM-level task, runs every boot. Requires Administrator.</small>
-          </button>
-          <button className="action-card" onClick={uninstallBootService} disabled={systemActionBusy}>
-            <span>Remove Boot Service</span>
-            <small>Deletes the scheduled task. Applied registry settings persist until reverted.</small>
-          </button>
-          <button className="action-card" onClick={runCalibration} disabled={systemActionBusy}>
-            <span>{calibrating ? 'Calibrating…' : 'Run Calibration'}</span>
-            <small>Baseline your system and apply all TCP + memory optimisations immediately.</small>
-          </button>
-          <button className="action-card" onClick={runNetworkOptimization} disabled={systemActionBusy}>
-            <span>Optimise Network Now</span>
-            <small>Apply TCP/IP kernel-driver tuning and RSS immediately without reboot.</small>
-          </button>
-        </div>
-
-        {serviceActionState ? (
-          <p className={serviceActionState.success ? 'success' : 'failure'}>
-            {serviceActionState.success ? '✓ ' : '✗ '}{serviceActionState.message}
-          </p>
-        ) : null}
-
-        {netOptResult ? (
-          <div className="reco">
-            <strong>Network Optimisation Applied</strong>
-            <p className="finding-evidence" style={{ whiteSpace: 'pre-wrap' }}>
-              {netOptResult.split('; ').join('\n')}
-            </p>
-          </div>
-        ) : null}
-
-        {calibrationResult ? (
-          <div className="reco">
-            <strong>Calibration Complete — Baseline AETHERFRAME: {calibrationResult.baselinePromotion.toFixed(1)}%</strong>
-            {calibrationResult.baselineLatencyMs !== null ? (
-              <p>Baseline latency: {calibrationResult.baselineLatencyMs!.toFixed(1)} ms</p>
-            ) : null}
-            <p><strong>Network settings applied:</strong></p>
-            <p className="finding-evidence" style={{ whiteSpace: 'pre-wrap' }}>
-              {calibrationResult.networkSettingsApplied.join('\n')}
-            </p>
-            <p><strong>System settings applied:</strong></p>
-            <p className="finding-evidence" style={{ whiteSpace: 'pre-wrap' }}>
-              {calibrationResult.systemSettingsApplied.join('\n')}
-            </p>
-          </div>
-        ) : null}
-
-        {bootHistory && bootHistory.entries.length > 0 ? (
-          <div style={{ marginTop: 8 }}>
-            <h3 style={{ margin: '0 0 10px', fontSize: '1rem', color: 'rgba(237,246,255,0.80)' }}>
-              Boot History — {bootHistory.totalBootsOptimized} optimised boots
-            </h3>
-            {[...bootHistory.entries].reverse().slice(0, 5).map((entry) => (
-              <div key={entry.bootNumber} className="boot-entry">
-                <span className="boot-num">Boot #{entry.bootNumber}</span>
-                <span className={entry.improvementDelta >= 0 ? 'boot-score-pos' : 'boot-score-neg'}>
-                  {entry.promotionScore.toFixed(1)}%{' '}
-                  <span className="boot-delta">
-                    ({entry.improvementDelta >= 0 ? '+' : ''}{entry.improvementDelta.toFixed(1)})
-                  </span>
-                </span>
-                {entry.latencyMs !== null ? (
-                  <span className="boot-latency">{entry.latencyMs!.toFixed(0)} ms</span>
-                ) : null}
-                <span className="boot-settings-count">{entry.appliedSettings.length} optimisations</span>
-              </div>
-            ))}
-          </div>
-        ) : null}
-      </div>
-      <div className="panel">
-        <h2>Optimization Profiles</h2>
-        <p className="panel-desc">
-          Optional presets. They save a snapshot first so you can restore the last applied profile.
-          Game is for FPS testing, Work restores capture defaults, Hardened favors security.
-        </p>
-        <div className="action-grid">
-          {profileCards.map((profile) => (
-            <button
-              key={profile.id}
-              className="action-card"
-              onClick={() => applyProfile(profile.id)}
-              disabled={systemActionBusy}
-              title={profile.description}
-            >
-              <span>{profile.title}</span>
-              <small>{profile.description}</small>
-            </button>
-          ))}
-        </div>
-        <div className="restore-row">
-          <button onClick={restoreLastProfile} disabled={systemActionBusy || !lastProfileId}>
-            Restore Last Profile
-          </button>
-          <small>{lastProfileId ? `Last profile: ${lastProfileId}` : 'No profile snapshot saved yet.'}</small>
-        </div>
+        {error ? <p className="failure">{error}</p> : null}
+        {suggestedFpsAction ? <p className={suggestedFpsAction.success ? 'success' : 'failure'}>{suggestedFpsAction.message}{suggestedFpsAction.cs2RestartRequired ? ' Relaunch CS2 before re-testing.' : ''}</p> : null}
+        {benchmarkAction ? <p className={benchmarkAction.success ? 'success' : 'failure'}>{benchmarkAction.message}</p> : null}
       </div>
 
       <div className="panel">
-        {error ? <p className="failure">Scan error: {error}</p> : null}
-        {actionState ? (
-          <p className={actionState.success ? 'success' : 'failure'}>
-            {actionState.success ? 'Action complete: ' : 'Action failed: '}
-            {actionState.message}
-          </p>
-        ) : null}
-        {profileState ? (
-          <div className={profileState.success ? 'success' : 'failure'}>
-            <p>{profileState.message}</p>
-            {profileState.warnings.length > 0 ? <p>Warnings: {profileState.warnings.join('; ')}</p> : null}
-            <p>Snapshot: {profileState.snapshotPath}</p>
-          </div>
-        ) : null}
+        <h2>Status</h2>
+        <div className="grid compact-grid">
+          <div className="metric">CS2<strong>{result?.counterStrike.active ? 'Running' : 'Not running'}</strong></div>
+          <div className="metric">FPS<strong>{result?.counterStrike.avgFps !== null && result?.counterStrike.avgFps !== undefined ? result.counterStrike.avgFps.toFixed(1) : 'n/a'}</strong></div>
+          <div className="metric">1% low<strong>{result?.counterStrike.telemetryDiagnostics.fps1pctLow !== null && result?.counterStrike.telemetryDiagnostics.fps1pctLow !== undefined ? result.counterStrike.telemetryDiagnostics.fps1pctLow.toFixed(1) : 'n/a'}</strong></div>
+          <div className="metric">Stability<strong>{result?.counterStrike.telemetryDiagnostics.stabilityScore ? `${result.counterStrike.telemetryDiagnostics.stabilityScore.toFixed(0)}%` : 'n/a'}</strong></div>
+          <div className="metric">Scene<strong>{result?.counterStrike.telemetryDiagnostics.sceneClassification || 'unknown'}</strong></div>
+          <div className="metric">PresentMon<strong>{result?.counterStrike.telemetryDiagnostics.presentmonFound ? 'Found' : 'Missing/unknown'}</strong></div>
+        </div>
+        {result?.counterStrike.telemetryDiagnostics.captureError ? <p className="failure short-note">{result.counterStrike.telemetryDiagnostics.captureError}</p> : null}
+        <p className="panel-desc log-path">Logs: C:\ProgramData\AetherframeGuard</p>
       </div>
+
+      {benchmarkStatus ? (
+        <div className="panel">
+          <div className="panel-header">
+            <h2>Benchmark</h2>
+            <button onClick={runBenchmarkCapture} disabled={systemActionBusy}>{benchmarkBusy ? 'Capturing…' : 'Re-test'}</button>
+          </div>
+          {['Baseline', 'Latest', 'Best'].map((label) => {
+            const session = label === 'Baseline' ? benchmarkStatus.baseline : label === 'Latest' ? benchmarkStatus.latest : benchmarkStatus.best;
+            return (
+              <div key={label} className="boot-entry">
+                <span className="boot-num">{label}</span>
+                <span className="boot-score-pos">{session?.avgFps !== null && session?.avgFps !== undefined ? `${session.avgFps.toFixed(1)} FPS` : 'FPS n/a'}</span>
+                <span className="boot-latency">{session ? `${session.confidence.toFixed(0)}% conf` : ''}</span>
+              </div>
+            );
+          })}
+          {benchmarkStatus.regressionGuardrailActive ? <p className="failure">Guardrail: {benchmarkStatus.lastGuardrailNote}</p> : null}
+        </div>
+      ) : null}
+
+      <details className="panel details-panel">
+        <summary>Advanced tools</summary>
+        <div className="advanced-section">
+          <div className="panel-header"><h3>Security</h3><button onClick={runSecurityScan} disabled={systemActionBusy}>{scanning ? 'Scanning…' : 'Scan'}</button></div>
+          {scanResult ? <p className={scanResult.clean ? 'success' : 'failure'}>{scanResult.clean ? 'No findings.' : `${scanResult.totalFindings} finding(s).`}</p> : <p className="panel-desc">Optional local safety scan.</p>}
+          <h3>Profiles</h3>
+          <div className="chip-row">
+            {profileCards.map((profile) => <button key={profile.id} onClick={() => applyProfile(profile.id)} disabled={systemActionBusy}>{profile.title}</button>)}
+            <button onClick={restoreLastProfile} disabled={systemActionBusy || !lastProfileId}>Restore last</button>
+          </div>
+          <h3>System tasks</h3>
+          <div className="chip-row">
+            <button onClick={installBootService} disabled={systemActionBusy}>Install boot task</button>
+            <button onClick={uninstallBootService} disabled={systemActionBusy}>Remove boot task</button>
+            <button onClick={runCalibration} disabled={systemActionBusy}>{calibrating ? 'Calibrating…' : 'Calibrate'}</button>
+            <button onClick={runNetworkOptimization} disabled={systemActionBusy}>Network tune</button>
+          </div>
+          {serviceActionState ? <p className={serviceActionState.success ? 'success' : 'failure'}>{serviceActionState.message}</p> : null}
+          {netOptResult ? <p className="panel-desc">{netOptResult}</p> : null}
+          <h3>Auto/NVIDIA</h3>
+          <div className="chip-row">
+            <button onClick={runNvidiaTuningCycle} disabled={systemActionBusy}>NVIDIA cycle</button>
+            <button onClick={installAutoMonitorTask} disabled={systemActionBusy}>Install auto monitor</button>
+            <button onClick={uninstallAutoMonitorTask} disabled={systemActionBusy}>Remove auto monitor</button>
+            <button onClick={runAutoCycleNow} disabled={systemActionBusy}>Run auto cycle</button>
+            <button onClick={runCounterStrikeSteamSync} disabled={systemActionBusy}>Refresh CS2 hook</button>
+          </div>
+          {nvidiaActionState ? <p className={nvidiaActionState.success ? 'success' : 'failure'}>{nvidiaActionState.message}</p> : null}
+          {autoMonitorAction ? <p className={autoMonitorAction.success ? 'success' : 'failure'}>{autoMonitorAction.message}</p> : null}
+          {steamSyncAction ? <p className={steamSyncAction.success ? 'success' : 'failure'}>{steamSyncAction.message}</p> : null}
+        </div>
+      </details>
 
       {result ? (
-        <>
-          <div className="panel">
-            <h2>Module Scores</h2>
-            <div className="odometer-grid">
-              {moduleOdometers.map((module) => {
-                const progress = clampScore(module.score);
-                const ringDegrees = (progress / 100) * 360;
-                const delta = calculateImprovementPercent(module.score, module.baseline);
-                const band = scoreBand(progress);
-                const ringColor = bandColor(band);
-
-                return (
-                  <div className={`odometer-card odometer-card-${band} ${module.accent ? 'odometer-card-accent' : ''}`} key={module.key}>
-                    <div className="odometer-header">
-                      <strong>{module.key}</strong>
-                      <span>{progress.toFixed(1)}%</span>
-                    </div>
-                    <div
-                      className="odometer-ring"
-                      style={{
-                        background: `conic-gradient(${ringColor} 0deg ${ringDegrees.toFixed(1)}deg, rgba(93, 129, 171, 0.28) ${ringDegrees.toFixed(1)}deg 360deg)`,
-                      }}
-                    >
-                      <div className="odometer-inner">
-                        <span>{progress.toFixed(1)}</span>
-                      </div>
-                    </div>
-                    <p className="odometer-subtitle">{module.subtitle}</p>
-                    {delta !== null ? (
-                      <p className={`odometer-delta ${delta >= 0 ? 'odometer-delta-pos' : 'odometer-delta-neg'}`}>
-                        Improvement {delta >= 0 ? '+' : ''}{delta.toFixed(1)}%
-                      </p>
-                    ) : (
-                      <p className="odometer-delta odometer-delta-neutral">Improvement n/a until baseline capture</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {!calibrationResult ? (
-              <p className="panel-desc" style={{ marginTop: 10 }}>
-                Run calibration once to lock module baselines for exact improvement percentages.
-              </p>
-            ) : null}
-
-            <div className="grid" style={{ marginTop: 12 }}>
-              {moduleCards.map((module) => (
-                <div className="metric" key={`summary-${module.key}`}>
-                  {module.key}
-                  <strong>{module.value.score.toFixed(1)}</strong>
-                  <small>{module.value.signals[0] ?? 'No positive signal yet'}</small>
-                </div>
-              ))}
-            </div>
+        <details className="panel details-panel">
+          <summary>Details</summary>
+          <div className="grid compact-grid">
+            <div className="metric">Firewall<strong>{result.signals.firewallEnabled ? 'On' : 'Off'}</strong></div>
+            <div className="metric">Defender<strong>{result.signals.defenderRealtimeEnabled ? 'On' : 'Off'}</strong></div>
+            <div className="metric">Power<strong>{result.signals.activePowerPlan}</strong></div>
+            <div className="metric">Ping<strong>{result.signals.avgPingMs ?? 'n/a'} ms</strong></div>
+            <div className="metric">CPU<strong>{result.signals.cpuUsagePercent.toFixed(1)}%</strong></div>
+            <div className="metric">Memory<strong>{result.signals.availableMemoryMb} MB free</strong></div>
           </div>
-
-          <div className="panel">
-            <h2>Host Snapshot</h2>
-            <div className="grid">
-              <div className="metric">Firewall<strong>{result.signals.firewallEnabled ? 'On' : 'Off'}</strong></div>
-              <div className="metric">Defender<strong>{result.signals.defenderRealtimeEnabled ? 'On' : 'Off'}</strong></div>
-              <div className="metric">RDP<strong>{result.signals.remoteDesktopEnabled ? 'Exposed' : 'Closed'}</strong></div>
-              <div className="metric">Power Plan<strong>{result.signals.activePowerPlan}</strong></div>
-              <div className="metric">Adapters<strong>{result.signals.activeNetworkAdapterCount}</strong></div>
-              <div className="metric">Ping<strong>{result.signals.avgPingMs ?? 'n/a'} ms</strong></div>
-              <div className="metric">OS Latency<strong>{result.signals.systemLatencyMs ?? 'n/a'} ms</strong></div>
-              <div className="metric">CPU<strong>{result.signals.cpuUsagePercent.toFixed(1)}%</strong></div>
-              <div className="metric">Memory<strong>{result.signals.availableMemoryMb} / {result.signals.totalMemoryMb} MB</strong></div>
-              <div className="metric">Overlays<strong>{result.signals.overlayProcessCount}</strong></div>
-              <div className="metric">CS Active<strong>{result.signals.counterStrikeActive ? 'Yes' : 'No'}</strong></div>
-              <div className="metric">CS Score<strong>{result.counterStrike.score.toFixed(1)}%</strong></div>
-              <div className="metric">CS FPS<strong>{result.counterStrike.avgFps !== null ? result.counterStrike.avgFps.toFixed(1) : 'n/a'}</strong></div>
-              <div className="metric">CS Frametime<strong>{result.counterStrike.avgFrametimeMs !== null ? `${result.counterStrike.avgFrametimeMs.toFixed(2)} ms` : 'n/a'}</strong></div>
-              <div className="metric">CS PC Latency<strong>{result.counterStrike.pcLatencyMs !== null ? `${result.counterStrike.pcLatencyMs.toFixed(2)} ms` : 'n/a'}</strong></div>
-              <div className="metric">CS Net Latency<strong>{result.counterStrike.networkLatencyMs !== null ? `${result.counterStrike.networkLatencyMs.toFixed(1)} ms` : 'n/a'}</strong></div>
-              <div className="metric">Ethernet<strong>{result.signals.ethernetAdapterActive ? 'Yes' : 'No'}</strong></div>
-              <div className="metric">Wi-Fi<strong>{result.signals.wifiAdapterActive ? 'Yes' : 'No'}</strong></div>
-            </div>
-            <div className="reco" style={{ marginTop: 12 }}>
-              <strong>CS2 Readiness & Telemetry Diagnostics</strong>
-              <p>Preferred launch: {result.counterStrike.launchStatus.preferredLaunchPath}</p>
-              <p>Launch batch: {result.counterStrike.launchStatus.exists ? 'found' : 'missing'} | Readable: {result.counterStrike.launchStatus.readable ? 'yes' : 'no'} | Steam app 730: {result.counterStrike.launchStatus.usesSteamApplaunch730 ? 'yes' : 'not proven'} | High priority: {result.counterStrike.launchStatus.usesHighPriority ? 'yes' : 'no'}</p>
-              <p>PresentMon: {result.counterStrike.telemetryDiagnostics.presentmonFound ? 'found' : 'missing'}{result.counterStrike.telemetryDiagnostics.presentmonPath ? ` at ${result.counterStrike.telemetryDiagnostics.presentmonPath}` : ''}</p>
-              <p>CS2 process: {result.counterStrike.telemetryDiagnostics.cs2ProcessFound ? 'running' : 'not running'} | Capture attempted: {result.counterStrike.telemetryDiagnostics.captureAttempted ? 'yes' : 'no'} | Capture succeeded: {result.counterStrike.telemetryDiagnostics.captureSucceeded ? 'yes' : 'no'}</p>
-              <p>Last capture time: {result.counterStrike.lastFpsCaptureAt ?? result.counterStrike.telemetryDiagnostics.capturedAt}</p>
-              <p>Last values: FPS {result.counterStrike.telemetryDiagnostics.avgFps !== null ? result.counterStrike.telemetryDiagnostics.avgFps.toFixed(1) : 'n/a'} | Frametime {result.counterStrike.telemetryDiagnostics.avgFrametimeMs !== null ? `${result.counterStrike.telemetryDiagnostics.avgFrametimeMs.toFixed(2)} ms` : 'n/a'} | PC latency {result.counterStrike.telemetryDiagnostics.pcLatencyMs !== null ? `${result.counterStrike.telemetryDiagnostics.pcLatencyMs.toFixed(2)} ms` : 'n/a'}</p>
-              {result.counterStrike.telemetryDiagnostics.captureError ? <p className="finding-evidence">Unavailable reason: {result.counterStrike.telemetryDiagnostics.captureError}</p> : null}
-              {result.counterStrike.launchStatus.notes.length > 0 ? <p className="finding-evidence">Launch notes: {result.counterStrike.launchStatus.notes.join(' | ')}</p> : null}
-              {result.counterStrike.fpsCaptureSource ? <p className="panel-desc">CS telemetry source: {result.counterStrike.fpsCaptureSource}{result.counterStrike.lastFpsCaptureAt ? ` | last capture: ${result.counterStrike.lastFpsCaptureAt}` : ''}</p> : null}
-            </div>
-          </div>
-
-          <div className="panel">
-            <h2>Safe Actions</h2>
-            <div className="action-grid">
-              {result.actions.map((action) => (
-                <button
-                  key={action.id}
-                  className="action-card"
-                  onClick={() => triggerAction(action.id)}
-                  title={action.rationale}
-                >
-                  <span>{action.title}</span>
-                  <small>{action.category} | {action.confidence.toFixed(1)}%</small>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="panel">
-            <h2>Ranked Recommendations</h2>
-            {result.recommendations.length === 0 ? <p>No priority actions detected.</p> : null}
-            {result.recommendations.map((item) => (
-              <div key={item.id} className="reco">
-                <strong>{item.title}</strong>
-                <p>{item.rationale}</p>
-                <p>
-                  Category: {item.category} | Risk: {item.risk} | Impact: {item.impact} | Confidence: {item.confidence.toFixed(1)}%
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="panel">
-            <h2>Module Details</h2>
-            {moduleCards.map((module) => (
-              <div key={module.key} className="reco">
-                <strong>{module.key}</strong>
-                <p>Signals: {module.value.signals.length > 0 ? module.value.signals.join('; ') : 'None'}</p>
-                <p>Blockers: {module.value.blockers.length > 0 ? module.value.blockers.join('; ') : 'None'}</p>
-              </div>
-            ))}
-          </div>
-
-          {profileState ? (
-            <div className="panel">
-              <h2>Before / After Proof</h2>
-              <div className="grid">
-                <div className="metric">
-                  Promotion
-                  <strong>{profileState.delta.promotionAfter.toFixed(1)}%</strong>
-                  <small>{profileState.delta.promotionDelta >= 0 ? '+' : ''}{profileState.delta.promotionDelta.toFixed(1)} pts</small>
-                </div>
-                <div className="metric">
-                  Security
-                  <strong>{profileState.delta.securityAfter.toFixed(1)}</strong>
-                  <small>{profileState.delta.securityDelta >= 0 ? '+' : ''}{profileState.delta.securityDelta.toFixed(1)} pts</small>
-                </div>
-                <div className="metric">
-                  Network
-                  <strong>{profileState.delta.networkAfter.toFixed(1)}</strong>
-                  <small>{profileState.delta.networkDelta >= 0 ? '+' : ''}{profileState.delta.networkDelta.toFixed(1)} pts</small>
-                </div>
-                <div className="metric">
-                  Performance
-                  <strong>{profileState.delta.performanceAfter.toFixed(1)}</strong>
-                  <small>{profileState.delta.performanceDelta >= 0 ? '+' : ''}{profileState.delta.performanceDelta.toFixed(1)} pts</small>
-                </div>
-                <div className="metric">
-                  Gaming
-                  <strong>{profileState.delta.gamingAfter.toFixed(1)}</strong>
-                  <small>{profileState.delta.gamingDelta >= 0 ? '+' : ''}{profileState.delta.gamingDelta.toFixed(1)} pts</small>
-                </div>
-              </div>
-              <div className="reco">
-                <strong>Applied Changes</strong>
-                <p>{profileState.appliedChanges.length > 0 ? profileState.appliedChanges.join('; ') : 'No changes were applied.'}</p>
-              </div>
-            </div>
-          ) : null}
-        </>
+          <p className="panel-desc short-note">Capture path: {result.counterStrike.telemetryDiagnostics.presentmonPath ?? 'PresentMon not found'}</p>
+        </details>
       ) : null}
     </div>
   );
