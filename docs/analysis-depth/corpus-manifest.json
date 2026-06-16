@@ -1,0 +1,85 @@
+{
+  "schema": "hexhawk.analysis_depth.corpus_manifest.v1",
+  "date": "2026-06-15",
+  "purpose": "Baseline manifest for slow analysis-depth upgrades. Synthetic fixtures come first; real-binary assertions remain guarded until stable artifacts and expected outputs are recorded.",
+  "trustBoundary": {
+    "gyre": "sole classification and base-confidence authority",
+    "nest": "evidence orchestration/convergence only",
+    "aetherframeForge": "optional advisory packaging/refinement only when policy permits",
+    "nexus": "assistant/consumer/proposal layer only",
+    "analysisSurfaces": "disassembly, CFG, TALON, STRIKE, decompiler, debugger state, and traces are analyst evidence/advisory surfaces"
+  },
+  "syntheticFixtures": [
+    {
+      "id": "synthetic.simple_call_branch_return",
+      "status": "implemented-in-tests",
+      "file": "HexHawk/src/utils/__tests__/disassemblyAnalysis.test.ts",
+      "covers": [
+        "function start candidates",
+        "function end candidates",
+        "direct call xrefs",
+        "conditional jump xrefs",
+        "unconditional jump xrefs",
+        "basic block splitting",
+        "confidence and warning output"
+      ],
+      "notes": "Uses hand-authored instruction arrays to avoid fragile real-binary output in the first foundation slice."
+    },
+    {
+      "id": "synthetic.truncated_function_uncertain_end",
+      "status": "implemented-in-tests",
+      "file": "HexHawk/src/utils/__tests__/disassemblyAnalysis.test.ts",
+      "covers": [
+        "low-confidence end-of-input function end",
+        "uncertain-function-end warning"
+      ],
+      "notes": "Proves uncertain boundaries become warnings instead of exact claims."
+    },
+    {
+      "id": "synthetic.single_nop_low_confidence_entry",
+      "status": "implemented-in-tests",
+      "file": "HexHawk/src/utils/__tests__/disassemblyAnalysis.test.ts",
+      "covers": [
+        "low-confidence entry-only function start",
+        "uncertain-function-start warning",
+        "program model advisory-only boundary"
+      ],
+      "notes": "Ensures the new model does not include classification or threat-score fields."
+    }
+  ],
+  "plannedFixtures": [
+    {
+      "id": "synthetic.switch_jump_table_candidate",
+      "status": "planned",
+      "covers": ["jump table candidate modeling", "indirect jump warning"]
+    },
+    {
+      "id": "synthetic.import_call_and_string_refs",
+      "status": "planned",
+      "covers": ["ImportCall", "StringReference", "DataReference"]
+    },
+    {
+      "id": "synthetic.tail_call_thunk",
+      "status": "planned",
+      "covers": ["tail-jump function end", "thunk candidate modeling"]
+    },
+    {
+      "id": "real.guarded_nest_cli_disassembly",
+      "status": "planned-guarded",
+      "covers": ["backend disassembly parity", "real binary address normalization"],
+      "guard": "Only run when nest_cli and selected local samples exist; do not make release or correctness claims from historical outputs."
+    }
+  ],
+  "validationCommandsForThisSlice": [
+    "yarn typecheck",
+    "yarn test -- disassembly",
+    "yarn test -- decompiler",
+    "yarn build",
+    "git diff --check"
+  ],
+  "notes": [
+    "The first exit goal is a typed foundation, not better decompiler output.",
+    "Pseudo-C remains analyst guidance, not recovered source.",
+    "Debugger and STRIKE live/runtime behavior are documented as current baseline only and are not expanded in this slice."
+  ]
+}
