@@ -9,6 +9,7 @@ import {
   type TalonIntent,
   type IntentCategory,
 } from '../utils/talonEngine';
+import { decompile } from '../utils/decompilerEngine';
 import type { BehavioralTag } from '../utils/correlationEngine';
 import type { NaturalLoop, LoopClassification } from '../utils/cfgSignalExtractor';
 import SettingsPanel, {
@@ -528,6 +529,7 @@ export default function TalonView({
       warnings: [],
       instrCount: 0,
       logicRegions: [],
+      maturity: decompile([], null, { functionName: 'sub_unknown' }).maturity,
       summary: {
         name: 'sub_unknown',
         startAddress: 0,

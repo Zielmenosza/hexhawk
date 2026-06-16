@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import {
   decompile,
+  decompilerMaturityToExport,
+  formatDecompilerMaturityMarkdown,
   type DecompileResult,
   type PseudoLine,
   type IRBlock,
@@ -270,6 +272,49 @@ function FunctionSelector({ functions, selectedAddr, onSelect }: FuncSelectorPro
   );
 }
 
+function downloadText(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function MaturityPanel({ result }: { result: DecompileResult }) {
+  const { maturity } = result;
+  return (
+    <div className="dc-sidebar-section" data-testid="decompiler-maturity-telemetry">
+      <div className="dc-sidebar-title">Maturity telemetry</div>
+      <div className="dc-note-text">
+        Advisory only: pseudocode and disassembly recovery do not change GYRE/NEST verdict truth.
+      </div>
+      <div className="dc-sidebar-stat">
+        Lifted: {maturity.instructionSummary.lifted}/{maturity.instructionSummary.total}
+        {maturity.instructionSummary.unknown > 0 ? ` · ${maturity.instructionSummary.unknown} unknown` : ''}
+      </div>
+      <div className="dc-sidebar-stat">
+        CFG: {maturity.cfgSummary.blockCount} blocks · {maturity.cfgSummary.edgeCount} edges · {maturity.cfgSummary.backEdgeCount} back edges
+      </div>
+      <div className="dc-sidebar-stat">
+        Calls: {maturity.callArgumentRecovery.recoveredCallCount}/{maturity.callArgumentRecovery.callCount} with recovered args
+      </div>
+      <div className="dc-sidebar-stat">
+        Stack frame: {maturity.stackFrameSummary.localCount} locals · {maturity.stackFrameSummary.stackArgCount} stack args · {maturity.stackFrameSummary.registerParamCount} reg params
+      </div>
+      <div className="dc-sidebar-stat">
+        Quality: {maturity.pseudocodeQuality.uncertainLineCount} uncertain lines · {maturity.pseudocodeQuality.conservativeRewriteCount} safe rewrites
+      </div>
+      {maturity.cfgSummary.fallbackPartitioningUsed && (
+        <div className="dc-warning-item">⚠ CFG fallback partitioning used</div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────
 
 type ViewMode = 'pseudocode' | 'ir';
@@ -308,6 +353,7 @@ export default function DecompilerView({
         logicRegions: [],
         warnings: [],
         instrCount: 0,
+        maturity: decompile([], null, { functionName: 'sub_unknown' }).maturity,
       };
     }
 
@@ -329,6 +375,22 @@ export default function DecompilerView({
   const statsText = result.instrCount > 0
     ? `${result.instrCount} instr · ${result.irBlocks.length} blocks · ${result.varMap.size} vars`
     : '';
+
+  const handleExportMaturityJson = useCallback(() => {
+    downloadText(
+      JSON.stringify(decompilerMaturityToExport(result), null, 2),
+      'hexhawk-decompiler-maturity.json',
+      'application/json',
+    );
+  }, [result]);
+
+  const handleExportMaturityMarkdown = useCallback(() => {
+    downloadText(
+      formatDecompilerMaturityMarkdown(result),
+      'hexhawk-decompiler-maturity.md',
+      'text/markdown',
+    );
+  }, [result]);
 
   return (
     <div className="dc-root">
@@ -371,6 +433,22 @@ export default function DecompilerView({
           >
             Vars
           </button>
+          <button
+            type="button"
+            className="dc-toggle-btn"
+            onClick={handleExportMaturityJson}
+            title="Export advisory decompiler/disassembler maturity telemetry as JSON"
+          >
+            ↓ Maturity JSON
+          </button>
+          <button
+            type="button"
+            className="dc-toggle-btn"
+            onClick={handleExportMaturityMarkdown}
+            title="Export advisory decompiler/disassembler maturity telemetry as Markdown"
+          >
+            ↓ Maturity MD
+          </button>
         </div>
       </div>
 
@@ -400,6 +478,7 @@ export default function DecompilerView({
         {showVarDict && viewMode === 'pseudocode' && (
           <div className="dc-sidebar">
             <VarDictionary varMap={result.varMap} />
+            <MaturityPanel result={result} />
 
             <div className="dc-sidebar-section">
               <div className="dc-sidebar-title">Structure</div>

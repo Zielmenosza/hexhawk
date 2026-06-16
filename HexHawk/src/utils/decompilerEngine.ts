@@ -16,6 +16,10 @@
  *   • Graceful degradation – unknown instructions fall back to raw text.
  */
 
+import { liftInstructionsToDecompilerIr } from './decompilerIr';
+import { computeDecompilerMaturitySummary } from './decompilerMaturity';
+import type { DecompilerMaturitySummary } from './decompilerTypes';
+
 // ─────────────────────────────────────────────────────────
 // SHARED INPUT TYPES (matching App.tsx)
 // ─────────────────────────────────────────────────────────
@@ -136,6 +140,54 @@ export type LogicRegion = {
   relatedAddresses: number[];
 };
 
+export type DecompilerMaturityTelemetry = {
+  schemaVersion: '1.0.0';
+  advisoryOnly: true;
+  authorityBoundary: 'talon_veil_guidance_not_verdict_authority';
+  architecture: Architecture;
+  instructionSummary: {
+    total: number;
+    lifted: number;
+    unknown: number;
+    unknownAddresses: number[];
+    failedDecodeRanges: Array<{ start: number; end: number; count: number }>;
+  };
+  cfgSummary: {
+    blockCount: number;
+    edgeCount: number;
+    backEdgeCount: number;
+    unreachableBlockCount: number;
+    unreachableBlocks: string[];
+    fallbackPartitioningUsed: boolean;
+  };
+  callArgumentRecovery: {
+    callCount: number;
+    recoveredCallCount: number;
+    unresolvedCallCount: number;
+    recoveredArgumentCount: number;
+    registerWindowCount: number;
+    stackWindowCount: number;
+    registerStackWindowCount: number;
+  };
+  stackFrameSummary: {
+    localCount: number;
+    stackArgCount: number;
+    registerParamCount: number;
+    localNames: string[];
+    stackArgNames: string[];
+    registerParamNames: string[];
+  };
+  pseudocodeQuality: {
+    uncertainLineCount: number;
+    warningCount: number;
+    conservativeRewriteCount: number;
+    logicRegionCount: number;
+  };
+  /** Honest explicit-IR maturity summary. Advisory only; not verdict evidence. */
+  explicitIrSummary: DecompilerMaturitySummary;
+  limitations: string[];
+};
+
 export type DecompileResult = {
   functionName: string;
   startAddress: number;
@@ -147,6 +199,8 @@ export type DecompileResult = {
   warnings: string[];
   instrCount: number;
   cseRewriteCount?: number;
+  /** Advisory maturity telemetry for UI/report/export surfaces. Not verdict evidence. */
+  maturity: DecompilerMaturityTelemetry;
 };
 
 // ─────────────────────────────────────────────────────────
@@ -2315,6 +2369,195 @@ export function detectLogicRegions(irBlocks: IRBlock[]): LogicRegion[] {
 }
 
 // ─────────────────────────────────────────────────────────
+// MATURITY TELEMETRY / EXPORT HELPERS
+// ─────────────────────────────────────────────────────────
+
+function groupConsecutiveAddresses(addresses: number[]): Array<{ start: number; end: number; count: number }> {
+  const sorted = [...addresses].sort((a, b) => a - b);
+  const ranges: Array<{ start: number; end: number; count: number }> = [];
+  for (const address of sorted) {
+    const last = ranges[ranges.length - 1];
+    if (!last || address > last.end + 16) {
+      ranges.push({ start: address, end: address, count: 1 });
+    } else {
+      last.end = address;
+      last.count += 1;
+    }
+  }
+  return ranges;
+}
+
+function reachableBlockIds(blocks: IRBlock[], backEdges: Set<string>): Set<string> {
+  const entry = findEntryBlock(blocks);
+  if (!entry) return new Set();
+  const blockMap = new Map(blocks.map(b => [b.id, b]));
+  const seen = new Set<string>();
+  const queue = [entry.id];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const block = blockMap.get(id);
+    if (!block) continue;
+    for (const successor of block.allSuccessors) {
+      if (!backEdges.has(`${id}->${successor}`) && !seen.has(successor)) {
+        queue.push(successor);
+      }
+    }
+  }
+  return seen;
+}
+
+function buildDecompilerMaturityTelemetry(args: {
+  architecture: Architecture;
+  instructionCount: number;
+  irBlocks: IRBlock[];
+  varMap: VarMap;
+  lines: PseudoLine[];
+  warnings: string[];
+  logicRegions: LogicRegion[];
+  conservativeRewriteCount: number;
+  explicitIrSummary?: DecompilerMaturitySummary;
+}): DecompilerMaturityTelemetry {
+  const allStmts = collectAllStmts(args.irBlocks);
+  const unknownAddresses = allStmts.filter(s => s.op === 'unknown').map(s => s.address);
+  const backEdges = computeBackEdges(args.irBlocks);
+  const reachableIds = reachableBlockIds(args.irBlocks, backEdges);
+  const unreachableBlocks = args.irBlocks.filter(block => !reachableIds.has(block.id)).map(block => block.id);
+  const calls = allStmts.filter((stmt): stmt is Extract<IRStmt, { op: 'call' }> => stmt.op === 'call');
+  const recoveredCalls = calls.filter(call => (call.args?.length ?? 0) > 0);
+  const varNames = Array.from(args.varMap.values());
+  const localNames = Array.from(new Set(varNames.filter(name => name.startsWith('local_')))).sort();
+  const stackArgNames = Array.from(new Set(varNames.filter(name => name.startsWith('arg_')))).sort();
+  const registerParamNames = Array.from(new Set(varNames.filter(name => name.startsWith('param_')))).sort();
+  const limitations = [
+    'Decompiler/disassembler maturity telemetry is advisory analyst guidance only; it is not GYRE verdict evidence.',
+    'Pseudocode is lifted from bounded disassembly and should not be read as exact source recovery.',
+    'Call arguments are recovered from stale-bounded register/stack windows and may be incomplete.',
+    'CFG shape is derived from available static blocks/edges; unresolved indirect flow remains uncertain.',
+  ];
+  if (unknownAddresses.length > 0) {
+    limitations.push('Some instructions could not be lifted and are preserved as uncertain raw assembly comments.');
+  }
+  if (args.warnings.some(w => w.includes('fallback partitioning'))) {
+    limitations.push('CFG/disassembly ranges did not fully align; instruction-derived fallback partitioning was used.');
+  }
+
+  const explicitIrSummary = args.explicitIrSummary ?? computeDecompilerMaturitySummary({
+    instructions: [],
+    irNodes: [],
+    irBlocks: args.irBlocks,
+    lines: args.lines,
+    warnings: args.warnings,
+    fallbackPartitioningUsed: args.warnings.some(w => w.includes('fallback partitioning')),
+  });
+
+  return {
+    schemaVersion: '1.0.0',
+    advisoryOnly: true,
+    authorityBoundary: 'talon_veil_guidance_not_verdict_authority',
+    architecture: args.architecture,
+    instructionSummary: {
+      total: args.instructionCount,
+      lifted: Math.max(0, allStmts.length - unknownAddresses.length),
+      unknown: unknownAddresses.length,
+      unknownAddresses,
+      failedDecodeRanges: groupConsecutiveAddresses(unknownAddresses),
+    },
+    cfgSummary: {
+      blockCount: args.irBlocks.length,
+      edgeCount: args.irBlocks.reduce((count, block) => count + block.allSuccessors.length, 0),
+      backEdgeCount: backEdges.size,
+      unreachableBlockCount: unreachableBlocks.length,
+      unreachableBlocks,
+      fallbackPartitioningUsed: args.warnings.some(w => w.includes('fallback partitioning')),
+    },
+    callArgumentRecovery: {
+      callCount: calls.length,
+      recoveredCallCount: recoveredCalls.length,
+      unresolvedCallCount: Math.max(0, calls.length - recoveredCalls.length),
+      recoveredArgumentCount: recoveredCalls.reduce((count, call) => count + (call.args?.length ?? 0), 0),
+      registerWindowCount: calls.filter(call => call.argRecovery === 'register-window').length,
+      stackWindowCount: calls.filter(call => call.argRecovery === 'stack-window').length,
+      registerStackWindowCount: calls.filter(call => call.argRecovery === 'register-stack-window').length,
+    },
+    stackFrameSummary: {
+      localCount: localNames.length,
+      stackArgCount: stackArgNames.length,
+      registerParamCount: registerParamNames.length,
+      localNames,
+      stackArgNames,
+      registerParamNames,
+    },
+    pseudocodeQuality: {
+      uncertainLineCount: args.lines.filter(line => line.isUncertain || line.kind === 'uncertain').length,
+      warningCount: args.warnings.length,
+      conservativeRewriteCount: args.conservativeRewriteCount,
+      logicRegionCount: args.logicRegions.length,
+    },
+    explicitIrSummary,
+    limitations,
+  };
+}
+
+function emptyDecompilerMaturityTelemetry(
+  architecture: Architecture,
+  instructionCount: number,
+  warnings: string[],
+): DecompilerMaturityTelemetry {
+  return buildDecompilerMaturityTelemetry({
+    architecture,
+    instructionCount,
+    irBlocks: [],
+    varMap: new Map(),
+    lines: [],
+    warnings,
+    logicRegions: [],
+    conservativeRewriteCount: 0,
+  });
+}
+
+export function decompilerMaturityToExport(result: DecompileResult) {
+  return {
+    schema: 'hexhawk.decompiler_maturity.v1',
+    generatedAt: new Date().toISOString(),
+    functionName: result.functionName,
+    startAddress: result.startAddress,
+    advisoryOnly: true,
+    authorityBoundary: result.maturity.authorityBoundary,
+    maturity: result.maturity,
+    proofLimits: result.maturity.limitations,
+  };
+}
+
+export function formatDecompilerMaturityMarkdown(result: DecompileResult): string {
+  const m = result.maturity;
+  const lines = [
+    `# HexHawk Decompiler/Disassembler Maturity Telemetry`,
+    ``,
+    `Function: ${result.functionName} at 0x${result.startAddress.toString(16)}`,
+    ``,
+    `> Advisory only: TALON/VEIL guidance is not GYRE verdict authority and does not mutate NEST final verdicts.`,
+    ``,
+    `## Recovery Summary`,
+    ``,
+    `- Architecture: ${m.architecture}`,
+    `- Instructions: ${m.instructionSummary.total} total, ${m.instructionSummary.lifted} lifted, ${m.instructionSummary.unknown} unknown`,
+    `- CFG: ${m.cfgSummary.blockCount} blocks, ${m.cfgSummary.edgeCount} edges, ${m.cfgSummary.backEdgeCount} back edge(s), ${m.cfgSummary.unreachableBlockCount} unreachable block(s)`,
+    `- Calls: ${m.callArgumentRecovery.recoveredCallCount}/${m.callArgumentRecovery.callCount} call site(s) with recovered arguments; ${m.callArgumentRecovery.recoveredArgumentCount} argument fact(s)`,
+    `- Stack frame: ${m.stackFrameSummary.localCount} locals, ${m.stackFrameSummary.stackArgCount} stack args, ${m.stackFrameSummary.registerParamCount} register params`,
+    `- Pseudocode quality: ${m.pseudocodeQuality.uncertainLineCount} uncertain line(s), ${m.pseudocodeQuality.warningCount} warning(s), ${m.pseudocodeQuality.conservativeRewriteCount} conservative CSE rewrite(s)`,
+    `- Explicit IR maturity: ${m.explicitIrSummary.confidence} confidence, ${m.explicitIrSummary.fallbackMode}, ${m.explicitIrSummary.structuredBlockPercentage}% structured-block signal`,
+    `- Explicit IR limits: ${m.explicitIrSummary.unknownInstructionCount} unknown instruction(s), ${m.explicitIrSummary.unresolvedCalls} unresolved call(s), ${m.explicitIrSummary.unresolvedIndirectJumps} unresolved indirect jump(s)`,
+    ``,
+    `## Limitations`,
+    ``,
+    ...m.limitations.map(limit => `- ${limit}`),
+  ];
+  return lines.join('\n');
+}
+
+// ─────────────────────────────────────────────────────────
 // PUBLIC API
 // ─────────────────────────────────────────────────────────
 
@@ -2340,6 +2583,7 @@ export function decompile(
   }
 
   if (insns.length === 0) {
+    const emptyWarnings = ['No instructions to decompile'];
     return {
       functionName: options.functionName ?? 'sub_unknown',
       startAddress: options.startAddress ?? 0,
@@ -2347,8 +2591,9 @@ export function decompile(
       varMap: new Map(),
       irBlocks: [],
       logicRegions: [],
-      warnings: ['No instructions to decompile'],
+      warnings: emptyWarnings,
       instrCount: 0,
+      maturity: emptyDecompilerMaturityTelemetry('x86_64', 0, emptyWarnings),
     };
   }
 
@@ -2368,6 +2613,7 @@ export function decompile(
   }
 
   if (!irBlocks.length) {
+    const emptyWarnings = ['No basic blocks built'];
     return {
       functionName: funcName,
       startAddress,
@@ -2375,8 +2621,9 @@ export function decompile(
       varMap: new Map(),
       irBlocks: [],
       logicRegions: [],
-      warnings: ['No basic blocks built'],
+      warnings: emptyWarnings,
       instrCount: insns.length,
+      maturity: emptyDecompilerMaturityTelemetry(arch, insns.length, emptyWarnings),
     };
   }
 
@@ -2401,10 +2648,10 @@ export function decompile(
     if (varMap.has(`reg:${reg}`)) paramNames.push(varMap.get(`reg:${reg}`)!);
   }
   // Also check stack args
-  for (const [key, name] of varMap) {
+  for (const [, name] of Array.from(varMap.entries())) {
     if (name.startsWith('arg_')) paramNames.push(name);
   }
-  const uniqueParams = [...new Set(paramNames)].sort();
+  const uniqueParams = Array.from(new Set(paramNames)).sort();
 
   if (irBlocks.length > 32) {
     warnings.push(`Large function (${irBlocks.length} blocks) — control flow may be simplified.`);
@@ -2434,7 +2681,7 @@ export function decompile(
   lines.push({ indent: 0, text: `function ${funcName}(${paramList}) {`, kind: 'header' });
 
   if (varMap.size > 0) {
-    const locals = [...varMap.values()].filter(v => v.startsWith('local_'));
+    const locals = Array.from(varMap.values()).filter(v => v.startsWith('local_'));
     if (locals.length > 0) {
       lines.push({ indent: 1, text: `// locals: ${locals.join(', ')}`, kind: 'comment' });
     }
@@ -2473,7 +2720,40 @@ export function decompile(
   // Run CSE pass on IR blocks to eliminate redundant computations
   const { blocks: optimizedBlocks, rewriteCount: cseRewriteCount } = applyCSE(irBlocks);
 
-  return { functionName: funcName, startAddress, lines, varMap, irBlocks: optimizedBlocks, logicRegions, warnings, instrCount: insns.length, cseRewriteCount };
+  const explicitIrNodes = liftInstructionsToDecompilerIr(insns);
+  const explicitIrSummary = computeDecompilerMaturitySummary({
+    instructions: insns,
+    irNodes: explicitIrNodes,
+    irBlocks: optimizedBlocks,
+    lines,
+    warnings,
+    fallbackPartitioningUsed: warnings.some(w => w.includes('fallback partitioning')),
+  });
+
+  const maturity = buildDecompilerMaturityTelemetry({
+    architecture: arch,
+    instructionCount: insns.length,
+    irBlocks: optimizedBlocks,
+    varMap,
+    lines,
+    warnings,
+    logicRegions,
+    conservativeRewriteCount: cseRewriteCount,
+    explicitIrSummary,
+  });
+
+  return {
+    functionName: funcName,
+    startAddress,
+    lines,
+    varMap,
+    irBlocks: optimizedBlocks,
+    logicRegions,
+    warnings,
+    instrCount: insns.length,
+    cseRewriteCount,
+    maturity,
+  };
 }
 
 // ─────────────────────────────────────────────────────────
