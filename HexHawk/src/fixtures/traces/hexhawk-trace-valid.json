@@ -1,0 +1,53 @@
+{
+  "schema": "hexhawk.trace.v1",
+  "tool": "hexhawk-synthetic-native-gui-fixture",
+  "target": "keygenme.exe",
+  "events": [
+    {
+      "kind": "module-load",
+      "moduleName": "keygenme.exe",
+      "baseAddress": "0x600",
+      "size": 235520
+    },
+    {
+      "kind": "thread-event",
+      "action": "start",
+      "threadId": 1
+    },
+    {
+      "kind": "breakpoint-hit",
+      "address": "0x600",
+      "breakpointAddress": "0x600",
+      "threadId": 1
+    },
+    {
+      "kind": "call",
+      "address": "0x61F",
+      "targetAddress": "0xA80",
+      "targetName": "check_managed_app",
+      "threadId": 1
+    },
+    {
+      "kind": "branch",
+      "address": "0x635",
+      "targetAddress": "0x643",
+      "taken": true,
+      "threadId": 1
+    },
+    {
+      "kind": "api-call",
+      "address": "0x64D",
+      "moduleName": "msvcrt.dll",
+      "apiName": "__p__fmode",
+      "threadId": 1
+    },
+    {
+      "kind": "memory-access",
+      "address": "0x624",
+      "memoryAddress": "0x9020",
+      "access": "write",
+      "size": 4,
+      "threadId": 1
+    }
+  ]
+}

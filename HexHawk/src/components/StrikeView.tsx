@@ -11,7 +11,7 @@
  * STRIKE adds the intelligence layer on top of raw snapshots.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import type {
@@ -38,6 +38,10 @@ import {
   type StrikePattern,
 } from '../utils/strikeEngine';
 import { sanitizeAddress, sanitizeBridgePath, sanitizeHexOrDecAddress, clampInt } from '../utils/tauriGuards';
+import { parseHexHawkTraceJson, TraceParseError, type TraceEvent, type TraceSession } from '../utils/traceModel';
+import { correlateTraceSession, type TraceCorrelationReport, type TraceImportLike } from '../utils/traceCorrelation';
+import { buildProgramAnalysis } from '../utils/disassemblyAnalysis';
+import type { Instruction } from '../utils/disassemblyModel';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -46,6 +50,8 @@ interface StrikeViewProps {
   currentAddress:  number | null;
   onAddressSelect: (address: number) => void;
   onNavigateHex:   (address: number) => void;
+  disassembly?:    Instruction[];
+  imports?:        TraceImportLike[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -219,6 +225,77 @@ const TimelineStrip: React.FC<{
   );
 };
 
+function eventAddress(event: TraceEvent): number | undefined {
+  if (event.address !== undefined) return event.address;
+  if (event.kind === 'module-load') return event.baseAddress;
+  if (event.kind === 'call' || event.kind === 'branch' || event.kind === 'api-call') return event.targetAddress;
+  if (event.kind === 'memory-access') return event.memoryAddress;
+  return undefined;
+}
+
+function eventLabel(event: TraceEvent): string {
+  switch (event.kind) {
+    case 'module-load': return `module ${event.moduleName}`;
+    case 'thread-event': return `thread ${event.action}`;
+    case 'breakpoint-hit': return 'breakpoint hit';
+    case 'call': return event.targetName ? `call ${event.targetName}` : 'call';
+    case 'branch': return `branch${event.taken === undefined ? '' : event.taken ? ' taken' : ' not taken'}`;
+    case 'api-call': return event.moduleName ? `${event.moduleName}!${event.apiName}` : event.apiName;
+    case 'memory-access': return `memory ${event.access}`;
+    case 'unknown': return event.label ?? 'unknown event';
+    default: return 'trace event';
+  }
+}
+
+const TraceSummaryPanel: React.FC<{
+  report: TraceCorrelationReport;
+  onNavigate: (address: number) => void;
+}> = ({ report, onNavigate }) => {
+  const warnings = report.warnings.slice(0, 8);
+  return (
+    <div className="stk-timeline-section" data-testid="strike-imported-trace-summary">
+      <div className="stk-pane-title">
+        Imported trace evidence
+        <span className="stk-pane-step-badge">advisory only</span>
+      </div>
+      <div className="stk-patterns" aria-label="Imported trace summary">
+        <div className="stk-pattern-badge"><span className="stk-pattern-label">events</span><span className="stk-pattern-conf">{report.summary.eventCount}</span></div>
+        <div className="stk-pattern-badge"><span className="stk-pattern-label">functions covered</span><span className="stk-pattern-conf">{report.summary.functionCoverageCount}</span></div>
+        <div className="stk-pattern-badge"><span className="stk-pattern-label">unresolved addresses</span><span className="stk-pattern-conf">{report.summary.unresolvedAddressCount}</span></div>
+        <div className="stk-pattern-badge"><span className="stk-pattern-label">API imports</span><span className="stk-pattern-conf">{report.summary.resolvedApiCallCount}/{report.summary.apiCallCount}</span></div>
+      </div>
+      {warnings.length > 0 && (
+        <div className="stk-error-banner" data-testid="strike-trace-warning-list">
+          <span>⚠ {warnings.length} trace warning{warnings.length !== 1 ? 's' : ''}: {warnings.map(w => w.message).join(' | ')}</span>
+        </div>
+      )}
+      <div className="stk-timeline-strip" data-testid="strike-imported-trace-events">
+        {report.session.events.slice(0, 80).map(event => {
+          const address = eventAddress(event);
+          const correlation = report.eventCorrelations.find(item => item.eventId === event.id);
+          const canNavigate = address !== undefined && Boolean(correlation?.instruction || correlation?.function || correlation?.basicBlock);
+          return (
+            <button
+              key={event.id}
+              type="button"
+              className={`stk-tl-step${canNavigate ? ' stk-tl-step--dirty' : ''}`}
+              onClick={() => { if (canNavigate && address !== undefined) onNavigate(address); }}
+              disabled={!canNavigate}
+              title={canNavigate ? `Navigate to ${hex16(address!)}` : 'No correlated disassembly address'}
+            >
+              <span className="stk-tl-idx">#{event.index}</span>
+              <span className="stk-tl-sym">◇</span>
+              <span className="stk-tl-rip">{address === undefined ? 'no-addr' : hexShort(address)}</span>
+              <span className="stk-tl-chg">{event.kind}</span>
+              <span className="stk-tl-chg">{eventLabel(event)}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 const RegisterGrid: React.FC<{
   regs:    RegisterState;
   changed: Set<string>;
@@ -289,6 +366,8 @@ const StrikeView: React.FC<StrikeViewProps> = ({
   currentAddress,
   onAddressSelect,
   onNavigateHex,
+  disassembly = [],
+  imports = [],
 }) => {
   const [timeline, setTimeline]   = useState<StrikeTimeline | null>(null);
   const [snapshot, setSnapshot]   = useState<DebugSnapshot | null>(null);
@@ -299,6 +378,9 @@ const StrikeView: React.FC<StrikeViewProps> = ({
   const [pidInput, setPidInput]   = useState<string>('');
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [loading,  setLoading]    = useState(false);
+  const [traceSession, setTraceSession] = useState<TraceSession | null>(null);
+  const [traceImportError, setTraceImportError] = useState<string | null>(null);
+  const traceFileInputRef = useRef<HTMLInputElement>(null);
 
   const playStep = useCallback((tl: StrikeTimeline, index: number) => {
     const seeked = seekTimeline(tl, index);
@@ -487,9 +569,31 @@ const StrikeView: React.FC<StrikeViewProps> = ({
     }
   }, [sessionId]);
 
+
+  const handleImportTraceFile = useCallback(async (file: File | null) => {
+    if (!file) return;
+    setTraceImportError(null);
+    try {
+      const text = await file.text();
+      const session = parseHexHawkTraceJson(text);
+      setTraceSession(session);
+    } catch (e) {
+      if (e instanceof TraceParseError) {
+        setTraceImportError(e.message);
+      } else {
+        setTraceImportError(String(e));
+      }
+      setTraceSession(null);
+    } finally {
+      if (traceFileInputRef.current) traceFileInputRef.current.value = '';
+    }
+  }, []);
+
   const step    = timeline ? currentStep(timeline) : null;
   const delta   = step?.delta ?? null;
   const patterns = timeline ? detectPatterns(timeline) : [];
+  const traceProgram = useMemo(() => buildProgramAnalysis(disassembly), [disassembly]);
+  const traceCorrelation = useMemo(() => (traceSession ? correlateTraceSession(traceSession, traceProgram, imports) : null), [traceSession, traceProgram, imports]);
 
   const changedRegs = new Set<string>(
     (delta?.registers ?? []).map(r => r.key)
@@ -549,6 +653,22 @@ const StrikeView: React.FC<StrikeViewProps> = ({
         <button className="stk-btn stk-btn--danger" onClick={handleStop} disabled={!canStop}>
           ■ Stop
         </button>
+        <input
+          ref={traceFileInputRef}
+          type="file"
+          accept="application/json,.json"
+          style={{ display: 'none' }}
+          data-testid="strike-trace-file-input"
+          onChange={event => { void handleImportTraceFile(event.target.files?.[0] ?? null); }}
+        />
+        <button
+          className="stk-btn stk-btn--nav"
+          data-testid="strike-import-trace"
+          onClick={() => traceFileInputRef.current?.click()}
+          title="Import a saved HexHawk JSON trace as advisory runtime evidence"
+        >
+          📂 Import Trace
+        </button>
 
         {snapshot && (
           <>
@@ -607,10 +727,10 @@ const StrikeView: React.FC<StrikeViewProps> = ({
       </div>
 
       {/* ── Error banner ────────────────────────────────────────────────────── */}
-      {error && (
+      {(error || traceImportError) && (
         <div className="stk-error-banner">
-          <span>⚠ {error}</span>
-          <button className="stk-error-dismiss" onClick={() => setError(null)}>✕</button>
+          <span>⚠ {error ?? `Trace import failed: ${traceImportError}`}</span>
+          <button className="stk-error-dismiss" onClick={() => { setError(null); setTraceImportError(null); }}>✕</button>
         </div>
       )}
 
@@ -693,6 +813,13 @@ const StrikeView: React.FC<StrikeViewProps> = ({
         </div>
       </div>
 
+      {traceCorrelation && (
+        <TraceSummaryPanel
+          report={traceCorrelation}
+          onNavigate={(addr) => onAddressSelect(addr)}
+        />
+      )}
+
       {/* ── Timeline strip ──────────────────────────────────────────────────── */}
       {timeline && (
         <div className="stk-timeline-section">
@@ -733,7 +860,7 @@ const StrikeView: React.FC<StrikeViewProps> = ({
           <div className="stk-splash-title">STRIKE</div>
           <div className="stk-splash-sub">Runtime validation + behavioral analysis</div>
           <div className="stk-splash-hint">
-            {binaryPath ? 'Click ⊞ Load to begin a debug session' : 'Open a binary first'}
+            {binaryPath ? 'Load a debug session or import a saved HexHawk JSON trace' : 'Open a binary first'}
           </div>
         </div>
       )}

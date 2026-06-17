@@ -1,0 +1,4 @@
+{
+  "schema": "hexhawk.trace.v1",
+  "events": [
+    { "kind": "call", "address": "0x1400010F6" }

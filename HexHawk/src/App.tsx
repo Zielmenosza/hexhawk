@@ -76,7 +76,6 @@ import type { AutoAnnotation } from './utils/autoAnnotationEngine';
 import DecompilerView from './components/DecompilerView';
 
 // Phase 9 � Debugger + Signature
-import DebuggerPanel from './components/DebuggerPanel';
 import SignaturePanel from './components/SignaturePanel';
 
 // TALON � Reasoning-Aware Decompiler
@@ -5351,8 +5350,11 @@ export default function App() {
                 </div>
               ) : (
                 <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
-                  <DebuggerPanel
+                  <StrikeView
                     binaryPath={binaryPath || null}
+                    currentAddress={currentAddress}
+                    disassembly={disassembly}
+                    imports={metadata?.imports ?? []}
                     onAddressSelect={(addr) => { selectAddress(addr); navigateView('disassembly'); }}
                     onNavigateHex={(addr) => { setHexOffset(addr); setAndPersistTab('hex'); }}
                   />
