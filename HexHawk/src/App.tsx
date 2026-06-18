@@ -3,6 +3,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import './styles.css';
+import { flags } from './config/featureFlags';
+import AuthorityBanner from './components/AuthorityBanner';
 
 // Tier system
 import TierGate from './components/TierGate';
@@ -4259,6 +4261,7 @@ export default function App() {
           Drop file to open
         </div>
       )}
+      {flags.clarityAuthorityBanner && <AuthorityBanner />}
       {/* First-run welcome screen */}
       {showWelcome && (
         <WelcomeScreen
