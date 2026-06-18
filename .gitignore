@@ -66,6 +66,26 @@ HexHawk/output.txt
 /docs/credentials.md
 /nexus-assistant/
 
+# Local/private/generated custody exclusions
+.android-build/
+.android-sdk/
+
+# Android/Gradle local caches
+android-hermes-access/.gradle/
+
+# Private owner-only Hermes access payloads; never commit
+site-build/.hermes-access.htpasswd
+site-build/hermes/
+
+# Private/mobile build outputs
+*.apk
+
+# Local secret/key material
+*.htpasswd
+*.pfx
+*.pem
+*.key
+
 # Generated/static-hosted binary release payloads are published artifacts, not source
 /site-build/releases/*/assets/*.exe
 /site-build/releases/*/assets/*.msi
