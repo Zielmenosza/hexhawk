@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { decompile, type CfgGraph, type DisassembledInstruction } from '../utils/decompilerEngine';
+import { decompile, decompilerMaturityToExport, formatDecompilerMaturityMarkdown, type CfgGraph, type DisassembledInstruction } from '../utils/decompilerEngine';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../');
 
@@ -68,6 +68,65 @@ describe('decompiler regressions - synthetic fixtures', () => {
 
     const result = decompile(instructions, null, { startAddress: 0x3000, endAddress: 0x300c, functionName: 'naming_heuristics' });
     expect(result.varMap.get('reg:rcx')).toBe('i');
+  });
+
+  it('emits advisory maturity telemetry for calls, stack frame, CFG, and unknown decode regions', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x4000, mnemonic: 'push', operands: 'rbp' },
+      { address: 0x4001, mnemonic: 'mov', operands: 'rbp, rsp' },
+      { address: 0x4004, mnemonic: 'mov', operands: 'qword ptr [rbp - 0x8], rcx' },
+      { address: 0x4008, mnemonic: 'mov', operands: 'rdi, 0x2a' },
+      { address: 0x400c, mnemonic: 'call', operands: '0x5000' },
+      { address: 0x4011, mnemonic: 'ud2', operands: '' },
+      { address: 0x4013, mnemonic: 'jne', operands: '0x4008' },
+      { address: 0x4018, mnemonic: 'ret', operands: '' },
+    ];
+    const cfg: CfgGraph = {
+      nodes: [
+        { id: 'entry', start: 0x4000, end: 0x4013, block_type: 'entry' },
+        { id: 'exit', start: 0x4018, end: 0x4018, block_type: 'exit' },
+        { id: 'orphan', start: 0x5000, end: 0x5001, block_type: 'orphan' },
+      ],
+      edges: [
+        { source: 'entry', target: 'entry', kind: 'back' },
+        { source: 'entry', target: 'exit', kind: 'fallthrough' },
+      ],
+    };
+
+    const result = decompile(instructions, cfg, { startAddress: 0x4000, endAddress: 0x4018, functionName: 'maturity_fixture' });
+    const maturity = result.maturity;
+
+    expect(maturity.advisoryOnly).toBe(true);
+    expect(maturity.authorityBoundary).toBe('talon_veil_guidance_not_verdict_authority');
+    expect(maturity.instructionSummary.total).toBe(instructions.length);
+    expect(maturity.instructionSummary.unknown).toBeGreaterThanOrEqual(1);
+    expect(maturity.instructionSummary.failedDecodeRanges[0]?.start).toBe(0x4011);
+    expect(maturity.cfgSummary.blockCount).toBe(2);
+    expect(maturity.cfgSummary.edgeCount).toBe(2);
+    expect(maturity.cfgSummary.backEdgeCount).toBe(1);
+    expect(maturity.callArgumentRecovery.callCount).toBe(1);
+    expect(maturity.callArgumentRecovery.recoveredCallCount).toBe(1);
+    expect(maturity.callArgumentRecovery.recoveredArgumentCount).toBeGreaterThanOrEqual(1);
+    expect(maturity.stackFrameSummary.localCount).toBeGreaterThanOrEqual(1);
+    expect(maturity.limitations.join(' ')).toContain('advisory analyst guidance only');
+  });
+
+  it('exports maturity telemetry without verdict-authority fields or classification mutation', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x6000, mnemonic: 'mov', operands: 'rcx, 7' },
+      { address: 0x6004, mnemonic: 'call', operands: '0x7000' },
+      { address: 0x6009, mnemonic: 'ret', operands: '' },
+    ];
+    const result = decompile(instructions, null, { startAddress: 0x6000, endAddress: 0x6009, functionName: 'export_fixture' });
+    const exported = decompilerMaturityToExport(result);
+    const markdown = formatDecompilerMaturityMarkdown(result);
+
+    expect(exported.schema).toBe('hexhawk.decompiler_maturity.v1');
+    expect(exported.advisoryOnly).toBe(true);
+    expect(JSON.stringify(exported)).not.toContain('classification');
+    expect(JSON.stringify(exported)).not.toContain('threatScore');
+    expect(markdown).toContain('Advisory only');
+    expect(markdown).toContain('does not mutate NEST final verdicts');
   });
 });
 
