@@ -32,6 +32,10 @@ Rebuilt locally on 2026-06-20 with `yarn tauri:build`; Authenticode remains `Not
 - `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`: `0b6a8e885accd45b6c1633f5db79af839302d8c45311ab5d48ef4ddeefe0d14e`
 - `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`: `fae7b573054a3938bc38c7ae21f341b54a2772629526cbda1c829a663ce59c71`
 
+## Local Artifact Custody Note
+
+The smoke-passed June 20 MSI/NSIS installer copies are currently present under `D:/Project/HexHawk/target/release/bundle/` for local handoff convenience. They retain the hashes above and remain the unsigned artifacts built from `e625403`; they are not a fresh deployment-candidate build from the later docs/SSA commits on `main`. Any new deployment-candidate tag from current `main` requires a fresh full deployment gate.
+
 ## Historical Evidence Boundary
 
 Prior June 1-2 and June 4 evidence recorded tests, updater custody rehearsals, hosted metadata checks, and native GUI parity for earlier artifact hashes. Those files remain historical provenance and must not be used as proof for the June 20 deployment candidate unless the exact hash matches.
