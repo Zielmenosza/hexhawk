@@ -35,14 +35,52 @@ interface BaselineDiffEntry {
   passedDelta: number;
 }
 
+function pathInsideBase(filePath: string, basePath: string): string | null {
+  const relativePath = path.relative(basePath, filePath);
+  if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+    return null;
+  }
+  return relativePath;
+}
+
+function trimToStableProjectAnchor(normalizedPath: string): string | null {
+  const anchors = [
+    '/HexHawk/scripts/',
+    '/nest_tests/',
+    '/Challenges/',
+  ];
+
+  for (const anchor of anchors) {
+    const index = normalizedPath.indexOf(anchor);
+    if (index >= 0) {
+      const anchoredPath = normalizedPath.slice(index + 1);
+      return anchor === '/HexHawk/scripts/' ? anchoredPath.replace(/^HexHawk\//, '') : anchoredPath;
+    }
+  }
+
+  return null;
+}
+
 function toRepoRelativePath(filePath: string | undefined): string {
   if (!filePath) {
     return 'n/a';
   }
 
-  const relativePath = path.relative(REPO_ROOT, filePath);
-  const normalizedPath = relativePath && !relativePath.startsWith('..') ? relativePath : filePath;
-  return normalizedPath.replace(/\\/g, '/');
+  const resolvedPath = path.resolve(filePath);
+  const configuredBase = process.env.HEXHAWK_BENCHMARK_ROOT
+    ? path.resolve(process.env.HEXHAWK_BENCHMARK_ROOT)
+    : undefined;
+  const baseCandidates = [configuredBase, REPO_ROOT, process.cwd()].filter((base): base is string => Boolean(base));
+
+  for (const base of baseCandidates) {
+    const relativePath = pathInsideBase(resolvedPath, base);
+    if (relativePath) {
+      return relativePath.replace(/\\/g, '/');
+    }
+  }
+
+  const normalizedPath = resolvedPath.replace(/\\/g, '/');
+  return trimToStableProjectAnchor(normalizedPath) ?? normalizedPath;
 }
 
 function formatProvenanceCell(scenario: StrikeBenchmarkScenario | undefined): string {
