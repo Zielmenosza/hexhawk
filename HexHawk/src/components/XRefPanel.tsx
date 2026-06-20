@@ -166,9 +166,12 @@ export function XRefPanel({
 
   if (selectedAddress === null) {
     return (
-      <div className="panel" style={{ padding: '0.75rem' }}>
-        <h4 style={{ margin: '0 0 0.4rem', fontSize: '0.85rem' }}>Cross-References</h4>
-        <p style={{ color: '#666', fontSize: '0.78rem' }}>Select an instruction to see its xrefs.</p>
+      <div className="panel" style={{ padding: '0.75rem' }} data-testid="xref-panel">
+        <h4 style={{ margin: '0 0 0.25rem', fontSize: '0.85rem' }}>Code map: References (XRefs)</h4>
+        <p style={{ color: '#888', fontSize: '0.74rem', margin: '0 0 0.45rem', lineHeight: 1.35 }}>
+          Follow who points to an instruction and where it points next. XRefs are advisory static-analysis links, not a GYRE/NEST verdict.
+        </p>
+        <p style={{ color: '#666', fontSize: '0.78rem', margin: 0 }}>Select an instruction to see its xrefs.</p>
       </div>
     );
   }
@@ -182,13 +185,18 @@ export function XRefPanel({
   const callSites = incomingXrefs.filter(x => x.kind === 'CALL');
 
   return (
-    <div className="panel" style={{ padding: '0.6rem 0.75rem', fontSize: '0.8rem' }}>
+    <div className="panel" style={{ padding: '0.6rem 0.75rem', fontSize: '0.8rem' }} data-testid="xref-panel">
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.5rem' }}>
-        <h4 style={{ margin: 0, fontSize: '0.85rem' }}>Cross-References</h4>
-        <span style={{ color: '#888', fontSize: '0.72rem' }}>
-          {`0x${selectedAddress.toString(16).toUpperCase()}`}
-        </span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginBottom: '0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+          <h4 style={{ margin: 0, fontSize: '0.85rem' }}>Code map: References (XRefs)</h4>
+          <span style={{ color: '#888', fontSize: '0.72rem' }}>
+            {`0x${selectedAddress.toString(16).toUpperCase()}`}
+          </span>
+        </div>
+        <p style={{ color: '#888', fontSize: '0.72rem', margin: 0, lineHeight: 1.35 }}>
+          Follow who points here and what this instruction points to. Advisory static-analysis links only — not a GYRE/NEST verdict.
+        </p>
       </div>
 
       {/* Call site callout — highlighted when address is a function entry */}
