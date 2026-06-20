@@ -13,6 +13,13 @@ const COND: Record<string, string> = {
 
 const ARG_REGS = ['rcx', 'rdx', 'r8', 'r9', 'rdi', 'rsi'];
 
+const CALL_ARGUMENT_REGISTER_ORDERS: ReadonlyArray<readonly string[]> = [
+  // Windows x64: first four integer/pointer args are rcx, rdx, r8, r9.
+  ['rcx', 'rdx', 'r8', 'r9'],
+  // System V AMD64: first six integer/pointer args are rdi, rsi, rdx, rcx, r8, r9.
+  ['rdi', 'rsi', 'rdx', 'rcx', 'r8', 'r9'],
+];
+
 export function splitIrOperands(operands: string): string[] {
   const parts: string[] = [];
   let depth = 0;
@@ -89,6 +96,56 @@ function registerCandidate(value: DecompilerIrValue): DecompilerIrValue | null {
   const idx = ARG_REGS.indexOf(value.name);
   if (idx < 0) return null;
   return { kind: 'register-variable-candidate', register: value.name, name: `param_${idx}` };
+}
+
+function definedRegister(value: DecompilerIrValue): string | null {
+  return value.kind === 'register' ? value.name.toLowerCase() : null;
+}
+
+function recoverCallArgs(registerDefinitions: Map<string, DecompilerIrValue>): DecompilerIrValue[] {
+  let best: DecompilerIrValue[] = [];
+  for (const order of CALL_ARGUMENT_REGISTER_ORDERS) {
+    const candidate: DecompilerIrValue[] = [];
+    for (const register of order) {
+      const value = registerDefinitions.get(register);
+      if (!value) break;
+      candidate.push(value);
+    }
+    if (candidate.length > best.length) best = candidate;
+  }
+  return best;
+}
+
+function updateRegisterDefinitions(
+  registerDefinitions: Map<string, DecompilerIrValue>,
+  node: DecompilerIrNode,
+): void {
+  if (node.kind === 'assignment' || node.kind === 'load') {
+    const register = definedRegister(node.destination);
+    if (register) registerDefinitions.set(register, node.source);
+    return;
+  }
+
+  if (node.kind === 'arithmetic') {
+    const register = definedRegister(node.destination);
+    if (register) {
+      registerDefinitions.set(register, {
+        kind: 'expression',
+        text: `${formatIrValue(node.left)} ${node.operator} ${formatIrValue(node.right)}`,
+      });
+    }
+  }
+}
+
+function formatIrValue(value: DecompilerIrValue): string {
+  switch (value.kind) {
+    case 'register': return value.name;
+    case 'constant': return value.raw;
+    case 'memory': return value.text;
+    case 'stack-variable-candidate': return value.name;
+    case 'register-variable-candidate': return value.name;
+    case 'expression': return value.text;
+  }
 }
 
 export function liftInstructionToDecompilerIr(
@@ -183,5 +240,18 @@ export function liftInstructionToDecompilerIr(
 }
 
 export function liftInstructionsToDecompilerIr(instructions: DisassembledInstruction[]): DecompilerIrNode[] {
-  return instructions.flatMap((instruction, index) => liftInstructionToDecompilerIr(instruction, instructions[index + 1]?.address));
+  const registerDefinitions = new Map<string, DecompilerIrValue>();
+  const lifted: DecompilerIrNode[] = [];
+
+  for (let index = 0; index < instructions.length; index += 1) {
+    const instructionNodes = liftInstructionToDecompilerIr(instructions[index], instructions[index + 1]?.address).map((node) => {
+      if (node.kind !== 'call') return node;
+      return { ...node, args: recoverCallArgs(registerDefinitions) };
+    });
+
+    lifted.push(...instructionNodes);
+    for (const node of instructionNodes) updateRegisterDefinitions(registerDefinitions, node);
+  }
+
+  return lifted;
 }

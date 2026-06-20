@@ -35,6 +35,39 @@ describe('explicit decompiler IR foundation', () => {
     expect(nodes[0]).toHaveProperty('warning');
   });
 
+  it('recovers call arguments from recent Windows x64 argument-register setup', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x3100, mnemonic: 'mov', operands: 'rcx, [rbp - 0x8]' },
+      { address: 0x3104, mnemonic: 'mov', operands: 'rdx, 0x20' },
+      { address: 0x3108, mnemonic: 'call', operands: '0x401000' },
+    ];
+
+    const call = liftInstructionsToDecompilerIr(instructions).find(
+      (node): node is Extract<ReturnType<typeof liftInstructionsToDecompilerIr>[number], { kind: 'call' }> => node.kind === 'call',
+    );
+
+    expect(call?.args).toHaveLength(2);
+    expect(call?.args[0]).toEqual(expect.objectContaining({ kind: 'stack-variable-candidate', name: 'local_8' }));
+    expect(call?.args[1]).toEqual(expect.objectContaining({ kind: 'constant', value: 0x20 }));
+  });
+
+  it('recovers call arguments from recent System V argument-register setup', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x3200, mnemonic: 'mov', operands: 'rdi, rax' },
+      { address: 0x3204, mnemonic: 'mov', operands: 'rsi, [rbp - 0x10]' },
+      { address: 0x3208, mnemonic: 'call', operands: 'puts' },
+    ];
+
+    const call = liftInstructionsToDecompilerIr(instructions).find(
+      (node): node is Extract<ReturnType<typeof liftInstructionsToDecompilerIr>[number], { kind: 'call' }> => node.kind === 'call',
+    );
+
+    expect(call?.unresolved).toBe(true);
+    expect(call?.args).toHaveLength(2);
+    expect(call?.args[0]).toEqual(expect.objectContaining({ kind: 'register', name: 'rax' }));
+    expect(call?.args[1]).toEqual(expect.objectContaining({ kind: 'stack-variable-candidate', name: 'local_10' }));
+  });
+
   it('represents direct and unresolved call nodes honestly', () => {
     const direct = liftInstructionToDecompilerIr({ address: 0x3000, mnemonic: 'call', operands: '0x401000' })[0];
     const indirect = liftInstructionToDecompilerIr({ address: 0x3005, mnemonic: 'call', operands: 'rax' })[0];
