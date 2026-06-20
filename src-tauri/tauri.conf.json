@@ -58,7 +58,8 @@
         "languages": [
           "English"
         ],
-        "installMode": "perMachine"
+        "installMode": "perMachine",
+        "installerHooks": "nsis/hexhawk-runtime-payload.nsh"
       },
       "wix": {
         "language": "en-US",
