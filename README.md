@@ -4,30 +4,34 @@ HexHawk is a native desktop reverse-engineering and binary-intelligence platform
 
 It combines local static analysis, disassembly, decompiler assistance, debugger/trace evidence, signature correlation, NEST evidence convergence, GYRE verdict synthesis, and CREST-style reporting in one analyst workflow.
 
-## Current State (2026-06-04 unsigned installer rebuild)
+## Current State (2026-06-20 unsigned deployment candidate)
 
-HexHawk is a controlled internal-tester Windows build candidate. It is not a publicly trusted signed release, not an updater-ready public release, and not yet an enterprise/procurement-ready distribution.
+HexHawk has a current unsigned Windows deployment candidate for controlled internal testing. It is not a publicly trusted signed release, not an updater-ready public release, and not yet an enterprise/procurement-ready distribution.
 
-Current evidence from the June 4 docs/rebuild pass:
+Current evidence from the June 20 post-fix deployment-candidate gate:
 
-- `yarn typecheck` passed.
+- STRIKE benchmark report provenance paths were fixed to normalize to stable project-relative paths instead of leaking absolute checkout paths in release worktrees.
+- All discovered frontend tests passed in a fresh release worktree: 47 test files, 736 passed, 1 skipped.
+- `npx tsc --noEmit` passed.
 - `yarn build` passed with existing Vite chunk/import warnings.
-- `yarn tauri:build` passed after stale local bundle outputs were removed.
-- Windows executable, MSI, and NSIS artifacts were rebuilt locally.
-- `Get-AuthenticodeSignature` reports the rebuilt exe/MSI/NSIS artifacts as `NotSigned`.
-- Hosted updater metadata at `https://hexhawk.ke/releases/latest.json` fetches, but this pass did not publish or validate hosted release/trust endpoints against the rebuilt NSIS hash.
-- Exact-artifact native GUI parity was not rerun for the June 4 rebuilt MSI/NSIS; prior native GUI evidence is historical for older artifact hashes.
-- Current release evidence: `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json`.
+- `yarn tauri:build` passed with existing Rust warnings and produced MSI/NSIS artifacts.
+- `Get-AuthenticodeSignature` reports the rebuilt MSI/NSIS artifacts as `NotSigned`.
+- MSI extraction smoke passed and rendered the HexHawk onboarding UI.
+- NSIS silent install smoke passed, included the real `WebView2Loader.dll`, rendered the HexHawk onboarding UI, and uninstalled cleanly.
+- Deployment candidate tag: `v1.2.0-unsigned-deployment-candidate-20260620`.
+- Current release evidence: `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`.
 
 ### Current artifact SHA-256
 
-- `target/release/hexhawk-backend.exe`: `cd1c3f3a43fa1d67d8ffb66890e7a9516a939207b9b6b4eb6a47cdbf6aee7431`
-- `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`: `a460902c47ce3a5bffae38006bad4e9938bb317ec7a9afb0c1381635ddc596a0`
-- `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`: `8412322cc2d5646a5b08b390825440b1dfef29fe128dc8992c0c8df844f59512`
+- `target/release/hexhawk-backend.exe`: `48de54c39a0f06164ac82a2a6bd5dd9439aa90b53188efbcc5caa790c0657ad1`
+- `target/release/nest_cli.exe`: `d4efba77ae2df7a6fa265ff37f051389a87192d3cc7da774862110ba1c723e0a`
+- `target/release/WebView2Loader.dll`: `8427b1fc58ec707813e5c0a51eb5d69397bb333250a7b891be4d3b123f1e0f1c`
+- `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`: `0b6a8e885accd45b6c1633f5db79af839302d8c45311ab5d48ef4ddeefe0d14e`
+- `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`: `fae7b573054a3938bc38c7ae21f341b54a2772629526cbda1c829a663ce59c71`
 
 ### Historical evidence boundary
 
-Prior release evidence from June 1-2 remains useful provenance, but it does not describe the June 4 rebuilt artifacts above unless the hash matches exactly. Native GUI parity, updater validation, and signing conclusions must always be tied to the exact artifact hash under review.
+Prior release evidence remains useful provenance, but it does not describe the June 20 deployment-candidate artifacts unless the hash matches exactly. GUI launch smoke for this candidate proves rendering and installer payload health; full Open -> Inspect -> NEST -> Export authority parity still must be rerun for any signed/public tester artifact.
 
 ## Engine Stack and Authority Boundaries
 
@@ -64,9 +68,9 @@ Prior release evidence from June 1-2 remains useful provenance, but it does not 
 
 ```bash
 yarn install
-yarn typecheck
+npx tsc --noEmit
 yarn build
-yarn test --reporter=dot
+npx vitest run --reporter=verbose $(find src -name '*.test.ts' -o -name '*.test.tsx' | sort)
 cargo check --workspace
 cargo test --workspace
 yarn tauri:build
@@ -75,13 +79,14 @@ yarn tauri:build
 ## Validation Commands Used for Current Claims
 
 ```bash
-rm stale target/release executable and installer outputs
-yarn typecheck
+npx vitest run --reporter=verbose <all discovered test files>
+npx tsc --noEmit
 yarn build
 yarn tauri:build
-sha256sum target/release/hexhawk-backend.exe target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe
-Get-AuthenticodeSignature <rebuilt exe/msi/nsis>
-fetch https://hexhawk.ke/releases/latest.json
+sha256sum target/release/hexhawk-backend.exe target/release/nest_cli.exe target/release/WebView2Loader.dll target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe
+Get-AuthenticodeSignature <rebuilt msi/nsis>
+MSI administrative extraction + GUI smoke
+NSIS silent install + payload compare + GUI smoke + uninstall
 ```
 
 ## Release Posture

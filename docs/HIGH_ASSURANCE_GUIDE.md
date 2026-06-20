@@ -1,6 +1,6 @@
 # HexHawk High-Assurance Guide
 
-Date: 2026-06-04
+Date: 2026-06-20
 
 ## Goal
 
@@ -28,4 +28,4 @@ For external high-assurance testers, do not ship until:
 
 ## Current Status
 
-The current Windows build is an unsigned internal tester candidate. The June 4 rebuilt artifacts are Authenticode NotSigned, and exact-artifact native GUI parity has not been rerun for those hashes. It is not yet a high-assurance external release.
+The current Windows build is an unsigned deployment candidate for controlled internal testing. The June 20 MSI/NSIS artifacts are Authenticode `NotSigned`; installer launch/render smoke passed for both MSI extraction and NSIS install, but full exact-artifact export parity and signing have not been completed. It is not yet a high-assurance external release.

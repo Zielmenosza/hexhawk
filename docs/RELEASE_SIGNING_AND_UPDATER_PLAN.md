@@ -1,7 +1,7 @@
 # HexHawk Release Signing and Updater Plan
 
-Date: 2026-06-04
-Status: local unsigned packaging path works; controlled external signing gate blocked because public-trusted Authenticode custody is absent and hosted updater metadata was not refreshed/validated against the June 4 rebuilt NSIS hash
+Date: 2026-06-20
+Status: unsigned deployment-candidate packaging path works; controlled external signing gate blocked because public-trusted Authenticode custody is absent and hosted updater metadata was not refreshed/validated against the June 20 candidate NSIS hash
 
 ## Current config facts
 
@@ -9,8 +9,8 @@ Status: local unsigned packaging path works; controlled external signing gate bl
 - `src-tauri/tauri.conf.json` no longer has the no-op `bundle.windows.signCommand` value `cmd /C echo signed`.
 - `src-tauri/tauri.conf.json` has a populated `plugins.updater.pubkey`.
 - `src-tauri/tauri.conf.json` updater endpoint is set to `https://hexhawk.ke/releases/latest.json`.
-- Hosted endpoint fetch passes, but this pass did not publish or validate hosted metadata against the June 4 rebuilt NSIS artifact.
-- Current exe/MSI/NSIS artifacts are `NotSigned` according to `Get-AuthenticodeSignature`.
+- Hosted endpoint was not refreshed or validated against the June 20 unsigned candidate NSIS artifact.
+- Current MSI/NSIS artifacts are `NotSigned` according to `Get-AuthenticodeSignature`.
 
 ## Required signing outputs
 
@@ -23,11 +23,11 @@ Status: local unsigned packaging path works; controlled external signing gate bl
 
 ## Latest current evidence
 
-- `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json`
+- `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`
 
 ## Historical evidence boundary
 
-June 1-2 evidence files recorded previous rebuilds, updater rehearsals, hosted metadata checks, and native GUI proof for their exact artifact hashes. They do not describe the June 4 rebuilt artifacts unless the hash matches exactly.
+June 1-2 and June 4 evidence files recorded previous rebuilds, updater rehearsals, hosted metadata checks, and native GUI proof for their exact artifact hashes. They do not describe the June 20 deployment-candidate artifacts unless the hash matches exactly.
 
 ## Real Authenticode checklist
 

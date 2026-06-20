@@ -1,30 +1,33 @@
 # HexHawk Roadmap
 
-Last updated: 2026-06-04
+Last updated: 2026-06-20
 
-This roadmap reflects the current HexHawk source, documentation, live-site, and local installer state after the June 4 docs alignment and unsigned installer rebuild.
+This roadmap reflects the current HexHawk source, documentation, and local installer state after the June 20 STRIKE provenance fix and unsigned deployment-candidate gate.
 
 ## Current Proven Baseline
 
 HexHawk is an internal-tester Windows build candidate with a working native Tauri/Rust packaging path.
 
-Validated in the June 4 rebuild pass:
+Validated in the June 20 deployment-candidate gate:
 
-- TypeScript typecheck: passing.
+- STRIKE benchmark report provenance path normalization: fixed and committed.
+- All discovered frontend tests: passing in a fresh release worktree (47 files, 736 passed, 1 skipped).
+- TypeScript `npx tsc --noEmit`: passing.
 - Production frontend build: passing, with existing Vite chunk/import warnings.
 - Windows Tauri release build: passing, with existing Rust warnings.
-- Fresh Windows release executable, MSI, and NSIS artifacts were generated after stale local outputs were removed.
-- Authenticode status for the rebuilt exe/MSI/NSIS artifacts: `NotSigned`.
-- Hosted updater metadata fetches from `https://hexhawk.ke/releases/latest.json`, but release/trust endpoints were intentionally not refreshed and are not validated against the June 4 rebuilt NSIS hash.
-- Exact-artifact native GUI parity was not rerun for the June 4 rebuilt artifacts; previous GUI proof is historical for its recorded MSI hash.
-- Current evidence file: `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json`.
+- Fresh Windows MSI and NSIS artifacts were generated from post-fix HEAD `e625403`.
+- Authenticode status for the rebuilt MSI/NSIS artifacts: `NotSigned`.
+- MSI extraction GUI smoke: passed and rendered HexHawk onboarding UI.
+- NSIS silent install GUI smoke: passed, included the real `WebView2Loader.dll`, and uninstalled cleanly.
+- Current evidence file: `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`.
+- Deployment candidate tag: `v1.2.0-unsigned-deployment-candidate-20260620`.
 
 Current limitations:
 
 - No public-trusted signature is present.
 - No internal self-signed signature is present on the current target/release artifacts.
 - Updater artifacts remain disabled for local unsigned builds (`createUpdaterArtifacts: false`).
-- Hosted updater metadata must be regenerated/published and validated against exact official signed artifacts before endpoint-readiness claims.
+- Hosted updater metadata was not regenerated/published for the June 20 unsigned candidate and must be validated against exact official signed artifacts before endpoint-readiness claims.
 - Public-release distribution and procurement posture remain pending.
 
 ## Trust Hierarchy That Must Not Drift

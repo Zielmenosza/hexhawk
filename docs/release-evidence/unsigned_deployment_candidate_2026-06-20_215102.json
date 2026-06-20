@@ -1,0 +1,100 @@
+{
+  "evidence_kind": "unsigned_deployment_candidate",
+  "generated_at": "2026-06-20T21:51:02-05:00",
+  "repository": "D:/Project/HexHawk",
+  "head": {
+    "commit": "e625403a076d100237dcd2ec13a0b1d36985312f",
+    "short": "e625403",
+    "message": "[STRIKE] Normalize provenance paths to repo-relative in benchmark reports"
+  },
+  "tags": {
+    "deployment_candidate": "v1.2.0-unsigned-deployment-candidate-20260620",
+    "prior_nsis_fix": "v1.0.0-nsis-fix-20260620",
+    "prior_gyre_call_args": "v1.1.0-gyre-call-args"
+  },
+  "release_worktree": "D:/Project/HexHawk-release-candidate-postfix-20260620-213255",
+  "classification": "Unsigned deployment candidate",
+  "signing": {
+    "msi": "NotSigned",
+    "nsis": "NotSigned",
+    "signed_release_candidate": false
+  },
+  "validation": {
+    "phase0_blocker_fix": {
+      "issue": "STRIKE benchmark report provenance paths were absolute when reports were rendered outside the original checkout root.",
+      "fix": "Benchmark report path formatting now normalizes paths relative to configured/current roots and stable project anchors without hard-coding D:/Project/HexHawk.",
+      "commit": "e625403a076d100237dcd2ec13a0b1d36985312f"
+    },
+    "tests": {
+      "command": "npx vitest run --reporter=verbose $(find src -name '*.test.ts' -o -name '*.test.tsx' | sort)",
+      "result": "passed",
+      "files_passed": 47,
+      "tests_passed": 736,
+      "tests_skipped": 1
+    },
+    "typescript": {
+      "command": "npx tsc --noEmit",
+      "result": "passed"
+    },
+    "build": {
+      "frontend": "passed with existing Vite chunk/import warnings",
+      "tauri": "passed with existing Rust warnings"
+    },
+    "installer_smoke": {
+      "msi_extract_exit": 0,
+      "nsis_install_exit": 0,
+      "payload_compare": {
+        "nest_cli.exe": "MSI and NSIS hashes matched",
+        "WebView2Loader.dll": "MSI and NSIS hashes matched; NSIS contains the real 160 KB DLL, not an EXE payload",
+        "hexhawk-backend.exe": "MSI and NSIS GUI executables differ because Tauri patches bundle type metadata per installer, and both launched successfully"
+      },
+      "msi_gui": {
+        "title": "HexHawk",
+        "responding": true,
+        "rect": "1296x899",
+        "alive_at_least_seconds": 12,
+        "screenshot": "D:/Project/HexHawk-smoke-msi-postfix-20260620-215102-ui.png",
+        "vision_result": "HexHawk onboarding UI rendered; no visible crash or error dialog."
+      },
+      "nsis_gui": {
+        "title": "HexHawk",
+        "responding": true,
+        "rect": "1296x899",
+        "alive_at_least_seconds": 12,
+        "screenshot": "D:/Project/HexHawk-smoke-nsis-postfix-20260620-215102-ui.png",
+        "vision_result": "HexHawk onboarding UI rendered; no visible crash or error dialog."
+      },
+      "nest_cli_help_exit": 1,
+      "nsis_uninstall_exit": 0,
+      "nsis_dir_exists_after_uninstall": false
+    }
+  },
+  "artifacts": {
+    "msi": {
+      "path": "D:/Project/HexHawk-release-candidate-postfix-20260620-213255/target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi",
+      "sha256": "0b6a8e885accd45b6c1633f5db79af839302d8c45311ab5d48ef4ddeefe0d14e"
+    },
+    "nsis": {
+      "path": "D:/Project/HexHawk-release-candidate-postfix-20260620-213255/target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe",
+      "sha256": "fae7b573054a3938bc38c7ae21f341b54a2772629526cbda1c829a663ce59c71"
+    },
+    "target_release_hexhawk_backend_exe": {
+      "path": "D:/Project/HexHawk-release-candidate-postfix-20260620-213255/target/release/hexhawk-backend.exe",
+      "sha256": "48de54c39a0f06164ac82a2a6bd5dd9439aa90b53188efbcc5caa790c0657ad1"
+    },
+    "target_release_nest_cli_exe": {
+      "path": "D:/Project/HexHawk-release-candidate-postfix-20260620-213255/target/release/nest_cli.exe",
+      "sha256": "d4efba77ae2df7a6fa265ff37f051389a87192d3cc7da774862110ba1c723e0a"
+    },
+    "target_release_webview2loader_dll": {
+      "path": "D:/Project/HexHawk-release-candidate-postfix-20260620-213255/target/release/WebView2Loader.dll",
+      "sha256": "8427b1fc58ec707813e5c0a51eb5d69397bb333250a7b891be4d3b123f1e0f1c"
+    }
+  },
+  "limits": [
+    "Artifacts are unsigned; this is not a signed release candidate.",
+    "Hosted updater metadata was not regenerated or published for this candidate.",
+    "Native GUI smoke proved launch/rendering, not full Open -> Inspect -> NEST -> Export parity for these exact artifacts.",
+    "Release worktree has generated build dirt and should be treated as evidence/build output, not source custody."
+  ]
+}

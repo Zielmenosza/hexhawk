@@ -1,6 +1,6 @@
 # HexHawk Investor One-Pager
 
-Date: 2026-06-04
+Date: 2026-06-20
 
 ## What HexHawk Is
 
@@ -18,17 +18,18 @@ HexHawk’s wedge is an integrated analyst workstation that keeps evidence, conf
 
 Latest local validation and packaging pass proves:
 
+- STRIKE benchmark provenance path fix committed and pushed.
+- All discovered frontend tests passed in a fresh release worktree: 47 files, 736 passed, 1 skipped.
 - Typecheck and production frontend build passing.
-- Windows release executable builds.
-- MSI and NSIS installers build.
+- MSI and NSIS installers build from post-fix HEAD.
+- MSI extraction and NSIS install launch/render smoke passed.
 - Current artifacts are unsigned according to Authenticode checks.
-- Hosted updater metadata fetches, but has not been refreshed/validated against the June 4 rebuilt NSIS hash.
-- Prior native packaged GUI parity evidence exists, but exact-artifact proof was not rerun for the June 4 rebuilt artifact.
-- Current release evidence: `docs/release-evidence/unsigned_installer_rebuild_2026-06-04_175600.json`.
+- Hosted updater metadata has not been refreshed/validated against the June 20 unsigned candidate NSIS hash.
+- Current release evidence: `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`.
 
 ## Current Product Status
 
-- Status: internal-tester Windows build candidate.
+- Status: unsigned Windows deployment candidate for controlled internal testing.
 - Good for: board demos, investor demos, controlled internal testing, technical diligence.
 - Not yet for the stronger controlled external signed-tester gate: real public-trusted Authenticode custody, signed artifacts, hosted metadata validation, and exact signed-artifact native GUI proof are still required.
 - Not yet for: broad public download, procurement-ready enterprise rollout, automatic updater distribution.
@@ -53,5 +54,5 @@ Latest local validation and packaging pass proves:
 
 - Current installer artifacts are unsigned.
 - Updater metadata generation has an official-path plan, but hosted endpoint readiness remains blocked until exact hosted artifact/signature validation passes.
-- Native GUI parity must be rerun on the exact artifact intended for testers before external/public release.
+- Full native GUI export parity must be rerun on the exact artifact intended for testers before external/public release; June 20 launch/render smoke covers installer health only.
 - HexHawk does not claim to detonate malware, bypass protections, prove exploitability, or let AI replace deterministic verdict authority.
