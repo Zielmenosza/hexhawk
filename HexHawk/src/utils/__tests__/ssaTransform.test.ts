@@ -174,6 +174,27 @@ describe('buildSSAForm — loop', () => {
   });
 });
 
+describe('buildSSAForm — irreducible CFG fallback', () => {
+  it('falls back without SSA output for a multi-entry cycle', () => {
+    // b0 enters both b1 and b2; b1 ↔ b2 form a cycle with two external entries.
+    // That SCC is irreducible, so HexHawk should keep non-SSA lifting instead
+    // of emitting misleading phi/rename state.
+    const blocks = [
+      makeBlock('b0', [assign('rax', cnst(0), 0x00)], ['b1', 'b2'], ['b1', 'b2'], 'entry'),
+      makeBlock('b1', [assign('rax', cnst(1), 0x10)], ['b2'], ['b2']),
+      makeBlock('b2', [assign('rax', cnst(2), 0x20)], ['b1', 'b3'], ['b1', 'b3']),
+      makeBlock('b3', [assign('rbx', reg('rax'), 0x30)], [], []),
+    ];
+
+    const result = buildSSAForm(blocks);
+    expect(result.ok).toBe(false);
+    expect(listPhiNodes(result)).toHaveLength(0);
+    expect(result.defs.size).toBe(0);
+    expect(result.uses.size).toBe(0);
+    expect(result.domTree.rpo).toContain('b0');
+  });
+});
+
 describe('buildSSAForm — utilities', () => {
   it('ssaVersionStats returns sorted stats by version count', () => {
     // b0: rax=0; b1: rax=1; b2: rbx=3  → rax has 2 versions, rbx has 1

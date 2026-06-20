@@ -361,6 +361,93 @@ function buildDomChildren(idom: Map<string, string | null>): Map<string, string[
   return children;
 }
 
+/**
+ * Detect irreducible control flow before SSA renaming.
+ *
+ * SSA construction can safely handle normal loops because a reducible loop has a
+ * single entry/header.  An SCC with multiple external entries is irreducible:
+ * phi placement is still theoretically possible, but HexHawk's current TALON
+ * block structurer cannot preserve those semantics with source-like output.  In
+ * that case we deliberately fall back to non-SSA lifting for the whole function
+ * rather than emitting misleading variable versions.
+ */
+function hasIrreducibleControlFlow(blocks: IRBlock[], entryId: string): boolean {
+  const blockIds = new Set(blocks.map(b => b.id));
+  if (!blockIds.has(entryId)) return true;
+
+  const adjacency = new Map<string, string[]>();
+  const predecessors = new Map<string, string[]>();
+  for (const id of blockIds) {
+    adjacency.set(id, []);
+    predecessors.set(id, []);
+  }
+
+  for (const block of blocks) {
+    for (const succ of block.allSuccessors) {
+      if (!blockIds.has(succ)) continue;
+      adjacency.get(block.id)!.push(succ);
+      predecessors.get(succ)!.push(block.id);
+    }
+  }
+
+  let index = 0;
+  const stack: string[] = [];
+  const onStack = new Set<string>();
+  const indexes = new Map<string, number>();
+  const lowlink = new Map<string, number>();
+  const components: string[][] = [];
+
+  function strongConnect(id: string): void {
+    indexes.set(id, index);
+    lowlink.set(id, index);
+    index += 1;
+    stack.push(id);
+    onStack.add(id);
+
+    for (const succ of adjacency.get(id) ?? []) {
+      if (!indexes.has(succ)) {
+        strongConnect(succ);
+        lowlink.set(id, Math.min(lowlink.get(id)!, lowlink.get(succ)!));
+      } else if (onStack.has(succ)) {
+        lowlink.set(id, Math.min(lowlink.get(id)!, indexes.get(succ)!));
+      }
+    }
+
+    if (lowlink.get(id) === indexes.get(id)) {
+      const component: string[] = [];
+      let member: string | undefined;
+      do {
+        member = stack.pop();
+        if (member === undefined) break;
+        onStack.delete(member);
+        component.push(member);
+      } while (member !== id);
+      components.push(component);
+    }
+  }
+
+  // Only reachable blocks participate in this function's SSA transform.
+  strongConnect(entryId);
+
+  for (const component of components) {
+    const componentSet = new Set(component);
+    const isCyclic = component.length > 1 ||
+      (adjacency.get(component[0]) ?? []).includes(component[0]);
+    if (!isCyclic) continue;
+
+    const entryNodes = new Set<string>();
+    for (const node of component) {
+      for (const pred of predecessors.get(node) ?? []) {
+        if (!componentSet.has(pred)) entryNodes.add(node);
+      }
+    }
+
+    if (entryNodes.size > 1) return true;
+  }
+
+  return false;
+}
+
 interface RenameContext {
   counters: Map<string, number>;
   stacks: Map<string, SSAVar[]>;
@@ -482,6 +569,17 @@ export function buildSSAForm(irBlocks: IRBlock[]): SSAForm {
   const idom = computeDominators(irBlocks, entryId);
   const df = computeDominanceFrontier(irBlocks, idom);
   const domChildren = buildDomChildren(idom);
+
+  if (hasIrreducibleControlFlow(irBlocks, entryId)) {
+    return {
+      phis: new Map(),
+      defs: new Map(),
+      uses: new Map(),
+      domTree: { idom, children: domChildren, df, rpo },
+      varCount: 0,
+      ok: false,
+    };
+  }
 
   // Collect defined variables per block
   const blockDefs = new Map<string, Set<string>>();
