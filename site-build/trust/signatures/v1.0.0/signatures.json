@@ -1,35 +1,29 @@
 {
-    "release":  "v1.0.0",
-    "generated_at":  "2026-06-01T19:11:45.4922539Z",
-    "signatures":  [
-                       {
-                           "artifact":  "HexHawk_1.0.0_x64-setup.exe",
-                           "artifact_sha256":  "d4e39045fcbbb29a1ee8cc45d7dc66664b061ccbd34bde1b0350738ff01397bf",
-                           "signature_url":  "/trust/signatures/v1.0.0/HexHawk_1.0.0_x64-setup.exe.sig",
-                           "latest_signature_url":  "/trust/signatures/latest/HexHawk_1.0.0_x64-setup.exe.sig",
-                           "signed_at":  "2026-06-01T19:11:45.4922539Z",
-                           "key_id":  "HXK-REPORT-2026-06",
-                           "algorithm":  "rsa-2048-sha256"
-                       },
-                       {
-                           "artifact":  "HexHawk_1.0.0_x64_en-US.msi",
-                           "artifact_sha256":  "a51ddacb1753a2c48d79fe830f790436d1348e44b6bebc1552610c291d54dba0",
-                           "signature_url":  "/trust/signatures/v1.0.0/HexHawk_1.0.0_x64_en-US.msi.sig",
-                           "latest_signature_url":  "/trust/signatures/latest/HexHawk_1.0.0_x64_en-US.msi.sig",
-                           "signed_at":  "2026-06-01T19:11:45.4922539Z",
-                           "key_id":  "HXK-REPORT-2026-06",
-                           "algorithm":  "rsa-2048-sha256"
-                       },
-                       {
-                           "artifact":  "SHA256SUMS.txt",
-                           "artifact_sha256":  "b68764426cea05829ba17943d01b139b675a204720adc3cb7d0385e7b916068e",
-                           "signature_url":  "/trust/signatures/v1.0.0/SHA256SUMS.txt.sig",
-                           "latest_signature_url":  "/trust/signatures/latest/SHA256SUMS.txt.sig",
-                           "signed_at":  "2026-06-01T19:11:45.4922539Z",
-                           "key_id":  "HXK-REPORT-2026-06",
-                           "algorithm":  "rsa-2048-sha256"
-                       }
-                   ],
-    "schema":  "hexhawk.trust.signatures.v1",
-    "version":  "1.0.0"
+  "schema": "hexhawk.trust.signatures.v1",
+  "version": "1.0.0",
+  "release": "v1.0.0-unsigned-deployment-candidate-20260620",
+  "generated_at": "2026-06-20T00:00:00Z",
+  "status": "unsigned_current_artifacts_no_detached_signatures",
+  "note": "Current MSI/NSIS artifacts are Authenticode NotSigned. Detached signatures from older artifact hashes are not current proof and are intentionally not advertised here.",
+  "artifacts": [
+    {
+      "artifact": "HexHawk_1.0.0_x64-setup.exe",
+      "artifact_sha256": "fae7b573054a3938bc38c7ae21f341b54a2772629526cbda1c829a663ce59c71",
+      "authenticode": "NotSigned",
+      "signature_url": null
+    },
+    {
+      "artifact": "HexHawk_1.0.0_x64_en-US.msi",
+      "artifact_sha256": "0b6a8e885accd45b6c1633f5db79af839302d8c45311ab5d48ef4ddeefe0d14e",
+      "authenticode": "NotSigned",
+      "signature_url": null
+    },
+    {
+      "artifact": "SHA256SUMS.txt",
+      "artifact_sha256": "f0c54d5336680ff424252ddbea1466221348d21ef51f5472f9bdb9eb4ca3c863",
+      "authenticode": "not_applicable",
+      "signature_url": null
+    }
+  ],
+  "signatures": []
 }

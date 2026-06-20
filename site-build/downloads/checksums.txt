@@ -1,11 +1,13 @@
-HexHawk local internal-tester artifacts — rebuilt 2026-06-01
+HexHawk unsigned Windows deployment-candidate artifacts — updated 2026-06-20
 
-INTERNAL SIGNED: these hashes are for local diligence/integrity only. Authenticode signatures are present, but trust status is not public-trusted (untrusted root).
+UNSIGNED: these hashes are for local diligence/integrity only. Authenticode status for the current MSI and NSIS installers is NotSigned. Expect Windows trust warnings until public-trusted code signing is complete.
 
 SHA-256:
-4c3bac2a7c1507e6ebd595a2e62212e5436e5e89f7ac4a9b20936d74deb85c7c  target/release/hexhawk-backend.exe
-a51ddacb1753a2c48d79fe830f790436d1348e44b6bebc1552610c291d54dba0  target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi
-d4e39045fcbbb29a1ee8cc45d7dc66664b061ccbd34bde1b0350738ff01397bf  target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe
+48de54c39a0f06164ac82a2a6bd5dd9439aa90b53188efbcc5caa790c0657ad1  target/release/hexhawk-backend.exe
+d4efba77ae2df7a6fa265ff37f051389a87192d3cc7da774862110ba1c723e0a  target/release/nest_cli.exe
+8427b1fc58ec707813e5c0a51eb5d69397bb333250a7b891be4d3b123f1e0f1c  target/release/WebView2Loader.dll
+0b6a8e885accd45b6c1633f5db79af839302d8c45311ab5d48ef4ddeefe0d14e  target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi
+fae7b573054a3938bc38c7ae21f341b54a2772629526cbda1c829a663ce59c71  target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe
 
-Packaged native GUI parity: passed on MSI-extracted signed internal artifact.
-Signing/updater status: internal signing complete, public-trust chain and updater endpoint validation still pending.
+Installer smoke: MSI extraction and NSIS silent install smoke passed for the June 20 unsigned deployment candidate.
+Signing/updater status: NotSigned; updater metadata is not validated for this candidate; not a public release.

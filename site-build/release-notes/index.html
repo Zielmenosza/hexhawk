@@ -40,17 +40,17 @@
 <main id="main-content" class="container">
   <section class="hero">
     <span class="kicker">Release notes</span>
-    <h1>2026-06-02 release-truth and website alignment update</h1>
-    <p class="lead">This update keeps public release language aligned with the current unsigned internal-tester build candidate and documented updater/signing gates.</p>
+    <h1>2026-06-20 unsigned deployment candidate and engineering update</h1>
+    <p class="lead">HexHawk has a smoke-passed unsigned Windows deployment candidate for controlled testing, plus new GYRE SSA fallback hardening on main. Public release is still blocked until real signing, updater validation, and full exact-artifact export proof are complete.</p>
   </section>
-  <section class="section"><h2>What changed in the latest release-truth pass</h2><ul class="checklist"><li>Current rebuilt Windows executable, MSI, and NSIS artifacts are unsigned according to Authenticode.</li><li>The prior internal self-signed evidence is historical and applies to older artifact hashes, not the current rebuilt artifacts.</li><li>The no-op Tauri signing command was removed.</li><li>Local unsigned builds keep updater artifacts disabled.</li><li>Updater key custody is present in GitHub Actions secrets and official-path metadata can be produced, but hosted metadata must match the current artifacts before endpoint-readiness claims.</li><li>Native packaged GUI report/AETHERFRAME policy parity is documented for the current unsigned MSI evidence.</li></ul></section><section class="section"><h2>Known caveats</h2><ul class="checklist"><li>Not a public-trusted general-availability release.</li><li>Expect Windows trust warnings until real code signing is configured and verified.</li><li>Rerun native GUI parity on the exact signed artifact intended for external testers or public release.</li><li>Do not treat stale hosted updater metadata or historical self-signed evidence as current release proof.</li></ul></section>
+  <section class="section"><h2>What changed recently</h2><ul class="checklist"><li>June 20 deployment candidate: MSI extraction smoke passed and NSIS silent install smoke passed.</li><li>The NSIS installer includes the real `WebView2Loader.dll` payload needed for native launch.</li><li>The current downloadable MSI/NSIS hashes are listed on the Downloads page and in `downloads/checksums.txt`.</li><li>GYRE SSA construction now detects irreducible multi-entry control-flow cycles and falls back instead of emitting misleading SSA output.</li><li>Main has moved beyond the tested candidate with docs and SSA commits, so any new deployment-candidate tag requires a fresh full gate.</li></ul></section><section class="section"><h2>Known caveats</h2><ul class="checklist"><li>Not a public-trusted general-availability release.</li><li>Current MSI and NSIS installers are Authenticode `NotSigned`.</li><li>Expect Windows trust warnings until real code signing is configured and verified.</li><li>Updater metadata is not validated for the June 20 unsigned candidate.</li><li>Full Open → Inspect → NEST → Export parity was not rerun for a signed/public artifact.</li></ul></section>
 </main>
 <footer class="footer">
   <div class="container footer-grid">
     <div>
       <strong>HexHawk</strong>
       <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
-      <p class="mono">v1.0 internal tester candidate · 2026-06-02</p>
+      <p class="mono">v1.0 unsigned internal tester candidate · 2026-06-20</p>
     </div>
     <div>
       <h4>Product</h4>

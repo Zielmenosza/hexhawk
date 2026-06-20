@@ -40,10 +40,10 @@
 <main id="main-content" class="container">
   <section class="hero">
     <span class="kicker">Trust & Assurance</span>
-    <h1>How HexHawk keeps evidence and authority separate</h1>
-    <p class="lead">Security tools are easier to trust when they show who observed what, who decided what, and what remained advisory. HexHawk is built around that separation.</p>
+    <h1>What HexHawk decides, and what it only suggests</h1>
+    <p class="lead">A reverse-engineering tool should not hide the difference between facts, guesses, and final verdicts. HexHawk labels those roles so an analyst can review the output instead of trusting a black box.</p>
   </section>
-  <section class="section split"><div><h2>Final verdict authority</h2><p>GYRE owns classification and base confidence. It is the only engine that may produce final security truth in HexHawk outputs.</p></div><div class="card"><span class="badge">Authority</span><h3>GYRE decides</h3><p>Other engines can provide evidence, metadata, or assistance, but they do not replace GYRE classification.</p></div></section>
+  <section class="section split"><div><h2>Simple rule: facts first, verdict second</h2><p>HexHawk shows file facts and code evidence first. GYRE owns the final classification and base confidence. NEST organizes the supporting evidence. AETHERFRAME and NEXUS can help explain or package work, but they do not become the final security truth.</p></div><div class="card"><span class="badge">Authority</span><h3>GYRE decides</h3><p>Other engines can provide evidence, metadata, or assistance, but they do not replace GYRE classification.</p></div></section>
   <section class="section"><div class="grid two"><article class="card"><h3>Evidence convergence</h3><p>NEST gathers, organizes, validates, and packages evidence linked to GYRE outputs. It improves reviewability without replacing verdict authority.</p></article><article class="card"><h3>Optional refinement</h3><p>AETHERFRAME adds bounded, replayable refinement and lineage metadata only when policy allows it. It does not change GYRE classification.</p></article><article class="card"><h3>Analyst assistance</h3><p>NEXUS helps the analyst navigate and act, but it does not become the security truth source.</p></article><article class="card"><h3>High-assurance workflows</h3><p>High-assurance use cases can disable uplift, preserve direct GYRE and NEST outputs, and require explicit disclosure when refinement metadata is present.</p></article></div></section>
   <section class="section"><div class="section-heading"><span class="kicker">TRUST FLOW</span><h2>Who observed, who organized, who decided.</h2></div><div class="trust-flow"><span>File and runtime evidence</span><span>TALON / STRIKE / ECHO analysis surfaces</span><span>NEST evidence convergence</span><span>GYRE final classification and base confidence</span><span>CREST report packaging</span><span>NEXUS analyst assistance</span></div><p class="note">AETHERFRAME connects as optional policy-gated refinement metadata for NEST/CREST outputs. It is not a replacement for GYRE.</p></section>
   <section class="section"><h2>Read the source trust documents</h2><div class="cta"><a class="btn ghost" href="https://github.com/Zielmenosza/hexhawk/blob/main/docs/ENGINE_BOUNDARY_DOCTRINE.md">Read the Engine Boundary Doctrine</a><a class="btn ghost" href="https://github.com/Zielmenosza/hexhawk/blob/main/docs/HIGH_ASSURANCE_GUIDE.md">Read the High-Assurance Guide</a><a class="btn ghost" href="/trust-center">Open the Verification Center</a><a class="btn ghost" href="/release-notes">View Release Notes</a></div></section>
@@ -53,7 +53,7 @@
     <div>
       <strong>HexHawk</strong>
       <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
-      <p class="mono">v1.0 internal tester candidate · 2026-06-02</p>
+      <p class="mono">v1.0 unsigned internal tester candidate · 2026-06-20</p>
     </div>
     <div>
       <h4>Product</h4>
