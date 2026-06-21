@@ -20,6 +20,12 @@ import {
   eliminateDeadStores as eliminateDeadStoresPass,
   runMidLevelIrPasses as runMidLevelIrPassesPipeline,
 } from './decompilerIr';
+import {
+  IMPORT_PROTOTYPES,
+  formatImportPrototype,
+  resolveImportPrototype as builtinResolveImportPrototype,
+  type ImportPrototype,
+} from './importPrototypes';
 export {
   annotateReachingDefinitions,
   constantFoldDecompilerIr,
@@ -27,8 +33,104 @@ export {
   runMidLevelIrPasses,
 } from './decompilerIr';
 export type { ReachingDefs } from './decompilerTypes';
-export { resolveImportPrototype, formatImportPrototype, IMPORT_PROTOTYPES } from './importPrototypes';
+export { formatImportPrototype, IMPORT_PROTOTYPES } from './importPrototypes';
 export type { ImportPrototype, ImportParameterPrototype } from './importPrototypes';
+
+
+/** STRIKE plugin hook events. Hooks are advisory extension points and must not mutate GYRE verdict authority. */
+export type StrikeHookEvent = 'pre-analysis' | 'post-analysis' | 'custom-lifter' | 'custom-resolver';
+
+/** Context passed before a STRIKE/GYRE/NEST analysis pipeline begins. */
+export interface StrikePreAnalysisContext {
+  readonly filePath?: string;
+  readonly nodes?: readonly DecompilerIrNode[];
+}
+
+/** Context passed after analysis. Verdict fields are restored after hooks so plugins cannot change GYRE authority. */
+export interface StrikePostAnalysisContext {
+  result: StrikeAnalysisResult;
+}
+
+/** Context for plugin-provided lifters for unknown opcodes. Return lifted nodes to claim the opcode. */
+export interface StrikeCustomLifterContext {
+  readonly instruction: { address: number; mnemonic: string; operands: string };
+}
+
+/** Context for plugin-provided import prototype resolvers. Return an ImportPrototype to override built-ins. */
+export interface StrikeCustomResolverContext {
+  readonly importName: string;
+}
+
+export interface StrikeAnalysisResult {
+  verdict?: {
+    classification?: string;
+    confidence?: string | number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export type StrikeHookContext =
+  | StrikePreAnalysisContext
+  | StrikePostAnalysisContext
+  | StrikeCustomLifterContext
+  | StrikeCustomResolverContext;
+
+/** Handler contract for STRIKE hooks. Throwing handlers are logged and isolated; later hooks still run. */
+export type StrikeHookHandler<TContext extends StrikeHookContext = StrikeHookContext> = (context: TContext) => unknown;
+
+const STRIKE_HOOKS: Record<StrikeHookEvent, StrikeHookHandler[]> = {
+  'pre-analysis': [],
+  'post-analysis': [],
+  'custom-lifter': [],
+  'custom-resolver': [],
+};
+
+/** Register a STRIKE plugin hook. Handlers run in registration order and are isolated from pipeline failure. */
+export function registerHook(event: StrikeHookEvent, handler: StrikeHookHandler): void {
+  STRIKE_HOOKS[event].push(handler);
+}
+
+export function clearStrikeHooksForTests(): void {
+  for (const event of Object.keys(STRIKE_HOOKS) as StrikeHookEvent[]) STRIKE_HOOKS[event] = [];
+}
+
+function runHookList(event: StrikeHookEvent, context: StrikeHookContext): unknown[] {
+  const results: unknown[] = [];
+  for (const handler of STRIKE_HOOKS[event]) {
+    try {
+      results.push(handler(context));
+    } catch (error) {
+      console.error(`STRIKE hook '${event}' failed`, error);
+    }
+  }
+  return results;
+}
+
+export function runStrikePreAnalysisHooks(context: StrikePreAnalysisContext): void {
+  runHookList('pre-analysis', context);
+}
+
+export function runStrikePostAnalysisHooks(result: StrikeAnalysisResult): StrikeAnalysisResult {
+  const originalVerdict = result.verdict ? { ...result.verdict } : undefined;
+  runHookList('post-analysis', { result });
+  if (originalVerdict && result.verdict) {
+    result.verdict.classification = originalVerdict.classification;
+    result.verdict.confidence = originalVerdict.confidence;
+  }
+  return result;
+}
+
+export function resolveImportPrototype(name: string | undefined | null): ImportPrototype | undefined {
+  if (!name) return undefined;
+  for (const result of runHookList('custom-resolver', { importName: name })) {
+    if (result && typeof result === 'object' && 'name' in result && 'parameters' in result) {
+      return result as ImportPrototype;
+    }
+  }
+  return builtinResolveImportPrototype(name);
+}
+
 
 
 
@@ -132,6 +234,7 @@ export interface StrikeILQuerySurface {
   annotateReachingDefinitions(): DecompilerIrNode[];
   runMidLevelIrPasses(): DecompilerIrNode[];
   getRecoveredStructs(): StrikeRecoveredStruct[];
+  registerHook(event: StrikeHookEvent, handler: StrikeHookHandler): void;
 }
 
 
@@ -192,8 +295,18 @@ export function createStrikeQuerySurface(nodes: DecompilerIrNode[]): StrikeILQue
     annotateReachingDefinitions: () => annotateReachingDefinitionsPass(nodes),
     runMidLevelIrPasses: () => runMidLevelIrPassesPipeline(nodes),
     getRecoveredStructs: () => recoverStructsFromIL(nodes),
+    registerHook,
   };
 }
+
+
+export const strike = {
+  registerHook,
+  getRecoveredStructs: recoverStructsFromIL,
+  resolveImportPrototype,
+  runPreAnalysisHooks: runStrikePreAnalysisHooks,
+  runPostAnalysisHooks: runStrikePostAnalysisHooks,
+};
 
 // ── Register catalogue ────────────────────────────────────────────────────────
 

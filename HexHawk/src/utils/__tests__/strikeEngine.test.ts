@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   createTimeline,
   appendStep,
+  clearStrikeHooksForTests,
   createStrikeQuerySurface,
+  registerHook,
+  resolveImportPrototype,
+  runStrikePostAnalysisHooks,
   MAX_STRIKE_TIMELINE_STEPS,
 } from '../strikeEngine';
 import type { DebugSnapshot, RegisterState } from '../../components/DebuggerPanel';
@@ -97,5 +101,59 @@ describe('strikeEngine recovered structs', () => {
         authority: 'nest_type_recovery_not_gyre_verdict',
       },
     ]);
+  });
+});
+
+
+describe('STRIKE plugin hooks', () => {
+  it('post-analysis hook receives analysis result', () => {
+    clearStrikeHooksForTests();
+    const seen: unknown[] = [];
+    const result = { verdict: { classification: 'clean', confidence: 'high' }, marker: 1 };
+    registerHook('post-analysis', context => seen.push((context as { result: unknown }).result));
+
+    runStrikePostAnalysisHooks(result);
+
+    expect(seen).toEqual([result]);
+  });
+
+  it('throwing hook does not prevent subsequent hooks from running', () => {
+    clearStrikeHooksForTests();
+    const seen: string[] = [];
+    registerHook('post-analysis', () => { throw new Error('boom'); });
+    registerHook('post-analysis', () => { seen.push('after'); });
+
+    runStrikePostAnalysisHooks({ verdict: { classification: 'clean', confidence: 'high' } });
+
+    expect(seen).toEqual(['after']);
+  });
+
+  it('custom-resolver hook override is called before built-in resolution', () => {
+    clearStrikeHooksForTests();
+    registerHook('custom-resolver', context => ({
+      library: 'kernel32',
+      name: (context as { importName: string }).importName,
+      returnType: 'BOOL',
+      parameters: [{ name: 'customPath', type: 'LPCWSTR' }],
+      callingConvention: 'winapi',
+    }));
+
+    const proto = resolveImportPrototype('CreateFileW');
+
+    expect(proto?.parameters[0]).toEqual({ name: 'customPath', type: 'LPCWSTR' });
+  });
+
+  it('hooks cannot modify GYRE verdict fields', () => {
+    clearStrikeHooksForTests();
+    const result = { verdict: { classification: 'clean', confidence: 'high' } };
+    registerHook('post-analysis', context => {
+      const r = (context as { result: typeof result }).result;
+      r.verdict.classification = 'malicious';
+      r.verdict.confidence = 'low';
+    });
+
+    runStrikePostAnalysisHooks(result);
+
+    expect(result.verdict).toEqual({ classification: 'clean', confidence: 'high' });
   });
 });
