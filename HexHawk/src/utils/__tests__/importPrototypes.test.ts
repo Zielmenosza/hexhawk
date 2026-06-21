@@ -29,7 +29,7 @@ describe('import prototype resolution', () => {
     expect(call.resolvedPrototype).toBeUndefined();
   });
 
-  it('TALON formats CreateFileW calls with parameter names', () => {
+  it('TALON formats CreateFileW calls with parameter names in annotated mode', () => {
     const instructions: DisassembledInstruction[] = [
       { address: 0x2000, mnemonic: 'mov', operands: 'rcx, 0x1000' },
       { address: 0x2004, mnemonic: 'mov', operands: 'rdx, 0x80000000' },
@@ -42,13 +42,14 @@ describe('import prototype resolution', () => {
       { address: 0x2021, mnemonic: 'ret', operands: '' },
     ];
 
-    const result = decompile(instructions, null, { functionName: 'create_file_call' });
+    const result = decompile(instructions, null, { functionName: 'create_file_call', outputMode: 'annotated' });
     const text = result.lines.map(l => l.text).join('\n');
     const call = result.irBlocks.flatMap(b => b.stmts).find(s => s.op === 'call');
 
     expect(call?.op === 'call' ? call.resolvedPrototype?.name : undefined).toBe('CreateFileW');
-    expect(text).toContain('CreateFileW(lpFileName: 0x1000, dwDesiredAccess: 0x80000000');
-    expect(text).toContain('dwCreationDisposition: 3');
+    expect(text).toContain('/* HANDLE */ CreateFileW(');
+    expect(text).toContain('/* LPCWSTR lpFileName */ 0x1000');
+    expect(text).toContain('/* DWORD dwCreationDisposition */ 3');
     expect(text).not.toContain('rN_M');
   });
 

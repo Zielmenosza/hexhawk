@@ -522,7 +522,7 @@ describe('decompile — advisory call-argument recovery', () => {
     const result = decompile(instructions, null, { functionName: 'sysv_call_args' });
     const text = result.lines.map(l => l.text).join('\n');
 
-    expect(text).toContain('memcpy(dest: 0x1111, src: 0x2222, n: 0x3333);');
+    expect(text).toContain('memcpy(0x1111, 0x2222, 0x3333);');
     const callStmt = result.irBlocks.flatMap(b => b.stmts).find(s => s.op === 'call');
     expect(callStmt?.op === 'call' ? callStmt.argRecovery : undefined).toBe('register-window');
   });
@@ -538,7 +538,7 @@ describe('decompile — advisory call-argument recovery', () => {
     const result = decompile(instructions, null, { functionName: 'aarch64_call_args' });
     const text = result.lines.map(l => l.text).join('\n');
 
-    expect(text).toContain('memcpy(dest: 16, src: 32, n: ?);');
+    expect(text).toContain('memcpy(16, 32);');
     const callStmt = result.irBlocks.flatMap(b => b.stmts).find(s => s.op === 'call');
     expect(callStmt?.op === 'call' ? callStmt.args?.length : 0).toBe(2);
   });

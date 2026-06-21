@@ -38,7 +38,7 @@ describe('NEST import prototype type propagation into TALON output', () => {
     ], null, { functionName: 'open_file' });
 
     const text = result.lines.map(line => line.text).join('\n');
-    expect(text).toContain('lpFileName: fileName');
-    expect(text).not.toContain('lpFileName: param_0');
+    expect(text).toContain('CreateFileW(fileName');
+    expect(text).not.toContain('CreateFileW(param_0');
   });
 });

@@ -8,6 +8,7 @@ import {
   type IRBlock,
   type IRStmt,
   type VarMap,
+  type DecompilerOutputMode,
 } from '../utils/decompilerEngine';
 
 // ─── Types (matching App.tsx) ────────────────────────────
@@ -62,6 +63,21 @@ function lineClass(line: PseudoLine): string {
     default:          return 'dc-line dc-line--stmt';
   }
 }
+
+export const DECOMPILER_OUTPUT_MODE_STORAGE_KEY = 'hexhawk.decompilerOutputMode';
+export const DECOMPILER_OUTPUT_MODE_EVENT = 'hexhawk:decompiler-output-mode';
+
+export function loadDecompilerOutputMode(): DecompilerOutputMode {
+  if (typeof window === 'undefined') return 'compact';
+  return window.localStorage.getItem(DECOMPILER_OUTPUT_MODE_STORAGE_KEY) === 'annotated' ? 'annotated' : 'compact';
+}
+
+export function persistDecompilerOutputMode(mode: DecompilerOutputMode): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(DECOMPILER_OUTPUT_MODE_STORAGE_KEY, mode);
+  window.dispatchEvent(new CustomEvent(DECOMPILER_OUTPUT_MODE_EVENT, { detail: mode }));
+}
+
 
 // Very lightweight tokenizer for pseudo-code syntax highlighting
 const KEYWORDS = new Set(['if', 'else', 'while', 'do', 'for', 'return', 'goto', 'function', 'push', 'pop']);
@@ -330,6 +346,7 @@ export default function DecompilerView({
   const [selectedFuncAddr, setSelectedFuncAddr] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('pseudocode');
   const [showVarDict, setShowVarDict] = useState(true);
+  const [outputMode, setOutputMode] = useState<DecompilerOutputMode>(() => loadDecompilerOutputMode());
 
   // Auto-select function when currentAddress changes
   useEffect(() => {
@@ -341,6 +358,21 @@ export default function DecompilerView({
       }
     }
   }, [currentAddress, functions]);
+
+
+  useEffect(() => {
+    const handleModeEvent = (event: Event) => {
+      const next = (event as CustomEvent<DecompilerOutputMode>).detail;
+      if (next === 'compact' || next === 'annotated') setOutputMode(next);
+    };
+    window.addEventListener(DECOMPILER_OUTPUT_MODE_EVENT, handleModeEvent);
+    return () => window.removeEventListener(DECOMPILER_OUTPUT_MODE_EVENT, handleModeEvent);
+  }, []);
+
+  const setAndPersistOutputMode = useCallback((mode: DecompilerOutputMode) => {
+    setOutputMode(mode);
+    persistDecompilerOutputMode(mode);
+  }, []);
 
   const result: DecompileResult = useMemo(() => {
     if (!disassembly.length) {
@@ -365,14 +397,16 @@ export default function DecompilerView({
             startAddress: selectedFuncAddr,
             endAddress: functions.get(selectedFuncAddr)!.endAddress,
             functionName: `sub_${selectedFuncAddr.toString(16)}`,
+            outputMode,
           }
         : {
             startAddress: disassembly[0]?.address,
             functionName: `sub_${disassembly[0]?.address.toString(16) ?? '0'}`,
+            outputMode,
           };
 
     return decompile(disassembly as any, cfg as any, opts);
-  }, [disassembly, cfg, selectedFuncAddr, functions]);
+  }, [disassembly, cfg, selectedFuncAddr, functions, outputMode]);
 
   const statsText = result.instrCount > 0
     ? `${result.instrCount} instr · ${result.irBlocks.length} blocks · ${result.varMap.size} vars`
@@ -434,6 +468,14 @@ export default function DecompilerView({
             title="Toggle variable dictionary"
           >
             Vars
+          </button>
+          <button
+            type="button"
+            className={`dc-toggle-btn${outputMode === 'annotated' ? ' active' : ''}`}
+            onClick={() => setAndPersistOutputMode(outputMode === 'compact' ? 'annotated' : 'compact')}
+            title="Toggle compact or annotated import-call pseudocode"
+          >
+            {outputMode === 'compact' ? 'Compact calls' : 'Annotated calls'}
           </button>
           <button
             type="button"

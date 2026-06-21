@@ -57,6 +57,7 @@ export type CfgGraph = {
 // ─────────────────────────────────────────────────────────
 
 export type MemSize = 'byte' | 'word' | 'dword' | 'qword' | 'ptr';
+export type DecompilerOutputMode = 'compact' | 'annotated';
 
 export type IRValueTypeHint = {
   inferredType?: string;
@@ -1041,7 +1042,28 @@ function renderValue(v: IRValue, varMap: VarMap): string {
   return renderValueRaw(v);
 }
 
-function renderStmt(stmt: IRStmt, varMap: VarMap): { text: string; uncertain?: boolean } | null {
+function renderCallStatement(stmt: Extract<IRStmt, { op: 'call' }>, varMap: VarMap, outputMode: DecompilerOutputMode): string {
+  const target = stmt.name
+    ? stmt.name
+    : stmt.target !== null
+    ? `sub_${stmt.target.toString(16)}`
+    : '*indirect';
+  const rawArgs = stmt.args?.map(arg => renderValue(arg, varMap)) ?? [];
+
+  if (outputMode === 'annotated' && stmt.resolvedPrototype) {
+    const paramCount = Math.max(stmt.resolvedPrototype.parameters.length, rawArgs.length);
+    const args = Array.from({ length: paramCount }, (_, index) => {
+      const param = stmt.resolvedPrototype?.parameters[index];
+      const arg = rawArgs[index] ?? '?';
+      return param ? `  /* ${param.type} ${param.name} */ ${arg}` : `  ${arg}`;
+    });
+    return `/* ${stmt.resolvedPrototype.returnType} */ ${target}(\n${args.join(',\n')}\n);`;
+  }
+
+  return `${target}(${rawArgs.join(', ')});`;
+}
+
+function renderStmt(stmt: IRStmt, varMap: VarMap, outputMode: DecompilerOutputMode = 'compact'): { text: string; uncertain?: boolean } | null {
   switch (stmt.op) {
     case 'nop':
     case 'prologue':
@@ -1085,17 +1107,8 @@ function renderStmt(stmt: IRStmt, varMap: VarMap): { text: string; uncertain?: b
       return null; // structured emission owns jumps/gotos so reducible CFGs do not leak raw goto chains
 
     case 'call': {
-      const target = stmt.name
-        ? stmt.name
-        : stmt.target !== null
-        ? `sub_${stmt.target.toString(16)}`
-        : '*indirect';
-      const rawArgs = stmt.args?.map(arg => renderValue(arg, varMap)) ?? [];
-      const args = stmt.resolvedPrototype
-        ? stmt.resolvedPrototype.parameters.map((param, index) => `${param.name}: ${rawArgs[index] ?? '?'}`).slice(0, Math.max(stmt.resolvedPrototype.parameters.length, rawArgs.length))
-        : rawArgs;
       const uncertain = stmt.argRecovery === 'stack-window' || stmt.argRecovery === 'register-stack-window';
-      return { text: `${target}(${args.join(', ')});`, uncertain };
+      return { text: renderCallStatement(stmt, varMap, outputMode), uncertain };
     }
 
     case 'ret':
@@ -2388,16 +2401,16 @@ function isEmptySeq(node: StructuredNode): boolean {
 // PHASE 6 — PSEUDO-CODE EMISSION
 // ─────────────────────────────────────────────────────────
 
-function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: PseudoLine[]): void {
+function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: PseudoLine[], outputMode: DecompilerOutputMode): void {
   switch (node.kind) {
     case 'seq':
-      for (const child of node.nodes) emitNode(child, varMap, indent, lines);
+      for (const child of node.nodes) emitNode(child, varMap, indent, lines, outputMode);
       return;
 
     case 'block': {
       const { irBlock } = node;
       for (const stmt of irBlock.stmts) {
-        const rendered = renderStmt(stmt, varMap);
+        const rendered = renderStmt(stmt, varMap, outputMode);
         if (!rendered) continue;
         lines.push({
           indent,
@@ -2418,10 +2431,10 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
         isUncertain: node.uncertain,
         kind: 'control',
       });
-      emitNode(node.then, varMap, indent + 1, lines);
+      emitNode(node.then, varMap, indent + 1, lines, outputMode);
       if (node.else && !isEmptySeq(node.else)) {
         lines.push({ indent, text: '} else {', kind: 'brace' });
-        emitNode(node.else, varMap, indent + 1, lines);
+        emitNode(node.else, varMap, indent + 1, lines, outputMode);
       }
       lines.push({ indent, text: '}', kind: 'brace' });
       return;
@@ -2434,14 +2447,14 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
         address: node.address,
         kind: 'control',
       });
-      emitNode(node.body, varMap, indent + 1, lines);
+      emitNode(node.body, varMap, indent + 1, lines, outputMode);
       lines.push({ indent, text: '}', kind: 'brace' });
       return;
     }
 
     case 'do-while': {
       lines.push({ indent, text: 'do {', address: node.address, kind: 'control' });
-      emitNode(node.body, varMap, indent + 1, lines);
+      emitNode(node.body, varMap, indent + 1, lines, outputMode);
       lines.push({ indent, text: `} while (${node.cond});`, kind: 'brace' });
       return;
     }
@@ -2454,7 +2467,7 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
         address: node.address,
         kind: 'control',
       });
-      emitNode(node.body, varMap, indent + 1, lines);
+      emitNode(node.body, varMap, indent + 1, lines, outputMode);
       lines.push({ indent, text: '}', kind: 'brace' });
       return;
     }
@@ -2469,12 +2482,12 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
       });
       for (const c of node.cases) {
         lines.push({ indent: indent + 1, text: `case ${c.value}:`, kind: 'control' });
-        emitNode(c.body, varMap, indent + 2, lines);
+        emitNode(c.body, varMap, indent + 2, lines, outputMode);
         lines.push({ indent: indent + 2, text: 'break;', kind: 'stmt' });
       }
       if (node.defaultCase && !isEmptySeq(node.defaultCase)) {
         lines.push({ indent: indent + 1, text: 'default:', kind: 'control' });
-        emitNode(node.defaultCase, varMap, indent + 2, lines);
+        emitNode(node.defaultCase, varMap, indent + 2, lines, outputMode);
       }
       lines.push({ indent, text: '}', kind: 'brace' });
       return;
@@ -2842,6 +2855,7 @@ export interface DecompileOptions {
   startAddress?: number;
   endAddress?: number;
   functionName?: string;
+  outputMode?: DecompilerOutputMode;
 }
 
 export function decompile(
@@ -2878,6 +2892,7 @@ export function decompile(
 
   const startAddress = options.startAddress ?? insns[0].address;
   const funcName = options.functionName ?? `sub_${startAddress.toString(16)}`;
+  const outputMode = options.outputMode ?? 'compact';
 
   // Phase 3+4: Build IR blocks
   const arch = detectArch(insns);
@@ -2986,7 +3001,7 @@ export function decompile(
 
   lines.push({ indent: 0, text: '', kind: 'blank' });
 
-  emitNode(structured, varMap, 1, lines);
+  emitNode(structured, varMap, 1, lines, outputMode);
 
   // Inject `return` if last meaningful line doesn't end with one
   const lastMeaningful = [...lines].reverse().find(l => l.kind === 'stmt' || l.kind === 'control');

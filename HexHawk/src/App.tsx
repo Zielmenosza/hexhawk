@@ -75,7 +75,7 @@ import {
 import type { AutoAnnotation } from './utils/autoAnnotationEngine';
 
 // Decompiler
-import DecompilerView from './components/DecompilerView';
+import DecompilerView, { loadDecompilerOutputMode, persistDecompilerOutputMode } from './components/DecompilerView';
 
 // Phase 9 � Debugger + Signature
 import SignaturePanel from './components/SignaturePanel';
@@ -3981,6 +3981,18 @@ export default function App() {
         detail: 'Create a visual map of branches and blocks.',
         disabled: disassembly.length === 0,
         action: () => { void buildCfg(); },
+      },
+      {
+        id: 'toggle-decompiler-output-mode',
+        label: 'Toggle pseudocode call style',
+        detail: 'Switch between compact import calls and annotated type comments.',
+        disabled: disassembly.length === 0,
+        action: async () => {
+          const nextMode = loadDecompilerOutputMode() === 'compact' ? 'annotated' : 'compact';
+          persistDecompilerOutputMode(nextMode);
+          setMessage(`Pseudocode call style set to ${nextMode}.`);
+          addLog(`Context menu: pseudocode call style set to ${nextMode}.`, 'info');
+        },
       },
       {
         id: 'quick-triage',
