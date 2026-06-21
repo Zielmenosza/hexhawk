@@ -1,4 +1,5 @@
 import type { ConfidenceLevel } from './disassemblyModel';
+import type { ImportPrototype } from './importPrototypes';
 
 export type DecompilerConfidence = ConfidenceLevel;
 
@@ -23,7 +24,7 @@ export type DecompilerIrNode =
   | { kind: 'arithmetic'; address: number; operator: string; destination: DecompilerIrValue; left: DecompilerIrValue; right: DecompilerIrValue; confidence: DecompilerConfidence }
   | { kind: 'compare'; address: number; left: DecompilerIrValue; right: DecompilerIrValue; operator?: string; confidence: DecompilerConfidence }
   | { kind: 'conditional-branch'; address: number; condition: string; target: number | null; fallthrough?: number; confidence: DecompilerConfidence }
-  | { kind: 'call'; address: number; target: number | null; name?: string; args: DecompilerIrValue[]; confidence: DecompilerConfidence; unresolved: boolean }
+  | { kind: 'call'; address: number; target: number | null; name?: string; args: DecompilerIrValue[]; confidence: DecompilerConfidence; unresolved: boolean; resolvedPrototype?: ImportPrototype }
   | { kind: 'return'; address: number; value?: DecompilerIrValue; confidence: DecompilerConfidence }
   | { kind: 'stack-variable-candidate'; address: number; variable: DecompilerIrValue; confidence: DecompilerConfidence }
   | { kind: 'register-variable-candidate'; address: number; variable: DecompilerIrValue; confidence: DecompilerConfidence }

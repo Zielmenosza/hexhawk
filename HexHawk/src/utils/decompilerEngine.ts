@@ -17,6 +17,7 @@
  */
 
 import { liftInstructionsToDecompilerIr } from './decompilerIr';
+import { resolveImportPrototype, type ImportPrototype } from './importPrototypes';
 import { computeDecompilerMaturitySummary } from './decompilerMaturity';
 import type { DecompilerMaturitySummary } from './decompilerTypes';
 import { buildSSAForm, coalesceSSAVariables, type DomTree, type SSACoalescingResult } from './ssaTransform';
@@ -71,7 +72,7 @@ export type IRStmt =
   | { op: 'test'; address: number; left: IRValue; right: IRValue }
   | { op: 'cjmp'; address: number; cond: string; trueTarget: number; falseTarget: number }
   | { op: 'jmp'; address: number; target: number | null }
-  | { op: 'call'; address: number; target: number | null; name?: string; args?: IRValue[]; argRecovery?: 'register-window' | 'stack-window' | 'register-stack-window' }
+  | { op: 'call'; address: number; target: number | null; name?: string; args?: IRValue[]; argRecovery?: 'register-window' | 'stack-window' | 'register-stack-window'; resolvedPrototype?: ImportPrototype }
   | { op: 'ret'; address: number }
   | { op: 'push'; address: number; value: IRValue }
   | { op: 'pop'; address: number; dest: IRValue }
@@ -444,7 +445,7 @@ function liftInstruction(ins: DisassembledInstruction, ctx: LiftContext): IRStmt
   if (mn === 'call' || mn === 'callq') {
     const target = ops.length > 0 ? parseImmediateAddr(ops[0]) : null;
     const name = target !== null ? undefined : ops[0] ?? undefined;
-    return { op: 'call', address, target, name };
+    return { op: 'call', address, target, name, resolvedPrototype: resolveImportPrototype(name) };
   }
 
   // ── UNCONDITIONAL JUMP ───────────────────────────────
@@ -963,7 +964,10 @@ function renderStmt(stmt: IRStmt, varMap: VarMap): { text: string; uncertain?: b
         : stmt.target !== null
         ? `sub_${stmt.target.toString(16)}`
         : '*indirect';
-      const args = stmt.args?.map(arg => renderValue(arg, varMap)) ?? [];
+      const rawArgs = stmt.args?.map(arg => renderValue(arg, varMap)) ?? [];
+      const args = stmt.resolvedPrototype
+        ? stmt.resolvedPrototype.parameters.map((param, index) => `${param.name}: ${rawArgs[index] ?? '?'}`).slice(0, Math.max(stmt.resolvedPrototype.parameters.length, rawArgs.length))
+        : rawArgs;
       const uncertain = stmt.argRecovery === 'stack-window' || stmt.argRecovery === 'register-stack-window';
       return { text: `${target}(${args.join(', ')});`, uncertain };
     }
@@ -1113,7 +1117,7 @@ function liftInstructionARM32(ins: DisassembledInstruction, ctx: LiftContext): I
   if (mn === 'bl' || mn === 'blx') {
     const target = ops[0] ? parseImmediateAddr(ops[0]) : null;
     const name = target === null ? (ops[0] ?? undefined) : undefined;
-    return { op: 'call', address, target, name };
+    return { op: 'call', address, target, name, resolvedPrototype: resolveImportPrototype(name) };
   }
 
   // ── UNCONDITIONAL BRANCH ────────────────────────────
@@ -1311,10 +1315,10 @@ function liftInstructionAArch64(ins: DisassembledInstruction, ctx: LiftContext):
   if (mn === 'bl') {
     const target = ops[0] ? parseImmediateAddr(ops[0]) : null;
     const name = target === null ? (ops[0] ?? undefined) : undefined;
-    return { op: 'call', address, target, name };
+    return { op: 'call', address, target, name, resolvedPrototype: resolveImportPrototype(name) };
   }
   if (mn === 'blr') {
-    return { op: 'call', address, target: null, name: ops[0] };
+    return { op: 'call', address, target: null, name: ops[0], resolvedPrototype: resolveImportPrototype(ops[0]) };
   }
   if (mn === 'svc') {
     const svcNum = ops[0] ? (parseAArch64Imm(ops[0]) ?? 0) : 0;

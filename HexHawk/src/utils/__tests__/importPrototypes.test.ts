@@ -1,0 +1,61 @@
+import { describe, expect, it } from 'vitest';
+import { liftInstructionToDecompilerIr } from '../decompilerIr';
+import { decompile, type DisassembledInstruction } from '../decompilerEngine';
+import { formatImportPrototype, resolveImportPrototype } from '../strikeEngine';
+
+describe('import prototype resolution', () => {
+  it('resolves CreateFileW with named Win32 parameters', () => {
+    const call = liftInstructionToDecompilerIr({ address: 0x1000, mnemonic: 'call', operands: 'CreateFileW' })[0];
+
+    expect(call.kind).toBe('call');
+    if (call.kind !== 'call') return;
+    expect(call.resolvedPrototype?.name).toBe('CreateFileW');
+    expect(call.resolvedPrototype?.parameters.map(p => p.name)).toEqual([
+      'lpFileName',
+      'dwDesiredAccess',
+      'dwShareMode',
+      'lpSecurityAttributes',
+      'dwCreationDisposition',
+      'dwFlagsAndAttributes',
+      'hTemplateFile',
+    ]);
+  });
+
+  it('returns undefined for unknown imports without throwing', () => {
+    const call = liftInstructionToDecompilerIr({ address: 0x1000, mnemonic: 'call', operands: 'MysteryImport' })[0];
+
+    expect(call.kind).toBe('call');
+    if (call.kind !== 'call') return;
+    expect(call.resolvedPrototype).toBeUndefined();
+  });
+
+  it('TALON formats CreateFileW calls with parameter names', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x2000, mnemonic: 'mov', operands: 'rcx, 0x1000' },
+      { address: 0x2004, mnemonic: 'mov', operands: 'rdx, 0x80000000' },
+      { address: 0x2008, mnemonic: 'mov', operands: 'r8, 1' },
+      { address: 0x200c, mnemonic: 'mov', operands: 'r9, 0' },
+      { address: 0x2010, mnemonic: 'mov', operands: 'qword ptr [rsp + 0x20], 3' },
+      { address: 0x2014, mnemonic: 'mov', operands: 'qword ptr [rsp + 0x28], 0x80' },
+      { address: 0x2018, mnemonic: 'mov', operands: 'qword ptr [rsp + 0x30], 0' },
+      { address: 0x201c, mnemonic: 'call', operands: 'CreateFileW' },
+      { address: 0x2021, mnemonic: 'ret', operands: '' },
+    ];
+
+    const result = decompile(instructions, null, { functionName: 'create_file_call' });
+    const text = result.lines.map(l => l.text).join('\n');
+    const call = result.irBlocks.flatMap(b => b.stmts).find(s => s.op === 'call');
+
+    expect(call?.op === 'call' ? call.resolvedPrototype?.name : undefined).toBe('CreateFileW');
+    expect(text).toContain('CreateFileW(lpFileName: 0x1000, dwDesiredAccess: 0x80000000');
+    expect(text).toContain('dwCreationDisposition: 3');
+    expect(text).not.toContain('rN_M');
+  });
+
+  it('exposes prototype lookup through the STRIKE query surface exports', () => {
+    const proto = resolveImportPrototype('kernel32.CreateFileW');
+
+    expect(proto?.name).toBe('CreateFileW');
+    expect(formatImportPrototype(proto!)).toContain('HANDLE CreateFileW');
+  });
+});

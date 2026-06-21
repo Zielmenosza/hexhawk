@@ -1,5 +1,6 @@
 import type { DisassembledInstruction } from './decompilerEngine';
 import type { DecompilerIrNode, DecompilerIrValue } from './decompilerTypes';
+import { resolveImportPrototype } from './importPrototypes';
 
 const BINOP: Record<string, string> = {
   add: '+', adc: '+', sub: '-', sbb: '-', imul: '*', mul: '*',
@@ -168,7 +169,8 @@ export function liftInstructionToDecompilerIr(
   if (mnemonic === 'call' || mnemonic === 'callq') {
     const target = directTarget(operands[0]);
     const name = target === null ? operands[0] : undefined;
-    return [{ kind: 'call', address, target, name, args: [], confidence: target === null ? 'medium' : 'high', unresolved: target === null }];
+    const resolvedPrototype = resolveImportPrototype(name);
+    return [{ kind: 'call', address, target, name, args: [], confidence: target === null ? 'medium' : 'high', unresolved: target === null, resolvedPrototype }];
   }
 
   if (mnemonic === 'jmp' || mnemonic === 'jmpq') {

@@ -13,6 +13,8 @@
 
 import type { RegisterState, DebugSnapshot } from '../components/DebuggerPanel';
 import type { BehavioralTag } from './correlationEngine';
+export { resolveImportPrototype, formatImportPrototype, IMPORT_PROTOTYPES } from './importPrototypes';
+export type { ImportPrototype, ImportParameterPrototype } from './importPrototypes';
 
 // ── Register catalogue ────────────────────────────────────────────────────────
 
