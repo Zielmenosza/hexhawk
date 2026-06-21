@@ -130,6 +130,175 @@ describe('decompiler regressions - synthetic fixtures', () => {
   });
 });
 
+
+describe('decompiler control-flow structuring', () => {
+  const textOf = (instructions: DisassembledInstruction[], cfg: CfgGraph | null, name: string) =>
+    decompile(instructions, cfg, { functionName: name }).lines.map(l => l.text).join('\n');
+
+  it('keeps straight-line sequences free of control-flow keywords', () => {
+    const text = textOf([
+      { address: 0x1000, mnemonic: 'mov', operands: 'rax, 1' },
+      { address: 0x1004, mnemonic: 'add', operands: 'rax, 2' },
+      { address: 0x1008, mnemonic: 'ret', operands: '' },
+    ], null, 'straight_line');
+
+    expect(text).not.toMatch(/\b(if|else|while|do|for|goto|switch)\b/);
+    expect(text).toMatch(/(?:rax|i) = 1;/);
+  });
+
+  it('emits if for a one-sided branch that merges back', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x2000, mnemonic: 'cmp', operands: 'rax, 0' },
+      { address: 0x2004, mnemonic: 'je', operands: '0x2010' },
+      { address: 0x2008, mnemonic: 'jmp', operands: '0x2020' },
+      { address: 0x2010, mnemonic: 'mov', operands: 'rbx, 1' },
+      { address: 0x2020, mnemonic: 'ret', operands: '' },
+    ];
+    const cfg: CfgGraph = {
+      nodes: [
+        { id: 'entry', start: 0x2000, end: 0x2004, block_type: 'entry' },
+        { id: 'skip', start: 0x2008, end: 0x2008 },
+        { id: 'then', start: 0x2010, end: 0x2010 },
+        { id: 'join', start: 0x2020, end: 0x2020 },
+      ],
+      edges: [
+        { source: 'entry', target: 'then', kind: 'branch' },
+        { source: 'entry', target: 'skip', kind: 'fallthrough' },
+        { source: 'skip', target: 'join', kind: 'branch' },
+        { source: 'then', target: 'join', kind: 'fallthrough' },
+      ],
+    };
+
+    const result = decompile(instructions, cfg, { functionName: 'simple_if' });
+    const text = result.lines.map(l => l.text).join('\n');
+    expect(text).toContain('if (rax == 0) {');
+    expect(text).not.toContain('goto 0x');
+    expect(result.structured.kind).toBe('seq');
+  });
+
+  it('emits if/else when both branches converge at a join', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x3000, mnemonic: 'cmp', operands: 'rax, 7' },
+      { address: 0x3004, mnemonic: 'jne', operands: '0x3010' },
+      { address: 0x3008, mnemonic: 'mov', operands: 'rbx, 1' },
+      { address: 0x300c, mnemonic: 'jmp', operands: '0x3020' },
+      { address: 0x3010, mnemonic: 'mov', operands: 'rbx, 2' },
+      { address: 0x3020, mnemonic: 'ret', operands: '' },
+    ];
+    const cfg: CfgGraph = {
+      nodes: [
+        { id: 'entry', start: 0x3000, end: 0x3004, block_type: 'entry' },
+        { id: 'else', start: 0x3010, end: 0x3010 },
+        { id: 'then', start: 0x3008, end: 0x300c },
+        { id: 'join', start: 0x3020, end: 0x3020 },
+      ],
+      edges: [
+        { source: 'entry', target: 'else', kind: 'branch' },
+        { source: 'entry', target: 'then', kind: 'fallthrough' },
+        { source: 'then', target: 'join', kind: 'branch' },
+        { source: 'else', target: 'join', kind: 'fallthrough' },
+      ],
+    };
+
+    const text = textOf(instructions, cfg, 'if_else');
+    expect(text).toContain('if (rax != 7) {');
+    expect(text).toContain('} else {');
+    expect(text).not.toContain('goto 0x');
+  });
+
+  it('emits while for a header-tested loop', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x4000, mnemonic: 'cmp', operands: 'rcx, 10' },
+      { address: 0x4004, mnemonic: 'jge', operands: '0x4020' },
+      { address: 0x4008, mnemonic: 'add', operands: 'rcx, 1' },
+      { address: 0x400c, mnemonic: 'jmp', operands: '0x4000' },
+      { address: 0x4020, mnemonic: 'ret', operands: '' },
+    ];
+    const cfg: CfgGraph = {
+      nodes: [
+        { id: 'header', start: 0x4000, end: 0x4004, block_type: 'entry' },
+        { id: 'body', start: 0x4008, end: 0x400c },
+        { id: 'exit', start: 0x4020, end: 0x4020 },
+      ],
+      edges: [
+        { source: 'header', target: 'body', kind: 'fallthrough' },
+        { source: 'header', target: 'exit', kind: 'branch' },
+        { source: 'body', target: 'header', kind: 'branch' },
+      ],
+    };
+
+    const text = textOf(instructions, cfg, 'while_loop');
+    expect(text).toMatch(/(?:while|for)\s*\(/);
+    expect(text).not.toContain('goto 0x');
+  });
+
+  it('nests an if inside a loop body', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x5000, mnemonic: 'cmp', operands: 'rcx, 10' },
+      { address: 0x5004, mnemonic: 'jge', operands: '0x5040' },
+      { address: 0x5010, mnemonic: 'cmp', operands: 'rax, 0' },
+      { address: 0x5014, mnemonic: 'je', operands: '0x5020' },
+      { address: 0x5018, mnemonic: 'mov', operands: 'rbx, 1' },
+      { address: 0x5020, mnemonic: 'add', operands: 'rcx, 1' },
+      { address: 0x5024, mnemonic: 'jmp', operands: '0x5000' },
+      { address: 0x5040, mnemonic: 'ret', operands: '' },
+    ];
+    const cfg: CfgGraph = {
+      nodes: [
+        { id: 'header', start: 0x5000, end: 0x5004, block_type: 'entry' },
+        { id: 'test', start: 0x5010, end: 0x5014 },
+        { id: 'then', start: 0x5018, end: 0x5018 },
+        { id: 'latch', start: 0x5020, end: 0x5024 },
+        { id: 'exit', start: 0x5040, end: 0x5040 },
+      ],
+      edges: [
+        { source: 'header', target: 'test', kind: 'fallthrough' },
+        { source: 'header', target: 'exit', kind: 'branch' },
+        { source: 'test', target: 'then', kind: 'branch' },
+        { source: 'test', target: 'latch', kind: 'fallthrough' },
+        { source: 'then', target: 'latch', kind: 'fallthrough' },
+        { source: 'latch', target: 'header', kind: 'branch' },
+      ],
+    };
+
+    const text = textOf(instructions, cfg, 'nested_if_loop');
+    expect(text).toMatch(/(?:while|for)\s*\(/);
+    expect(text).toContain('if (rax == 0) {');
+    expect(text.indexOf('if (')).toBeGreaterThan(text.search(/(?:while|for)\s*\(/));
+  });
+
+  it('falls back to labels and gotos for irreducible CFGs without crashing', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x6000, mnemonic: 'cmp', operands: 'rax, 0' },
+      { address: 0x6004, mnemonic: 'je', operands: '0x6020' },
+      { address: 0x6010, mnemonic: 'jmp', operands: '0x6030' },
+      { address: 0x6020, mnemonic: 'jmp', operands: '0x6010' },
+      { address: 0x6030, mnemonic: 'jmp', operands: '0x6020' },
+    ];
+    const cfg: CfgGraph = {
+      nodes: [
+        { id: 'entry', start: 0x6000, end: 0x6004, block_type: 'entry' },
+        { id: 'a', start: 0x6010, end: 0x6010 },
+        { id: 'b', start: 0x6020, end: 0x6020 },
+        { id: 'c', start: 0x6030, end: 0x6030 },
+      ],
+      edges: [
+        { source: 'entry', target: 'a', kind: 'fallthrough' },
+        { source: 'entry', target: 'b', kind: 'branch' },
+        { source: 'a', target: 'c', kind: 'branch' },
+        { source: 'b', target: 'a', kind: 'branch' },
+        { source: 'c', target: 'b', kind: 'branch' },
+      ],
+    };
+
+    const result = decompile(instructions, cfg, { functionName: 'irreducible' });
+    const text = result.lines.map(l => l.text).join('\n');
+    expect(text).toContain('label_entry:');
+    expect(text).toContain('goto label_');
+    expect(result.warnings.join(' ')).toContain('Irreducible CFG detected');
+  });
+});
+
 describe('decompiler regressions - real binaries in workspace', () => {
   const nestCli = findNestCli();
   const binaryCandidates = [

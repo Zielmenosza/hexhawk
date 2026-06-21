@@ -526,6 +526,7 @@ export default function TalonView({
       }],
       varMap: new Map(),
       irBlocks: [],
+      structured: { kind: 'seq', nodes: [] },
       warnings: [],
       instrCount: 0,
       logicRegions: [],

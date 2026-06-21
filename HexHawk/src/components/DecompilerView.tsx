@@ -350,6 +350,7 @@ export default function DecompilerView({
         lines: [{ indent: 0, text: '// No disassembly loaded — load a binary and run Disassemble first', kind: 'comment' as const }],
         varMap: new Map(),
         irBlocks: [],
+        structured: { kind: 'seq', nodes: [] },
         logicRegions: [],
         warnings: [],
         instrCount: 0,

@@ -19,6 +19,7 @@
 import { liftInstructionsToDecompilerIr } from './decompilerIr';
 import { computeDecompilerMaturitySummary } from './decompilerMaturity';
 import type { DecompilerMaturitySummary } from './decompilerTypes';
+import { buildSSAForm, type DomTree } from './ssaTransform';
 
 // ─────────────────────────────────────────────────────────
 // SHARED INPUT TYPES (matching App.tsx)
@@ -97,9 +98,11 @@ export type StructuredNode =
   | { kind: 'seq'; nodes: StructuredNode[] }
   | { kind: 'if'; cond: string; address: number; then: StructuredNode; else?: StructuredNode; uncertain?: boolean }
   | { kind: 'while'; cond: string; address: number; body: StructuredNode }
+  | { kind: 'do-while'; cond: string; address: number; body: StructuredNode }
   | { kind: 'for'; init: string; cond: string; step: string; address: number; body: StructuredNode }
   | { kind: 'switch'; expr: string; address: number; cases: Array<{ value: string; body: StructuredNode }>; defaultCase?: StructuredNode; uncertain?: boolean }
   | { kind: 'block'; irBlock: IRBlock }
+  | { kind: 'label'; id: string; address: number }
   | { kind: 'goto'; target: string; address: number };
 
 // ─────────────────────────────────────────────────────────
@@ -194,6 +197,8 @@ export type DecompileResult = {
   lines: PseudoLine[];
   varMap: Map<string, string>;   // IR key → friendly name
   irBlocks: IRBlock[];
+  /** Structured control-flow IR/AST used to emit pseudocode. Advisory only. */
+  structured: StructuredNode;
   /** Logic regions ranked by confidence (highest first) */
   logicRegions: LogicRegion[];
   warnings: string[];
@@ -948,10 +953,7 @@ function renderStmt(stmt: IRStmt, varMap: VarMap): { text: string; uncertain?: b
       return null; // handled by control flow structure
 
     case 'jmp':
-      if (stmt.target !== null) {
-        return { text: `goto 0x${stmt.target.toString(16)};`, uncertain: true };
-      }
-      return { text: `goto *indirect;`, uncertain: true };
+      return null; // structured emission owns jumps/gotos so reducible CFGs do not leak raw goto chains
 
     case 'call': {
       const target = stmt.name
@@ -1733,6 +1735,32 @@ function computeBackEdges(blocks: IRBlock[]): Set<string> {
   return backEdges;
 }
 
+function dominates(domTree: DomTree, dominator: string, node: string): boolean {
+  if (dominator === node) return true;
+  let cur: string | null | undefined = node;
+  const seen = new Set<string>();
+  while (cur !== null && cur !== undefined && !seen.has(cur)) {
+    seen.add(cur);
+    cur = domTree.idom.get(cur);
+    if (cur === dominator) return true;
+  }
+  return false;
+}
+
+function computeDominanceBackEdges(blocks: IRBlock[], domTree: DomTree): Set<string> {
+  const backEdges = new Set<string>();
+  const blockIds = new Set(blocks.map(b => b.id));
+  for (const block of blocks) {
+    for (const succ of block.allSuccessors) {
+      if (!blockIds.has(succ)) continue;
+      if (dominates(domTree, succ, block.id)) {
+        backEdges.add(`${block.id}->${succ}`);
+      }
+    }
+  }
+  return backEdges;
+}
+
 /** BFS-reachable block ids from `from`, not crossing back edges */
 function reachable(
   from: string,
@@ -1979,31 +2007,29 @@ function structureBlock(
 
   const blockNode: StructuredNode = { kind: 'block', irBlock: block };
 
-  // ── LOOP DETECTION: back edge from this block → header ──
+  // ── DO-WHILE DETECTION: conditional latch jumps back to header ──
   if (backSuccs.length > 0 && hasCjmp(block)) {
     const loopHeader = backSuccs[0];
-    // The block just before the back edge is the loop tail
-    // Forward successor (if any) is the loop exit
     const exitSucc = fwdSuccs[0] ?? null;
     const cond = extractCondFromBlock(block);
 
-    // Determine if this is a loop header itself (has a back edge coming IN)
-    // For simplicity, treat the current block as the while header
-    // Body = from loopHeader to this block
     const bodyVisited = new Set(visited);
-    bodyVisited.delete(blockId); // allow re-entry for body
-
-    // Build loop body: from loop header to this (tail) block
-    const bodyNode = structureBlock(loopHeader, blockMap, backEdges, topoOrder,
-                                    loopHeaders, bodyVisited, blockId, depth + 1);
-
-    const whileNode: StructuredNode = { kind: 'while', cond, address: block.stmts.find(s => s.op === 'cjmp')?.address ?? block.start, body: bodyNode };
+    bodyVisited.delete(blockId);
+    const headerBody = structureBlock(loopHeader, blockMap, backEdges, topoOrder,
+                                      loopHeaders, bodyVisited, blockId, depth + 1);
+    const bodyNode: StructuredNode = { kind: 'seq', nodes: [headerBody, blockNode] };
+    const doWhileNode: StructuredNode = {
+      kind: 'do-while',
+      cond,
+      address: block.stmts.find(s => s.op === 'cjmp')?.address ?? block.start,
+      body: bodyNode,
+    };
 
     const rest = exitSucc
       ? structureBlock(exitSucc, blockMap, backEdges, topoOrder, loopHeaders, visited, stopAt, depth + 1)
       : { kind: 'seq' as const, nodes: [] };
 
-    return { kind: 'seq', nodes: [blockNode, whileNode, rest] };
+    return { kind: 'seq', nodes: [doWhileNode, rest] };
   }
 
   // ── SIMPLE SEQUENCE (single forward successor) ──────
@@ -2121,6 +2147,21 @@ function structureBlock(
   return { kind: 'seq', nodes };
 }
 
+function structureIrreducibleFallback(blocks: IRBlock[]): StructuredNode {
+  const nodes: StructuredNode[] = [];
+  const blockIds = new Set(blocks.map(b => b.id));
+  for (const block of blocks) {
+    nodes.push({ kind: 'label', id: block.id, address: block.start });
+    nodes.push({ kind: 'block', irBlock: block });
+    const last = block.stmts[block.stmts.length - 1];
+    for (const succ of block.allSuccessors) {
+      if (!blockIds.has(succ)) continue;
+      nodes.push({ kind: 'goto', target: succ, address: last?.address ?? block.end });
+    }
+  }
+  return { kind: 'seq', nodes };
+}
+
 function isEmptySeq(node: StructuredNode): boolean {
   return node.kind === 'seq' && node.nodes.length === 0;
 }
@@ -2180,6 +2221,13 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
       return;
     }
 
+    case 'do-while': {
+      lines.push({ indent, text: 'do {', address: node.address, kind: 'control' });
+      emitNode(node.body, varMap, indent + 1, lines);
+      lines.push({ indent, text: `} while (${node.cond});`, kind: 'brace' });
+      return;
+    }
+
     case 'for': {
       const initPart = node.init || '';
       lines.push({
@@ -2214,10 +2262,21 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
       return;
     }
 
+    case 'label': {
+      lines.push({
+        indent,
+        text: `label_${node.id}:`,
+        address: node.address,
+        isUncertain: true,
+        kind: 'uncertain',
+      });
+      return;
+    }
+
     case 'goto': {
       lines.push({
         indent,
-        text: `goto block_${node.target};`,
+        text: `goto label_${node.target};`,
         address: node.address,
         isUncertain: true,
         kind: 'uncertain',
@@ -2590,6 +2649,7 @@ export function decompile(
       lines: [{ indent: 0, text: '// No instructions in range', kind: 'comment' }],
       varMap: new Map(),
       irBlocks: [],
+      structured: { kind: 'seq', nodes: [] },
       logicRegions: [],
       warnings: emptyWarnings,
       instrCount: 0,
@@ -2620,6 +2680,7 @@ export function decompile(
       lines: [{ indent: 0, text: '// Could not build basic blocks', kind: 'comment' }],
       varMap: new Map(),
       irBlocks: [],
+      structured: { kind: 'seq', nodes: [] },
       logicRegions: [],
       warnings: emptyWarnings,
       instrCount: insns.length,
@@ -2659,13 +2720,20 @@ export function decompile(
 
   // Phase 5: Structure control flow
   const blockMap = new Map(irBlocks.map(b => [b.id, b]));
-  const backEdges = computeBackEdges(irBlocks);
+  const ssaFormForStructuring = buildSSAForm(irBlocks);
+  const dominanceBackEdges = ssaFormForStructuring.ok
+    ? computeDominanceBackEdges(irBlocks, ssaFormForStructuring.domTree)
+    : new Set<string>();
+  const backEdges = dominanceBackEdges.size > 0 ? dominanceBackEdges : computeBackEdges(irBlocks);
   const loopHeaders = computeLoopHeaders(backEdges);
   const topo = topoSort(irBlocks, backEdges);
   const entry = findEntryBlock(irBlocks);
 
   let structured: StructuredNode;
-  if (entry) {
+  if (!ssaFormForStructuring.ok && irBlocks.length > 1) {
+    structured = structureIrreducibleFallback(irBlocks);
+    warnings.push('Irreducible CFG detected; emitted explicit labels and gotos instead of source-like structuring.');
+  } else if (entry) {
     structured = structureBlock(entry.id, blockMap, backEdges, topo, loopHeaders, new Set(), null, 0);
   } else {
     structured = { kind: 'seq', nodes: irBlocks.map(b => ({ kind: 'block' as const, irBlock: b })) };
@@ -2748,6 +2816,7 @@ export function decompile(
     lines,
     varMap,
     irBlocks: optimizedBlocks,
+    structured,
     logicRegions,
     warnings,
     instrCount: insns.length,
