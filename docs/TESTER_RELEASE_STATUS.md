@@ -1,55 +1,54 @@
 # HexHawk Tester Release Status
 
-Date: 2026-06-20
+Date: 2026-06-21
 
 ## Recommendation
 
 Unsigned deployment candidate: YES, for controlled internal testing with caveats.
 
-Controlled external signed-tester gate: NO. Public-trusted Authenticode custody is absent, current artifacts are unsigned, hosted updater metadata was not refreshed/validated against the June 20 candidate NSIS hash, and full native export parity has not been rerun on any signed artifacts.
+Controlled external signed-tester gate: NO. Public-trusted Authenticode custody is absent, current artifacts are unsigned, hosted updater metadata was not refreshed/validated against the June 21 candidate NSIS hash, and full native export parity has not been rerun on any signed artifacts.
 
 Public release: NO.
 
 ## Current Build
 
 - Product version: 1.0.0.
-- Current artifacts were rebuilt on 2026-06-20 from post-fix HEAD `e625403`.
-- Current MSI/NSIS artifacts are not digitally signed according to `Get-AuthenticodeSignature`.
+- Current deployment-candidate source tag: `v1.9.0-unsigned-deployment-candidate-20260621` at `ad2e752` (`[STRIKE] Add IL opcode-tree pattern matching API`).
+- Current local runtime artifacts under `target/release/` reflect the June 21 source state for `hexhawk-backend.exe` and `nest_cli.exe`.
+- Current MSI/NSIS installer copies under `target/release/bundle/` retain the June 20 smoke-passed installer payload hashes; they are unsigned local handoff artifacts and were not rebuilt by a fresh June 21 deployment gate.
+- Current MSI/NSIS artifacts are not digitally signed according to the prior Authenticode gate; no public-trusted signing has been completed.
 - The previous no-op `bundle.windows.signCommand` remains removed.
 - `bundle.createUpdaterArtifacts` is currently `false` for local unsigned builds.
-- Hosted `https://hexhawk.ke/releases/latest.json` was not regenerated or validated for the June 20 unsigned candidate.
-- Packaged native GUI launch/render smoke passed for MSI extraction and NSIS install; full report/AETHERFRAME/NEST export parity remains a separate exact-artifact gate.
-- Current release evidence file: `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`.
-- Deployment candidate tag: `v1.2.0-unsigned-deployment-candidate-20260620`.
+- Hosted `https://hexhawk.ke/releases/latest.json` was not regenerated or validated for the June 21 unsigned candidate.
+- Packaged native GUI launch/render smoke passed for the June 20 MSI extraction and NSIS install; full report/AETHERFRAME/NEST export parity remains a separate exact-artifact gate.
+- Current release evidence file for installer smoke remains `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`; the June 21 tag is a source deployment-candidate marker after additional tested TALON/NEST/STRIKE capability commits.
+- Deployment candidate tag: `v1.9.0-unsigned-deployment-candidate-20260621`.
 
 ## Current Artifact Hashes
 
-Rebuilt locally on 2026-06-20 with `yarn tauri:build`; Authenticode remains `NotSigned`.
+Recorded locally on 2026-06-21 from `D:/Project/HexHawk/target/release/`; Authenticode/public signing remains unproven and treated as unsigned.
 
-- `target/release/hexhawk-backend.exe`: `48de54c39a0f06164ac82a2a6bd5dd9439aa90b53188efbcc5caa790c0657ad1`
-- `target/release/nest_cli.exe`: `d4efba77ae2df7a6fa265ff37f051389a87192d3cc7da774862110ba1c723e0a`
+- `target/release/hexhawk-backend.exe`: `6b3e5aa60e1ebcad6a055c7dec43795834f970485dc5ddd448ec51ed5739a8af`
+- `target/release/nest_cli.exe`: `c8dd7dce7e774985671087963a944f480fda239fe3e9c05843e1b03863a8d2e5`
 - `target/release/WebView2Loader.dll`: `8427b1fc58ec707813e5c0a51eb5d69397bb333250a7b891be4d3b123f1e0f1c`
 - `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`: `0b6a8e885accd45b6c1633f5db79af839302d8c45311ab5d48ef4ddeefe0d14e`
 - `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`: `fae7b573054a3938bc38c7ae21f341b54a2772629526cbda1c829a663ce59c71`
 
 ## Local Artifact Custody Note
 
-The smoke-passed June 20 MSI/NSIS installer copies are currently present under `D:/Project/HexHawk/target/release/bundle/` for local handoff convenience. They retain the hashes above and remain the unsigned artifacts built from `e625403`; they are not a fresh deployment-candidate build from the later docs/SSA commits on `main`. Any new deployment-candidate tag from current `main` requires a fresh full deployment gate.
+The smoke-passed June 20 MSI/NSIS installer copies are currently present under `D:/Project/HexHawk/target/release/bundle/` for local handoff convenience. They retain the hashes above and remain unsigned local artifacts. The June 21 `v1.9.0-unsigned-deployment-candidate-20260621` tag records the source state after the tested TALON/NEST/STRIKE capability sprint; a new installer deployment-candidate gate still requires a fresh release worktree and rebuild.
 
 ## Historical Evidence Boundary
 
-Prior June 1-2 and June 4 evidence recorded tests, updater custody rehearsals, hosted metadata checks, and native GUI parity for earlier artifact hashes. Those files remain historical provenance and must not be used as proof for the June 20 deployment candidate unless the exact hash matches.
+Prior June 1-2, June 4, and June 20 evidence recorded tests, updater custody rehearsals, hosted metadata checks, installer smoke, and native GUI parity for earlier artifact hashes. Those files remain historical provenance and must not be used as proof for the June 21 deployment candidate unless the exact hash matches.
 
 ## Validation Summary
 
-- STRIKE provenance fix targeted test: passed.
-- All discovered frontend tests: 47 files passed, 736 tests passed, 1 skipped.
-- `npx tsc --noEmit`: passed.
-- `yarn build`: passed with existing Vite warnings.
-- `yarn tauri:build`: passed and produced current MSI/NSIS artifacts.
-- `sha256sum`: recorded hashes above.
-- `Get-AuthenticodeSignature`: current MSI/NSIS artifacts are `NotSigned`.
-- MSI extraction and NSIS silent-install GUI smoke: passed.
+- TALON/NEST/STRIKE capability sprint through v1.8.0 completed and pushed before the June 21 source candidate tag.
+- All discovered frontend tests at the v1.9.0 source candidate: 49 files, 758 tests passed.
+- `npx tsc --noEmit`: passed at the v1.9.0 source candidate.
+- `cargo test`: 85 tests passed at the v1.9.0 source candidate.
+- June 21 local `sha256sum`: recorded hashes above.
 - Hosted updater metadata: not refreshed/validated for this candidate.
 
 ## Decompiler/TALON Status
@@ -58,6 +57,11 @@ Prior June 1-2 and June 4 evidence recorded tests, updater custody rehearsals, h
 - Fallback IR block partitioning derives blocks from instruction flow for non-overlapping/sparse CFG cases.
 - Call argument recovery includes ABI-aware recent register setup recovery for Windows x64 and SysV-style call sites.
 - First-pass semantic naming heuristics cover loop counters/index/size/pointer variables.
+- TALON control-flow structuring covers if/else/while/for with goto fallback for irreducible CFGs.
+- TALON SSA variable coalescing produces named locals from SSA versions.
+- NEST Win32/libc import prototype resolution surfaces resolved call metadata.
+- TALON switch and jump-table recovery handles multi-target dispatch and same-variable equality chains.
+- STRIKE IL opcode-tree matching supports nested operands, wildcards, and named bindings.
 - Regression tests include guarded real-binary checks through `nest_cli`.
 
 ## Next Gate Before External Testers
