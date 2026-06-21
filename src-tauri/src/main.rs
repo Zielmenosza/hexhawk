@@ -1,4 +1,22 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+#![allow(
+    dead_code,
+    unused_mut,
+    unused_variables,
+    clippy::double_ended_iterator_last,
+    clippy::empty_line_after_doc_comments,
+    clippy::enum_variant_names,
+    clippy::if_same_then_else,
+    clippy::large_enum_variant,
+    clippy::manual_range_contains,
+    clippy::needless_as_bytes,
+    clippy::needless_return,
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    clippy::unnecessary_cast,
+    clippy::unwrap_or_default,
+    clippy::useless_format
+)]
 
 mod commands;
 mod plugins;

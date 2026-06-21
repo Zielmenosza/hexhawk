@@ -6,20 +6,15 @@ pub const PLUGIN_RESULT_SCHEMA_VERSION: u32 = 1;
 pub const PLUGIN_RESULT_MAX_JSON_BYTES: usize = 5 * 1024 * 1024;
 pub const PLUGIN_EXECUTION_TIMEOUT_SECS: u64 = 3;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PluginKind {
+    #[default]
     Metric,
     Analysis,
     Strings,
     Warning,
     Error,
-}
-
-impl Default for PluginKind {
-    fn default() -> Self {
-        PluginKind::Metric
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,7 +102,7 @@ impl PluginResult {
     }
 
     pub fn validate_json_size(json: &str) -> Result<(), String> {
-        let size = json.as_bytes().len();
+        let size = json.len();
         if size > PLUGIN_RESULT_MAX_JSON_BYTES {
             Err(format!(
                 "plugin result JSON payload is too large ({} bytes, max {} bytes)",
@@ -187,6 +182,13 @@ pub struct PluginEntry {
 pub const PLUGIN_SYMBOL_NAME: &[u8] = b"hexhawk_plugin_entry\0";
 
 /// Convert a plugin-owned C string into a Rust `String` and reclaim ownership.
+///
+/// # Safety
+///
+/// `ptr` must either be null or point to a valid NUL-terminated C string that
+/// was allocated by `CString::into_raw` (or an ABI-compatible allocator) and is
+/// owned by the caller. This function takes ownership and frees the allocation
+/// exactly once with `CString::from_raw`.
 pub unsafe fn c_string_to_string(ptr: *mut c_char) -> String {
     if ptr.is_null() {
         return String::new();
