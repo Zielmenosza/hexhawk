@@ -58,11 +58,17 @@ export type CfgGraph = {
 
 export type MemSize = 'byte' | 'word' | 'dword' | 'qword' | 'ptr';
 
-export type IRValue =
+export type IRValueTypeHint = {
+  inferredType?: string;
+  inferredName?: string;
+};
+
+export type IRValue = (
   | { kind: 'reg'; name: string }
   | { kind: 'const'; value: number }
   | { kind: 'mem'; base: string; index?: string; scale?: number; offset: number; size: MemSize }
-  | { kind: 'expr'; text: string };
+  | { kind: 'expr'; text: string }
+) & IRValueTypeHint;
 
 export type IRStmt =
   | { op: 'assign'; address: number; dest: IRValue; src: IRValue }
@@ -641,6 +647,59 @@ function buildVarMap(stmts: IRStmt[], arch: Architecture = 'x86_64'): VarMap {
 
   applyHeuristicVarNames(stmts, map);
   return map;
+}
+
+function typeHintName(paramName: string): string {
+  const cleaned = paramName.replace(/^(lp|p)(?=[A-Z])/, '').replace(/[^a-zA-Z0-9_]/g, '');
+  if (!cleaned) return 'typed_arg';
+  return cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+}
+
+function withTypeHint(value: IRValue, inferredType: string, inferredName: string): IRValue {
+  return { ...value, inferredType, inferredName };
+}
+
+function valueKeyForTypeHint(value: IRValue): string | null {
+  if (value.kind === 'reg') return `reg:${value.name}`;
+  if (value.kind === 'mem') return memKey(value);
+  return null;
+}
+
+function applyImportPrototypeTypePropagation(blocks: IRBlock[]): IRBlock[] {
+  return blocks.map(block => ({
+    ...block,
+    stmts: block.stmts.map(stmt => {
+      if (stmt.op !== 'call' || !stmt.resolvedPrototype || !stmt.args?.length) return stmt;
+      const args = stmt.args.map((arg, index) => {
+        const param = stmt.resolvedPrototype?.parameters[index];
+        if (!param) return arg;
+        return withTypeHint(arg, param.type, typeHintName(param.name));
+      });
+      return { ...stmt, args };
+    }),
+  }));
+}
+
+function applyTypeHintNames(stmts: IRStmt[], map: VarMap): void {
+  const used = new Set(Array.from(map.values()));
+  for (const stmt of stmts) {
+    if (stmt.op !== 'call' || !stmt.args?.length) continue;
+    for (const arg of stmt.args) {
+      if (!arg.inferredType || !arg.inferredName) continue;
+      const key = valueKeyForTypeHint(arg);
+      if (!key) continue;
+      const current = map.get(key);
+      if (current && !isGenericVarName(current)) continue;
+      let candidate = arg.inferredName;
+      let suffix = 2;
+      while (used.has(candidate)) {
+        candidate = `${arg.inferredName}_${suffix}`;
+        suffix += 1;
+      }
+      used.add(candidate);
+      map.set(key, candidate);
+    }
+  }
 }
 
 function isGenericVarName(name: string): boolean {
@@ -2754,12 +2813,12 @@ export function decompile(
 
   // Phase 3+4: Build IR blocks
   const arch = detectArch(insns);
-  let irBlocks = buildIRBlocks(insns, cfg, arch);
+  let irBlocks = applyImportPrototypeTypePropagation(buildIRBlocks(insns, cfg, arch));
 
   if (!irBlocks.length) {
     const fallbackBlocks = buildFallbackPartitionedIRBlocks(insns, arch);
     if (fallbackBlocks.length > 0) {
-      irBlocks = fallbackBlocks;
+      irBlocks = applyImportPrototypeTypePropagation(fallbackBlocks);
       warnings.push('CFG did not overlap disassembly range; used instruction-derived fallback partitioning.');
     }
   }
@@ -2783,6 +2842,7 @@ export function decompile(
   // Phase 3: Build variable map
   const allStmts = collectAllStmts(irBlocks);
   const varMap = buildVarMap(allStmts, arch);
+  applyTypeHintNames(allStmts, varMap);
 
   // Detect return register (arch-aware)
   const retRegs = arch === 'arm32' ? RETURN_REGS_ARM32
