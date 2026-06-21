@@ -352,6 +352,7 @@ export default function DecompilerView({
         irBlocks: [],
         structured: { kind: 'seq', nodes: [] },
         logicRegions: [],
+        recoveredStructs: [],
         warnings: [],
         instrCount: 0,
         maturity: decompile([], null, { functionName: 'sub_unknown' }).maturity,

@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   createTimeline,
   appendStep,
+  createStrikeQuerySurface,
   MAX_STRIKE_TIMELINE_STEPS,
 } from '../strikeEngine';
 import type { DebugSnapshot, RegisterState } from '../../components/DebuggerPanel';
+import type { DecompilerIrNode } from '../decompilerTypes';
 
 function makeRegisters(rip: number): RegisterState {
   return {
@@ -61,5 +63,39 @@ describe('strikeEngine appendStep', () => {
 
     expect(timeline.steps[0].snapshot.stepCount).toBe(20);
     expect(timeline.steps[MAX_STRIKE_TIMELINE_STEPS - 1].snapshot.stepCount).toBe(total - 1);
+  });
+});
+
+
+describe('strikeEngine recovered structs', () => {
+  const load = (address: number, destination: string, base: string, offset: number): DecompilerIrNode => ({
+    kind: 'load',
+    address,
+    destination: { kind: 'register', name: destination },
+    source: { kind: 'memory', text: `[${base} + 0x${offset.toString(16)}]`, base, offset },
+    confidence: 'medium',
+  });
+
+  it('exposes recovered structs through the STRIKE query surface', () => {
+    const strike = createStrikeQuerySurface([
+      load(0x1000, 'rax', 'rcx', 0x08),
+      load(0x1004, 'rbx', 'rcx', 0x10),
+      load(0x1008, 'rdx', 'rcx', 0x18),
+    ]);
+
+    expect(strike.getRecoveredStructs()).toEqual([
+      {
+        name: 'struct_rcx',
+        base: 'rcx',
+        fields: [
+          { offset: 0x08, name: 'field_08', type: 'u64' },
+          { offset: 0x10, name: 'field_10', type: 'u64' },
+          { offset: 0x18, name: 'field_18', type: 'u64' },
+        ],
+        evidenceAddresses: [0x1000, 0x1004, 0x1008],
+        advisoryOnly: true,
+        authority: 'nest_type_recovery_not_gyre_verdict',
+      },
+    ]);
   });
 });

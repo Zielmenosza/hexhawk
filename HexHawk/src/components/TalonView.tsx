@@ -530,6 +530,7 @@ export default function TalonView({
       warnings: [],
       instrCount: 0,
       logicRegions: [],
+      recoveredStructs: [],
       maturity: decompile([], null, { functionName: 'sub_unknown' }).maturity,
       summary: {
         name: 'sub_unknown',

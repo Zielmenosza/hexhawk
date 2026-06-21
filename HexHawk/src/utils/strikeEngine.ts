@@ -110,12 +110,78 @@ export function matchIL(nodes: DecompilerIrNode[], pattern: ILPattern): ILMatchR
   return results;
 }
 
+export interface StrikeRecoveredStructField {
+  offset: number;
+  name: string;
+  type: string;
+}
+
+export interface StrikeRecoveredStruct {
+  name: string;
+  base: string;
+  fields: StrikeRecoveredStructField[];
+  evidenceAddresses: number[];
+  advisoryOnly: true;
+  authority: 'nest_type_recovery_not_gyre_verdict';
+}
+
 export interface StrikeILQuerySurface {
   matchIL(pattern: ILPattern): ILMatchResult[];
   constantFold(): DecompilerIrNode[];
   eliminateDeadStores(): DecompilerIrNode[];
   annotateReachingDefinitions(): DecompilerIrNode[];
   runMidLevelIrPasses(): DecompilerIrNode[];
+  getRecoveredStructs(): StrikeRecoveredStruct[];
+}
+
+
+function strikeFieldNameForOffset(offset: number): string {
+  const magnitude = Math.abs(offset);
+  const width = magnitude <= 0xff ? 2 : magnitude <= 0xffff ? 4 : 8;
+  const hex = magnitude.toString(16).padStart(width, '0');
+  return offset < 0 ? `field_neg_${hex}` : `field_${hex}`;
+}
+
+function isMemoryValue(value: ILMatchBinding): value is Extract<DecompilerIrValue, { kind: 'memory' }> {
+  return !('address' in value) && value.kind === 'memory';
+}
+
+function collectMemoryValues(node: DecompilerIrNode): Array<Extract<DecompilerIrValue, { kind: 'memory' }>> {
+  return operandChildren(node).filter(isMemoryValue);
+}
+
+const STRUCT_RECOVERY_IGNORED_BASES = new Set(['rbp', 'ebp', 'rsp', 'esp', 'r11', 'fp', 'x29', 'sp']);
+
+export function recoverStructsFromIL(nodes: DecompilerIrNode[]): StrikeRecoveredStruct[] {
+  const accesses = new Map<string, Map<number, Set<number>>>();
+  for (const node of nodes) {
+    for (const value of collectMemoryValues(node)) {
+      if (!value.base || value.offset === undefined) continue;
+      if (STRUCT_RECOVERY_IGNORED_BASES.has(value.base)) continue;
+      const byOffset = accesses.get(value.base) ?? new Map<number, Set<number>>();
+      const evidence = byOffset.get(value.offset) ?? new Set<number>();
+      evidence.add(node.address);
+      byOffset.set(value.offset, evidence);
+      accesses.set(value.base, byOffset);
+    }
+  }
+
+  const structs: StrikeRecoveredStruct[] = [];
+  for (const base of Array.from(accesses.keys()).sort()) {
+    const byOffset = accesses.get(base)!;
+    const offsets = Array.from(byOffset.keys()).sort((a, b) => a - b);
+    if (offsets.length < 3) continue;
+    const evidenceAddresses = Array.from(new Set(offsets.flatMap(offset => Array.from(byOffset.get(offset)!)))).sort((a, b) => a - b);
+    structs.push({
+      name: `struct_${base.replace(/[^a-zA-Z0-9_]/g, '_') || 'ptr'}`,
+      base,
+      fields: offsets.map(offset => ({ offset, name: strikeFieldNameForOffset(offset), type: 'u64' })),
+      evidenceAddresses,
+      advisoryOnly: true,
+      authority: 'nest_type_recovery_not_gyre_verdict',
+    });
+  }
+  return structs;
 }
 
 export function createStrikeQuerySurface(nodes: DecompilerIrNode[]): StrikeILQuerySurface {
@@ -125,6 +191,7 @@ export function createStrikeQuerySurface(nodes: DecompilerIrNode[]): StrikeILQue
     eliminateDeadStores: () => eliminateDeadStoresPass(nodes),
     annotateReachingDefinitions: () => annotateReachingDefinitionsPass(nodes),
     runMidLevelIrPasses: () => runMidLevelIrPassesPipeline(nodes),
+    getRecoveredStructs: () => recoverStructsFromIL(nodes),
   };
 }
 

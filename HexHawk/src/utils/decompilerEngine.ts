@@ -133,6 +133,21 @@ export type LogicRegionKind =
   | 'protection-guard'    // cryptographic hash or checksum verification pattern
   | 'loop-condition';     // back-edge loop with bounded comparison
 
+export type RecoveredStructField = {
+  offset: number;
+  name: string;
+  type: string;
+};
+
+export type RecoveredStruct = {
+  name: string;
+  base: string;
+  fields: RecoveredStructField[];
+  evidenceAddresses: number[];
+  advisoryOnly: true;
+  authority: 'nest_type_recovery_not_gyre_verdict';
+};
+
 export type LogicRegion = {
   /** Start address of the first instruction in the region */
   address: number;
@@ -210,6 +225,8 @@ export type DecompileResult = {
   ssaVariableCoalescing?: SSACoalescingResult;
   /** Logic regions ranked by confidence (highest first) */
   logicRegions: LogicRegion[];
+  /** Advisory NEST/TALON struct recovery. Does not affect GYRE verdict authority. */
+  recoveredStructs: RecoveredStruct[];
   warnings: string[];
   instrCount: number;
   cseRewriteCount?: number;
@@ -776,6 +793,56 @@ function visitIRValues(stmt: IRStmt, fn: (v: IRValue) => void): void {
     case 'pop': fn(stmt.dest); break;
     default: break;
   }
+}
+
+
+function fieldNameForOffset(offset: number): string {
+  const magnitude = Math.abs(offset);
+  const width = magnitude <= 0xff ? 2 : magnitude <= 0xffff ? 4 : 8;
+  const hex = magnitude.toString(16).padStart(width, '0');
+  return offset < 0 ? `field_neg_${hex}` : `field_${hex}`;
+}
+
+function recoveredStructName(base: string, index: number): string {
+  const safeBase = base.replace(/[^a-zA-Z0-9_]/g, '_') || 'ptr';
+  return index === 0 ? `struct_${safeBase}` : `struct_${safeBase}_${index + 1}`;
+}
+
+export function recoverStructsFromIrBlocks(blocks: IRBlock[]): RecoveredStruct[] {
+  const accesses = new Map<string, Map<number, Set<number>>>();
+
+  for (const block of blocks) {
+    for (const stmt of block.stmts) {
+      visitIRValues(stmt, value => {
+        if (value.kind !== 'mem') return;
+        if (FRAME_REGS.has(value.base) || STACK_REGS.has(value.base)) return;
+        if (value.index) return;
+        const byOffset = accesses.get(value.base) ?? new Map<number, Set<number>>();
+        const evidence = byOffset.get(value.offset) ?? new Set<number>();
+        evidence.add(stmt.address);
+        byOffset.set(value.offset, evidence);
+        accesses.set(value.base, byOffset);
+      });
+    }
+  }
+
+  const structs: RecoveredStruct[] = [];
+  const sortedBases = Array.from(accesses.keys()).sort();
+  for (const base of sortedBases) {
+    const byOffset = accesses.get(base)!;
+    const offsets = Array.from(byOffset.keys()).sort((a, b) => a - b);
+    if (offsets.length < 3) continue;
+    const evidenceAddresses = Array.from(new Set(offsets.flatMap(offset => Array.from(byOffset.get(offset)!)))).sort((a, b) => a - b);
+    structs.push({
+      name: recoveredStructName(base, structs.length),
+      base,
+      fields: offsets.map(offset => ({ offset, name: fieldNameForOffset(offset), type: 'u64' })),
+      evidenceAddresses,
+      advisoryOnly: true,
+      authority: 'nest_type_recovery_not_gyre_verdict',
+    });
+  }
+  return structs;
 }
 
 
@@ -2802,6 +2869,7 @@ export function decompile(
       irBlocks: [],
       structured: { kind: 'seq', nodes: [] },
       logicRegions: [],
+      recoveredStructs: [],
       warnings: emptyWarnings,
       instrCount: 0,
       maturity: emptyDecompilerMaturityTelemetry('x86_64', 0, emptyWarnings),
@@ -2833,6 +2901,7 @@ export function decompile(
       irBlocks: [],
       structured: { kind: 'seq', nodes: [] },
       logicRegions: [],
+      recoveredStructs: [],
       warnings: emptyWarnings,
       instrCount: insns.length,
       maturity: emptyDecompilerMaturityTelemetry(arch, insns.length, emptyWarnings),
@@ -2841,6 +2910,7 @@ export function decompile(
 
   // Phase 3: Build variable map
   const allStmts = collectAllStmts(irBlocks);
+  const recoveredStructs = recoverStructsFromIrBlocks(irBlocks);
   const varMap = buildVarMap(allStmts, arch);
   applyTypeHintNames(allStmts, varMap);
 
@@ -2974,6 +3044,7 @@ export function decompile(
     structured,
     ssaVariableCoalescing,
     logicRegions,
+    recoveredStructs,
     warnings,
     instrCount: insns.length,
     cseRewriteCount,
