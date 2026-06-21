@@ -1890,6 +1890,87 @@ function extractSwitchCaseValuesFromBlock(block: IRBlock, caseCount: number): st
   return unique;
 }
 
+
+
+type IfChainSwitchCandidate = {
+  switchNode: StructuredNode;
+  defaultSucc: string | null;
+};
+
+function extractEqualityCase(block: IRBlock): { expr: string; value: string; cjmp: Extract<IRStmt, { op: 'cjmp' }> } | null {
+  const cjmp = [...block.stmts].reverse().find((stmt): stmt is Extract<IRStmt, { op: 'cjmp' }> => stmt.op === 'cjmp');
+  if (!cjmp) return null;
+  const cmp = [...block.stmts].reverse().find((stmt): stmt is Extract<IRStmt, { op: 'cmp' }> => stmt.op === 'cmp');
+  if (!cmp || cmp.left.kind !== 'reg' || cmp.right.kind !== 'const') return null;
+  if (!cjmp.cond.includes(' == ') && !cjmp.cond.includes(' != ')) return null;
+  const value = Math.abs(cmp.right.value) < 1000 ? String(cmp.right.value) : `0x${(cmp.right.value >>> 0).toString(16)}`;
+  return { expr: renderValueRaw(cmp.left), value, cjmp };
+}
+
+function tryBuildIfChainSwitch(
+  blockId: string,
+  blockMap: Map<string, IRBlock>,
+  backEdges: Set<string>,
+  topoOrder: string[],
+  loopHeaders: Set<string>,
+  visited: Set<string>,
+  depth: number,
+): IfChainSwitchCandidate | null {
+  const first = blockMap.get(blockId);
+  if (!first) return null;
+  const firstCase = extractEqualityCase(first);
+  if (!firstCase) return null;
+
+  const cases: Array<{ value: string; succ: string }> = [];
+  const chainBlocks = new Set<string>();
+  let currentId: string | null = blockId;
+  let expectedExpr = firstCase.expr;
+  let defaultSucc: string | null = null;
+
+  while (currentId && !chainBlocks.has(currentId)) {
+    const current = blockMap.get(currentId);
+    if (!current) break;
+    const eq = extractEqualityCase(current);
+    if (!eq || eq.expr !== expectedExpr) break;
+    const fwdSuccs = current.allSuccessors.filter(s => !backEdges.has(`${currentId}->${s}`));
+    if (fwdSuccs.length !== 2) break;
+    const trueSucc = fwdSuccs.find(s => blockMap.get(s)?.start === eq.cjmp.trueTarget) ?? fwdSuccs[0];
+    const falseSucc = fwdSuccs.find(s => s !== trueSucc) ?? fwdSuccs[1];
+    const caseSucc = eq.cjmp.cond.includes(' == ') ? trueSucc : falseSucc;
+    const nextTestSucc = eq.cjmp.cond.includes(' == ') ? falseSucc : trueSucc;
+    const nextBlock = blockMap.get(nextTestSucc);
+    cases.push({ value: eq.value, succ: caseSucc });
+    chainBlocks.add(currentId);
+
+    if (!nextBlock || !extractEqualityCase(nextBlock)) {
+      defaultSucc = nextTestSucc;
+      break;
+    }
+    currentId = nextTestSucc;
+  }
+
+  if (cases.length < 3) return null;
+
+  const switchCases = cases.map(({ value, succ }) => ({
+    value,
+    body: structureBlock(succ, blockMap, backEdges, topoOrder, loopHeaders, new Set(visited), defaultSucc, depth + 1),
+  }));
+  const defaultCase = defaultSucc
+    ? structureBlock(defaultSucc, blockMap, backEdges, topoOrder, loopHeaders, new Set(visited), null, depth + 1)
+    : undefined;
+
+  return {
+    switchNode: {
+      kind: 'switch',
+      expr: expectedExpr,
+      address: first.stmts.find(s => s.op === 'cmp')?.address ?? first.start,
+      cases: switchCases,
+      defaultCase,
+    },
+    defaultSucc,
+  };
+}
+
 // ── Loop-reconstruction helpers ─────────────────────────────────────────────
 
 /** Invert a simple comparison condition string. */
@@ -2056,6 +2137,11 @@ function structureBlock(
       ? fwdSuccs.find(s => blockMap.get(s)?.start === cjmpStmt.trueTarget) ?? fwdSuccs[0]
       : fwdSuccs[0];
     const falseSucc = fwdSuccs.find(s => s !== trueSucc) ?? fwdSuccs[1];
+
+    const ifChainSwitch = tryBuildIfChainSwitch(blockId, blockMap, backEdges, topoOrder, loopHeaders, visited, depth);
+    if (ifChainSwitch) {
+      return { kind: 'seq', nodes: [ifChainSwitch.switchNode] };
+    }
 
     // ── WHILE / FOR header (this block is the target of a back edge) ────────
     if (loopHeaders.has(blockId)) {

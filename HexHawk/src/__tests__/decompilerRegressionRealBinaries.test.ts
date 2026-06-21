@@ -299,6 +299,118 @@ describe('decompiler control-flow structuring', () => {
   });
 });
 
+
+describe('decompiler switch recovery', () => {
+  it('emits a 4-case jump-table switch with a default path', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x7000, mnemonic: 'jmp', operands: 'qword ptr [rax*8 + 0x9000]' },
+      { address: 0x7010, mnemonic: 'mov', operands: 'eax, 1' },
+      { address: 0x7020, mnemonic: 'mov', operands: 'eax, 2' },
+      { address: 0x7030, mnemonic: 'mov', operands: 'eax, 3' },
+      { address: 0x7040, mnemonic: 'mov', operands: 'eax, 4' },
+      { address: 0x7050, mnemonic: 'mov', operands: 'eax, 0' },
+      { address: 0x7060, mnemonic: 'ret', operands: '' },
+    ];
+    const cfg: CfgGraph = {
+      nodes: [
+        { id: 'dispatch', start: 0x7000, end: 0x7000, block_type: 'entry' },
+        { id: 'c0', start: 0x7010, end: 0x7010 },
+        { id: 'c1', start: 0x7020, end: 0x7020 },
+        { id: 'c2', start: 0x7030, end: 0x7030 },
+        { id: 'c3', start: 0x7040, end: 0x7040 },
+        { id: 'def', start: 0x7050, end: 0x7050 },
+        { id: 'join', start: 0x7060, end: 0x7060 },
+      ],
+      edges: [
+        { source: 'dispatch', target: 'c0', kind: 'branch' },
+        { source: 'dispatch', target: 'c1', kind: 'branch' },
+        { source: 'dispatch', target: 'c2', kind: 'branch' },
+        { source: 'dispatch', target: 'c3', kind: 'branch' },
+        { source: 'dispatch', target: 'def', kind: 'branch' },
+        { source: 'c0', target: 'join', kind: 'fallthrough' },
+        { source: 'c1', target: 'join', kind: 'fallthrough' },
+        { source: 'c2', target: 'join', kind: 'fallthrough' },
+        { source: 'c3', target: 'join', kind: 'fallthrough' },
+        { source: 'def', target: 'join', kind: 'fallthrough' },
+      ],
+    };
+
+    const text = decompile(instructions, cfg, { functionName: 'jump_table' }).lines.map(l => l.text).join('\n');
+    expect(text).toContain('switch (selector) {');
+    expect((text.match(/case /g) ?? []).length).toBe(4);
+    expect(text).toContain('default:');
+  });
+
+  it('collapses a 3-case equality if-chain on the same variable into switch', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x8000, mnemonic: 'cmp', operands: 'eax, 1' },
+      { address: 0x8004, mnemonic: 'je', operands: '0x8040' },
+      { address: 0x8010, mnemonic: 'cmp', operands: 'eax, 2' },
+      { address: 0x8014, mnemonic: 'je', operands: '0x8050' },
+      { address: 0x8020, mnemonic: 'cmp', operands: 'eax, 3' },
+      { address: 0x8024, mnemonic: 'je', operands: '0x8060' },
+      { address: 0x8030, mnemonic: 'ret', operands: '' },
+      { address: 0x8040, mnemonic: 'ret', operands: '' },
+      { address: 0x8050, mnemonic: 'ret', operands: '' },
+      { address: 0x8060, mnemonic: 'ret', operands: '' },
+    ];
+    const cfg: CfgGraph = {
+      nodes: [
+        { id: 't1', start: 0x8000, end: 0x8004, block_type: 'entry' },
+        { id: 't2', start: 0x8010, end: 0x8014 },
+        { id: 't3', start: 0x8020, end: 0x8024 },
+        { id: 'def', start: 0x8030, end: 0x8030 },
+        { id: 'c1', start: 0x8040, end: 0x8040 },
+        { id: 'c2', start: 0x8050, end: 0x8050 },
+        { id: 'c3', start: 0x8060, end: 0x8060 },
+      ],
+      edges: [
+        { source: 't1', target: 'c1', kind: 'branch' },
+        { source: 't1', target: 't2', kind: 'fallthrough' },
+        { source: 't2', target: 'c2', kind: 'branch' },
+        { source: 't2', target: 't3', kind: 'fallthrough' },
+        { source: 't3', target: 'c3', kind: 'branch' },
+        { source: 't3', target: 'def', kind: 'fallthrough' },
+      ],
+    };
+
+    const text = decompile(instructions, cfg, { functionName: 'if_chain_switch' }).lines.map(l => l.text).join('\n');
+    expect(text).toContain('switch (eax) {');
+    expect(text).toContain('case 1:');
+    expect(text).toContain('case 2:');
+    expect(text).toContain('case 3:');
+  });
+
+  it('does not collapse regular if/else checks on different variables into switch', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x9000, mnemonic: 'cmp', operands: 'eax, 1' },
+      { address: 0x9004, mnemonic: 'je', operands: '0x9020' },
+      { address: 0x9010, mnemonic: 'cmp', operands: 'ebx, 2' },
+      { address: 0x9014, mnemonic: 'je', operands: '0x9030' },
+      { address: 0x9020, mnemonic: 'ret', operands: '' },
+      { address: 0x9030, mnemonic: 'ret', operands: '' },
+    ];
+    const cfg: CfgGraph = {
+      nodes: [
+        { id: 'a', start: 0x9000, end: 0x9004, block_type: 'entry' },
+        { id: 'b', start: 0x9010, end: 0x9014 },
+        { id: 'ta', start: 0x9020, end: 0x9020 },
+        { id: 'tb', start: 0x9030, end: 0x9030 },
+      ],
+      edges: [
+        { source: 'a', target: 'ta', kind: 'branch' },
+        { source: 'a', target: 'b', kind: 'fallthrough' },
+        { source: 'b', target: 'tb', kind: 'branch' },
+        { source: 'b', target: 'ta', kind: 'fallthrough' },
+      ],
+    };
+
+    const text = decompile(instructions, cfg, { functionName: 'not_switch' }).lines.map(l => l.text).join('\n');
+    expect(text).not.toContain('switch (');
+    expect(text).toContain('if (eax == 1) {');
+  });
+});
+
 describe('decompiler regressions - real binaries in workspace', () => {
   const nestCli = findNestCli();
   const binaryCandidates = [
