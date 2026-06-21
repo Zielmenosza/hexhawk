@@ -692,6 +692,154 @@ export function ssaVersionStats(ssaForm: SSAForm): Array<{ base: string; version
     .sort((a, b) => b.versions - a.versions);
 }
 
+
+
+// ── SSA variable coalescing ───────────────────────────────────────────────────
+
+export interface SSALiveRange {
+  variable: SSAVar;
+  start: number;
+  end: number;
+  crossesPhi: boolean;
+}
+
+export interface SSACoalescingResult {
+  /** SSA display name → emitted local name. */
+  names: Map<string, string>;
+  /** Human-readable live ranges used to make the merge decision. */
+  liveRanges: SSALiveRange[];
+}
+
+export interface SSACoalescingOptions {
+  /** Optional NEST/type-propagation hints by SSA base name, e.g. rax → HANDLE. */
+  typeHints?: Map<string, string> | Record<string, string>;
+}
+
+function readTypeHint(base: string, hints?: Map<string, string> | Record<string, string>): string | undefined {
+  if (!hints) return undefined;
+  return hints instanceof Map ? hints.get(base) : hints[base];
+}
+
+function localBaseFromType(typeName: string | undefined): string | null {
+  if (!typeName) return null;
+  const cleaned = typeName
+    .replace(/\*+/g, '_ptr')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .toLowerCase();
+  return cleaned || null;
+}
+
+function allocateCoalescedLocal(
+  base: string,
+  groupIndex: number,
+  used: Set<string>,
+  options?: SSACoalescingOptions,
+): string {
+  const hinted = localBaseFromType(readTypeHint(base, options?.typeHints));
+  const root = hinted ?? 'var';
+  let suffix = groupIndex;
+  let candidate = `${root}_${suffix}`;
+  while (used.has(candidate)) {
+    suffix += 1;
+    candidate = `${root}_${suffix}`;
+  }
+  used.add(candidate);
+  return candidate;
+}
+
+/**
+ * Collapse SSA versions into stable emitted locals when their live ranges do not
+ * overlap. Versions that participate in a phi are deliberately kept apart: phi
+ * crossings represent real value joins where merging would hide data-flow facts.
+ *
+ * The function is pure with respect to SSAForm: it never mutates phi/def/use maps.
+ */
+export function coalesceSSAVariables(
+  ssaForm: SSAForm,
+  options: SSACoalescingOptions = {},
+): SSACoalescingResult {
+  const positions = new Map<string, number>();
+  let nextPosition = 0;
+
+  const touch = (key: string): number => {
+    const existing = positions.get(key);
+    if (existing !== undefined) return existing;
+    const value = nextPosition++;
+    positions.set(key, value);
+    return value;
+  };
+
+  const rangesByName = new Map<string, SSALiveRange>();
+  const ensureRange = (variable: SSAVar, position: number): SSALiveRange => {
+    const existing = rangesByName.get(variable.ssaName);
+    if (existing) {
+      existing.start = Math.min(existing.start, position);
+      existing.end = Math.max(existing.end, position);
+      return existing;
+    }
+    const range: SSALiveRange = { variable, start: position, end: position, crossesPhi: false };
+    rangesByName.set(variable.ssaName, range);
+    return range;
+  };
+
+  for (const [key, variable] of ssaForm.defs) {
+    ensureRange(variable, touch(`def:${key}`));
+  }
+  for (const [key, variable] of ssaForm.uses) {
+    ensureRange(variable, touch(`use:${key}`));
+  }
+  for (const [blockId, phis] of ssaForm.phis) {
+    for (const phi of phis) {
+      const pos = touch(`phi:${blockId}:${phi.dest.base}:${phi.dest.version}`);
+      ensureRange(phi.dest, pos).crossesPhi = true;
+      for (const operand of phi.operands) {
+        ensureRange(operand, pos).crossesPhi = true;
+      }
+    }
+  }
+
+  const liveRanges = [...rangesByName.values()]
+    .sort((a, b) => a.variable.base.localeCompare(b.variable.base) || a.start - b.start || a.variable.version - b.variable.version);
+
+  const names = new Map<string, string>();
+  const usedNames = new Set<string>();
+  const byBase = new Map<string, SSALiveRange[]>();
+  for (const range of liveRanges) {
+    const ranges = byBase.get(range.variable.base) ?? [];
+    ranges.push(range);
+    byBase.set(range.variable.base, ranges);
+  }
+
+  for (const [base, ranges] of byBase) {
+    const groups: SSALiveRange[][] = [];
+    for (const range of ranges) {
+      let placed = false;
+      if (!range.crossesPhi) {
+        for (const group of groups) {
+          if (group.some(member => member.crossesPhi)) continue;
+          const overlaps = group.some(member => !(range.end < member.start || member.end < range.start));
+          if (!overlaps) {
+            group.push(range);
+            placed = true;
+            break;
+          }
+        }
+      }
+      if (!placed) groups.push([range]);
+    }
+
+    groups.forEach((group, idx) => {
+      const localName = allocateCoalescedLocal(base, idx, usedNames, options);
+      for (const range of group) {
+        names.set(range.variable.ssaName, localName);
+      }
+    });
+  }
+
+  return { names, liveRanges };
+}
+
 // ── Post-Dominator Tree ───────────────────────────────────────────────────────
 
 /**

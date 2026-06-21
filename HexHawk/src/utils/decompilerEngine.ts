@@ -19,7 +19,7 @@
 import { liftInstructionsToDecompilerIr } from './decompilerIr';
 import { computeDecompilerMaturitySummary } from './decompilerMaturity';
 import type { DecompilerMaturitySummary } from './decompilerTypes';
-import { buildSSAForm, type DomTree } from './ssaTransform';
+import { buildSSAForm, coalesceSSAVariables, type DomTree, type SSACoalescingResult } from './ssaTransform';
 
 // ─────────────────────────────────────────────────────────
 // SHARED INPUT TYPES (matching App.tsx)
@@ -199,6 +199,8 @@ export type DecompileResult = {
   irBlocks: IRBlock[];
   /** Structured control-flow IR/AST used to emit pseudocode. Advisory only. */
   structured: StructuredNode;
+  /** SSA-version to local-name coalescing map for TALON variable presentation. */
+  ssaVariableCoalescing?: SSACoalescingResult;
   /** Logic regions ranked by confidence (highest first) */
   logicRegions: LogicRegion[];
   warnings: string[];
@@ -2721,6 +2723,9 @@ export function decompile(
   // Phase 5: Structure control flow
   const blockMap = new Map(irBlocks.map(b => [b.id, b]));
   const ssaFormForStructuring = buildSSAForm(irBlocks);
+  const ssaVariableCoalescing = ssaFormForStructuring.ok
+    ? coalesceSSAVariables(ssaFormForStructuring)
+    : undefined;
   const dominanceBackEdges = ssaFormForStructuring.ok
     ? computeDominanceBackEdges(irBlocks, ssaFormForStructuring.domTree)
     : new Set<string>();
@@ -2817,6 +2822,7 @@ export function decompile(
     varMap,
     irBlocks: optimizedBlocks,
     structured,
+    ssaVariableCoalescing,
     logicRegions,
     warnings,
     instrCount: insns.length,

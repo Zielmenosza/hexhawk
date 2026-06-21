@@ -5,6 +5,7 @@ import {
   ssaVersionStats,
   getSSADefName,
   getSSAUseName,
+  coalesceSSAVariables,
 } from '../../utils/ssaTransform';
 import type { IRBlock, IRStmt, IRValue } from '../../utils/decompilerEngine';
 
@@ -233,5 +234,58 @@ describe('buildSSAForm — utilities', () => {
     expect(result.domTree.idom.get('b2')).toBe('b1');
     expect(result.domTree.idom.get('b1')).toBe('b0');
     expect(result.domTree.idom.get('b0')).toBeNull();
+  });
+});
+
+
+describe('coalesceSSAVariables', () => {
+  it('coalesces sequential SSA versions with non-overlapping live ranges into one local', () => {
+    const blocks = [
+      makeBlock('b0', [
+        assign('rax', cnst(1), 0x10),
+        assign('rax', cnst(2), 0x14),
+        assign('rbx', reg('rax'), 0x18),
+      ], [], [], 'entry'),
+    ];
+
+    const ssa = buildSSAForm(blocks);
+    const coalesced = coalesceSSAVariables(ssa);
+    const rax0 = getSSADefName(ssa, 'b0', 0x10, 'rax')!;
+    const rax1 = getSSADefName(ssa, 'b0', 0x14, 'rax')!;
+
+    expect(coalesced.names.get(rax0)).toBeDefined();
+    expect(coalesced.names.get(rax0)).toBe(coalesced.names.get(rax1));
+    expect(coalesced.names.get(rax0)).toMatch(/^var_\d+$/);
+  });
+
+  it('keeps phi-crossing SSA variables as distinct locals', () => {
+    const blocks = [
+      makeBlock('b0', [assign('rax', cnst(0), 0x00)], ['b1', 'b2'], ['b1', 'b2'], 'entry'),
+      makeBlock('b1', [assign('rax', cnst(1), 0x10)], ['b3'], ['b3']),
+      makeBlock('b2', [assign('rax', cnst(2), 0x20)], ['b3'], ['b3']),
+      makeBlock('b3', [assign('rbx', reg('rax'), 0x30)], [], []),
+    ];
+
+    const ssa = buildSSAForm(blocks);
+    const coalesced = coalesceSSAVariables(ssa);
+    const phi = listPhiNodes(ssa).find(p => p.blockId === 'b3' && p.dest.base === 'rax')!;
+    const names = [phi.dest, ...phi.operands].map(v => coalesced.names.get(v.ssaName));
+
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it('uses NEST-provided type names when naming coalesced locals', () => {
+    const blocks = [
+      makeBlock('b0', [
+        assign('rax', cnst(0x1000), 0x10),
+        assign('rcx', reg('rax'), 0x14),
+      ], [], [], 'entry'),
+    ];
+
+    const ssa = buildSSAForm(blocks);
+    const coalesced = coalesceSSAVariables(ssa, { typeHints: new Map([['rax', 'HANDLE']]) });
+    const rax0 = getSSADefName(ssa, 'b0', 0x10, 'rax')!;
+
+    expect(coalesced.names.get(rax0)).toMatch(/^handle_\d+$/);
   });
 });
