@@ -17,7 +17,14 @@ export type DecompilerIrValue =
   | { kind: 'register-variable-candidate'; register: string; name: string }
   | { kind: 'expression'; text: string };
 
-export type DecompilerIrNode =
+export type ReachingDefs = Record<string, number[]>;
+
+export type DecompilerIrMetadata = {
+  /** Definitions reaching each variable use before this node executes. */
+  reachingDefs?: ReachingDefs;
+};
+
+export type DecompilerIrNode = (
   | { kind: 'assignment'; address: number; destination: DecompilerIrValue; source: DecompilerIrValue; confidence: DecompilerConfidence }
   | { kind: 'load'; address: number; destination: DecompilerIrValue; source: DecompilerIrValue; confidence: DecompilerConfidence }
   | { kind: 'store'; address: number; destination: DecompilerIrValue; source: DecompilerIrValue; confidence: DecompilerConfidence }
@@ -29,7 +36,8 @@ export type DecompilerIrNode =
   | { kind: 'stack-variable-candidate'; address: number; variable: DecompilerIrValue; confidence: DecompilerConfidence }
   | { kind: 'register-variable-candidate'; address: number; variable: DecompilerIrValue; confidence: DecompilerConfidence }
   | { kind: 'side-effect-note'; address: number; text: string; confidence: DecompilerConfidence }
-  | { kind: 'unknown'; address: number; raw: string; warning: string; confidence: 'unknown' };
+  | { kind: 'unknown'; address: number; raw: string; warning: string; confidence: 'unknown' }
+) & DecompilerIrMetadata;
 
 export type DecompilerMaturitySummary = {
   schema: 'hexhawk.decompiler_maturity.explicit_ir.v1';

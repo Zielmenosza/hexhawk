@@ -14,6 +14,19 @@
 import type { RegisterState, DebugSnapshot } from '../components/DebuggerPanel';
 import type { BehavioralTag } from './correlationEngine';
 import type { DecompilerIrNode, DecompilerIrValue } from './decompilerTypes';
+import {
+  annotateReachingDefinitions as annotateReachingDefinitionsPass,
+  constantFoldDecompilerIr as constantFoldDecompilerIrPass,
+  eliminateDeadStores as eliminateDeadStoresPass,
+  runMidLevelIrPasses as runMidLevelIrPassesPipeline,
+} from './decompilerIr';
+export {
+  annotateReachingDefinitions,
+  constantFoldDecompilerIr,
+  eliminateDeadStores,
+  runMidLevelIrPasses,
+} from './decompilerIr';
+export type { ReachingDefs } from './decompilerTypes';
 export { resolveImportPrototype, formatImportPrototype, IMPORT_PROTOTYPES } from './importPrototypes';
 export type { ImportPrototype, ImportParameterPrototype } from './importPrototypes';
 
@@ -99,11 +112,19 @@ export function matchIL(nodes: DecompilerIrNode[], pattern: ILPattern): ILMatchR
 
 export interface StrikeILQuerySurface {
   matchIL(pattern: ILPattern): ILMatchResult[];
+  constantFold(): DecompilerIrNode[];
+  eliminateDeadStores(): DecompilerIrNode[];
+  annotateReachingDefinitions(): DecompilerIrNode[];
+  runMidLevelIrPasses(): DecompilerIrNode[];
 }
 
 export function createStrikeQuerySurface(nodes: DecompilerIrNode[]): StrikeILQuerySurface {
   return {
     matchIL: (pattern: ILPattern) => matchIL(nodes, pattern),
+    constantFold: () => constantFoldDecompilerIrPass(nodes),
+    eliminateDeadStores: () => eliminateDeadStoresPass(nodes),
+    annotateReachingDefinitions: () => annotateReachingDefinitionsPass(nodes),
+    runMidLevelIrPasses: () => runMidLevelIrPassesPipeline(nodes),
   };
 }
 

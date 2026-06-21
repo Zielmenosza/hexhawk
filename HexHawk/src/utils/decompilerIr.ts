@@ -1,5 +1,5 @@
 import type { DisassembledInstruction } from './decompilerEngine';
-import type { DecompilerIrNode, DecompilerIrValue } from './decompilerTypes';
+import type { DecompilerIrNode, DecompilerIrValue, ReachingDefs } from './decompilerTypes';
 import { resolveImportPrototype } from './importPrototypes';
 
 const BINOP: Record<string, string> = {
@@ -256,4 +256,212 @@ export function liftInstructionsToDecompilerIr(instructions: DisassembledInstruc
   }
 
   return lifted;
+}
+
+function variableKey(value: DecompilerIrValue): string | null {
+  switch (value.kind) {
+    case 'register': return value.name.toLowerCase();
+    case 'register-variable-candidate': return value.name;
+    case 'stack-variable-candidate': return value.name;
+    case 'memory': return value.base ? `${value.base.toLowerCase()}${value.offset ?? 0}` : value.text;
+    case 'constant': return null;
+    case 'expression': return value.text;
+  }
+}
+
+function nodeDefinition(node: DecompilerIrNode): string | null {
+  if (node.kind === 'assignment' || node.kind === 'load' || node.kind === 'arithmetic') {
+    return variableKey(node.destination);
+  }
+  return null;
+}
+
+function nodeUses(node: DecompilerIrNode): string[] {
+  const uses: Array<string | null> = [];
+  switch (node.kind) {
+    case 'assignment': uses.push(variableKey(node.source)); break;
+    case 'load': uses.push(variableKey(node.source)); break;
+    case 'store': uses.push(variableKey(node.destination), variableKey(node.source)); break;
+    case 'arithmetic': uses.push(variableKey(node.left), variableKey(node.right)); break;
+    case 'compare': uses.push(variableKey(node.left), variableKey(node.right)); break;
+    case 'call': uses.push(...node.args.map(variableKey)); break;
+    case 'return': uses.push(node.value ? variableKey(node.value) : null); break;
+    case 'stack-variable-candidate': uses.push(variableKey(node.variable)); break;
+    case 'register-variable-candidate': uses.push(variableKey(node.variable)); break;
+    case 'conditional-branch':
+    case 'side-effect-note':
+    case 'unknown':
+      break;
+  }
+  return uses.filter((use): use is string => Boolean(use));
+}
+
+function constantValue(value: DecompilerIrValue, constants: Map<string, DecompilerIrValue>): DecompilerIrValue | null {
+  if (value.kind === 'constant') return value;
+  const key = variableKey(value);
+  if (!key) return null;
+  const known = constants.get(key);
+  return known?.kind === 'constant' ? known : null;
+}
+
+function foldBinary(operator: string, left: number, right: number): number | null {
+  switch (operator) {
+    case '+': return left + right;
+    case '-': return left - right;
+    case '*': return left * right;
+    case '&': return left & right;
+    case '|': return left | right;
+    case '^': return left ^ right;
+    case '<<': return left << right;
+    case '>>': return left >> right;
+    default: return null;
+  }
+}
+
+/** Constant folding pass. Pure transform: known constant arithmetic becomes assignment to a constant. */
+export function constantFoldDecompilerIr(nodes: DecompilerIrNode[]): DecompilerIrNode[] {
+  const constants = new Map<string, DecompilerIrValue>();
+  return nodes.map((node) => {
+    if (node.kind === 'assignment') {
+      const def = nodeDefinition(node);
+      if (def) {
+        if (node.source.kind === 'constant') constants.set(def, node.source);
+        else constants.delete(def);
+      }
+      return { ...node };
+    }
+
+    if (node.kind === 'arithmetic') {
+      const left = constantValue(node.left, constants);
+      const right = constantValue(node.right, constants);
+      const def = nodeDefinition(node);
+      if (left?.kind === 'constant' && right?.kind === 'constant') {
+        const value = foldBinary(node.operator, left.value, right.value);
+        if (value !== null) {
+          const constant: DecompilerIrValue = { kind: 'constant', value, raw: String(value) };
+          if (def) constants.set(def, constant);
+          return {
+            kind: 'assignment',
+            address: node.address,
+            destination: node.destination,
+            source: constant,
+            confidence: node.confidence,
+          } satisfies DecompilerIrNode;
+        }
+      }
+      if (def) constants.delete(def);
+    }
+
+    const def = nodeDefinition(node);
+    if (def && node.kind !== 'arithmetic') constants.delete(def);
+    return { ...node };
+  });
+}
+
+/** Dead-store elimination pass. Removes variable definitions never used before redefinition or exit. */
+export function eliminateDeadStores(nodes: DecompilerIrNode[]): DecompilerIrNode[] {
+  const live = new Set<string>();
+  const kept: DecompilerIrNode[] = [];
+
+  for (let index = nodes.length - 1; index >= 0; index -= 1) {
+    const node = nodes[index];
+    const def = nodeDefinition(node);
+    const uses = nodeUses(node);
+    const removable = node.kind === 'assignment' || node.kind === 'load' || node.kind === 'arithmetic';
+
+    if (def && removable && !live.has(def)) {
+      continue;
+    }
+
+    if (def) live.delete(def);
+    for (const use of uses) live.add(use);
+    kept.push({ ...node });
+  }
+
+  return kept.reverse();
+}
+
+function mapsEqual(a: Map<string, Set<number>>, b: Map<string, Set<number>>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [key, values] of a) {
+    const other = b.get(key);
+    if (!other || other.size !== values.size) return false;
+    for (const value of values) if (!other.has(value)) return false;
+  }
+  return true;
+}
+
+function cloneDefs(input: Map<string, Set<number>>): Map<string, Set<number>> {
+  return new Map(Array.from(input.entries()).map(([key, values]) => [key, new Set(values)]));
+}
+
+function mergeDefs(inputs: Array<Map<string, Set<number>>>): Map<string, Set<number>> {
+  const merged = new Map<string, Set<number>>();
+  for (const input of inputs) {
+    for (const [key, values] of input) {
+      const target = merged.get(key) ?? new Set<number>();
+      for (const value of values) target.add(value);
+      merged.set(key, target);
+    }
+  }
+  return merged;
+}
+
+function successorsFor(nodes: DecompilerIrNode[], index: number, addressToIndex: Map<number, number>): number[] {
+  const node = nodes[index];
+  if (node.kind === 'return') return [];
+  if (node.kind === 'conditional-branch') {
+    const successors: number[] = [];
+    if (node.target !== null && addressToIndex.has(node.target)) successors.push(addressToIndex.get(node.target)!);
+    if (node.fallthrough !== undefined && addressToIndex.has(node.fallthrough)) successors.push(addressToIndex.get(node.fallthrough)!);
+    else if (index + 1 < nodes.length) successors.push(index + 1);
+    return Array.from(new Set(successors));
+  }
+  return index + 1 < nodes.length ? [index + 1] : [];
+}
+
+/** Reaching-definitions pass. Annotates each IR node with definitions reaching its uses. */
+export function annotateReachingDefinitions(nodes: DecompilerIrNode[]): DecompilerIrNode[] {
+  if (nodes.length === 0) return [];
+  const addressToIndex = new Map(nodes.map((node, index) => [node.address, index]));
+  const predecessors = new Map<number, number[]>();
+  nodes.forEach((_, index) => predecessors.set(index, []));
+  nodes.forEach((_, index) => {
+    for (const successor of successorsFor(nodes, index, addressToIndex)) {
+      predecessors.get(successor)?.push(index);
+    }
+  });
+
+  const inDefs = nodes.map(() => new Map<string, Set<number>>());
+  const outDefs = nodes.map(() => new Map<string, Set<number>>());
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let index = 0; index < nodes.length; index += 1) {
+      const predOuts = (predecessors.get(index) ?? []).map((pred) => outDefs[pred]);
+      const nextIn = mergeDefs(predOuts);
+      const nextOut = cloneDefs(nextIn);
+      const def = nodeDefinition(nodes[index]);
+      if (def) nextOut.set(def, new Set([nodes[index].address]));
+      if (!mapsEqual(inDefs[index], nextIn) || !mapsEqual(outDefs[index], nextOut)) {
+        inDefs[index] = nextIn;
+        outDefs[index] = nextOut;
+        changed = true;
+      }
+    }
+  }
+
+  return nodes.map((node, index) => {
+    const reachingDefs: ReachingDefs = {};
+    for (const use of nodeUses(node)) {
+      const defs = Array.from(inDefs[index].get(use) ?? []).sort((a, b) => a - b);
+      if (defs.length > 0) reachingDefs[use] = defs;
+    }
+    return Object.keys(reachingDefs).length > 0 ? { ...node, reachingDefs } : { ...node };
+  });
+}
+
+/** Runs the mid-level IR tier in canonical order: fold → DSE → reaching definitions. */
+export function runMidLevelIrPasses(nodes: DecompilerIrNode[]): DecompilerIrNode[] {
+  return annotateReachingDefinitions(eliminateDeadStores(constantFoldDecompilerIr(nodes)));
 }
