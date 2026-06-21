@@ -13,8 +13,99 @@
 
 import type { RegisterState, DebugSnapshot } from '../components/DebuggerPanel';
 import type { BehavioralTag } from './correlationEngine';
+import type { DecompilerIrNode, DecompilerIrValue } from './decompilerTypes';
 export { resolveImportPrototype, formatImportPrototype, IMPORT_PROTOTYPES } from './importPrototypes';
 export type { ImportPrototype, ImportParameterPrototype } from './importPrototypes';
+
+
+
+// ── STRIKE IL opcode-tree pattern matching ────────────────────────────────────
+
+export type WildcardPattern = { wildcard: true; bind?: string };
+export type ILPattern = { opcode: string; operands?: Array<ILPattern | WildcardPattern> };
+export type ILMatchBinding = DecompilerIrNode | DecompilerIrValue;
+export interface ILMatchResult {
+  node: DecompilerIrNode;
+  bindings: Record<string, ILMatchBinding>;
+}
+
+function isWildcardPattern(pattern: ILPattern | WildcardPattern): pattern is WildcardPattern {
+  return (pattern as WildcardPattern).wildcard === true;
+}
+
+function operandChildren(node: DecompilerIrNode): ILMatchBinding[] {
+  switch (node.kind) {
+    case 'assignment': return [node.destination, node.source];
+    case 'load': return [node.destination, node.source];
+    case 'store': return [node.destination, node.source];
+    case 'arithmetic': return [node.destination, node.left, node.right];
+    case 'compare': return [node.left, node.right];
+    case 'conditional-branch': return [];
+    case 'call': return node.args;
+    case 'return': return node.value ? [node.value] : [];
+    case 'stack-variable-candidate': return [node.variable];
+    case 'register-variable-candidate': return [node.variable];
+    case 'side-effect-note': return [];
+    case 'unknown': return [];
+  }
+}
+
+function valueOpcode(value: DecompilerIrValue): string {
+  return value.kind;
+}
+
+function matchValue(
+  value: ILMatchBinding,
+  pattern: ILPattern | WildcardPattern,
+  bindings: Record<string, ILMatchBinding>,
+): boolean {
+  if (isWildcardPattern(pattern)) {
+    if (pattern.bind) bindings[pattern.bind] = value;
+    return true;
+  }
+
+  const opcode = 'kind' in value ? value.kind : '';
+  if (opcode !== pattern.opcode) return false;
+  if ('address' in value) return matchNode(value, pattern, bindings);
+  return (pattern.operands?.length ?? 0) === 0 || valueOpcode(value) === pattern.opcode;
+}
+
+function matchNode(
+  node: DecompilerIrNode,
+  pattern: ILPattern,
+  bindings: Record<string, ILMatchBinding>,
+): boolean {
+  if (node.kind !== pattern.opcode) return false;
+  const operands = pattern.operands ?? [];
+  if (operands.length === 0) return true;
+  const children = operandChildren(node);
+  if (operands.length > children.length) return false;
+  for (let i = 0; i < operands.length; i += 1) {
+    if (!matchValue(children[i], operands[i], bindings)) return false;
+  }
+  return true;
+}
+
+export function matchIL(nodes: DecompilerIrNode[], pattern: ILPattern): ILMatchResult[] {
+  const results: ILMatchResult[] = [];
+  for (const node of nodes) {
+    const bindings: Record<string, ILMatchBinding> = {};
+    if (matchNode(node, pattern, bindings)) {
+      results.push({ node, bindings });
+    }
+  }
+  return results;
+}
+
+export interface StrikeILQuerySurface {
+  matchIL(pattern: ILPattern): ILMatchResult[];
+}
+
+export function createStrikeQuerySurface(nodes: DecompilerIrNode[]): StrikeILQuerySurface {
+  return {
+    matchIL: (pattern: ILPattern) => matchIL(nodes, pattern),
+  };
+}
 
 // ── Register catalogue ────────────────────────────────────────────────────────
 
