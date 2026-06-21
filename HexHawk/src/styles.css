@@ -8484,3 +8484,220 @@ pre {
 .agent-log-row--approved td:last-child { color: #0d6; }
 .agent-log-row--rejected td:last-child { color: #f66; }
 .agent-log-row--pending  td:last-child { color: #fa0; }
+
+
+/* Public help/about cards and global right-click menu */
+.help-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.85rem;
+  margin: 1rem 0 1.25rem;
+}
+
+.help-card {
+  background: rgba(255,255,255,0.035);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 0.6rem;
+  padding: 0.85rem;
+}
+
+.help-card h4 {
+  margin: 0 0 0.35rem;
+  color: #00d4ff;
+}
+
+.help-card p {
+  margin: 0;
+  color: #c8d2de;
+  font-size: 0.9rem;
+}
+
+.hexhawk-context-menu {
+  position: fixed;
+  z-index: 10000;
+  width: 300px;
+  max-height: calc(100vh - 1rem);
+  overflow-y: auto;
+  padding: 0.45rem;
+  background: rgba(11, 16, 28, 0.98);
+  border: 1px solid rgba(0, 191, 255, 0.32);
+  border-radius: 0.65rem;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.04) inset;
+  backdrop-filter: blur(10px);
+}
+
+.hexhawk-context-menu-title {
+  padding: 0.35rem 0.55rem 0.5rem;
+  color: #7fdcff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hexhawk-context-menu-item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 0.12rem;
+  padding: 0.48rem 0.58rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: #dbe8f8;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hexhawk-context-menu-item:hover:not(:disabled),
+.hexhawk-context-menu-item:focus-visible:not(:disabled) {
+  outline: none;
+  background: rgba(0, 191, 255, 0.13);
+  color: #ffffff;
+}
+
+.hexhawk-context-menu-item:disabled {
+  color: rgba(190, 202, 215, 0.42);
+  cursor: not-allowed;
+}
+
+.hexhawk-context-menu-label {
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.hexhawk-context-menu-detail {
+  color: #8da0b6;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.hexhawk-context-menu-item:disabled .hexhawk-context-menu-detail {
+  color: rgba(141, 160, 182, 0.48);
+}
+
+.hexhawk-context-menu-separator {
+  height: 1px;
+  margin: 0.35rem 0.3rem;
+  background: rgba(255,255,255,0.08);
+}
+
+
+/* Plain-language feature guidance */
+.wf-nav-item-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.wf-nav-item-desc {
+  color: #7f8fa3;
+  font-size: 0.66rem;
+  line-height: 1.18;
+  white-space: normal;
+}
+
+.wf-nav-item--active .wf-nav-item-desc {
+  color: #a9cde8;
+}
+
+.wf-actionbar {
+  align-items: stretch;
+}
+
+.wf-action-btn {
+  max-width: 230px;
+  align-items: flex-start;
+}
+
+.wf-action-btn-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.08rem;
+  text-align: left;
+}
+
+.wf-action-btn-label {
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.wf-action-btn-detail {
+  color: #8898aa;
+  font-size: 0.68rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.wf-action-btn--primary .wf-action-btn-detail {
+  color: #9bd9ff;
+}
+
+.feature-guide-card {
+  flex: 0 0 auto;
+  margin-bottom: 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(0, 191, 255, 0.18);
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(0, 191, 255, 0.08), rgba(255,255,255,0.025));
+  color: #cbd7e4;
+}
+
+.feature-guide-card h2 {
+  margin: 0.15rem 0 0.45rem;
+  color: #dff6ff;
+  font-size: 1.02rem;
+}
+
+.feature-guide-card p {
+  margin: 0.35rem 0;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.feature-guide-card strong {
+  color: #8ee6ff;
+}
+
+.feature-guide-eyebrow {
+  color: #80cfff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.feature-guide-how {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.65rem;
+  align-items: start;
+  margin: 0.35rem 0;
+  font-size: 0.86rem;
+}
+
+.feature-guide-how ol {
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.feature-guide-how li {
+  margin: 0.12rem 0;
+}
+
+@media (max-width: 980px) {
+  .wf-nav-item-desc,
+  .wf-action-btn-detail {
+    display: none;
+  }
+
+  .wf-action-btn {
+    max-width: none;
+    align-items: center;
+  }
+
+  .feature-guide-how {
+    grid-template-columns: 1fr;
+  }
+}

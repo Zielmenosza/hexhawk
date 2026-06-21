@@ -129,6 +129,20 @@ import {
   splitActivityMessage,
 } from './utils/qaUx';
 
+type HexHawkContextMenuState = {
+  x: number;
+  y: number;
+};
+
+type HexHawkContextMenuItem = {
+  id: string;
+  label: string;
+  detail?: string;
+  disabled?: boolean;
+  separatorBefore?: boolean;
+  action: () => void | Promise<void>;
+};
+
 function WorkspaceTabStrip({
   activeView,
   onSelect,
@@ -259,21 +273,211 @@ type WorkspaceNavItem = {
 type DisassemblyWorkspaceTab = 'overview' | 'patches' | 'xrefs' | 'patterns';
 
 const WORKSPACE_NAV_ITEMS: WorkspaceNavItem[] = [
-  { id: 'disassembly', label: 'Disassembly', eyebrow: 'instructions' },
-  { id: 'cfg', label: 'CFG', eyebrow: 'flow graph' },
-  { id: 'decompile', label: 'Decompile', eyebrow: 'pseudocode' },
-  { id: 'talon', label: 'TALON', eyebrow: 'structured' },
-  { id: 'nest', label: 'NEST', eyebrow: 'evidence' },
-  { id: 'repl', label: 'REPL', eyebrow: 'interactive' },
+  { id: 'disassembly', label: 'Code map', eyebrow: 'instructions' },
+  { id: 'cfg', label: 'Branch map', eyebrow: 'flow graph' },
+  { id: 'decompile', label: 'Pseudocode', eyebrow: 'best effort' },
+  { id: 'talon', label: 'Code reasoning', eyebrow: 'TALON' },
+  { id: 'nest', label: 'Evidence loop', eyebrow: 'NEST' },
+  { id: 'repl', label: 'Commands', eyebrow: 'advanced' },
 ];
 
 const WORKSPACE_VIEW_IDS = new Set<NavView>(WORKSPACE_NAV_ITEMS.map((item) => item.id));
 
+type FeatureGuide = {
+  title: string;
+  plainName: string;
+  does: string;
+  how: string[];
+  expect: string;
+};
+
+const FEATURE_GUIDES: Partial<Record<NavView, FeatureGuide>> = {
+  load: {
+    title: 'Open a file for local analysis',
+    plainName: 'Start here',
+    does: 'Selects the file HexHawk will inspect. Nothing is classified yet; this only chooses the analysis target.',
+    how: ['Click Browse or type a full path.', 'Use a file you are allowed to inspect.', 'After loading, run Inspect File before deeper views.'],
+    expect: 'The file name appears in the left rail and the next recommended step becomes available.',
+  },
+  metadata: {
+    title: 'File summary and identity',
+    plainName: 'What is this file?',
+    does: 'Shows file type, architecture, size, hashes, sections, imports, and exports so every later finding ties back to the exact file.',
+    how: ['Use hashes to confirm identity.', 'Check imports and sections for quick context.', 'If this is empty, run Inspect File first.'],
+    expect: 'A compact identity card, not a verdict. Suspicious-looking facts still need corroboration.',
+  },
+  inspect: {
+    title: 'Inspect File',
+    plainName: 'Safe first pass',
+    does: 'Reads basic structure and identity without trying to decide everything at once.',
+    how: ['Run this before strings, disassembly, reports, or verdict review.', 'Review hashes and sections.', 'Use missing or failed metadata as a sign the file type may need another workflow.'],
+    expect: 'File facts, sections, imports, exports, and hashes. This prepares evidence for later analysis.',
+  },
+  hex: {
+    title: 'Raw bytes / Hex Viewer',
+    plainName: 'Exact file bytes',
+    does: 'Shows the file as byte values and printable characters so you can verify exact offsets and copy byte ranges.',
+    how: ['Click bytes to select them.', 'Use copy actions for hex, JSON, or Base64.', 'Jump to offsets from strings, disassembly, or the address dialog.'],
+    expect: 'Low-level evidence. Useful for verification, patch planning, and exact offset review.',
+  },
+  strings: {
+    title: 'Readable strings',
+    plainName: 'Text clues inside the file',
+    does: 'Extracts readable text that may reveal URLs, domains, registry keys, file paths, commands, APIs, or embedded markers.',
+    how: ['Click Scan strings.', 'Filter by text, kind, or minimum length.', 'Click a string to pivot to its offset.'],
+    expect: 'Clues, not proof by themselves. Stronger conclusions come from matching strings with imports, code, and verdict evidence.',
+  },
+  disassembly: {
+    title: 'Code map / Disassembly',
+    plainName: 'Instructions and references',
+    does: 'Turns machine-code bytes into instruction rows, cross-references, suspicious patterns, and patch suggestions.',
+    how: ['Run Disassemble after Inspect.', 'Select an instruction to see references and analysis.', 'Use XRefs, Patterns, and Patches tabs to pivot from the selected address.'],
+    expect: 'A bounded window into code. It helps explain behavior but may not cover the whole file at once.',
+  },
+  cfg: {
+    title: 'Branch map / Control-flow graph',
+    plainName: 'How code can move',
+    does: 'Draws basic blocks and edges so branches, exits, loops, and decision points are easier to follow.',
+    how: ['Build CFG after disassembly.', 'Click a block to highlight its instructions.', 'Use the dominator side panel when you need deeper flow relationships.'],
+    expect: 'A map of the analyzed range, not a guarantee that every possible runtime path was executed.',
+  },
+  decompile: {
+    title: 'Pseudocode view',
+    plainName: 'Best-effort readable code summary',
+    does: 'Summarizes instructions into more readable structured logic where possible.',
+    how: ['Inspect and disassemble first.', 'Compare pseudocode back to raw instructions before trusting details.', 'Use it to orient yourself, not as recovered source code.'],
+    expect: 'Helpful approximation with limitations, especially around types, indirect calls, and optimized code.',
+  },
+  talon: {
+    title: 'TALON structured reasoning',
+    plainName: 'Code explanation helper',
+    does: 'Adds structured analysis over functions, instructions, and control flow to help explain what code appears to do.',
+    how: ['Use after Inspect and Disassemble.', 'Follow address links back to the Code map.', 'Treat summaries as analyst guidance that should be checked against evidence.'],
+    expect: 'Explanations and maturity notes, not final security truth.',
+  },
+  verdict: {
+    title: 'Verdict',
+    plainName: 'Main classification answer',
+    does: 'Shows the GYRE classification, confidence, supporting signals, reductions, contradictions, and next review areas.',
+    how: ['Read the summary first.', 'Open signal details to see why the score moved.', 'Use contradictions and low confidence as prompts for more evidence, not as errors to ignore.'],
+    expect: 'GYRE remains the verdict authority. Other systems can add evidence or metadata but must not silently replace the classification.',
+  },
+  signals: {
+    title: 'Signals / why HexHawk flagged things',
+    plainName: 'Evidence drivers',
+    does: 'Shows suspicious patterns, imports, strings, instruction categories, and other signal groups that influence analysis.',
+    how: ['Run disassembly and strings for richer signal coverage.', 'Click addresses to inspect exact evidence.', 'Prefer corroborated signals over isolated weak hints.'],
+    expect: 'A breakdown of reasons and weights. Signals explain the verdict but do not override GYRE by themselves.',
+  },
+  report: {
+    title: 'Report export',
+    plainName: 'Shareable analysis record',
+    does: 'Packages file identity, verdict, evidence, and optional report metadata into JSON or Markdown for review.',
+    how: ['Review the verdict first.', 'Choose JSON for structured handoff or Markdown for readable notes.', 'Check that caveats and confidence are acceptable before sharing.'],
+    expect: 'A record of observed evidence and analysis status, not a claim that every behavior was proven at runtime.',
+  },
+  history: {
+    title: 'Snapshot history',
+    plainName: 'Previous analysis states',
+    does: 'Stores and displays earlier analysis snapshots so you can compare work across time.',
+    how: ['Open a snapshot to review what was known then.', 'Compare hashes and timestamps before assuming two snapshots describe the same file.'],
+    expect: 'Historical context. Current file state may differ from older snapshots.',
+  },
+  nest: {
+    title: 'NEST evidence review loop',
+    plainName: 'Repeat evidence organizer',
+    does: 'Runs iterative evidence passes and organizes convergence around GYRE-linked outputs.',
+    how: ['Use when confidence is low, signals conflict, or you need a stronger evidence package.', 'Review what changed between passes.', 'Keep high-assurance mode aware of uplift/metadata policy.'],
+    expect: 'Better-organized evidence and possible confidence refinement. NEST does not become verdict authority.',
+  },
+  activity: {
+    title: 'Activity log',
+    plainName: 'What happened in this session',
+    does: 'Lists actions, warnings, errors, and important UI/backend events so you can retrace the workflow.',
+    how: ['Check this after failures or confusing results.', 'Use warnings to decide what to rerun or verify.', 'Export reports separately when you need a formal record.'],
+    expect: 'Operational history, not analysis evidence by itself.',
+  },
+  patch: {
+    title: 'Patch planning',
+    plainName: 'Review binary edits before applying',
+    does: 'Queues possible byte edits such as branch inversion or NOP ranges for analyst review.',
+    how: ['Start from a selected instruction.', 'Review each queued patch and keep original files safe.', 'Use patched copies for experiments; do not treat patches as proof of original behavior.'],
+    expect: 'A planned edit list. Applying patches changes copies/artifacts and should be handled carefully.',
+  },
+  constraint: {
+    title: 'Constraint solver',
+    plainName: 'Input and check logic helper',
+    does: 'Looks for comparisons, tainted values, and candidate checks that may explain accepted inputs or gate conditions.',
+    how: ['Use after disassembly and CFG.', 'Jump from candidates back to code.', 'Confirm with surrounding instructions and evidence before acting on a candidate.'],
+    expect: 'Candidate logic explanations, not guaranteed keys, passwords, or exploit proof.',
+  },
+  sandbox: {
+    title: 'Sandbox / scripted checks',
+    plainName: 'Controlled helper execution',
+    does: 'Runs supported helper scripts or controlled checks where configured.',
+    how: ['Read the panel output before drawing conclusions.', 'Do not assume this detonates malware or proves runtime behavior unless the workflow says so explicitly.'],
+    expect: 'Supplemental evidence from configured checks. It supports review but does not replace static evidence or GYRE.',
+  },
+  debugger: {
+    title: 'Debugger / runtime trace review',
+    plainName: 'Runtime evidence when available',
+    does: 'Reviews debugger sessions, imported traces, or runtime deltas when those artifacts are available.',
+    how: ['Use it to compare observed runtime behavior with static predictions.', 'Treat imported traces as evidence with provenance.', 'Return to code addresses for context.'],
+    expect: 'Supporting runtime evidence. It does not bypass protections or become final verdict authority.',
+  },
+  diff: {
+    title: 'Binary Diff',
+    plainName: 'Compare two files',
+    does: 'Compares identity, strings, instructions, CFG blocks, and verdict changes between a base file and another file.',
+    how: ['Load a base file first.', 'Choose the comparison file.', 'Use differences to focus review on changed areas.'],
+    expect: 'A change map. Differences explain what changed, not automatically whether the change is malicious.',
+  },
+  repl: {
+    title: 'REPL / interactive commands',
+    plainName: 'Advanced command workspace',
+    does: 'Provides an interactive place for supported inspection commands tied to the current file.',
+    how: ['Use it when you need a focused query or helper command.', 'Prefer normal panels first if you are new to HexHawk.'],
+    expect: 'Advanced helper output that should be cross-checked with main evidence panels.',
+  },
+  agent: {
+    title: 'Agent Gate',
+    plainName: 'Approve or reject AI-proposed signals',
+    does: 'Shows suggestions from external AI/agent workflows and requires analyst approval before they affect signals.',
+    how: ['Read each proposed finding.', 'Approve only if the evidence is clear.', 'Reject vague or unsupported suggestions.'],
+    expect: 'Human-controlled advisory input. AI suggestions do not become security truth automatically.',
+  },
+  plugins: {
+    title: 'Plugin Manager',
+    plainName: 'Extra approved tools',
+    does: 'Runs built-in or user-approved plugin checks and shows summaries for the current file.',
+    how: ['Review plugin names and descriptions.', 'Run plugins after loading a file.', 'Treat plugin output as one evidence source among others.'],
+    expect: 'Additional observations from plugins, with success/failure status and summary output.',
+  },
+};
+
+function FeatureGuideCard({ guide }: { guide?: FeatureGuide }) {
+  if (!guide) return null;
+  return (
+    <section className="feature-guide-card" data-testid="feature-guide-card">
+      <div className="feature-guide-eyebrow">{guide.plainName}</div>
+      <h2>{guide.title}</h2>
+      <p><strong>What it does:</strong> {guide.does}</p>
+      <div className="feature-guide-how">
+        <strong>How to use it:</strong>
+        <ol>
+          {guide.how.map((step) => <li key={step}>{step}</li>)}
+        </ol>
+      </div>
+      <p><strong>What to expect:</strong> {guide.expect}</p>
+    </section>
+  );
+}
+
 const DISASSEMBLY_WORKSPACE_TABS: Array<{ id: DisassemblyWorkspaceTab; label: string; detail: string }> = [
-  { id: 'overview', label: 'Instructions', detail: 'virtualized list + analysis' },
-  { id: 'patches', label: 'Patches', detail: 'queued edits + suggestions' },
-  { id: 'xrefs', label: 'XRefs', detail: 'references for selection' },
-  { id: 'patterns', label: 'Patterns', detail: 'suspicious categories' },
+  { id: 'overview', label: 'Instructions', detail: 'machine-code steps + selected-address analysis' },
+  { id: 'patches', label: 'Patch plan', detail: 'queued edits + review before applying' },
+  { id: 'xrefs', label: 'References', detail: 'who points to the selected address' },
+  { id: 'patterns', label: 'Pattern clues', detail: 'suspicious categories and why they matter' },
 ];
 
 type SectionMetadata = {
@@ -1815,6 +2019,7 @@ export default function App() {
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false);
   const [showQaSources, setShowQaSources] = useState<boolean>(false);
+  const [contextMenu, setContextMenu] = useState<HexHawkContextMenuState | null>(null);
 
   // PHASE 5: Advanced Analysis Results
   const [programAnalysis, setProgramAnalysis] = useState<ProgramAnalysis | null>(null);
@@ -2870,9 +3075,10 @@ export default function App() {
         setShowKeyboardHelp(!showKeyboardHelp);
       }
 
-      // Escape: Close help
-      if (e.key === 'Escape' && showKeyboardHelp) {
-        setShowKeyboardHelp(false);
+      // Escape: Close help/context menu
+      if (e.key === 'Escape') {
+        if (showKeyboardHelp) setShowKeyboardHelp(false);
+        if (contextMenu) setContextMenu(null);
       }
 
       // Ctrl+Alt+Shift+H: Toggle hidden self-heal banner visibility
@@ -2930,6 +3136,18 @@ export default function App() {
         setShowJumpDialog(true);
       }
 
+      // Ctrl+I: Inspect the current file
+      if (e.ctrlKey && e.key === 'i') {
+        e.preventDefault();
+        void inspectFile();
+      }
+
+      // Ctrl+S: Scan strings instead of opening the browser save dialog
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        void scanStrings();
+      }
+
       // Ctrl+Alt+G: Go back in history (moved from Ctrl+G)
       if (e.ctrlKey && e.altKey && e.key === 'g') {
         e.preventDefault();
@@ -2984,7 +3202,21 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, currentAddress, selectedDisasmAddress, disassembly, historyIndex, history.length, showKeyboardHelp]);
+  }, [activeTab, currentAddress, selectedDisasmAddress, disassembly, historyIndex, history.length, showKeyboardHelp, contextMenu, inspectFile, scanStrings]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const closeContextMenu = () => setContextMenu(null);
+    window.addEventListener('click', closeContextMenu);
+    window.addEventListener('resize', closeContextMenu);
+    window.addEventListener('scroll', closeContextMenu, true);
+    return () => {
+      window.removeEventListener('click', closeContextMenu);
+      window.removeEventListener('resize', closeContextMenu);
+      window.removeEventListener('scroll', closeContextMenu, true);
+    };
+  }, [contextMenu]);
 
   useEffect(() => {
     async function loadPlugins() {
@@ -3692,6 +3924,175 @@ export default function App() {
     });
   }
 
+  function openHexHawkContextMenu(event: React.MouseEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement | null;
+    const keepsNativeMenu = target?.closest('input, textarea, select, button, a, [role="textbox"], [contenteditable="true"]');
+    if (keepsNativeMenu) return;
+
+    event.preventDefault();
+    const menuWidth = 300;
+    const menuHeight = 520;
+    setContextMenu({
+      x: Math.min(event.clientX, Math.max(0, window.innerWidth - menuWidth - 8)),
+      y: Math.min(event.clientY, Math.max(0, window.innerHeight - menuHeight - 8)),
+    });
+  }
+
+  function runContextMenuAction(item: HexHawkContextMenuItem) {
+    if (item.disabled) return;
+    setContextMenu(null);
+    void item.action();
+  }
+
+  const contextMenuItems = useMemo<HexHawkContextMenuItem[]>(() => {
+    const hasFileCandidate = binaryPath.trim().length > 0 && binaryPath !== 'sample.bin';
+    const hasAnalysisData = !!metadata;
+    return [
+      {
+        id: 'open-file',
+        label: 'Open file...',
+        detail: 'Choose a binary, document, script, or capture to inspect.',
+        action: () => { void pickFile(); },
+      },
+      {
+        id: 'inspect-file',
+        label: 'Inspect file details',
+        detail: 'Read file type, hashes, imports, sections, and identity.',
+        disabled: !hasFileCandidate,
+        action: () => { void inspectFile(); },
+      },
+      {
+        id: 'strings',
+        label: 'Scan strings',
+        detail: 'Collect readable text, paths, URLs, APIs, and clues.',
+        disabled: !hasFileCandidate,
+        action: () => { void scanStrings(); },
+      },
+      {
+        id: 'disassemble',
+        label: 'Disassemble current window',
+        detail: 'Open the Code map with instructions and xrefs.',
+        disabled: !hasFileCandidate,
+        action: () => { void disassembleFile(); },
+      },
+      {
+        id: 'cfg',
+        label: 'Build control-flow graph',
+        detail: 'Create a visual map of branches and blocks.',
+        disabled: disassembly.length === 0,
+        action: () => { void buildCfg(); },
+      },
+      {
+        id: 'quick-triage',
+        label: 'Run quick triage',
+        detail: 'Inspect, scan strings, disassemble, build CFG, then show verdict.',
+        disabled: !hasFileCandidate,
+        action: async () => {
+          await inspectFile();
+          await scanStrings();
+          await disassembleFile();
+          await buildCfg();
+          navigateView('verdict');
+          addLog('Context menu: completed quick triage sequence.', 'info');
+        },
+      },
+      {
+        id: 'export',
+        label: 'Export analysis JSON',
+        detail: 'Save the current evidence snapshot for review or sharing.',
+        disabled: !hasAnalysisData,
+        separatorBefore: true,
+        action: exportAnalysis,
+      },
+      {
+        id: 'copy-path',
+        label: 'Copy file path',
+        disabled: !hasFileCandidate,
+        action: async () => {
+          await copyToClipboard(binaryPath);
+          setMessage('Copied file path to clipboard.');
+          addLog('Copied file path from context menu.', 'info');
+        },
+      },
+      {
+        id: 'copy-hash',
+        label: 'Copy SHA-256',
+        disabled: !metadata?.sha256,
+        action: async () => {
+          await copyToClipboard(metadata?.sha256 ?? '');
+          setMessage('Copied SHA-256 to clipboard.');
+          addLog('Copied SHA-256 from context menu.', 'info');
+        },
+      },
+      {
+        id: 'copy-address',
+        label: 'Copy current address',
+        disabled: currentAddress === null,
+        action: async () => {
+          await copyToClipboard(currentAddress === null ? '' : formatHex(currentAddress));
+          setMessage('Copied current address to clipboard.');
+          addLog('Copied current address from context menu.', 'info');
+        },
+      },
+      {
+        id: 'jump',
+        label: 'Jump to address...',
+        detail: 'Go directly to an offset/address in Hex or Code map.',
+        separatorBefore: true,
+        action: () => setShowJumpDialog(true),
+      },
+      {
+        id: 'back',
+        label: 'Go back',
+        disabled: historyIndex <= 0,
+        action: goBack,
+      },
+      {
+        id: 'forward',
+        label: 'Go forward',
+        disabled: historyIndex >= history.length - 1,
+        action: goForward,
+      },
+      {
+        id: 'shortcuts',
+        label: 'Keyboard shortcuts',
+        separatorBefore: true,
+        action: () => setShowKeyboardHelp(true),
+      },
+      {
+        id: 'help',
+        label: 'Open Help',
+        action: () => navigateView('help'),
+      },
+      {
+        id: 'about',
+        label: 'About HexHawk',
+        action: () => navigateView('about'),
+      },
+      {
+        id: 'trust-center',
+        label: 'Open Trust Center',
+        detail: 'View public keys, revocations, and release trust information.',
+        action: () => { window.open('https://hexhawk.ke/trust-center/', '_blank', 'noreferrer'); },
+      },
+    ];
+  }, [
+    binaryPath,
+    metadata,
+    currentAddress,
+    disassembly.length,
+    historyIndex,
+    history.length,
+    pickFile,
+    inspectFile,
+    scanStrings,
+    disassembleFile,
+    buildCfg,
+    navigateView,
+    goBack,
+    goForward,
+  ]);
+
   async function reloadPlugin(name: string) {
     setReloading(name);
     setReloadStatus((current) => {
@@ -3741,7 +4142,7 @@ export default function App() {
   const tabs: AppTab[] = ['metadata', 'hex', 'strings', 'cfg', 'plugins', 'disassembly', 'decompile', 'talon', 'constraint', 'document', 'sandbox', 'debugger', 'strike', 'signatures', 'echo', 'nest', 'repl', 'console', 'bookmarks', 'logs', 'graph', 'report', 'agent'];
 
   return (
-    <div className="wf-shell">
+    <div className="wf-shell" onContextMenu={openHexHawkContextMenu}>
       {isDragOver && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
@@ -3753,6 +4154,34 @@ export default function App() {
           fontWeight: 600, letterSpacing: '0.05em',
         }}>
           Drop file to open
+        </div>
+      )}
+      {contextMenu && (
+        <div
+          className="hexhawk-context-menu"
+          role="menu"
+          aria-label="HexHawk actions"
+          data-testid="hexhawk-context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(event) => event.stopPropagation()}
+          onContextMenu={(event) => event.preventDefault()}
+        >
+          <div className="hexhawk-context-menu-title">HexHawk actions</div>
+          {contextMenuItems.map((item) => (
+            <React.Fragment key={item.id}>
+              {item.separatorBefore && <div className="hexhawk-context-menu-separator" />}
+              <button
+                type="button"
+                role="menuitem"
+                className="hexhawk-context-menu-item"
+                disabled={item.disabled}
+                onClick={() => runContextMenuAction(item)}
+              >
+                <span className="hexhawk-context-menu-label">{item.label}</span>
+                {item.detail && <span className="hexhawk-context-menu-detail">{item.detail}</span>}
+              </button>
+            </React.Fragment>
+          ))}
         </div>
       )}
       {flags.clarityAuthorityBanner && <AuthorityBanner />}
@@ -3973,6 +4402,10 @@ export default function App() {
               <QASubsystemPanel statuses={qaSubsystemStatuses} />
             )}
 
+            {activeView !== 'help' && activeView !== 'about' && (
+              <FeatureGuideCard guide={FEATURE_GUIDES[activeView]} />
+            )}
+
             {WORKSPACE_VIEW_IDS.has(activeView) && (
               <WorkspaceTabStrip activeView={activeView} onSelect={navigateView} />
             )}
@@ -3980,7 +4413,7 @@ export default function App() {
             {/* Recent-files quick-access for the load view */}
             {activeView === 'load' && (
               <div className="panel" data-testid="panel-load">
-                <h3>Load Binary</h3>
+                <h3>Open a file</h3>
                 <div className="file-picker-row">
                   <span className="binary-path-display" title={binaryPath}>
                     {binaryPath.split(/[\\/]/).pop() || binaryPath}
@@ -3995,7 +4428,7 @@ export default function App() {
                     className="binary-path-display"
                     data-testid="load-path-input"
                     aria-label="Binary path"
-                    placeholder="Enter full binary path"
+                    placeholder="Enter the full path to a file"
                   />
                   <button
                     type="button"
@@ -4026,7 +4459,7 @@ export default function App() {
                       addLog(`Applied binary path for analysis: ${candidate}`, 'info');
                     }}
                     title="Apply typed path"
-                  >Apply Path</button>
+                  >Use This Path</button>
                 </div>
                 {recentFiles.length > 0 && (
                   <div style={{ marginTop: '1rem' }}>
@@ -4064,7 +4497,7 @@ export default function App() {
               <div className="panel" data-testid="panel-metadata">
                 {!metadata ? (
                   <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>
-                    <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>??</div>
+                    <div style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>📄</div>
                     <div>No file loaded. Use <strong>Load Binary</strong> to open a file.</div>
                   </div>
                 ) : (
@@ -4318,7 +4751,7 @@ export default function App() {
                     <>
                       <div style={{ fontSize: '2.5rem' }}>?</div>
                       <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#aaa' }}>No disassembly loaded</div>
-                      <div style={{ fontSize: '0.875rem' }}>Click the <strong style={{ color: '#00d4ff' }}>Disassemble</strong> button in the toolbar above, or use Inspect ? Disassemble.</div>
+                      <div style={{ fontSize: '0.875rem' }}>Click <strong style={{ color: '#00d4ff' }}>Disassemble code</strong> in the toolbar above, or right-click the workspace and choose Disassemble current window.</div>
                       {metadata && (
                         <button
                           type="button"
@@ -4326,7 +4759,7 @@ export default function App() {
                           style={{ marginTop: '0.5rem' }}
                           onClick={() => disassembleFile()}
                         >
-                          ? Disassemble Now
+                          ⊞ Disassemble Code Now
                         </button>
                       )}
                     </>
@@ -4612,8 +5045,8 @@ export default function App() {
             {activeView === 'nest' && gateTab('nest', 'NEST', (
               browserMode ? (
                 <div className="panel workspace-view-shell workspace-view-scroll" data-testid="panel-nest">
-                  <h3>NEST (Browser Simulation)</h3>
-                  <p>Simulated iterative convergence mode is active. This mirrors Enterprise workflow without invoking the desktop backend.</p>
+                  <h3>NEST evidence loop (browser simulation)</h3>
+                  <p>This simulated mode shows how NEST repeats evidence review passes. It organizes evidence around the GYRE verdict; it does not replace GYRE as the classification authority.</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -4626,7 +5059,7 @@ export default function App() {
                       setMessage('NEST simulation completed. Verdict enriched.');
                     }}
                   >
-                    ⟳ Start NEST Session
+                    ⟳ Start Evidence Review Loop
                   </button>
                 </div>
               ) : (
@@ -4677,9 +5110,9 @@ export default function App() {
             {activeView === 'patch' && gateTab('disassembly', 'Patch', (
               browserMode ? (
                 <div className="panel">
-                  <h3>Patch Manager (Browser Simulation)</h3>
+                  <h3>Patch plan (browser simulation)</h3>
                   {patches.length === 0 ? (
-                    <p>No queued patches. Add patches from Disassembly first.</p>
+                    <p>No queued patches yet. Select an instruction in the Code map and choose a patch action. Review each change before applying it to any copy.</p>
                   ) : (
                     <ul>
                       {patches.map((p) => (
@@ -4705,8 +5138,8 @@ export default function App() {
             {activeView === 'constraint' && gateTab('constraint', 'Constraint', (
               browserMode ? (
                 <div className="panel">
-                  <h3>Constraint Solver (Browser Simulation)</h3>
-                  <p>Simulated taint and key-check flow available in browser mode.</p>
+                  <h3>Input and logic solver (browser simulation)</h3>
+                  <p>This view looks for candidate checks, comparisons, and data-flow constraints. It suggests where logic may depend on input; it does not guarantee a password, key, or exploit.</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -4714,7 +5147,7 @@ export default function App() {
                       navigateView('disassembly');
                       addLog('Jumped to constraint candidate block (browser simulation).', 'info');
                     }}
-                  >Jump to candidate constraint block</button>
+                  >Jump to candidate logic block</button>
                 </div>
               ) : (
                 <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
@@ -4738,10 +5171,10 @@ export default function App() {
             {activeView === 'agent' && gateTab('agent', 'Agent Gate', (
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} data-testid="panel-agent">
                 <div className="agent-gate-panel">
-                  <h2 className="agent-gate-title">⬢ Agent Signal Gate</h2>
+                  <h2 className="agent-gate-title">⬢ Agent suggestion review</h2>
                   <p className="agent-gate-desc">
-                    External AI agents connected via <code>nest_cli serve --mcp</code> may propose signals for GYRE analysis.
-                    Each signal requires explicit analyst approval before it influences the verdict.
+                    External AI/agent tools may suggest analysis signals. HexHawk does not accept them automatically.
+                    Read each suggestion and approve only evidence-backed items before they can influence the signal list.
                   </p>
 
                   {/* Pending approvals */}
@@ -4888,13 +5321,13 @@ export default function App() {
             {/* ── Plugin Manager ────────────────────────────────────────────── */}
             {activeView === 'plugins' && (
               <div className="panel" data-testid="panel-plugins">
-                <h3>Plugin Manager</h3>
+                <h3>Plugin Manager: extra approved tools</h3>
                 <QuillPanel
                   onPluginListChanged={analyzePlugins}
                 />
                 {plugins.length > 0 && (
                   <div style={{ marginTop: '1rem' }}>
-                    <h4>Built-in Plugins</h4>
+                    <h4>Available plugin checks</h4>
                     <div className="plugin-list">
                       {plugins.map((plugin) => {
                         const status = reloadStatus[plugin.name];
@@ -4939,20 +5372,51 @@ export default function App() {
 
             {/* -- Help -------------------------------------------------------- */}
             {activeView === 'help' && (
-              <div className="panel" style={{ maxWidth: 720, lineHeight: 1.7 }}>
-                <h3>Help &amp; Keyboard Shortcuts</h3>
-                <h4 style={{ color: '#00d4ff' }}>Navigation</h4>
+              <div className="panel public-help-panel" style={{ maxWidth: 860, lineHeight: 1.65 }} data-testid="panel-help">
+                <h3>Help: analyze a file safely and keep your evidence organized</h3>
+                <p style={{ color: '#aaa', fontSize: '0.95rem', marginTop: 0 }}>
+                  HexHawk is built for local binary and file triage. Start with one file you are allowed to inspect,
+                  collect basic facts first, then move into code, strings, evidence, and exportable reports.
+                </p>
+
+                <div className="help-card-grid">
+                  <div className="help-card">
+                    <h4>1. Open a file</h4>
+                    <p>Use <strong>Load Binary</strong> or drag a file into HexHawk. You can inspect executables, documents, scripts, packet captures, and other supported file types.</p>
+                  </div>
+                  <div className="help-card">
+                    <h4>2. Inspect first</h4>
+                    <p>Run <strong>Inspect</strong> to record hashes, file type, architecture, imports, exports, and section information before deeper analysis.</p>
+                  </div>
+                  <div className="help-card">
+                    <h4>3. Expand evidence</h4>
+                    <p>Use <strong>Strings</strong>, <strong>Code map</strong>, <strong>CFG</strong>, and <strong>NEST</strong> to connect readable clues, instructions, branches, and scored signals.</p>
+                  </div>
+                  <div className="help-card">
+                    <h4>4. Export results</h4>
+                    <p>Export JSON or Markdown when you need a reviewable record. Reports should describe what HexHawk observed, not overstate proof.</p>
+                  </div>
+                </div>
+
+                <h4 style={{ color: '#00d4ff' }}>Useful right-click actions</h4>
+                <ul style={{ color: '#ccc', paddingLeft: '1.2rem', marginTop: 0 }}>
+                  <li>Right-click empty workspace space to open the HexHawk action menu.</li>
+                  <li>Use it to open a file, inspect, scan strings, disassemble, build a CFG, run quick triage, export analysis, copy file identity, jump to an address, or open Help/About.</li>
+                  <li>Text fields, buttons, and links keep their normal system right-click behavior.</li>
+                </ul>
+
+                <h4 style={{ color: '#00d4ff' }}>Keyboard shortcuts</h4>
                 <table style={{ borderCollapse: 'collapse', width: '100%', marginBottom: '1rem' }}>
                   <tbody>
                     {([
-                      ['Ctrl+D', 'Disassembly tab'],
-                      ['Ctrl+H', 'Hex Viewer tab'],
-                      ['Ctrl+Shift+B', 'Bookmarks tab'],
-                      ['Ctrl+G', 'Jump to address dialog'],
-                      ['Ctrl+I', 'Inspect file'],
+                      ['Ctrl+D', 'Open the Code map / disassembly view'],
+                      ['Ctrl+H', 'Open the Hex viewer'],
+                      ['Ctrl+Shift+B', 'Open bookmarks'],
+                      ['Ctrl+G', 'Jump to an address or offset'],
+                      ['Ctrl+I', 'Inspect the selected file'],
                       ['Ctrl+S', 'Scan strings'],
-                      ['?', 'Toggle shortcuts overlay'],
-                      ['Ctrl+Alt+Shift+H', 'Reveal hidden self-heal hints'],
+                      ['?', 'Toggle the shortcuts overlay'],
+                      ['Esc', 'Close overlays or menus'],
                     ] as [string, string][]).map(([key, desc]) => (
                       <tr key={key} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                         <td style={{ padding: '0.35rem 1rem 0.35rem 0', fontFamily: 'monospace', color: '#79c0ff', whiteSpace: 'nowrap' }}>
@@ -4964,71 +5428,32 @@ export default function App() {
                   </tbody>
                 </table>
 
-                <h4 style={{ color: '#00d4ff' }}>Analysis Workflow</h4>
-                <ol style={{ color: '#ccc', paddingLeft: '1.2rem' }}>
-                  <li><strong>Load Binary</strong> - open any PE, ELF, PDF, script, or PCAP file.</li>
-                  <li><strong>Inspect</strong> - parse headers, hashes, imports, exports, sections.</li>
-                  <li><strong>Disassemble / CFG</strong> - multi-arch disassembly and control flow graph.</li>
-                  <li><strong>Strings</strong> - extract ASCII + UTF-16 strings; filter by URL/path/API.</li>
-                  <li><strong>Run Analysis</strong> - GYRE verdict with full reasoning chain.</li>
-                  <li><strong>Verdict / Signals / NEST</strong> - explore scored signals and convergence.</li>
-                  <li><strong>Patch / Constraint / Sandbox</strong> - invert jumps, solve serials, run scripts.</li>
-                  <li><strong>Export</strong> - save full analysis as JSON or Markdown.</li>
-                </ol>
-
-                <h4 style={{ color: '#00d4ff' }}>Beginner Challenge Quickstart</h4>
-                <ol style={{ color: '#ccc', paddingLeft: '1.2rem', marginTop: 0 }}>
-                  <li><strong>Start in Load</strong> and pick one file from the Challenges folder (for example Gujian3.exe).</li>
-                  <li><strong>Press Ctrl+I, then Ctrl+S</strong> to collect metadata and strings before disassembly.</li>
-                  <li><strong>Run Analysis</strong> and read Evidence Chain first, then contradictions, then next steps.</li>
-                  <li><strong>If confidence stalls below 50%</strong>, open NEST and run more iterations before patching.</li>
-                  <li><strong>For scripts or unknown formats</strong>, expect lower confidence and focus on strings + sandbox output instead of PE-specific assumptions.</li>
-                  <li><strong>Export report</strong> when finished so you can compare progress across attempts.</li>
-                </ol>
+                <h4 style={{ color: '#00d4ff' }}>Reading HexHawk results</h4>
+                <ul style={{ color: '#ccc', paddingLeft: '1.2rem', marginTop: 0 }}>
+                  <li><strong>GYRE</strong> provides the verdict classification and base confidence.</li>
+                  <li><strong>NEST</strong> organizes and converges evidence; it does not replace GYRE as verdict authority.</li>
+                  <li><strong>AETHERFRAME / Forge</strong> may add optional confidence or packaging metadata when policy allows, but it must not change the classification.</li>
+                  <li><strong>STRIKE, TALON, ECHO, and CFG views</strong> are analyst evidence surfaces. Treat them as places to inspect and corroborate, not as magic proof.</li>
+                </ul>
 
                 <h4 style={{ color: '#00d4ff' }}>Troubleshooting</h4>
                 <ul style={{ color: '#ccc', paddingLeft: '1.2rem', marginTop: 0 }}>
-                  <li>Very large binaries can yield a tiny initial disassembly window; use CFG and NEST to expand context.</li>
-                  <li>If contradiction count remains high, prioritize corroborated signals and deprioritize isolated hits.</li>
-                  <li>If a workflow step is unclear, open Operator Console and request a step-by-step plan for your current file.</li>
+                  <li>If a file will not open, confirm it still exists and that your Windows account can read it.</li>
+                  <li>If disassembly is small at first, run Inspect and Strings, then expand with Code map and CFG views.</li>
+                  <li>If confidence is low or signals disagree, compare the strongest evidence and export a report for manual review.</li>
+                  <li>Unsigned builds may trigger Windows warnings. Check the Trust Center for release and verification information.</li>
                 </ul>
-
-                <h4 style={{ color: '#00d4ff' }}>Engines</h4>
-                <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-                  <tbody>
-                    {([
-                      ['TALON', 'IR lift ? SSA ? pseudo-code + intent classification'],
-                      ['STRIKE', 'Live debugger (Windows / Linux / macOS) with behavioral delta'],
-                      ['ECHO', 'Fuzzy signature matching, FLARE crypto/obfuscation patterns'],
-                      ['NEST', 'Iterative multi-pass convergence with dampening'],
-                      ['GYRE', 'Verdict engine - 23-section signal aggregation + reasoning chain'],
-                      ['KITE', 'Knowledge graph - ReactFlow signal-to-verdict visualization'],
-                      ['AERIE', 'Operator console - plain-text to step-by-step workflow'],
-                      ['CREST', 'Intelligence report - JSON / Markdown export'],
-                      ['IMP', 'Binary patch engine - invert jumps, NOP sleds, patched copy'],
-                      ['QUILL', 'Plugin system - 4 built-in + runtime user .dll/.so/.dylib plugins'],
-                    ] as [string, string][]).map(([eng, desc]) => (
-                      <tr key={eng} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                        <td style={{ padding: '0.35rem 1rem 0.35rem 0', color: '#00d4ff', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
-                          <strong>{eng}</strong>
-                        </td>
-                        <td style={{ padding: '0.35rem 0', color: '#ccc', fontSize: '0.88rem' }}>{desc}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             )}
 
             {/* -- About ------------------------------------------------------- */}
             {activeView === 'about' && (
-              <div className="panel" style={{ maxWidth: 680, lineHeight: 1.7 }}>
+              <div className="panel public-about-panel" style={{ maxWidth: 820, lineHeight: 1.65 }} data-testid="panel-about">
                 <h3>About HexHawk</h3>
                 <p style={{ color: '#aaa', fontSize: '0.95rem' }}>
-                  HexHawk is a native desktop reverse engineering workstation built with
-                  <strong> Rust</strong> (Tauri 2), <strong>React 18</strong>, and <strong>TypeScript</strong>.
-                  It combines binary inspection, disassembly, CFG visualization, IR-based pseudo-code,
-                  live debugging, and iterative multi-engine threat analysis in a single application.
+                  HexHawk is a local-first desktop workstation for people who need to inspect unfamiliar files,
+                  understand what was observed, and package evidence for review. It focuses on clear file identity,
+                  analysis notes, code and string views, confidence boundaries, and exportable reports.
                 </p>
 
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', margin: '1rem 0' }}>
@@ -5047,20 +5472,30 @@ export default function App() {
                   ))}
                 </div>
 
-                <h4 style={{ color: '#00d4ff' }}>Technology</h4>
+                <h4 style={{ color: '#00d4ff' }}>What HexHawk helps with</h4>
                 <ul style={{ color: '#ccc', paddingLeft: '1.2rem', fontSize: '0.9rem' }}>
-                  <li>Tauri 2 + Rust backend (Capstone, object, memmap2, HMAC-SHA256)</li>
-                  <li>React 18 + TypeScript + Vite frontend</li>
-                  <li>ReactFlow for CFG / KITE knowledge graph</li>
-                  <li>10 named analysis engines (TALON, STRIKE, ECHO, NEST, GYRE, KITE, AERIE, CREST, IMP, QUILL)</li>
-                  <li>Plugin API with C ABI and 7-layer safety isolation</li>
-                  <li>HMAC-SHA256 signed license keys (Crockford Base32)</li>
+                  <li>Open a file locally and record hashes, type, architecture, size, sections, imports, exports, and strings.</li>
+                  <li>Review disassembly, control-flow structure, cross references, and decompiler assistance where available.</li>
+                  <li>Correlate evidence into a GYRE-linked verdict while keeping uncertainty and contradictions visible.</li>
+                  <li>Export reports for review, handoff, or repeat analysis without claiming more than the evidence supports.</li>
                 </ul>
+
+                <h4 style={{ color: '#00d4ff' }}>Trust model</h4>
+                <ul style={{ color: '#ccc', paddingLeft: '1.2rem', fontSize: '0.9rem' }}>
+                  <li><strong>GYRE</strong> owns classification and base confidence.</li>
+                  <li><strong>NEST</strong> organizes and converges evidence around that verdict.</li>
+                  <li><strong>AETHERFRAME / Forge</strong> is optional metadata/uplift and must not change classification.</li>
+                  <li><strong>NEXUS / Operator Console</strong> assists the analyst; it is not security truth.</li>
+                </ul>
+
+                <h4 style={{ color: '#00d4ff' }}>Privacy and local operation</h4>
+                <p style={{ color: '#aaa', fontSize: '0.88rem' }}>
+                  HexHawk is designed around local inspection. Optional online, licensing, trust-center, or assistant features should be explicit and reviewable. Do not upload or share files unless your organization allows it.
+                </p>
 
                 <h4 style={{ color: '#00d4ff' }}>License Keys</h4>
                 <p style={{ color: '#aaa', fontSize: '0.88rem' }}>
-                  Keys are in <code>HKHK-XXXXX-XXXXX-XXXXX-XXXXX</code> format.
-                  Open the ?? key icon in the top bar to activate a license and unlock Pro or Enterprise features.
+                  Keys use the <code>HKHK-XXXXX-XXXXX-XXXXX-XXXXX</code> format. Open the key icon in the top bar to activate a license and unlock enabled Pro or Enterprise features.
                 </p>
 
                 <h4 style={{ color: '#00d4ff' }}>Trust and Verification</h4>

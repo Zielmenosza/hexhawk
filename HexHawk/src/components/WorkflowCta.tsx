@@ -34,10 +34,10 @@ export default function WorkflowCta({
     return (
       <div className="wf-cta wf-cta--center">
         <div className="wf-cta-icon">📭</div>
-        <h2 className="wf-cta-title">No binary loaded</h2>
-        <p className="wf-cta-body">Drop a file anywhere or click below to get started.</p>
+        <h2 className="wf-cta-title">No file loaded</h2>
+        <p className="wf-cta-body">Drop in a file you are allowed to inspect, or click below to choose one. HexHawk starts by reading local file facts such as type and hashes.</p>
         <button type="button" className="wf-cta-primary-btn" onClick={onLoadFile}>
-          📂 Load Binary
+          📂 Open File
         </button>
       </div>
     );
@@ -48,7 +48,7 @@ export default function WorkflowCta({
       <div className="wf-cta wf-cta--center">
         <div className="wf-cta-icon">📄</div>
         <h2 className="wf-cta-title">{fileName}</h2>
-        <p className="wf-cta-body">File loaded. Run a quick metadata inspection to start.</p>
+        <p className="wf-cta-body">File selected. Start with Inspect File so HexHawk can record identity, hashes, sections, imports, and exports before deeper analysis.</p>
         <button type="button" className="wf-cta-primary-btn" onClick={onInspect}>
           🔎 Inspect File
         </button>
@@ -59,7 +59,7 @@ export default function WorkflowCta({
   if (workflowState === 'inspected') {
     return (
       <div className="wf-cta">
-        <h2 className="wf-cta-title">Inspection complete</h2>
+        <h2 className="wf-cta-title">Inspection complete — choose the next evidence step</h2>
         <div className="wf-cta-checks">
           <span className="wf-cta-check wf-cta-check--done">✔ Metadata extracted</span>
           <span className={`wf-cta-check ${hasStrings ? 'wf-cta-check--done' : ''}`}>
@@ -72,18 +72,18 @@ export default function WorkflowCta({
             {hasCfg ? '✔' : '○'} CFG built
           </span>
         </div>
-        <p className="wf-cta-body">Choose your next step:</p>
+        <p className="wf-cta-body">Recommended path: scan strings for readable clues, disassemble for code instructions, build the branch map, then run analysis for the verdict summary.</p>
         <div className="wf-cta-actions">
           {!hasDisassembly && (
-            <button type="button" className="wf-cta-action-btn" onClick={onDisassemble}>⊞ Disassemble</button>
+            <button type="button" className="wf-cta-action-btn" onClick={onDisassemble}>⊞ Disassemble code</button>
           )}
           {!hasCfg && (
-            <button type="button" className="wf-cta-action-btn" onClick={onBuildCfg}>⬡ Build CFG</button>
+            <button type="button" className="wf-cta-action-btn" onClick={onBuildCfg}>⬡ Build branch map</button>
           )}
           {!hasStrings && (
-            <button type="button" className="wf-cta-action-btn" onClick={onScanStrings}>𝕊 Scan Strings</button>
+            <button type="button" className="wf-cta-action-btn" onClick={onScanStrings}>𝕊 Find readable strings</button>
           )}
-          <button type="button" className="wf-cta-primary-btn" onClick={onRunAnalysis}>⚡ Run Full Analysis</button>
+          <button type="button" className="wf-cta-primary-btn" onClick={onRunAnalysis}>⚡ Run analysis and show verdict</button>
         </div>
       </div>
     );
@@ -94,7 +94,7 @@ export default function WorkflowCta({
     <div className="wf-cta wf-cta--center">
       <div className="wf-cta-icon">⚖</div>
       <h2 className="wf-cta-title">Analysis complete</h2>
-      <p className="wf-cta-body">Intelligence is ready. View the verdict to understand the binary.</p>
+      <p className="wf-cta-body">The first analysis pass is ready. Open the verdict to see the GYRE classification, confidence, supporting evidence, contradictions, and next review steps.</p>
       <button type="button" className="wf-cta-primary-btn" onClick={onViewVerdict}>
         ⚖ View Verdict
       </button>
