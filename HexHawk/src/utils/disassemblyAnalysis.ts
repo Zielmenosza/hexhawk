@@ -5,6 +5,7 @@ import type {
   FunctionEndReason,
   FunctionModel,
   FunctionStartReason,
+  FunctionStartSource,
   Instruction,
   ProgramAnalysis,
   BackendImport,
@@ -17,6 +18,8 @@ export type DisassemblyAnalysisOptions = {
   exportedAddresses?: Iterable<number>;
   /** Advisory backend import-table entries parsed before instruction-derived xrefs. */
   imports?: Iterable<BackendImport>;
+  /** Advisory jump-table targets detected by a prior pass. */
+  jumpTableTargets?: Iterable<number>;
 };
 
 export type FunctionStartCandidate = {
@@ -57,10 +60,22 @@ function pushReason(map: Map<number, Set<FunctionStartReason>>, address: number,
 }
 
 function confidenceForStartReasons(reasons: Set<FunctionStartReason>): ConfidenceLevel {
-  if (reasons.has('symbol') || reasons.has('export') || reasons.has('known-call-target')) return 'high';
-  if (reasons.has('prologue')) return 'medium';
-  if (reasons.has('entrypoint') || reasons.has('linear-sweep')) return 'low';
+  if (reasons.has('symbol') || reasons.has('export') || reasons.has('known-call-target') || reasons.has('call-target')) return 'high';
+  if (reasons.has('prologue') || reasons.has('prologue-pattern') || reasons.has('jump-table-target')) return 'medium';
+  if (reasons.has('alignment-gap') || reasons.has('entrypoint') || reasons.has('linear-sweep')) return 'low';
   return 'unknown';
+}
+
+
+function sourceForStartReasons(reasons: FunctionStartReason[]): FunctionStartSource {
+  if (reasons.includes('known-call-target') || reasons.includes('call-target')) return 'call-target';
+  if (reasons.includes('symbol')) return 'symbol';
+  if (reasons.includes('export')) return 'export';
+  if (reasons.includes('prologue-pattern') || reasons.includes('prologue')) return 'prologue-pattern';
+  if (reasons.includes('jump-table-target')) return 'jump-table-target';
+  if (reasons.includes('alignment-gap')) return 'alignment-gap';
+  if (reasons.includes('entrypoint')) return 'entrypoint';
+  return 'linear-sweep';
 }
 
 function warning(kind: AnalysisWarning['kind'], message: string, address?: number): AnalysisWarning {
@@ -162,11 +177,22 @@ function looksLikePrologue(current: Instruction, next?: Instruction): boolean {
     return true;
   }
 
+  if (mnemonic === 'push' && /\brdi\b/.test(operands) && nextMnemonic === 'push' && /\brsi\b/.test(nextOperands)) {
+    return true;
+  }
+
   if (mnemonic.startsWith('sub') && /\brsp\b/.test(operands)) {
     return true;
   }
 
   return false;
+}
+
+
+function isAlignmentPadding(instruction: Instruction): boolean {
+  const mnemonic = normalizeMnemonic(instruction);
+  const operands = normalizeOperands(instruction);
+  return mnemonic === 'nop' || mnemonic === 'nopl' || mnemonic === 'nopw' || mnemonic === 'int3' || operands === '0xcc' || operands === '0xCC'.toLowerCase();
 }
 
 export function extractDirectTarget(operands: string): number | null {
@@ -306,6 +332,7 @@ export function detectFunctionStartCandidates(
   for (const xref of xrefs) {
     if (xref.kind === 'call' && addressSet.has(xref.to)) {
       pushReason(starts, xref.to, 'known-call-target');
+      pushReason(starts, xref.to, 'call-target');
     }
   }
 
@@ -313,7 +340,28 @@ export function detectFunctionStartCandidates(
     const instruction = instructions[index];
     if (looksLikePrologue(instruction, instructions[index + 1])) {
       pushReason(starts, instruction.address, 'prologue');
+      pushReason(starts, instruction.address, 'prologue-pattern');
     }
+  }
+
+
+
+  for (const target of options.jumpTableTargets ?? []) {
+    if (addressSet.has(target)) pushReason(starts, target, 'jump-table-target');
+  }
+
+  for (let index = 0; index < instructions.length; index += 1) {
+    if (!isAlignmentPadding(instructions[index])) continue;
+    const paddingStart = index;
+    let cursor = index;
+    while (cursor < instructions.length && isAlignmentPadding(instructions[cursor])) cursor += 1;
+    const paddingLength = cursor - paddingStart;
+    const next = instructions[cursor];
+    const previous = instructions[paddingStart - 1];
+    if (paddingLength >= 1 && paddingLength <= 15 && next && previous && isTransfer(normalizeMnemonic(previous))) {
+      pushReason(starts, next.address, 'alignment-gap');
+    }
+    index = cursor;
   }
 
   return Array.from(starts.entries())
@@ -485,6 +533,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
       instructions: functionInstructions,
       basicBlocks: functionBlocks,
       startReasons: candidate.reasons,
+      startSource: sourceForStartReasons(candidate.reasons),
       endReason: end.reason,
       confidence,
       warnings: functionWarnings,

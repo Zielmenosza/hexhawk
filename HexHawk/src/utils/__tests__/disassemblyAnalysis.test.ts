@@ -136,4 +136,60 @@ describe('typed disassembly analysis foundation', () => {
     expect(index.refCount(0x401000)).toBe(0);
   });
 
+
+  it('promotes prologue-pattern functions without prior calls as medium-confidence heuristic entries', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0x6000, mnemonic: 'push', operands: 'rdi', source: 'synthetic-test' },
+      { address: 0x6001, mnemonic: 'push', operands: 'rsi', source: 'synthetic-test' },
+      { address: 0x6002, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ]);
+
+    const fn = analysis.functions.find(candidate => candidate.startAddress === 0x6000);
+    expect(fn).toMatchObject({ confidence: 'medium', startSource: 'prologue-pattern' });
+    expect(fn?.startReasons).toContain('prologue-pattern');
+  });
+
+  it('promotes jump-table targets as medium-confidence heuristic function entries', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0x7000, mnemonic: 'jmp', operands: '0x7100', source: 'synthetic-test' },
+      { address: 0x7100, mnemonic: 'mov', operands: 'eax, 1', source: 'synthetic-test' },
+      { address: 0x7102, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ], { jumpTableTargets: [0x7100] });
+
+    const fn = analysis.functions.find(candidate => candidate.startAddress === 0x7100);
+    expect(fn).toMatchObject({ confidence: 'medium', startSource: 'jump-table-target' });
+    expect(fn?.startReasons).toContain('jump-table-target');
+  });
+
+  it('promotes instruction after short NOP padding gap as low-confidence heuristic entry', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0x8000, mnemonic: 'push', operands: 'rbp', source: 'synthetic-test' },
+      { address: 0x8001, mnemonic: 'mov', operands: 'rbp, rsp', source: 'synthetic-test' },
+      { address: 0x8004, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+      { address: 0x8005, mnemonic: 'nop', operands: '', source: 'synthetic-test' },
+      { address: 0x8006, mnemonic: 'nop', operands: '', source: 'synthetic-test' },
+      { address: 0x8010, mnemonic: 'mov', operands: 'eax, 2', source: 'synthetic-test' },
+      { address: 0x8012, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ]);
+
+    const fn = analysis.functions.find(candidate => candidate.startAddress === 0x8010);
+    expect(fn).toMatchObject({ confidence: 'low', startSource: 'alignment-gap' });
+    expect(fn?.startReasons).toContain('alignment-gap');
+  });
+
+  it('keeps existing call-target functions high-confidence without duplicating entries', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0x9000, mnemonic: 'call', operands: '0x9010', source: 'synthetic-test' },
+      { address: 0x9005, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+      { address: 0x9010, mnemonic: 'push', operands: 'rbp', source: 'synthetic-test' },
+      { address: 0x9011, mnemonic: 'mov', operands: 'rbp, rsp', source: 'synthetic-test' },
+      { address: 0x9014, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ]);
+
+    const matches = analysis.functions.filter(candidate => candidate.startAddress === 0x9010);
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toMatchObject({ confidence: 'high', startSource: 'call-target' });
+    expect(matches[0].startReasons).toEqual(expect.arrayContaining(['known-call-target', 'call-target', 'prologue-pattern']));
+  });
+
 });

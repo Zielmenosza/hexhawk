@@ -59,7 +59,21 @@ export type FunctionStartReason =
   | 'symbol'
   | 'export'
   | 'known-call-target'
+  | 'call-target'
   | 'prologue'
+  | 'prologue-pattern'
+  | 'jump-table-target'
+  | 'alignment-gap'
+  | 'linear-sweep';
+
+export type FunctionStartSource =
+  | 'call-target'
+  | 'prologue-pattern'
+  | 'jump-table-target'
+  | 'alignment-gap'
+  | 'symbol'
+  | 'export'
+  | 'entrypoint'
   | 'linear-sweep';
 
 export type FunctionEndReason =
@@ -77,6 +91,7 @@ export type FunctionModel = {
   instructions: Instruction[];
   basicBlocks: BasicBlock[];
   startReasons: FunctionStartReason[];
+  startSource: FunctionStartSource;
   endReason: FunctionEndReason;
   confidence: ConfidenceLevel;
   warnings: AnalysisWarning[];
