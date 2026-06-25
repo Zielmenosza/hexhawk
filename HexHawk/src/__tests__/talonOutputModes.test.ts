@@ -15,7 +15,7 @@ describe('TALON compact and annotated output modes', () => {
     const result = decompile(CREATE_FILE_CALL, null, { functionName: 'open_file' });
     const text = result.lines.map(line => line.text).join('\n');
 
-    expect(text).toContain('CreateFileW(fileName, 0x80000000');
+    expect(text).toContain('CreateFileW(fileName, GENERIC_READ /* 0x80000000 */');
     expect(text).not.toContain('/* LPCWSTR lpFileName */');
     expect(text).not.toContain('/* HANDLE */');
   });
@@ -26,6 +26,6 @@ describe('TALON compact and annotated output modes', () => {
 
     expect(text).toContain('/* HANDLE */ CreateFileW(');
     expect(text).toContain('/* LPCWSTR lpFileName */ fileName');
-    expect(text).toContain('/* DWORD dwDesiredAccess */ 0x80000000');
+    expect(text).toContain('/* DWORD dwDesiredAccess */ GENERIC_READ /* 0x80000000 */');
   });
 });

@@ -17,7 +17,7 @@
  */
 
 import { liftInstructionsToDecompilerIr } from './decompilerIr';
-import { resolveImportPrototype, type ImportPrototype } from './importPrototypes';
+import { resolveConstantAnnotation, resolveImportPrototype, type ImportPrototype } from './importPrototypes';
 import { computeDecompilerMaturitySummary } from './decompilerMaturity';
 import type { DecompilerMaturitySummary } from './decompilerTypes';
 import { buildSSAForm, coalesceSSAVariables, type DomTree, type SSACoalescingResult } from './ssaTransform';
@@ -1042,13 +1042,28 @@ function renderValue(v: IRValue, varMap: VarMap): string {
   return renderValueRaw(v);
 }
 
+
+function formatHexConstant(value: number): string {
+  return `0x${(value >>> 0).toString(16).toUpperCase()}`;
+}
+
+function renderCallArgument(stmt: Extract<IRStmt, { op: 'call' }>, arg: IRValue | undefined, index: number, varMap: VarMap): string {
+  if (!arg) return '?';
+  if (arg.kind === 'const') {
+    const functionName = stmt.resolvedPrototype?.name ?? stmt.name ?? (stmt.target !== null ? `sub_${stmt.target.toString(16)}` : '');
+    const annotation = resolveConstantAnnotation(functionName, index, arg.value);
+    if (annotation) return `${annotation} /* ${formatHexConstant(arg.value)} */`;
+  }
+  return renderValue(arg, varMap);
+}
+
 function renderCallStatement(stmt: Extract<IRStmt, { op: 'call' }>, varMap: VarMap, outputMode: DecompilerOutputMode): string {
   const target = stmt.name
     ? stmt.name
     : stmt.target !== null
     ? `sub_${stmt.target.toString(16)}`
     : '*indirect';
-  const rawArgs = stmt.args?.map(arg => renderValue(arg, varMap)) ?? [];
+  const rawArgs = stmt.args?.map((arg, index) => renderCallArgument(stmt, arg, index, varMap)) ?? [];
 
   if (outputMode === 'annotated' && stmt.resolvedPrototype) {
     const paramCount = Math.max(stmt.resolvedPrototype.parameters.length, rawArgs.length);

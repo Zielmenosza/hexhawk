@@ -25,6 +25,7 @@ import {
 import {
   IMPORT_PROTOTYPES,
   formatImportPrototype,
+  resolveConstantAnnotation,
   resolveImportPrototype as builtinResolveImportPrototype,
   type ImportPrototype,
 } from './importPrototypes';
@@ -35,7 +36,7 @@ export {
   runMidLevelIrPasses,
 } from './decompilerIr';
 export type { ReachingDefs } from './decompilerTypes';
-export { formatImportPrototype, IMPORT_PROTOTYPES } from './importPrototypes';
+export { formatImportPrototype, IMPORT_PROTOTYPES, resolveConstantAnnotation } from './importPrototypes';
 export type { ImportPrototype, ImportParameterPrototype } from './importPrototypes';
 
 
@@ -309,6 +310,7 @@ export const strike = {
   getRecoveredStructs: recoverStructsFromIL,
   buildXRefIndex,
   resolveImportPrototype,
+  resolveConstantAnnotation,
   runPreAnalysisHooks: runStrikePreAnalysisHooks,
   runPostAnalysisHooks: runStrikePostAnalysisHooks,
 };
