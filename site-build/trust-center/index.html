@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Trust Center | HexHawk Verification, Keys, and Release Status</title>
-  <meta name="description" content="Use the HexHawk Trust Center for artifact verification, checksums, keys, revocations, release notes, and current release-status guidance.">
+  <title>Verification Center | Check Files and Trust Data</title>
+  <meta name="description" content="Simple verification center for checking HexHawk hashes, release notes, keys, and trust information.">
   <link rel="canonical" href="https://hexhawk.ke/trust-center/">
-  <meta property="og:title" content="Trust Center | HexHawk Verification, Keys, and Release Status">
-  <meta property="og:description" content="Use the HexHawk Trust Center for artifact verification, checksums, keys, revocations, release notes, and current release-status guidance.">
+  <meta property="og:title" content="Verification Center | Check Files and Trust Data">
+  <meta property="og:description" content="Simple verification center for checking HexHawk hashes, release notes, keys, and trust information.">
   <meta property="og:url" content="https://hexhawk.ke/trust-center/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="HexHawk">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Trust Center | HexHawk Verification, Keys, and Release Status">
-  <meta name="twitter:description" content="Use the HexHawk Trust Center for artifact verification, checksums, keys, revocations, release notes, and current release-status guidance.">
+  <meta name="twitter:title" content="Verification Center | Check Files and Trust Data">
+  <meta name="twitter:description" content="Simple verification center for checking HexHawk hashes, release notes, keys, and trust information.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -33,26 +33,21 @@
       <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Team Demo</a>
     </nav>
   </div>
 </header>
 <main id="main-content" class="container">
-  <section class="hero">
-    <span class="kicker">Trust Center</span>
-    <h1>Release trust and verification operations</h1>
-    <p class="lead">The Trust Center is the operational verification page for checksums, keys, revocations, signature state, and release guidance. It does not replace the Trust & Assurance explanation of engine authority boundaries.</p>
-  </section>
-  <section class="status-strip"><strong>Current trust posture:</strong> Windows internal-tester build candidate. Current rebuilt artifacts are unsigned according to Authenticode; no current internal self-signed signature is present. Local unsigned builds keep updater artifacts disabled, and hosted updater metadata must be refreshed and revalidated before release-readiness claims. Public-trusted signing remains incomplete.</section>
-  <section class="section split"><div><h2>Operational verification portal</h2><p>Use this page for signature state, artifact verification, keys, checksums, revocations, release notes, and verification guidance. For the human-readable authority model, read Trust &amp; Assurance.</p><div class="cta"><a class="btn primary" href="/trust">Read Trust &amp; Assurance</a><a class="btn ghost" href="/verify-file">Verify a File</a></div></div><div class="card"><h3>Current state</h3><ul class="checklist"><li>Artifact signature state: unsigned.</li><li>Public trust chain: not complete.</li><li>Updater path: local unsigned builds disabled; hosted metadata needs refresh and revalidation.</li><li>Use controlled environments and verify checksums.</li></ul></div></section>
-  <section class="section"><div class="grid three"><article class="card"><h3>Checksums</h3><p>Compare downloads against the published SHA-256 ledger before opening artifacts.</p><a href="/downloads/checksums.txt">View Checksums</a></article><article class="card"><h3>Verify a file</h3><p>Compute a local browser-side hash and verify detached signatures where applicable.</p><a href="/verify-file">Open Verify Tool</a></article><article class="card"><h3>Keys and revocations</h3><p>Review active keys, revoked entries, and machine-readable trust feeds.</p><a href="/keys-revocations">View Keys</a></article><article class="card"><h3>Release notes</h3><p>Read the latest caveats before using any build for testing or diligence.</p><a href="/release-notes">View Release Notes</a></article><article class="card"><h3>Trust endpoints</h3><p>Machine-readable JSON feeds remain available for automated checks.</p><a href="/.well-known/hexhawk-trust.json">Open Discovery JSON</a></article><article class="card"><h3>Release evidence</h3><p>Current repo evidence records unsigned artifacts and release gates still pending.</p><a href="https://github.com/Zielmenosza/hexhawk/tree/main/docs/release-evidence">View Evidence Directory</a></article></div></section>
+  <section class="hero"><span class="kicker">Verification Center</span><h1>Check before you trust.</h1><p class="lead">Use this area to check files, hashes, keys, and release notes. If a file hash does not match, stop and ask for help before installing or sharing it.</p></section>
+  <section class="section"><div class="grid three"><article class="card"><h3>Verify a file</h3><p>Compare a downloaded file with the expected SHA-256 hash.</p><a href="/verify-file">Open verifier</a></article><article class="card"><h3>Keys and revocations</h3><p>See which keys are expected and whether any key has been retired or revoked.</p><a href="/keys-revocations">View keys</a></article><article class="card"><h3>Release notes</h3><p>Read what changed and what limits still apply.</p><a href="/release-notes">Read notes</a></article></div></section>
+  <section class="section caveat"><h2>Important</h2><p>Unsigned software can still have a correct hash, but it is not the same as a public-trusted signed release.</p></section>
 </main>
 <footer class="footer">
   <div class="container footer-grid">
     <div>
       <strong>HexHawk</strong>
-      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
-      <p class="mono">v1.0 unsigned internal tester candidate · 2026-06-20</p>
+      <p>Step-by-step file analysis with clear facts, source labels, and human review.</p>
+      <p class="mono">v1.0 unsigned test build · 2026-06-20</p>
     </div>
     <div>
       <h4>Product</h4>

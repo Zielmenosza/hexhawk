@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Release Notes | HexHawk Current Build Status</title>
-  <meta name="description" content="Read HexHawk release notes for the current internal-tester build posture, unsigned artifact caveats, updater status, and validation evidence.">
+  <title>Release Notes | HexHawk Workbench Progress and Limits</title>
+  <meta name="description" content="Simple HexHawk release notes explaining current workbench progress, test-build status, unsigned limits, and what still needs proof.">
   <link rel="canonical" href="https://hexhawk.ke/release-notes/">
-  <meta property="og:title" content="Release Notes | HexHawk Current Build Status">
-  <meta property="og:description" content="Read HexHawk release notes for the current internal-tester build posture, unsigned artifact caveats, updater status, and validation evidence.">
+  <meta property="og:title" content="Release Notes | HexHawk Workbench Progress and Limits">
+  <meta property="og:description" content="Simple HexHawk release notes explaining current workbench progress, test-build status, unsigned limits, and what still needs proof.">
   <meta property="og:url" content="https://hexhawk.ke/release-notes/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="HexHawk">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Release Notes | HexHawk Current Build Status">
-  <meta name="twitter:description" content="Read HexHawk release notes for the current internal-tester build posture, unsigned artifact caveats, updater status, and validation evidence.">
+  <meta name="twitter:title" content="Release Notes | HexHawk Workbench Progress and Limits">
+  <meta name="twitter:description" content="Simple HexHawk release notes explaining current workbench progress, test-build status, unsigned limits, and what still needs proof.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -33,24 +33,20 @@
       <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Team Demo</a>
     </nav>
   </div>
 </header>
 <main id="main-content" class="container">
-  <section class="hero">
-    <span class="kicker">Release notes</span>
-    <h1>2026-06-20 unsigned deployment candidate and engineering update</h1>
-    <p class="lead">HexHawk has a smoke-passed unsigned Windows deployment candidate for controlled testing, plus new GYRE SSA fallback hardening on main. Public release is still blocked until real signing, updater validation, and full exact-artifact export proof are complete.</p>
-  </section>
-  <section class="section"><h2>What changed recently</h2><ul class="checklist"><li>June 20 deployment candidate: MSI extraction smoke passed and NSIS silent install smoke passed.</li><li>The NSIS installer includes the real `WebView2Loader.dll` payload needed for native launch.</li><li>The current downloadable MSI/NSIS hashes are listed on the Downloads page and in `downloads/checksums.txt`.</li><li>GYRE SSA construction now detects irreducible multi-entry control-flow cycles and falls back instead of emitting misleading SSA output.</li><li>Main has moved beyond the tested candidate with docs and SSA commits, so any new deployment-candidate tag requires a fresh full gate.</li></ul></section><section class="section"><h2>Known caveats</h2><ul class="checklist"><li>Not a public-trusted general-availability release.</li><li>Current MSI and NSIS installers are Authenticode `NotSigned`.</li><li>Expect Windows trust warnings until real code signing is configured and verified.</li><li>Updater metadata is not validated for the June 20 unsigned candidate.</li><li>Full Open → Inspect → NEST → Export parity was not rerun for a signed/public artifact.</li></ul></section>
+  <section class="hero"><span class="kicker">Release Notes</span><h1>What changed, and what still needs proof.</h1><p class="lead">Release notes should be easy to read: what is new, what was tested, what is unsigned, and what people should not assume yet.</p></section>
+  <section class="section"><div class="grid three"><article class="card"><h3>Current test build</h3><p>The Windows test build is for controlled evaluation. It is not a signed release for everyone.</p></article><article class="card"><h3>Recent improvements</h3><p>Recent engineering added analysis depth, evidence grouping, trace support, and plugin-hook work. These are the right directions for a reversing workbench, but each feature still needs the right validation before release claims grow.</p></article><article class="card"><h3>Still limited</h3><p>Signing, updater readiness, exact-artifact proof, debugger-provider maturity, and broader scripting workflows must be checked before stronger distribution claims.</p></article></div></section>
 </main>
 <footer class="footer">
   <div class="container footer-grid">
     <div>
       <strong>HexHawk</strong>
-      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
-      <p class="mono">v1.0 unsigned internal tester candidate · 2026-06-20</p>
+      <p>Step-by-step file analysis with clear facts, source labels, and human review.</p>
+      <p class="mono">v1.0 unsigned test build · 2026-06-20</p>
     </div>
     <div>
       <h4>Product</h4>

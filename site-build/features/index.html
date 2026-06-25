@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Features | HexHawk Binary Analysis Workbench</title>
-  <meta name="description" content="Inspect binaries, review disassembly and decompiler output, converge evidence with NEST, preserve GYRE verdict authority, and export CREST reports.">
+  <title>Features | HexHawk Reverse-Engineering Workbench</title>
+  <meta name="description" content="HexHawk features include file facts, disassembly-style code views, readable-code guidance, evidence grouping, trace notes, plugin hooks, CLI surfaces, and reviewable reports with clear limits.">
   <link rel="canonical" href="https://hexhawk.ke/features/">
-  <meta property="og:title" content="Features | HexHawk Binary Analysis Workbench">
-  <meta property="og:description" content="Inspect binaries, review disassembly and decompiler output, converge evidence with NEST, preserve GYRE verdict authority, and export CREST reports.">
+  <meta property="og:title" content="Features | HexHawk Reverse-Engineering Workbench">
+  <meta property="og:description" content="HexHawk features include file facts, disassembly-style code views, readable-code guidance, evidence grouping, trace notes, plugin hooks, CLI surfaces, and reviewable reports with clear limits.">
   <meta property="og:url" content="https://hexhawk.ke/features/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="HexHawk">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Features | HexHawk Binary Analysis Workbench">
-  <meta name="twitter:description" content="Inspect binaries, review disassembly and decompiler output, converge evidence with NEST, preserve GYRE verdict authority, and export CREST reports.">
+  <meta name="twitter:title" content="Features | HexHawk Reverse-Engineering Workbench">
+  <meta name="twitter:description" content="HexHawk features include file facts, disassembly-style code views, readable-code guidance, evidence grouping, trace notes, plugin hooks, CLI surfaces, and reviewable reports with clear limits.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -33,27 +33,24 @@
       <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Team Demo</a>
     </nav>
   </div>
 </header>
 <main id="main-content" class="container">
-  <section class="hero">
-    <span class="kicker">Capabilities</span>
-    <h1>Understand what a binary is doing, step by step</h1>
-    <p class="lead">HexHawk is built for working reverse engineers: open a binary, see the facts, follow the code, collect evidence, and export a report. Technical engines are still there, but the workflow starts with plain questions and visible results.</p>
-  </section>
-  <section class="section"><div class="section-heading"><span class="kicker">ANALYZE BINARIES</span><h2>Start from facts you can check.</h2></div><div class="grid three"><article class="card"><span class="badge">Available</span><h3>File identity and metadata</h3><p>Input: an EXE or binary. Output: hashes, sections, entropy, imports, strings, architecture hints, and risk clues.</p></article><article class="card"><span class="badge">Available</span><h3>Disassembly and control flow</h3><p>See instruction-level context and basic-block flow so you can move from suspicious strings to the code around them.</p></article><article class="card"><span class="badge">Improving</span><h3>TALON decompiler guidance</h3><p>Get readable pseudocode guidance with honest uncertainty. Recent SSA work adds safer fallback behavior for irreducible control flow instead of pretending every graph is source-like.</p></article></div></section>
-  <section class="section"><div class="section-heading"><span class="kicker">WORK FROM EVIDENCE</span><h2>Correlate signals before handoff.</h2></div><div class="grid three"><article class="card"><span class="badge">Internal tester</span><h3>STRIKE trace evidence</h3><p>Organize debugger and imported trace evidence where configured and validated.</p></article><article class="card"><span class="badge">Available</span><h3>ECHO signature correlation</h3><p>Correlate exact and fuzzy signatures as evidence surfaces for analyst review.</p></article><article class="card"><span class="badge">Available</span><h3>NEST evidence convergence</h3><p>Converge signals into reviewable bundles linked to GYRE outputs and validation markers.</p></article></div></section>
-  <section class="section"><div class="section-heading"><span class="kicker">AUTHORITY BOUNDARIES</span><h2>Plain roles before engine names.</h2></div><div class="grid three"><article class="card"><span class="badge">Available</span><h3>Final verdict authority: GYRE</h3><p>GYRE remains the sole source of final classification and base confidence.</p></article><article class="card"><span class="badge">Policy-gated</span><h3>Optional refinement: AETHERFRAME</h3><p>AETHERFRAME adds bounded replayable metadata when policy permits. It does not change GYRE classification.</p></article><article class="card"><span class="badge">Analyst assistance</span><h3>Workflow help: NEXUS</h3><p>NEXUS helps analysts navigate and act without becoming the source of security truth.</p></article></div></section>
-  <section class="section"><div class="section-heading"><span class="kicker">EXPORT RESULTS</span><h2>Outputs you can review and hand off.</h2></div><div class="grid three"><article class="card"><span class="badge">Available</span><h3>CREST-style reports</h3><p>Package triage, review, and communication outputs with explicit evidence context.</p></article><article class="card"><span class="badge">Available</span><h3>Source and authority markers</h3><p>Carry GYRE/NEST authority and evidence markers into exported outputs.</p></article><article class="card"><span class="badge">Available</span><h3>Local-first operation</h3><p>Core workflows run on the analyst workstation, with optional BYOK AI paths only where configured.</p></article></div></section>
+  <section class="hero"><span class="kicker">HexHawk features</span><h1>A reversing workbench with clear evidence boundaries.</h1><p class="lead">IDA, Ghidra, and radare show the tool categories analysts expect: disassembly, decompilation, graphs, debugger or trace support, scripting, plugins, and documentation. HexHawk follows that familiar shape while making each result easier to review and keeping the final verdict source visible.</p></section>
+  <section class="section"><div class="section-heading"><span class="kicker">START WITH FACTS</span><h2>Begin with things you can check.</h2></div><div class="grid three"><article class="card"><span class="badge">Available</span><h3>File identity</h3><p>Input: an EXE or binary. Output: hashes, size, type, sections, imports, strings, packed/random-looking data clues, and architecture hints.</p></article><article class="card"><span class="badge">Available</span><h3>Disassembly and graph clues</h3><p>See instruction-level code views and control-flow clues so you can understand how the file is shaped.</p></article><article class="card"><span class="badge">Available</span><h3>Readable-code guidance</h3><p>TALON gives decompiler-style guidance when possible, with limits shown so it is not mistaken for perfect source code.</p></article></div></section>
+  <section class="section"><div class="section-heading"><span class="kicker">WORK FROM EVIDENCE</span><h2>Keep clues together before sharing.</h2></div><div class="grid three"><article class="card"><span class="badge">Internal tester</span><h3>STRIKE trace notes</h3><p>When configured, STRIKE can organize imported trace or debugger evidence. It does not replace human review and does not mean HexHawk is detonating files.</p></article><article class="card"><span class="badge">Available</span><h3>Signature and pattern clues</h3><p>ECHO compares exact and fuzzy signatures as clues. A match is evidence to review, not a magic answer.</p></article><article class="card"><span class="badge">Available</span><h3>NEST evidence groups</h3><p>NEST keeps related facts together so the report is easier to check later.</p></article></div></section>
+  <section class="section"><div class="section-heading"><span class="kicker">EXTEND AND AUTOMATE</span><h2>Possibilities shaped by real analyst workflows.</h2><p>Serious reversing work often needs repeatable scripts, plugins, command-line tools, and team-readable outputs. HexHawk is moving in that direction without claiming it already has every feature from long-established toolchains.</p></div><div class="grid three"><article class="card"><span class="badge">Internal tester</span><h3>Plugin hooks</h3><p>Pre-analysis, post-analysis, and custom resolver hooks let controlled plugins add evidence around the main analysis path.</p></article><article class="card"><span class="badge">Available</span><h3>Headless and CLI surfaces</h3><p>NEST CLI and headless STRIKE work support repeatable local checks where available.</p></article><article class="card"><span class="badge planned">Planned</span><h3>Scriptable workflows</h3><p>Future work should make repeatable analysis easier to run, record, and compare without hiding what was proven.</p></article></div></section>
+  <section class="section"><div class="section-heading"><span class="kicker">WHO DECIDES?</span><h2>Engine names, translated.</h2></div><div class="grid three"><article class="card"><span class="badge">Available</span><h3>GYRE decides classification</h3><p>GYRE is the only final verdict source. Its label and confidence must stay visible.</p></article><article class="card"><span class="badge">Helper</span><h3>NEST organizes evidence</h3><p>NEST helps collect and connect clues, like sorting puzzle pieces before a person checks the picture.</p></article><article class="card"><span class="badge">Optional</span><h3>AETHERFRAME suggests improvements</h3><p>AETHERFRAME can suggest safer wording or next steps when allowed. It must not secretly change the verdict.</p></article></div></section>
+  <section class="section"><div class="section-heading"><span class="kicker">OUTPUT</span><h2>Reports another person can read.</h2></div><div class="grid three"><article class="card"><span class="badge">Available</span><h3>CREST reports</h3><p>Package facts, notes, labels, and uncertainty into a handoff report.</p></article><article class="card"><span class="badge">Available</span><h3>Source labels</h3><p>Show which part produced each answer so reviewers know what they are looking at.</p></article><article class="card"><span class="badge">Important</span><h3>Clear limits</h3><p>If something was not proven, HexHawk should say so instead of pretending.</p></article></div></section>
 </main>
 <footer class="footer">
   <div class="container footer-grid">
     <div>
       <strong>HexHawk</strong>
-      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
-      <p class="mono">v1.0 unsigned internal tester candidate · 2026-06-20</p>
+      <p>Step-by-step file analysis with clear facts, source labels, and human review.</p>
+      <p class="mono">v1.0 unsigned test build · 2026-06-20</p>
     </div>
     <div>
       <h4>Product</h4>

@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Downloads | HexHawk Internal Tester Builds and Release Notes</title>
-  <meta name="description" content="Download HexHawk with controlled-evaluation expectations, unsigned-artifact caveats, checksums, verification links, and release notes.">
+  <title>Downloads | HexHawk Windows Test Build</title>
+  <meta name="description" content="Download the HexHawk Windows test build, check its hash, and understand that it is unsigned and not a public finished release.">
   <link rel="canonical" href="https://hexhawk.ke/downloads/">
-  <meta property="og:title" content="Downloads | HexHawk Internal Tester Builds and Release Notes">
-  <meta property="og:description" content="Download HexHawk with controlled-evaluation expectations, unsigned-artifact caveats, checksums, verification links, and release notes.">
+  <meta property="og:title" content="Downloads | HexHawk Windows Test Build">
+  <meta property="og:description" content="Download the HexHawk Windows test build, check its hash, and understand that it is unsigned and not a public finished release.">
   <meta property="og:url" content="https://hexhawk.ke/downloads/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="HexHawk">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Downloads | HexHawk Internal Tester Builds and Release Notes">
-  <meta name="twitter:description" content="Download HexHawk with controlled-evaluation expectations, unsigned-artifact caveats, checksums, verification links, and release notes.">
+  <meta name="twitter:title" content="Downloads | HexHawk Windows Test Build">
+  <meta name="twitter:description" content="Download the HexHawk Windows test build, check its hash, and understand that it is unsigned and not a public finished release.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -33,26 +33,22 @@
       <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Team Demo</a>
     </nav>
   </div>
 </header>
 <main id="main-content" class="container">
-  <section class="hero">
-    <span class="kicker">Downloads</span>
-    <h1>Download the unsigned Windows test build</h1>
-    <p class="lead">Use this build for controlled testing, demos, and technical diligence. It is useful, but it is not a signed public release. Verify the hash before installing and expect Windows trust warnings.</p>
-  </section>
-  <section class="status-strip"><strong>Current build status:</strong> Unsigned Windows deployment candidate, built from the June 20 smoke-passed candidate. MSI and NSIS installer smoke passed; Authenticode is still NotSigned; updater metadata is not validated for this build; public release remains blocked.</section>
-  <section class="section split"><div><h2>Before you install</h2><p>Use a test machine or controlled environment. These installers are unsigned, so Windows may warn you. That warning is expected until HexHawk has public-trusted code signing.</p><ul class="checklist"><li>Good for: controlled internal testing, demos, and technical diligence.</li><li>Not for: broad public rollout, procurement-ready deployment, or automatic updater distribution.</li><li>MSI extraction and NSIS install smoke passed on the June 20 candidate.</li><li>Full Open → Inspect → NEST → Export parity must be rerun before an external signed release.</li><li>Always verify the SHA-256 hash before installing.</li></ul></div><div class="card"><h3>Actions</h3><div class="stacked-actions"><a class="btn primary" href="/releases/v1.0.0/assets/HexHawk_1.0.0_x64-setup.exe">Download NSIS installer</a><a class="btn ghost" href="/releases/v1.0.0/assets/HexHawk_1.0.0_x64_en-US.msi">Download MSI package</a><a class="btn ghost" href="/downloads/checksums.txt">View Checksums</a><a class="btn ghost" href="/verify-file">Verify a File</a><a class="btn ghost" href="/release-notes">Read Release Notes</a></div></div></section>
-  <section class="section"><h2>Known current artifacts</h2><div class="table-wrap"><table><thead><tr><th>Artifact</th><th>SHA-256</th><th>Status</th></tr></thead><tbody><tr><td class="mono">hexhawk-backend.exe</td><td class="mono small">48de54c39a0f06164ac82a2a6bd5dd9439aa90b53188efbcc5caa790c0657ad1</td><td><span class="status warn">Unsigned</span></td></tr><tr><td class="mono">nest_cli.exe</td><td class="mono small">d4efba77ae2df7a6fa265ff37f051389a87192d3cc7da774862110ba1c723e0a</td><td><span class="status warn">Unsigned</span></td></tr><tr><td class="mono">WebView2Loader.dll</td><td class="mono small">8427b1fc58ec707813e5c0a51eb5d69397bb333250a7b891be4d3b123f1e0f1c</td><td><span class="status ok">Included in NSIS payload</span></td></tr><tr><td class="mono">HexHawk_1.0.0_x64_en-US.msi</td><td class="mono small">0b6a8e885accd45b6c1633f5db79af839302d8c45311ab5d48ef4ddeefe0d14e</td><td><span class="status warn">Unsigned / smoke passed</span></td></tr><tr><td class="mono">HexHawk_1.0.0_x64-setup.exe</td><td class="mono small">fae7b573054a3938bc38c7ae21f341b54a2772629526cbda1c829a663ce59c71</td><td><span class="status warn">Unsigned / smoke passed</span></td></tr></tbody></table></div></section>
+  <section class="hero"><span class="kicker">Downloads</span><h1>Download the Windows test build.</h1><p class="lead">This build is for careful testing and demos. It is useful, but it is not ready for everyone yet. Because it is unsigned, Windows may show a warning. Check the hash before installing.</p></section>
+  <section class="status-strip"><strong>Current build status:</strong> unsigned Windows test build. Use it only in a controlled test environment. Do not treat it as a signed release for everyone.</section>
+  <section class="section split"><div><h2>Before you install</h2><p>Use a test machine if possible. Keep notes about which installer you used and which hash you checked.</p><ul class="checklist"><li>Good for: careful internal testing, demos, and careful review.</li><li>Not for: public or company-wide rollout, or automatic updater use.</li><li>Expected: Windows may warn because the build is unsigned.</li></ul></div><div class="card"><h3>Simple install checklist</h3><ol><li>Download the installer.</li><li>Compare its SHA-256 hash.</li><li>Install only if the hash matches.</li><li>Stop if Windows or your security tools show an unexpected warning beyond unsigned publisher status.</li></ol></div></section>
+  <section class="section"><h2>Known current artifacts</h2><p>The exact hashes are shown so testers can prove they downloaded the expected files. If a hash does not match, do not install.</p><div class="table-wrap"><table><thead><tr><th>Artifact</th><th>SHA-256</th><th>Status</th></tr></thead><tbody><tr><td class="mono">hexhawk-backend.exe</td><td class="mono small">48de54c39a0f06164ac82a2a6bd5dd9439aa90b53188efbcc5caa790c0657ad1</td><td><span class="status warn">Unsigned</span></td></tr><tr><td class="mono">nest_cli.exe</td><td class="mono small">d4efba77ae2df7a6fa265ff37f051389a87192d3cc7da774862110ba1c723e0a</td><td><span class="status ok">Hash recorded</span></td></tr></tbody></table></div></section>
 </main>
 <footer class="footer">
   <div class="container footer-grid">
     <div>
       <strong>HexHawk</strong>
-      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
-      <p class="mono">v1.0 unsigned internal tester candidate · 2026-06-20</p>
+      <p>Step-by-step file analysis with clear facts, source labels, and human review.</p>
+      <p class="mono">v1.0 unsigned test build · 2026-06-20</p>
     </div>
     <div>
       <h4>Product</h4>

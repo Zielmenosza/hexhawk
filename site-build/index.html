@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HexHawk | Understand Unknown Binaries Without Guesswork</title>
-  <meta name="description" content="HexHawk helps analysts inspect an unknown binary, review the evidence, understand code behavior, and export a report while keeping release and verdict limits clear.">
+  <title>HexHawk | Reverse-Engineering Workbench With Evidence Reports</title>
+  <meta name="description" content="HexHawk helps analysts inspect unknown binaries with file facts, code views, evidence grouping, plugin hooks, trace context, and reviewable reports while keeping release limits clear.">
   <link rel="canonical" href="https://hexhawk.ke/">
-  <meta property="og:title" content="HexHawk | Understand Unknown Binaries Without Guesswork">
-  <meta property="og:description" content="Give HexHawk an unknown EXE or binary. It shows file facts, code context, evidence, and a report you can review.">
+  <meta property="og:title" content="HexHawk | Reverse-Engineering Workbench With Evidence Reports">
+  <meta property="og:description" content="HexHawk helps analysts inspect unknown binaries with file facts, code views, evidence grouping, plugin hooks, trace context, and reviewable reports while keeping release limits clear.">
   <meta property="og:url" content="https://hexhawk.ke/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="HexHawk">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="HexHawk | Understand Unknown Binaries Without Guesswork">
-  <meta name="twitter:description" content="Give HexHawk an unknown EXE or binary. It shows file facts, code context, evidence, and a report you can review.">
+  <meta name="twitter:title" content="HexHawk | Reverse-Engineering Workbench With Evidence Reports">
+  <meta name="twitter:description" content="HexHawk helps analysts inspect unknown binaries with file facts, code views, evidence grouping, plugin hooks, trace context, and reviewable reports while keeping release limits clear.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="/assets/logo.svg">
   <link rel="stylesheet" href="/assets/styles.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"HexHawk","url":"https://hexhawk.ke","description":"Local-first binary intelligence with explicit evidence and authority boundaries.","sameAs":["https://github.com/Zielmenosza/hexhawk"]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization","name":"HexHawk","url":"https://hexhawk.ke","description":"HexHawk helps people inspect unknown computer files step by step, with clear facts, source labels, and human review.","sameAs":["https://github.com/Zielmenosza/hexhawk"]}</script>
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -34,37 +34,36 @@
       <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/pricing" href="/pricing#enterprise">Enterprise / Demo</a>
+      <a data-path="/pricing" href="/pricing#enterprise">Team Demo</a>
     </nav>
   </div>
 </header>
 <main id="main-content" class="container">
   <section class="hero">
-    <span class="kicker">Local-first binary analysis</span>
-    <h1>Drop in an unknown binary. Get facts, code context, and a report you can review.</h1>
-    <p class="lead">HexHawk is a Windows desktop workbench for reverse engineers and security analysts. You give it an EXE or binary. HexHawk shows hashes, imports, strings, sections, disassembly, decompiler guidance, evidence notes, and an exportable report. The analyst stays in control.</p>
+    <span class="kicker">Reverse-engineering workbench</span>
+    <h1>Open an unknown program. See facts, code views, evidence, and a report.</h1>
+    <p class="lead">HexHawk is a Windows workbench for careful binary analysis. It is not trying to hide the hard parts behind a mystery score. It helps you inspect a file, move from facts into disassembly-style code views and readable-code guidance, connect evidence, and export notes another person can review.</p>
   </section>
   <div class="cta hero-cta"><a class="btn primary" href="/downloads">Get the Windows test build</a><a class="btn ghost" href="mailto:contact@hexhawk.ke">Request Early Access</a><a class="btn ghost" href="mailto:sales@hexhawk.ke">Schedule a Demo</a></div>
-  <section class="status-strip"><strong>Current release status:</strong> HexHawk has an unsigned Windows deployment candidate for controlled internal testing. MSI and NSIS installer smoke tests passed on June 20, 2026, but the installers are not Authenticode-signed, updater metadata is not validated for this build, and public release is still blocked until signing and full exact-artifact export proof are complete.</section>
-  <section class="section"><div class="section-heading"><span class="kicker">WHAT IT DOES</span><h2>A simple workflow for a hard job.</h2></div><div class="grid three">
-    <article class="card"><h3>1. Start with a file</h3><p>Open an unknown EXE or binary and see the basics first: hashes, file type, sections, entropy, imports, strings, and architecture hints.</p></article>
-    <article class="card"><h3>2. Read the code context</h3><p>Move from strings and imports into disassembly, control-flow blocks, and TALON decompiler guidance. Recent GYRE SSA work now falls back safely on irreducible control flow instead of showing misleading variable versions.</p></article>
-    <article class="card"><h3>3. Collect evidence</h3><p>NEST organizes findings into reviewable evidence. STRIKE adds trace/debugger context when that workflow is configured and validated.</p></article>
-    <article class="card"><h3>4. Keep the verdict clear</h3><p>GYRE is the only final verdict source. Other layers can explain, organize, or refine metadata, but they do not silently change the classification.</p></article>
-    <article class="card"><h3>5. Export a handoff report</h3><p>CREST packages what was seen, what was inferred, what remains uncertain, and which engine supplied each part.</p></article>
-    <article class="card"><h3>6. Know the limits</h3><p>The current build is useful for controlled testing, demos, and diligence. It is not yet a signed public release or updater-ready distribution.</p></article>
+  <section class="status-strip"><strong>Current release status:</strong> The Windows test build is useful for careful testing, but it is not ready for everyone yet. The installers are unsigned, so Windows may warn you. Always check the file hash before installing.</section>
+  <section class="section"><div class="section-heading"><span class="kicker">WHAT PEOPLE EXPECT FROM A REVERSING TOOL</span><h2>HexHawk covers the path from file facts to reviewable evidence.</h2><p>Mature tools such as IDA, Ghidra, and radare show why analysts expect disassembly, decompilation, graph views, debugging or trace workflows, scripting, plugins, and clear documentation. HexHawk uses that same familiar map, but keeps each claim marked as available, internal tester, or planned.</p></div><div class="grid three">
+    <article class="card"><span class="badge">Available</span><h3>File facts first</h3><p>Hashes, size, type, sections, strings, imports, entropy clues, and architecture hints before any final answer.</p></article>
+    <article class="card"><span class="badge">Available</span><h3>Code views and graphs</h3><p>Instruction-level views, control-flow clues, and readable-code guidance so reviewers can move from raw bytes to behavior.</p></article>
+    <article class="card"><span class="badge">Available</span><h3>Evidence and reports</h3><p>NEST groups clues, GYRE owns the final label, and CREST packages the result with uncertainty still visible.</p></article>
+    <article class="card"><span class="badge">Internal tester</span><h3>Trace and debugger evidence</h3><p>STRIKE is being shaped around imported trace and debugger evidence. It is evidence support, not automatic malware execution.</p></article>
+    <article class="card"><span class="badge">Internal tester</span><h3>Plugin hooks</h3><p>Pre-analysis, post-analysis, and resolver hooks are being added so controlled extensions can add evidence without taking over verdict authority.</p></article>
+    <article class="card"><span class="badge planned">Planned</span><h3>Broader automation</h3><p>CLI-friendly and script-friendly workflows are the direction, inspired by how serious reversing toolkits support repeatable analysis.</p></article>
   </div></section>
-  <section class="section split"><div><span class="kicker">TRUST MODEL</span><h2>Built for evidence, not opaque guesses.</h2><p>HexHawk keeps authority boundaries explicit. GYRE decides. NEST organizes and validates evidence. AETHERFRAME adds optional policy-gated refinement metadata without changing classification. NEXUS assists the analyst without becoming the verdict source.</p><div class="cta"><a class="btn ghost" href="/trust">Read the Trust Guide</a><a class="btn ghost" href="/trust-center">Open Verification Center</a></div></div><div class="authority-card"><div><strong>GYRE</strong><span>final classification and base confidence</span></div><div><strong>NEST</strong><span>evidence organization and validation</span></div><div><strong>AETHERFRAME</strong><span>optional policy-gated metadata</span></div><div><strong>NEXUS</strong><span>analyst assistance only</span></div><div><strong>CREST</strong><span>reviewable report packaging</span></div></div></section>
-  <section class="section"><div class="section-heading"><span class="kicker">PLANS</span><h2>Paths for individuals, teams, and diligence.</h2></div><div class="grid four"><article class="card"><span class="badge">Internal tester</span><h3>Community</h3><p>Early evaluation for learners and individual researchers.</p></article><article class="card"><span class="badge planned">Planned</span><h3>Professional</h3><p>Advanced local workflows and exportable evidence for solo analysts.</p></article><article class="card"><span class="badge roadmap">Enterprise roadmap</span><h3>Team</h3><p>Repeatable handoff and support-ready deployment guidance for SOC and IR teams.</p></article><article class="card"><span class="badge roadmap">Enterprise roadmap</span><h3>Enterprise</h3><p>Diligence materials, governance expectations, and roadmap-led engagement.</p></article></div></section>
-  <section class="section"><div class="section-heading"><span class="kicker">EXAMPLE</span><h2>What a tester can do today.</h2><p>Use the unsigned Windows build in a controlled environment. Open a sample binary, inspect file facts, review suspicious strings/imports, check disassembly and decompiler guidance, then export a report for another analyst to review.</p></div><div class="flow"><span>Input: unknown EXE or binary</span><span>HexHawk shows: hashes, imports, strings, sections, disassembly, code context</span><span>Analyst reviews: evidence, uncertainty, and GYRE-linked verdict output</span><span>Output: report and notes for handoff</span></div></section>
-  <section class="section final-cta"><h2>Evaluate HexHawk with the right expectations.</h2><p>Use a controlled test machine, verify the installer hashes, and expect Windows trust warnings until a real signing certificate is in place.</p><div class="cta"><a class="btn primary" href="/downloads">Get the Windows test build</a><a class="btn ghost" href="mailto:contact@hexhawk.ke">Request Early Access</a><a class="btn ghost" href="/release-notes">View Release Notes</a></div></section>
+  <section class="section split"><div><span class="kicker">TRUST MODEL</span><h2>Plain rule: facts first, people decide.</h2><p>HexHawk labels where each answer came from. GYRE gives the final classification. NEST organizes evidence. AETHERFRAME can suggest safer wording or improvements when allowed. NEXUS helps the person. None of those helper parts should hide uncertainty.</p><div class="cta"><a class="btn ghost" href="/trust">Read the Trust Guide</a><a class="btn ghost" href="/trust-center">Open Verification Center</a></div></div><div class="authority-card"><div><strong>GYRE</strong><span>final main label and confidence</span></div><div><strong>NEST</strong><span>keeps evidence organized</span></div><div><strong>AETHERFRAME</strong><span>optional improvement suggestions</span></div><div><strong>NEXUS</strong><span>assistant help only</span></div><div><strong>CREST</strong><span>report packaging</span></div></div></section>
+  <section class="section"><div class="section-heading"><span class="kicker">EXAMPLE</span><h2>What a tester can do today.</h2><p>On a test machine, open a safe sample file, read its hashes, strings, imports, sections, code views, and evidence notes, then export a report for another person to check.</p></div><div class="flow"><span>Input: unknown EXE or binary</span><span>HexHawk shows: file facts, code views, graph clues, and evidence</span><span>Person reviews: source labels and uncertainty</span><span>Output: report for handoff</span></div></section>
+  <section class="section final-cta"><h2>Try HexHawk with the right expectations.</h2><p>Use a controlled test computer, verify installer hashes, and expect Windows trust warnings until signing is complete.</p><div class="cta"><a class="btn primary" href="/downloads">Get the Windows test build</a><a class="btn ghost" href="mailto:contact@hexhawk.ke">Request Early Access</a><a class="btn ghost" href="/features">View Features</a></div></section>
 </main>
 <footer class="footer">
   <div class="container footer-grid">
     <div>
       <strong>HexHawk</strong>
-      <p>Local-first binary intelligence with explicit evidence and authority boundaries.</p>
-      <p class="mono">v1.0 unsigned internal tester candidate · 2026-06-20</p>
+      <p>Step-by-step file analysis with clear facts, source labels, and human review.</p>
+      <p class="mono">v1.0 unsigned test build · 2026-06-20</p>
     </div>
     <div>
       <h4>Product</h4>
