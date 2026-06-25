@@ -1,10 +1,13 @@
 import { buildProgramAnalysis } from './disassemblyAnalysis';
-import type { AnalysisWarning, Instruction, ProgramAnalysis, XRefKind as ProgramXRefKind } from './disassemblyModel';
+import type { AnalysisWarning, BackendImport, Instruction, ProgramAnalysis, XRefKind as ProgramXRefKind } from './disassemblyModel';
+
+export type AppBackendImport = BackendImport;
 
 export type AppDisassembledInstruction = {
   address: number;
   mnemonic: string;
   operands: string;
+  symbol?: string;
 };
 
 export type LegacyXRefKind = 'CALL' | 'JMP' | 'JMP_COND' | 'DATA' | 'STRING' | 'RIP_REL';
@@ -116,6 +119,7 @@ export function toProgramInstructions(instructions: AppDisassembledInstruction[]
     address: instruction.address,
     mnemonic: instruction.mnemonic,
     operands: instruction.operands,
+    symbol: instruction.symbol,
     source: 'backend',
   }));
 }
@@ -649,8 +653,9 @@ export function buildAddressToBlockMap(graph: AdapterCfgGraph | null): Map<numbe
 export function buildProgramAnalysisAdapter(
   instructions: AppDisassembledInstruction[],
   graph: AdapterCfgGraph | null,
+  imports: Iterable<AppBackendImport> = [],
 ): ProgramAnalysisAdapterResult {
-  const programAnalysis = buildProgramAnalysis(toProgramInstructions(instructions));
+  const programAnalysis = buildProgramAnalysis(toProgramInstructions(instructions), { imports });
   const { referencesMap, jumpTargetsMap, xrefTypes } = buildLegacyReferenceMaps(instructions);
   const functions = detectLegacyFunctions(instructions, referencesMap, jumpTargetsMap);
   const loops = detectLoops(graph || { nodes: [], edges: [] });

@@ -117,7 +117,7 @@ import {
   sanitizeRange,
   MAX_BRIDGE_LIST_ITEMS,
 } from './utils/tauriGuards';
-import { buildAddressToBlockMap, buildProgramAnalysisAdapter } from './utils/programAnalysisAdapter';
+import { buildAddressToBlockMap, buildProgramAnalysisAdapter, type AppBackendImport } from './utils/programAnalysisAdapter';
 import type { ProgramAnalysis } from './utils/disassemblyModel';
 import {
   type QASubsystemStatus,
@@ -2509,10 +2509,10 @@ export default function App() {
   // ===== PHASE 5: ANALYSIS FUNCTIONS =====
 
   // Comprehensive analysis orchestration via ProgramAnalysis adapter.
-  const performFullAnalysis = (instructions: DisassembledInstruction[], graph: CfgGraph | null) => {
+  const performFullAnalysis = (instructions: DisassembledInstruction[], graph: CfgGraph | null, imports: AppBackendImport[] = []) => {
     if (instructions.length === 0) return;
 
-    const adapter = buildProgramAnalysisAdapter(instructions, graph);
+    const adapter = buildProgramAnalysisAdapter(instructions, graph, imports);
     setProgramAnalysis(adapter.programAnalysis);
     setReferencesMap(adapter.referencesMap);
     setJumpTargetsMap(adapter.jumpTargetsMap as Map<number, Set<number>>);
@@ -3593,6 +3593,7 @@ export default function App() {
         arch: string;
         is_fallback: boolean;
         instructions: DisassembledInstruction[];
+        imports?: AppBackendImport[];
         has_more: boolean;
         next_byte_offset: number;
       }>('disassemble_file_range', {
@@ -3670,6 +3671,7 @@ export default function App() {
         arch: string;
         is_fallback: boolean;
         instructions: DisassembledInstruction[];
+        imports?: AppBackendImport[];
         has_more: boolean;
         next_byte_offset: number;
       }>('disassemble_file_range', {

@@ -30,6 +30,8 @@
 // Reuse the command implementations from the Tauri backend crate.
 // #[path] at the file level resolves relative to src/bin/, so ../commands/
 // correctly points to src/commands/.
+#[path = "../commands/pe_imports.rs"]
+mod pe_imports;
 #[path = "../commands/disassemble.rs"]
 mod cmd_disassemble;
 #[path = "../commands/graph.rs"]

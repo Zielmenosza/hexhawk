@@ -184,4 +184,42 @@ describe('ProgramAnalysis adapter for legacy static-analysis UI', () => {
     expect('verdict' in adapter).toBe(false);
     expect('setVerdict' in adapter).toBe(false);
   });
+
+  it('populates ProgramAnalysis importCalls from backend PE import table before xref symbols', () => {
+    const adapter = buildProgramAnalysisAdapter([
+      { address: 0x4000, mnemonic: 'push', operands: 'rbp' },
+      { address: 0x4001, mnemonic: 'mov', operands: 'rbp, rsp' },
+      { address: 0x4004, mnemonic: 'ret', operands: '' },
+    ], null, [
+      { name: 'CreateFileW', dll: 'KERNEL32.dll', thunk_va: 0x140002300 },
+    ]);
+
+    expect(adapter.programAnalysis.importCalls).toContainEqual(expect.objectContaining({
+      callAddress: 0x140002300,
+      targetAddress: 0x140002300,
+      importName: 'CreateFileW',
+      moduleName: 'KERNEL32.dll',
+      confidence: 'high',
+    }));
+    expect(adapter.programAnalysis.importCalls[0]?.evidence).toContain('PE import table KERNEL32.dll!CreateFileW');
+  });
+
+  it('deduplicates matching PE table imports and xref-detected import calls', () => {
+    const adapter = buildProgramAnalysisAdapter([
+      { address: 0x4000, mnemonic: 'push', operands: 'rbp' },
+      { address: 0x4001, mnemonic: 'mov', operands: 'rbp, rsp' },
+      { address: 0x4004, mnemonic: 'call', operands: '0x5000' },
+      { address: 0x4009, mnemonic: 'ret', operands: '' },
+      { address: 0x5000, mnemonic: 'jmp', operands: '0x6000', symbol: 'KERNEL32.dll!CreateFileW' },
+    ], null, [
+      { name: 'CreateFileW', dll: 'KERNEL32.dll', thunk_va: 0x5000 },
+    ]);
+
+    const matches = adapter.programAnalysis.importCalls.filter(
+      call => call.targetAddress === 0x5000 && call.importName === 'CreateFileW' && call.moduleName === 'KERNEL32.dll',
+    );
+    expect(matches).toHaveLength(1);
+    expect(matches[0].evidence).toContain('PE import table');
+  });
+
 });

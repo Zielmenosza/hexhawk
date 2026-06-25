@@ -7,6 +7,13 @@ export type ConfidenceLevel = 'high' | 'medium' | 'low' | 'unknown';
 
 export type InstructionSource = 'backend' | 'synthetic-test' | 'imported-trace' | 'unknown';
 
+export type BackendImport = {
+  name?: string | null;
+  dll: string;
+  thunk_va: number;
+  ordinal?: number | null;
+};
+
 export type Instruction = {
   address: number;
   mnemonic: string;

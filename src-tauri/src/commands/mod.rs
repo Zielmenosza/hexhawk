@@ -12,6 +12,7 @@ pub mod file_dialog;
 pub mod sandbox;
 pub mod hex;
 pub mod inspect;
+pub mod pe_imports;
 pub mod patch;
 pub mod plugin_browser;
 pub mod repl;

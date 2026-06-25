@@ -1,4 +1,5 @@
 use capstone::prelude::*;
+use super::pe_imports::{parse_pe_imports, PeImportEntry};
 use object::{Architecture, File as ObjectFile, Object, ObjectSection};
 use std::fs;
 use memmap2::MmapOptions;
@@ -92,6 +93,8 @@ pub struct DisassemblyResult {
     pub arch: String,
     pub is_fallback: bool,
     pub instructions: Vec<DisassembledInstruction>,
+    /// Advisory PE import-table metadata parsed from raw bytes. Empty for non-PE or parse failures.
+    pub imports: Vec<PeImportEntry>,
     /// True when more instructions exist beyond the returned chunk.
     pub has_more: bool,
     /// File byte offset to pass as `offset` for the next chunk (0 when `has_more` is false).
@@ -164,12 +167,14 @@ pub fn disassemble_file_range(
             .map_err(|e| format!("Failed to mmap file: {e}"))?
     };
     let data: &[u8] = &mmap;
+    let imports = parse_pe_imports(data);
 
     if offset >= data.len() {
         return Ok(DisassemblyResult {
             arch: "unknown".into(),
             is_fallback: false,
             instructions: vec![],
+            imports: vec![],
             has_more: false,
             next_byte_offset: 0,
             bad_bytes: 0,
@@ -209,6 +214,7 @@ pub fn disassemble_file_range(
         arch: arch_name.to_string(),
         is_fallback,
         instructions,
+        imports,
         has_more,
         next_byte_offset,
         bad_bytes,

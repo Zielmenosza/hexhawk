@@ -7,6 +7,7 @@ import type {
   FunctionStartReason,
   Instruction,
   ProgramAnalysis,
+  BackendImport,
   XRef,
   XRefKind,
 } from './disassemblyModel';
@@ -14,6 +15,8 @@ import type {
 export type DisassemblyAnalysisOptions = {
   /** Addresses known from export tables or equivalent trusted metadata. */
   exportedAddresses?: Iterable<number>;
+  /** Advisory backend import-table entries parsed before instruction-derived xrefs. */
+  imports?: Iterable<BackendImport>;
 };
 
 export type FunctionStartCandidate = {
@@ -66,6 +69,50 @@ function warning(kind: AnalysisWarning['kind'], message: string, address?: numbe
 
 function symbolForAddress(instructions: Instruction[], address: number): string | undefined {
   return instructions.find(instruction => instruction.address === address)?.symbol;
+}
+
+
+function normalizeImportModuleName(dll: string | undefined): string | undefined {
+  if (!dll) return undefined;
+  return dll.trim() || undefined;
+}
+
+function importDisplayName(entry: BackendImport): string | undefined {
+  if (entry.name && entry.name.trim()) return entry.name.trim();
+  if (typeof entry.ordinal === 'number') return `ordinal_${entry.ordinal}`;
+  return undefined;
+}
+
+function mergeImportCalls(
+  tableImports: Iterable<BackendImport> | undefined,
+  xrefImports: ProgramAnalysis['importCalls'],
+): ProgramAnalysis['importCalls'] {
+  const merged = new Map<string, ProgramAnalysis['importCalls'][number]>();
+  const keyFor = (targetAddress: number | undefined, moduleName: string | undefined, importName: string | undefined) =>
+    `${targetAddress ?? 'unknown'}:${moduleName ?? ''}:${importName ?? ''}`.toLowerCase();
+
+  for (const entry of tableImports ?? []) {
+    const importName = importDisplayName(entry);
+    const moduleName = normalizeImportModuleName(entry.dll);
+    if (!importName && typeof entry.thunk_va !== 'number') continue;
+    const targetAddress = Number(entry.thunk_va);
+    merged.set(keyFor(targetAddress, moduleName, importName), {
+      callAddress: targetAddress,
+      targetAddress,
+      importName,
+      moduleName,
+      confidence: 'high',
+      evidence: `PE import table ${moduleName ? `${moduleName}!` : ''}${importName ?? '<unnamed>'} IAT ${formatAddress(targetAddress)}`,
+    });
+  }
+
+  for (const xrefImport of xrefImports) {
+    const key = keyFor(xrefImport.targetAddress, xrefImport.moduleName, xrefImport.importName);
+    if (merged.has(key)) continue;
+    merged.set(key, xrefImport);
+  }
+
+  return Array.from(merged.values()).sort((a, b) => (a.targetAddress ?? a.callAddress) - (b.targetAddress ?? b.callAddress));
 }
 
 function parseImportSymbol(symbol?: string): { importName: string; moduleName?: string } | undefined {
@@ -380,7 +427,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
   const callGraphEdges = xrefs
     .filter(xref => xref.kind === 'call' && functionStarts.has(xref.to))
     .map(xref => ({ from: containingFunction(functions, xref.from)?.startAddress ?? xref.from, to: xref.to, callsite: xref.from, confidence: xref.confidence }));
-  const importCalls = xrefs
+  const xrefImportCalls = xrefs
     .filter(xref => xref.kind === 'call')
     .flatMap(xref => {
       const parsed = parseImportSymbol(symbolForAddress(normalizedInstructions, xref.to));
@@ -394,6 +441,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
         evidence: `direct call target symbol ${parsed.moduleName ? `${parsed.moduleName}!` : ''}${parsed.importName}`,
       }];
     });
+  const importCalls = mergeImportCalls(options.imports, xrefImportCalls);
 
   return {
     schema: 'hexhawk.disassembly_program.v1',

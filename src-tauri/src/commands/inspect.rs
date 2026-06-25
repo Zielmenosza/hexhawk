@@ -1,4 +1,5 @@
 use object::{Architecture, File, Object, ObjectSection};
+use super::pe_imports::{parse_pe_imports, PeImportEntry};
 use serde::Serialize;
 use std::fs;
 use std::io::Read;
@@ -118,6 +119,8 @@ pub struct FileMetadata {
     pub exports_count: usize,
     pub symbols_count: usize,
     pub imports: Vec<ImportEntry>,
+    /// Advisory PE import table entries with IAT thunk virtual addresses. Empty for non-PE or parse failures.
+    pub pe_imports: Vec<PeImportEntry>,
     pub exports: Vec<ExportEntry>,
     pub sha256: String,
     pub sha1: String,
@@ -258,6 +261,7 @@ fn fallback_metadata(
         exports_count: 0,
         symbols_count: 0,
         imports: vec![],
+        pe_imports: vec![],
         exports: vec![],
         sha256,
         sha1,
@@ -359,6 +363,8 @@ pub fn inspect_file_metadata(path: String) -> Result<FileMetadata, String> {
         })
         .collect();
 
+    let pe_imports = parse_pe_imports(data);
+
     let exports: Vec<ExportEntry> = file.exports()
         .unwrap_or_default()
         .into_iter()
@@ -379,6 +385,7 @@ pub fn inspect_file_metadata(path: String) -> Result<FileMetadata, String> {
         exports_count: exports.len(),
         symbols_count,
         imports,
+        pe_imports,
         exports,
         sha256,
         sha1,
