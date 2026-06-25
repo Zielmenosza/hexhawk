@@ -216,6 +216,75 @@ export function buildXRefs(instructions: Instruction[]): XRef[] {
   return xrefs;
 }
 
+
+export interface XRefIndex {
+  callersOf(address: number): XRef[];
+  calleesFrom(address: number): XRef[];
+  jumpsTo(address: number): XRef[];
+  dataRefsTo(address: number): XRef[];
+  refsTo(address: number): XRef[];
+  refsFrom(address: number): XRef[];
+  refCount(address: number): number;
+}
+
+function readonlyRefs(refs: XRef[] | undefined): XRef[] {
+  return refs ? [...refs] : [];
+}
+
+function addRef(map: Map<number, XRef[]>, address: number, xref: XRef): void {
+  const refs = map.get(address) ?? [];
+  refs.push(xref);
+  map.set(address, refs);
+}
+
+export function buildXRefIndex(analysis: ProgramAnalysis): XRefIndex {
+  const refs = [
+    ...analysis.xrefs,
+    ...analysis.dataReferences.map(ref => ({
+      kind: 'data' as const,
+      from: ref.from,
+      to: ref.to,
+      confidence: ref.confidence,
+      evidence: ref.evidence,
+    })),
+    ...analysis.stringReferences.map(ref => ({
+      kind: 'string' as const,
+      from: ref.from,
+      to: ref.to,
+      confidence: ref.confidence,
+      evidence: ref.evidence,
+    })),
+  ];
+
+  const byTo = new Map<number, XRef[]>();
+  const byFrom = new Map<number, XRef[]>();
+  const callersByTo = new Map<number, XRef[]>();
+  const calleesByFrom = new Map<number, XRef[]>();
+  const jumpsByTo = new Map<number, XRef[]>();
+  const dataByTo = new Map<number, XRef[]>();
+
+  for (const ref of refs) {
+    addRef(byTo, ref.to, ref);
+    addRef(byFrom, ref.from, ref);
+    if (ref.kind === 'call') {
+      addRef(callersByTo, ref.to, ref);
+      addRef(calleesByFrom, ref.from, ref);
+    }
+    if (ref.kind === 'jump' || ref.kind === 'conditional-jump') addRef(jumpsByTo, ref.to, ref);
+    if (ref.kind === 'data' || ref.kind === 'string') addRef(dataByTo, ref.to, ref);
+  }
+
+  return {
+    callersOf: (address: number) => readonlyRefs(callersByTo.get(address)),
+    calleesFrom: (address: number) => readonlyRefs(calleesByFrom.get(address)),
+    jumpsTo: (address: number) => readonlyRefs(jumpsByTo.get(address)),
+    dataRefsTo: (address: number) => readonlyRefs(dataByTo.get(address)),
+    refsTo: (address: number) => readonlyRefs(byTo.get(address)),
+    refsFrom: (address: number) => readonlyRefs(byFrom.get(address)),
+    refCount: (address: number) => (byTo.get(address)?.length ?? 0) + (byFrom.get(address)?.length ?? 0),
+  };
+}
+
 export function detectFunctionStartCandidates(
   instructions: Instruction[],
   xrefs: XRef[] = buildXRefs(instructions),

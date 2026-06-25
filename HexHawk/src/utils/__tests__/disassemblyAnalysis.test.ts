@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildProgramAnalysis,
+  buildXRefIndex,
   buildXRefs,
   detectFunctionEndCandidate,
   detectFunctionStartCandidates,
@@ -104,4 +105,35 @@ describe('typed disassembly analysis foundation', () => {
     expect(JSON.stringify(analysis)).not.toContain('classification');
     expect(JSON.stringify(analysis)).not.toContain('threatScore');
   });
+
+  it('builds a queryable cross-reference index with O(1)-style lookup maps', () => {
+    const analysis = buildProgramAnalysis(fixture);
+    const index = buildXRefIndex({
+      ...analysis,
+      dataReferences: [
+        { from: 0x1009, to: 0x3000, access: 'read', confidence: 'medium', evidence: 'synthetic data ref' },
+      ],
+    });
+
+    expect(index.callersOf(0x2000)).toEqual([expect.objectContaining({ kind: 'call', from: 0x1004, to: 0x2000 })]);
+    expect(index.calleesFrom(0x1004)).toEqual([expect.objectContaining({ kind: 'call', from: 0x1004, to: 0x2000 })]);
+    expect(index.jumpsTo(0x1018)).toEqual([expect.objectContaining({ kind: 'conditional-jump', from: 0x100c, to: 0x1018 })]);
+    expect(index.dataRefsTo(0x3000)).toEqual([expect.objectContaining({ kind: 'data', from: 0x1009, to: 0x3000 })]);
+    expect(index.refsTo(0x101c)).toEqual([expect.objectContaining({ kind: 'jump', from: 0x1015, to: 0x101c })]);
+    expect(index.refsFrom(0x1004)).toEqual([expect.objectContaining({ kind: 'call', from: 0x1004, to: 0x2000 })]);
+    expect(index.refCount(0x2000)).toBe(1);
+  });
+
+  it('returns empty xref-index results for empty analysis without crashing', () => {
+    const index = buildXRefIndex(buildProgramAnalysis([]));
+
+    expect(index.callersOf(0x401000)).toEqual([]);
+    expect(index.calleesFrom(0x401000)).toEqual([]);
+    expect(index.jumpsTo(0x401000)).toEqual([]);
+    expect(index.dataRefsTo(0x401000)).toEqual([]);
+    expect(index.refsTo(0x401000)).toEqual([]);
+    expect(index.refsFrom(0x401000)).toEqual([]);
+    expect(index.refCount(0x401000)).toBe(0);
+  });
+
 });

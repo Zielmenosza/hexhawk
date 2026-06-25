@@ -7,6 +7,7 @@ import {
   registerHook,
   resolveImportPrototype,
   runStrikePostAnalysisHooks,
+  strike,
   MAX_STRIKE_TIMELINE_STEPS,
 } from '../strikeEngine';
 import type { DebugSnapshot, RegisterState } from '../../components/DebuggerPanel';
@@ -100,6 +101,33 @@ describe('strikeEngine recovered structs', () => {
         advisoryOnly: true,
         authority: 'nest_type_recovery_not_gyre_verdict',
       },
+    ]);
+  });
+});
+
+
+describe('STRIKE xref query surface', () => {
+  it('exposes buildXRefIndex for ProgramAnalysis callersOf queries', () => {
+    const analysis = {
+      schema: 'hexhawk.disassembly_program.v1' as const,
+      advisoryOnly: true as const,
+      authority: 'analysis_evidence_not_gyre_verdict' as const,
+      instructions: [],
+      functions: [],
+      basicBlocks: [],
+      xrefs: [
+        { kind: 'call' as const, from: 0x401020, to: 0x401000, confidence: 'high' as const, evidence: 'synthetic call' },
+      ],
+      importCalls: [],
+      dataReferences: [],
+      stringReferences: [],
+      jumpTableCandidates: [],
+      callGraph: { nodes: [], edges: [] },
+      warnings: [],
+    };
+
+    expect(strike.buildXRefIndex(analysis).callersOf(0x401000)).toEqual([
+      expect.objectContaining({ from: 0x401020, to: 0x401000, kind: 'call' }),
     ]);
   });
 });

@@ -14,6 +14,8 @@
 import type { RegisterState, DebugSnapshot } from '../components/DebuggerPanel';
 import type { BehavioralTag } from './correlationEngine';
 import type { DecompilerIrNode, DecompilerIrValue } from './decompilerTypes';
+import { buildXRefIndex } from './disassemblyAnalysis';
+import type { ProgramAnalysis } from './disassemblyModel';
 import {
   annotateReachingDefinitions as annotateReachingDefinitionsPass,
   constantFoldDecompilerIr as constantFoldDecompilerIrPass,
@@ -234,6 +236,7 @@ export interface StrikeILQuerySurface {
   annotateReachingDefinitions(): DecompilerIrNode[];
   runMidLevelIrPasses(): DecompilerIrNode[];
   getRecoveredStructs(): StrikeRecoveredStruct[];
+  buildXRefIndex(analysis: ProgramAnalysis): ReturnType<typeof buildXRefIndex>;
   registerHook(event: StrikeHookEvent, handler: StrikeHookHandler): void;
 }
 
@@ -295,6 +298,7 @@ export function createStrikeQuerySurface(nodes: DecompilerIrNode[]): StrikeILQue
     annotateReachingDefinitions: () => annotateReachingDefinitionsPass(nodes),
     runMidLevelIrPasses: () => runMidLevelIrPassesPipeline(nodes),
     getRecoveredStructs: () => recoverStructsFromIL(nodes),
+    buildXRefIndex,
     registerHook,
   };
 }
@@ -303,6 +307,7 @@ export function createStrikeQuerySurface(nodes: DecompilerIrNode[]): StrikeILQue
 export const strike = {
   registerHook,
   getRecoveredStructs: recoverStructsFromIL,
+  buildXRefIndex,
   resolveImportPrototype,
   runPreAnalysisHooks: runStrikePreAnalysisHooks,
   runPostAnalysisHooks: runStrikePostAnalysisHooks,
