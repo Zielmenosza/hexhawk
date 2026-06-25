@@ -620,13 +620,13 @@ function collectVars(stmts: IRStmt[], arch: Architecture = 'x86_64'): VarCollect
           const key = v.offset;
           if (!col.localsByOffset.has(key)) {
             col.stackVarCount++;
-            col.localsByOffset.set(key, `local_${col.stackVarCount}`);
+            col.localsByOffset.set(key, `local${col.stackVarCount}`);
           }
         } else if (v.offset > 0) {
           const key = v.offset;
           if (!col.argsByOffset.has(key)) {
             col.argCount++;
-            col.argsByOffset.set(key, `arg_${col.argCount}`);
+            col.argsByOffset.set(key, `arg${col.argCount}`);
           }
         }
       }
@@ -639,7 +639,7 @@ function collectVars(stmts: IRStmt[], arch: Architecture = 'x86_64'): VarCollect
                     : ARG_REGS_64;
       const idx = argList.indexOf(stmt.src.name);
       if (idx >= 0 && !col.argRegs.has(stmt.src.name)) {
-        col.argRegs.set(stmt.src.name, `param_${idx}`);
+        col.argRegs.set(stmt.src.name, `param${idx + 1}`);
       }
     }
   }
@@ -721,7 +721,7 @@ function applyTypeHintNames(stmts: IRStmt[], map: VarMap): void {
 }
 
 function isGenericVarName(name: string): boolean {
-  return /^local_\d+$/.test(name) || /^arg_\d+$/.test(name) || /^param_\d+$/.test(name);
+  return /^local\d+$/.test(name) || /^arg\d+$/.test(name) || /^param\d+$/.test(name) || /^local_\d+$/.test(name) || /^arg_\d+$/.test(name) || /^param_\d+$/.test(name);
 }
 
 function applyHeuristicVarNames(stmts: IRStmt[], map: VarMap): void {
@@ -1027,16 +1027,54 @@ function renderValueRaw(v: IRValue): string {
   }
 }
 
+
+const REGISTER_DISPLAY_NAMES: Record<string, string> = {
+  rax: 'returnValue',
+  eax: 'returnValue',
+  rcx: 'arg1',
+  ecx: 'arg1',
+  rdx: 'arg2',
+  edx: 'arg2',
+  r8: 'arg3',
+  r9: 'arg4',
+  r10: 'temp10',
+  r11: 'temp11',
+  r12: 'saved12',
+  r13: 'saved13',
+  r14: 'saved14',
+  r15: 'saved15',
+  rbx: 'savedValue',
+  ebx: 'savedValue',
+  rsi: 'sourceValue',
+  rdi: 'destValue',
+  rsp: 'stackPointer',
+  rbp: 'framePointer',
+};
+
+function displayRegisterName(name: string): string {
+  return REGISTER_DISPLAY_NAMES[name.toLowerCase()] ?? `reg${name.toUpperCase()}`;
+}
+
+function renderConditionText(cond: string, varMap: VarMap): string {
+  return cond.replace(/\b(rax|rbx|rcx|rdx|r8|r9|r1[0-5]|rsp|rbp|rsi|rdi|eax|ecx|edx)\b/gi, raw => {
+    const mapped = varMap.get(`reg:${raw.toLowerCase()}`);
+    return mapped ?? displayRegisterName(raw);
+  }).replace(/\[(framePointer|stackPointer)\s*([+-])\s*(0x[0-9a-f]+|\d+)\]/gi, (_match, base, op, offset) => {
+    const prefix = base === 'framePointer' ? 'frame' : 'stack';
+    return `${prefix}${op === '-' ? 'Minus' : 'Plus'}${String(offset).replace(/^0x/i, '0x')}`;
+  });
+}
+
 function renderValue(v: IRValue, varMap: VarMap): string {
   if (v.kind === 'reg') {
-    return varMap.get(`reg:${v.name}`) ?? v.name;
+    return varMap.get(`reg:${v.name}`) ?? displayRegisterName(v.name);
   }
   if (v.kind === 'mem') {
     const key = memKey(v);
     const mapped = varMap.get(key);
     if (mapped) return mapped;
     // Unnamed memory: try to make it readable
-    if (v.offset === 0 && !v.index) return `*${v.base}`;
+    if (v.offset === 0 && !v.index) return `*${displayRegisterName(v.base)}`;
     return renderValueRaw(v);
   }
   return renderValueRaw(v);
@@ -2441,7 +2479,7 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
     case 'if': {
       lines.push({
         indent,
-        text: `if (${node.cond}) {`,
+        text: `if (${renderConditionText(node.cond, varMap)}) {`,
         address: node.address,
         isUncertain: node.uncertain,
         kind: 'control',
@@ -2458,7 +2496,7 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
     case 'while': {
       lines.push({
         indent,
-        text: `while (${node.cond}) {`,
+        text: `while (${renderConditionText(node.cond, varMap)}) {`,
         address: node.address,
         kind: 'control',
       });
@@ -2470,7 +2508,7 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
     case 'do-while': {
       lines.push({ indent, text: 'do {', address: node.address, kind: 'control' });
       emitNode(node.body, varMap, indent + 1, lines, outputMode);
-      lines.push({ indent, text: `} while (${node.cond});`, kind: 'brace' });
+      lines.push({ indent, text: `} while (${renderConditionText(node.cond, varMap)});`, kind: 'brace' });
       return;
     }
 
@@ -2478,7 +2516,7 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
       const initPart = node.init || '';
       lines.push({
         indent,
-        text: `for (${initPart}; ${node.cond}; ${node.step}) {`,
+        text: `for (${initPart}; ${renderConditionText(node.cond, varMap)}; ${renderConditionText(node.step, varMap)}) {`,
         address: node.address,
         kind: 'control',
       });
@@ -2490,7 +2528,7 @@ function emitNode(node: StructuredNode, varMap: VarMap, indent: number, lines: P
     case 'switch': {
       lines.push({
         indent,
-        text: `switch (${node.expr}) {`,
+        text: `switch (${renderConditionText(node.expr, varMap)}) {`,
         address: node.address,
         isUncertain: node.uncertain,
         kind: 'control',
@@ -2732,9 +2770,9 @@ function buildDecompilerMaturityTelemetry(args: {
   const calls = allStmts.filter((stmt): stmt is Extract<IRStmt, { op: 'call' }> => stmt.op === 'call');
   const recoveredCalls = calls.filter(call => (call.args?.length ?? 0) > 0);
   const varNames = Array.from(args.varMap.values());
-  const localNames = Array.from(new Set(varNames.filter(name => name.startsWith('local_')))).sort();
-  const stackArgNames = Array.from(new Set(varNames.filter(name => name.startsWith('arg_')))).sort();
-  const registerParamNames = Array.from(new Set(varNames.filter(name => name.startsWith('param_')))).sort();
+  const localNames = Array.from(new Set(varNames.filter(name => /^local\d+$/.test(name) || name.startsWith('local_')))).sort();
+  const stackArgNames = Array.from(new Set(varNames.filter(name => /^arg\d+$/.test(name) || name.startsWith('arg_')))).sort();
+  const registerParamNames = Array.from(new Set(varNames.filter(name => /^param\d+$/.test(name) || name.startsWith('param_')))).sort();
   const limitations = [
     'Decompiler/disassembler maturity telemetry is advisory analyst guidance only; it is not GYRE verdict evidence.',
     'Pseudocode is lifted from bounded disassembly and should not be read as exact source recovery.',
@@ -3004,7 +3042,7 @@ export function decompile(
   lines.push({ indent: 0, text: `function ${funcName}(${paramList}) {`, kind: 'header' });
 
   if (varMap.size > 0) {
-    const locals = Array.from(varMap.values()).filter(v => v.startsWith('local_'));
+    const locals = Array.from(varMap.values()).filter(v => /^local\d+$/.test(v) || v.startsWith('local_'));
     if (locals.length > 0) {
       lines.push({ indent: 1, text: `// locals: ${locals.join(', ')}`, kind: 'comment' });
     }

@@ -171,7 +171,7 @@ describe('decompiler control-flow structuring', () => {
 
     const result = decompile(instructions, cfg, { functionName: 'simple_if' });
     const text = result.lines.map(l => l.text).join('\n');
-    expect(text).toContain('if (rax == 0) {');
+    expect(text).toContain('if (returnValue == 0) {');
     expect(text).not.toContain('goto 0x');
     expect(result.structured.kind).toBe('seq');
   });
@@ -201,7 +201,7 @@ describe('decompiler control-flow structuring', () => {
     };
 
     const text = textOf(instructions, cfg, 'if_else');
-    expect(text).toContain('if (rax != 7) {');
+    expect(text).toContain('if (returnValue != 7) {');
     expect(text).toContain('} else {');
     expect(text).not.toContain('goto 0x');
   });
@@ -263,7 +263,7 @@ describe('decompiler control-flow structuring', () => {
 
     const text = textOf(instructions, cfg, 'nested_if_loop');
     expect(text).toMatch(/(?:while|for)\s*\(/);
-    expect(text).toContain('if (rax == 0) {');
+    expect(text).toContain('if (returnValue == 0) {');
     expect(text.indexOf('if (')).toBeGreaterThan(text.search(/(?:while|for)\s*\(/));
   });
 
@@ -375,7 +375,7 @@ describe('decompiler switch recovery', () => {
     };
 
     const text = decompile(instructions, cfg, { functionName: 'if_chain_switch' }).lines.map(l => l.text).join('\n');
-    expect(text).toContain('switch (eax) {');
+    expect(text).toContain('switch (returnValue) {');
     expect(text).toContain('case 1:');
     expect(text).toContain('case 2:');
     expect(text).toContain('case 3:');
@@ -407,7 +407,7 @@ describe('decompiler switch recovery', () => {
 
     const text = decompile(instructions, cfg, { functionName: 'not_switch' }).lines.map(l => l.text).join('\n');
     expect(text).not.toContain('switch (');
-    expect(text).toContain('if (eax == 1) {');
+    expect(text).toContain('if (returnValue == 1) {');
   });
 });
 

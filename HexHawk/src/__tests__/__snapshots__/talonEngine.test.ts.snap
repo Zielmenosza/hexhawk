@@ -14,7 +14,7 @@ exports[`talonDecompile — snapshot > minimal function line texts match snapsho
   "// sub_1000  [5 instructions]",
   "function sub_1000() {",
   "",
-  "eax = 0;",
+  "returnValue = 0;",
   "return;",
   "}",
 ]

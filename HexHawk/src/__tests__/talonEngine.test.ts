@@ -4,7 +4,7 @@ import {
   extractCorrelationSignals,
 } from '../utils/talonEngine';
 import type { TalonFunctionSummary } from '../utils/talonEngine';
-import type { DisassembledInstruction } from '../utils/decompilerEngine';
+import { decompile, type DisassembledInstruction } from '../utils/decompilerEngine';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -417,5 +417,39 @@ describe('talonDecompile — AArch64 (Milestone 3)', () => {
   it('AArch64 startAddress equals first instruction address', () => {
     const result = talonDecompile(AARCH64_MINIMAL, null);
     expect(result.summary.startAddress).toBe(0x9000);
+  });
+});
+
+
+describe('TALON pseudocode artifact cleanup', () => {
+  const pseudocodeText = (instructions: DisassembledInstruction[]) =>
+    decompile(instructions, null, { functionName: 'artifact_cleanup', outputMode: 'annotated' })
+      .lines
+      .filter(line => line.kind !== 'comment')
+      .map(line => line.text)
+      .join('\n');
+
+  it('does not leak raw x64 register names in non-comment pseudocode statements', () => {
+    const text = pseudocodeText([
+      ins(0x9000, 'mov', 'rax, rcx'),
+      ins(0x9004, 'add', 'rax, rdx'),
+      ins(0x9008, 'mov', '[rbp - 0x8], rax'),
+      ins(0x900c, 'mov', 'rbx, [rbp - 0x8]'),
+      ins(0x9010, 'ret', ''),
+    ]);
+
+    expect(text).not.toMatch(/(^|[^A-Za-z0-9_])(rax|rbx|rcx|rdx|r8|r9|r1[0-5]|rsp|rbp|rsi|rdi|eax|ecx|edx)([^A-Za-z0-9_]|$)/i);
+    expect(text).toContain('returnValue');
+  });
+
+  it('uses display-safe local and parameter names without SSA-style numeric underscore suffixes', () => {
+    const text = pseudocodeText([
+      ins(0x9100, 'mov', '[rbp - 0x8], rcx'),
+      ins(0x9104, 'mov', 'rax, [rbp - 0x8]'),
+      ins(0x9108, 'ret', ''),
+    ]);
+
+    expect(text).not.toMatch(/\b[A-Za-z][A-Za-z0-9]*_\d+\b|\bvar_\d+_\d+\b/);
+    expect(text).toContain('local1');
   });
 });
