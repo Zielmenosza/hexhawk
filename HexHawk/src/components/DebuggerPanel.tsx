@@ -28,11 +28,20 @@ export interface RegisterState {
 
 export type DebugStatus = 'Starting' | 'Paused' | 'Running' | 'Exited' | 'Error';
 
+export interface CallStackFrame {
+  frameIndex: number;
+  returnAddress: number;
+  framePointer: number;
+  moduleName?: string | null;
+  symbolName?: string | null;
+}
+
 export interface DebugSnapshot {
   sessionId: number;
   status: DebugStatus;
   registers: RegisterState;
   stack: number[];
+  callStack?: CallStackFrame[];
   breakpoints: number[];
   stepCount: number;
   exitCode: number | null;
@@ -211,6 +220,42 @@ const BreakpointList: React.FC<BreakpointListProps> = ({
           </button>
         </div>
       ))
+    )}
+  </div>
+);
+
+
+interface CallStackViewProps {
+  frames: CallStackFrame[];
+  onNavigate: (addr: number) => void;
+}
+
+const CallStackView: React.FC<CallStackViewProps> = ({ frames, onNavigate }) => (
+  <div className="dbg-callstack" aria-label="runtime call stack — advisory evidence">
+    <div className="dbg-section-header">runtime call stack — advisory evidence</div>
+    {frames.length === 0 ? (
+      <div className="dbg-empty">Call stack unavailable</div>
+    ) : (
+      frames.map((frame) => {
+        const label = frame.moduleName || frame.symbolName
+          ? `${frame.moduleName ?? 'module'}${frame.symbolName ? `!${frame.symbolName}` : ''}`
+          : hex(frame.returnAddress);
+        return (
+          <div key={`${frame.frameIndex}-${frame.returnAddress}`} className="dbg-callstack-row">
+            <span className="dbg-callstack-index">#{frame.frameIndex}</span>
+            <button
+              type="button"
+              className="dbg-callstack-addr"
+              onClick={() => onNavigate(frame.returnAddress)}
+              title="Navigate to return address"
+            >
+              {hex(frame.returnAddress)}
+            </button>
+            <span className="dbg-callstack-symbol">{label}</span>
+            <span className="dbg-callstack-fp">fp {hex(frame.framePointer)}</span>
+          </div>
+        );
+      })
     )}
   </div>
 );
@@ -519,7 +564,7 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
                 onClick={() => setActiveSection(s)}
               >
                 {s === 'regs'   ? 'Registers' :
-                 s === 'stack'  ? `Stack (${session.stack.length})` :
+                 s === 'stack'  ? `Stack (${session.stack.length}) / Calls (${session.callStack?.length ?? 0})` :
                  s === 'bps'    ? `Breakpoints (${session.breakpoints.length})` :
                  'Memory'}
               </button>
@@ -547,6 +592,10 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
                 <StackView
                   stack={session.stack}
                   rsp={session.registers.rsp}
+                  onNavigate={onAddressSelect}
+                />
+                <CallStackView
+                  frames={session.callStack ?? []}
                   onNavigate={onAddressSelect}
                 />
               </div>

@@ -53,6 +53,16 @@ pub struct RegisterState {
     pub ss: u16,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CallStackFrame {
+    pub frame_index: u32,
+    pub return_address: u64,
+    pub frame_pointer: u64,
+    pub module_name: Option<String>,
+    pub symbol_name: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DebugSnapshot {
@@ -60,6 +70,8 @@ pub struct DebugSnapshot {
     pub status: DebugStatus,
     pub registers: RegisterState,
     pub stack: Vec<u64>,        // ~16 qwords at RSP
+    /// Runtime call stack — advisory evidence only. Empty when unavailable.
+    pub call_stack: Vec<CallStackFrame>,
     pub breakpoints: Vec<u64>,
     pub step_count: u32,
     pub exit_code: Option<i32>,
@@ -347,6 +359,55 @@ mod win {
         stack
     }
 
+
+    fn reconstruct_call_stack(process: HANDLE, regs: &RegisterState) -> Vec<CallStackFrame> {
+        // Advisory best-effort frame-pointer chain fallback. StackWalk64/dbghelp is
+        // not assumed available in every user environment; any read failure returns
+        // the frames recovered so far or an empty list.
+        let mut frames = Vec::new();
+        if regs.rbp == 0 {
+            return frames;
+        }
+        let mut frame_pointer = regs.rbp;
+        for frame_index in 0..64u32 {
+            let mut next_fp: u64 = 0;
+            let mut return_address: u64 = 0;
+            let mut read_fp = 0usize;
+            let mut read_ret = 0usize;
+            unsafe {
+                let ok_fp = ReadProcessMemory(
+                    process,
+                    frame_pointer as *const _,
+                    &mut next_fp as *mut u64 as *mut _,
+                    8,
+                    &mut read_fp,
+                );
+                let ok_ret = ReadProcessMemory(
+                    process,
+                    (frame_pointer + 8) as *const _,
+                    &mut return_address as *mut u64 as *mut _,
+                    8,
+                    &mut read_ret,
+                );
+                if ok_fp == FALSE || ok_ret == FALSE || read_fp != 8 || read_ret != 8 || return_address == 0 {
+                    break;
+                }
+            }
+            frames.push(CallStackFrame {
+                frame_index,
+                return_address,
+                frame_pointer,
+                module_name: None,
+                symbol_name: None,
+            });
+            if next_fp <= frame_pointer || next_fp - frame_pointer > 1024 * 1024 {
+                break;
+            }
+            frame_pointer = next_fp;
+        }
+        frames
+    }
+
     fn make_snapshot(
         session_id: u32,
         status: DebugStatus,
@@ -359,11 +420,13 @@ mod win {
     ) -> DebugSnapshot {
         let regs = ctx_to_regs(ctx);
         let stack = read_stack(process, regs.rsp);
+        let call_stack = reconstruct_call_stack(process, &regs);
         DebugSnapshot {
             session_id,
             status,
             registers: regs,
             stack,
+            call_stack,
             breakpoints: bp_addrs.to_vec(),
             step_count,
             exit_code,
@@ -887,6 +950,7 @@ mod win {
                         status: DebugStatus::Exited,
                         registers: RegisterState::default(),
                         stack: vec![],
+                        call_stack: vec![],
                         breakpoints: vec![],
                         step_count: 0,
                         exit_code: Some(code),
@@ -1462,6 +1526,7 @@ mod linux {
             status,
             registers: regs,
             stack,
+            call_stack: vec![],
             breakpoints: vec![],
             step_count,
             exit_code,
@@ -1483,6 +1548,7 @@ mod linux {
             status,
             registers: RegisterState::default(),
             stack: vec![],
+            call_stack: vec![],
             breakpoints: vec![],
             step_count,
             exit_code,
@@ -2322,6 +2388,7 @@ mod tests {
             status: DebugStatus::Paused,
             registers: RegisterState::default(),
             stack: vec![0xDEAD_BEEF_u64],
+            call_stack: vec![],
             breakpoints: vec![0x0040_1000_u64],
             step_count: 3,
             exit_code: None,
@@ -2334,6 +2401,49 @@ mod tests {
         assert!(json.contains("\"lastEvent\""), "lastEvent must be camelCase");
         assert!(json.contains("\"exitCode\""), "exitCode must be camelCase");
         assert!(json.contains("\"Paused\""), "status must serialize as PascalCase 'Paused'");
+        assert!(json.contains("\"callStack\""), "callStack must be present and camelCase");
+    }
+
+    #[test]
+    fn debug_snapshot_empty_call_stack_serializes_as_empty_array() {
+        let snap = DebugSnapshot {
+            session_id: 8,
+            status: DebugStatus::Paused,
+            registers: RegisterState::default(),
+            stack: vec![],
+            call_stack: vec![],
+            breakpoints: vec![],
+            step_count: 0,
+            exit_code: None,
+            last_event: "state".to_string(),
+        };
+        let json = serde_json::to_value(&snap).unwrap();
+        assert_eq!(json["callStack"].as_array().unwrap().len(), 0);
+    }
+
+    #[test]
+    fn debug_snapshot_call_stack_frame_serializes_symbol_context() {
+        let snap = DebugSnapshot {
+            session_id: 9,
+            status: DebugStatus::Paused,
+            registers: RegisterState::default(),
+            stack: vec![],
+            call_stack: vec![CallStackFrame {
+                frame_index: 0,
+                return_address: 0x401000,
+                frame_pointer: 0x7fff0000,
+                module_name: Some("kernel32.dll".to_string()),
+                symbol_name: Some("CreateFileW".to_string()),
+            }],
+            breakpoints: vec![],
+            step_count: 0,
+            exit_code: None,
+            last_event: "state".to_string(),
+        };
+        let json = serde_json::to_string(&snap).unwrap();
+        assert!(json.contains("\"returnAddress\":4198400"));
+        assert!(json.contains("kernel32.dll"));
+        assert!(json.contains("CreateFileW"));
     }
 
     #[test]
@@ -2343,6 +2453,7 @@ mod tests {
             status: DebugStatus::Starting,
             registers: RegisterState::default(),
             stack: vec![],
+            call_stack: vec![],
             breakpoints: vec![],
             step_count: 0,
             exit_code: None,
