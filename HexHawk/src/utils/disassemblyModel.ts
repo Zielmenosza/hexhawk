@@ -83,6 +83,26 @@ export type FunctionEndReason =
   | 'end-of-input'
   | 'unknown';
 
+export type CallingConventionName =
+  | 'windows-x64'
+  | 'sysv-x64'
+  | 'stdcall'
+  | 'cdecl'
+  | 'fastcall'
+  | 'unknown';
+
+export type CallingConventionInfo = {
+  name: CallingConventionName;
+  confidence: 'high' | 'medium' | 'low';
+  source:
+    | 'import-prototype'
+    | 'windows-x64-shadow-space'
+    | 'sysv-register-use'
+    | 'stack-cleanup'
+    | 'default-unknown';
+  evidence: string[];
+};
+
 export type FunctionModel = {
   id: string;
   name: string;
@@ -94,6 +114,8 @@ export type FunctionModel = {
   startSource: FunctionStartSource;
   endReason: FunctionEndReason;
   confidence: ConfidenceLevel;
+  /** Advisory ABI/calling-convention metadata; never a GYRE verdict input. */
+  callingConvention?: CallingConventionInfo;
   warnings: AnalysisWarning[];
 };
 

@@ -9,9 +9,11 @@ import type {
   Instruction,
   ProgramAnalysis,
   BackendImport,
+  CallingConventionInfo,
   XRef,
   XRefKind,
 } from './disassemblyModel';
+import { resolveImportPrototype } from './importPrototypes';
 
 export type DisassemblyAnalysisOptions = {
   /** Addresses known from export tables or equivalent trusted metadata. */
@@ -51,6 +53,12 @@ function formatAddress(address: number): string {
 
 function uniqueSorted(values: Iterable<number>): number[] {
   return Array.from(new Set(values)).sort((a, b) => a - b);
+}
+
+function uniqueInstructions(instructions: Instruction[]): Instruction[] {
+  const byAddress = new Map<number, Instruction>();
+  for (const instruction of instructions) byAddress.set(instruction.address, instruction);
+  return Array.from(byAddress.values()).sort((a, b) => a.address - b.address);
 }
 
 function pushReason(map: Map<number, Set<FunctionStartReason>>, address: number, reason: FunctionStartReason): void {
@@ -128,6 +136,98 @@ function mergeImportCalls(
   }
 
   return Array.from(merged.values()).sort((a, b) => (a.targetAddress ?? a.callAddress) - (b.targetAddress ?? b.callAddress));
+}
+
+function parseImmediate(value: string): number | undefined {
+  const trimmed = value.trim().toLowerCase();
+  if (/^0x[0-9a-f]+$/.test(trimmed)) return Number.parseInt(trimmed, 16);
+  if (/^\d+$/.test(trimmed)) return Number.parseInt(trimmed, 10);
+  return undefined;
+}
+
+function parseStackAllocation(operands: string): number | undefined {
+  const match = operands.match(/\brsp\s*,\s*(0x[0-9a-f]+|\d+)/i);
+  if (!match) return undefined;
+  return parseImmediate(match[1]);
+}
+
+function importNameForFunction(fnName: string, imports: Iterable<BackendImport> | undefined, startAddress: number): string | undefined {
+  const direct = Array.from(imports ?? []).find(entry => Number(entry.thunk_va) === startAddress);
+  return direct ? importDisplayName(direct) ?? fnName : fnName;
+}
+
+function inferCallingConvention(
+  fnName: string,
+  instructions: Instruction[],
+  imports: Iterable<BackendImport> | undefined,
+  startAddress: number,
+): CallingConventionInfo {
+  const evidence: string[] = [];
+  const prototype = resolveImportPrototype(importNameForFunction(fnName, imports, startAddress));
+  if (prototype?.callingConvention) {
+    const name = prototype.callingConvention === 'cdecl' ? 'cdecl' : 'windows-x64';
+    return {
+      name,
+      confidence: 'high',
+      source: 'import-prototype',
+      evidence: [`known import prototype ${prototype.name} uses ${prototype.callingConvention}`],
+    };
+  }
+
+  const first = instructions.slice(0, 8);
+  const firstOps = first.map(instruction => normalizeOperands(instruction));
+  const firstText = firstOps.join(' ; ');
+  const stackAllocations = first
+    .filter(instruction => normalizeMnemonic(instruction).startsWith('sub'))
+    .map(instruction => parseStackAllocation(normalizeOperands(instruction)))
+    .filter((amount): amount is number => typeof amount === 'number');
+  const hasWindowsShadowSpace = stackAllocations.some(amount => amount === 0x20 || amount === 0x28 || amount >= 0x20);
+  const hasWindowsArgRegisterUse = /\b(rcx|rdx|r8|r9)\b/.test(firstText);
+  const hasSysvRegisterUse = /\brdi\b/.test(firstText) || /\brsi\b/.test(firstText);
+  const retWithStackCleanup = first.some(instruction => normalizeMnemonic(instruction).startsWith('ret') && parseImmediate(normalizeOperands(instruction)) !== undefined);
+  const callerStyleStackCleanup = first.some(instruction => normalizeMnemonic(instruction) === 'add' && /\besp\s*,\s*(0x[0-9a-f]+|\d+)/i.test(normalizeOperands(instruction)));
+
+  if (hasWindowsShadowSpace) {
+    evidence.push(`early stack allocation reserves possible Windows x64 shadow space: ${stackAllocations.map(formatAddress).join(', ')}`);
+  }
+  if (hasWindowsArgRegisterUse) evidence.push('early use of Windows x64 argument registers rcx/rdx/r8/r9');
+  if (hasSysvRegisterUse) evidence.push('early use of SysV x64 argument registers rdi/rsi');
+
+  if ((hasWindowsShadowSpace || hasWindowsArgRegisterUse) && hasSysvRegisterUse) {
+    return {
+      name: 'unknown',
+      confidence: 'low',
+      source: 'default-unknown',
+      evidence: [...evidence, 'conflicting Windows x64 and SysV x64 register/stack signals; kept conservative'],
+    };
+  }
+
+  if (hasWindowsShadowSpace || hasWindowsArgRegisterUse) {
+    return {
+      name: 'windows-x64',
+      confidence: 'medium',
+      source: 'windows-x64-shadow-space',
+      evidence: evidence.length > 0 ? evidence : ['possible Windows x64 calling pattern'],
+    };
+  }
+
+  if (hasSysvRegisterUse) {
+    return {
+      name: 'sysv-x64',
+      confidence: 'medium',
+      source: 'sysv-register-use',
+      evidence,
+    };
+  }
+
+  if (retWithStackCleanup) {
+    return { name: 'stdcall', confidence: 'medium', source: 'stack-cleanup', evidence: ['callee return includes stack-byte cleanup operand'] };
+  }
+  if (callerStyleStackCleanup) {
+    return { name: 'cdecl', confidence: 'low', source: 'stack-cleanup', evidence: ['caller-style esp stack cleanup observed inside function window'] };
+  }
+
+  return { name: 'unknown', confidence: 'low', source: 'default-unknown', evidence: ['no calling-convention pattern matched'] };
 }
 
 function parseImportSymbol(symbol?: string): { importName: string; moduleName?: string } | undefined {
@@ -525,9 +625,17 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
         ? 'low'
         : 'medium';
 
+    const functionName = symbolForAddress(normalizedInstructions, candidate.address) ?? `sub_${candidate.address.toString(16).toUpperCase()}`;
+    const callingConvention = inferCallingConvention(
+      functionName,
+      uniqueInstructions([...functionInstructions, ...functionBlocks.flatMap(block => block.instructions)]),
+      options.imports,
+      candidate.address,
+    );
+
     functions.push({
       id: `function_${formatAddress(candidate.address)}`,
-      name: symbolForAddress(normalizedInstructions, candidate.address) ?? `sub_${candidate.address.toString(16).toUpperCase()}`,
+      name: functionName,
       startAddress: candidate.address,
       endAddress: end.endAddress,
       instructions: functionInstructions,
@@ -536,6 +644,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
       startSource: sourceForStartReasons(candidate.reasons),
       endReason: end.reason,
       confidence,
+      callingConvention,
       warnings: functionWarnings,
     });
   }

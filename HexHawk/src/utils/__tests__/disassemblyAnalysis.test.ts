@@ -192,4 +192,103 @@ describe('typed disassembly analysis foundation', () => {
     expect(matches[0].startReasons).toEqual(expect.arrayContaining(['known-call-target', 'call-target', 'prologue-pattern']));
   });
 
+
+  it('infers known Win32 import prototypes as high-confidence Windows x64 metadata', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0x5000, mnemonic: 'jmp', operands: '0x6000', symbol: 'KERNEL32.dll!CreateFileW', source: 'synthetic-test' },
+    ], { imports: [{ name: 'CreateFileW', dll: 'KERNEL32.dll', thunk_va: 0x5000 }] });
+
+    const fn = analysis.functions.find(candidate => candidate.startAddress === 0x5000);
+    expect(fn?.callingConvention).toMatchObject({
+      name: 'windows-x64',
+      confidence: 'high',
+      source: 'import-prototype',
+    });
+    expect(fn?.callingConvention?.evidence.join(' ')).toContain('CreateFileW');
+    expect(JSON.stringify(analysis)).not.toContain('classification');
+    expect(JSON.stringify(analysis)).not.toContain('threatScore');
+  });
+
+  it('infers Windows x64 shadow-space stack frames with medium confidence', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0xA000, mnemonic: 'push', operands: 'rbp', source: 'synthetic-test' },
+      { address: 0xA001, mnemonic: 'mov', operands: 'rbp, rsp', source: 'synthetic-test' },
+      { address: 0xA004, mnemonic: 'sub', operands: 'rsp, 0x28', source: 'synthetic-test' },
+      { address: 0xA008, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ]);
+
+    expect(analysis.functions[0]?.callingConvention).toMatchObject({
+      name: 'windows-x64',
+      confidence: 'medium',
+      source: 'windows-x64-shadow-space',
+    });
+    expect(analysis.functions[0]?.callingConvention?.evidence.join(' ')).toContain('shadow space');
+  });
+
+  it('infers SysV x64 register-use patterns with medium confidence', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0xB000, mnemonic: 'push', operands: 'rdi', source: 'synthetic-test' },
+      { address: 0xB001, mnemonic: 'push', operands: 'rsi', source: 'synthetic-test' },
+      { address: 0xB002, mnemonic: 'mov', operands: 'rax, rdi', source: 'synthetic-test' },
+      { address: 0xB005, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ]);
+
+    expect(analysis.functions[0]?.callingConvention).toMatchObject({
+      name: 'sysv-x64',
+      confidence: 'medium',
+      source: 'sysv-register-use',
+    });
+  });
+
+  it('uses an unknown low-confidence fallback when no calling-convention signal is present', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0xC000, mnemonic: 'nop', operands: '', source: 'synthetic-test' },
+      { address: 0xC001, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ]);
+
+    expect(analysis.functions[0]?.callingConvention).toMatchObject({
+      name: 'unknown',
+      confidence: 'low',
+      source: 'default-unknown',
+    });
+  });
+
+  it('keeps conflicting calling-convention signals conservative instead of high-confidence', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0xD000, mnemonic: 'push', operands: 'rdi', source: 'synthetic-test' },
+      { address: 0xD001, mnemonic: 'push', operands: 'rsi', source: 'synthetic-test' },
+      { address: 0xD002, mnemonic: 'sub', operands: 'rsp, 0x28', source: 'synthetic-test' },
+      { address: 0xD006, mnemonic: 'mov', operands: 'rcx, rdi', source: 'synthetic-test' },
+      { address: 0xD009, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ]);
+
+    expect(analysis.functions[0]?.callingConvention?.confidence).not.toBe('high');
+    expect(analysis.functions[0]?.callingConvention).toMatchObject({
+      name: 'unknown',
+      confidence: 'low',
+      source: 'default-unknown',
+    });
+    expect(analysis.functions[0]?.callingConvention?.evidence.join(' ')).toContain('conflicting');
+  });
+
+  it('preserves function-boundary metadata while adding calling-convention metadata', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0xE000, mnemonic: 'call', operands: '0xE010', source: 'synthetic-test' },
+      { address: 0xE005, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+      { address: 0xE010, mnemonic: 'push', operands: 'rbp', source: 'synthetic-test' },
+      { address: 0xE011, mnemonic: 'mov', operands: 'rbp, rsp', source: 'synthetic-test' },
+      { address: 0xE014, mnemonic: 'mov', operands: 'rcx, rdx', source: 'synthetic-test' },
+      { address: 0xE018, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ]);
+    const fn = analysis.functions.find(candidate => candidate.startAddress === 0xE010);
+
+    expect(fn).toMatchObject({
+      startSource: 'call-target',
+      endReason: 'return',
+      confidence: 'high',
+    });
+    expect(fn?.startReasons).toEqual(expect.arrayContaining(['known-call-target', 'call-target', 'prologue-pattern']));
+    expect(fn?.callingConvention?.name).toBe('windows-x64');
+  });
+
 });

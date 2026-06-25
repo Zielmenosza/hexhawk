@@ -222,4 +222,17 @@ describe('ProgramAnalysis adapter for legacy static-analysis UI', () => {
     expect(matches[0].evidence).toContain('PE import table');
   });
 
+
+  it('does not require callingConvention to be present on ProgramAnalysis functions', () => {
+    const adapter = buildProgramAnalysisAdapter(fixture, cfg);
+    const withoutConvention = {
+      ...adapter.programAnalysis,
+      functions: adapter.programAnalysis.functions.map(({ callingConvention: _callingConvention, ...fn }) => fn),
+    };
+
+    expect(() => JSON.stringify(withoutConvention.functions)).not.toThrow();
+    expect(withoutConvention.functions[0]).not.toHaveProperty('callingConvention');
+    expect(JSON.stringify(withoutConvention)).not.toContain('threatScore');
+  });
+
 });
