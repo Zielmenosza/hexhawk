@@ -24,6 +24,7 @@ const baseSnapshot = (overrides: Partial<DebugSnapshot> = {}): DebugSnapshot => 
   stepCount: 0,
   exitCode: null,
   lastEvent: 'system-breakpoint',
+  warnings: [],
   ...overrides,
 });
 
@@ -76,5 +77,84 @@ describe('DebuggerPanel call stack display', () => {
 
     expect(screen.getByText('runtime call stack — advisory evidence')).toBeInTheDocument();
     expect(screen.getByText('Call stack unavailable')).toBeInTheDocument();
+  });
+});
+
+describe('DebuggerPanel conditional breakpoints', () => {
+  beforeEach(() => {
+    vi.mocked(invoke).mockReset();
+  });
+
+  it('renders condition text and hit count for a breakpoint', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({
+      sessionId: 1,
+      arch: 'x86-64',
+      warnings: [],
+      snapshot: baseSnapshot({
+        breakpoints: [{ address: 0x401000, enabled: true, condition: 'rax == 0', hitCount: 3, lastEvaluation: 'condition true at hit 3' }],
+      }),
+    });
+
+    render(<DebuggerPanel binaryPath="C:/tmp/sample.exe" onAddressSelect={vi.fn()} onNavigateHex={vi.fn()} />);
+    fireEvent.click(screen.getByText('▶ Launch'));
+    await waitFor(() => expect(screen.getByText(/Breakpoints \(1\)/)).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Breakpoints \(1\)/));
+
+    expect(screen.getByText('if rax == 0')).toBeInTheDocument();
+    expect(screen.getByText('hits 3')).toBeInTheDocument();
+    expect(screen.getByText('condition true at hit 3')).toBeInTheDocument();
+  });
+
+  it('allows entering a condition when adding a breakpoint', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({ sessionId: 1, arch: 'x86-64', warnings: [], snapshot: baseSnapshot() });
+    vi.mocked(invoke).mockResolvedValueOnce(baseSnapshot({
+      breakpoints: [{ address: 0x401020, enabled: true, condition: 'hit_count >= 3', hitCount: 0, lastEvaluation: null }],
+    }));
+
+    render(<DebuggerPanel binaryPath="C:/tmp/sample.exe" onAddressSelect={vi.fn()} onNavigateHex={vi.fn()} />);
+    fireEvent.click(screen.getByText('▶ Launch'));
+    await waitFor(() => expect(screen.getByText(/Breakpoints \(0\)/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Breakpoints \(0\)/));
+
+    fireEvent.change(screen.getByLabelText('breakpoint address'), { target: { value: '0x401020' } });
+    fireEvent.change(screen.getByLabelText('breakpoint condition'), { target: { value: 'hit_count >= 3' } });
+    fireEvent.click(screen.getByText('Add BP'));
+
+    await waitFor(() => expect(vi.mocked(invoke)).toHaveBeenLastCalledWith('debug_set_breakpoint', {
+      sessionId: 1,
+      address: 0x401020,
+      condition: 'hit_count >= 3',
+    }));
+  });
+
+  it('renders invalid-condition warnings from snapshots', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({
+      sessionId: 1,
+      arch: 'x86-64',
+      warnings: [],
+      snapshot: baseSnapshot({ warnings: ['invalid breakpoint condition at 0x401000: unsafe text; breakpoint fired'] }),
+    });
+
+    render(<DebuggerPanel binaryPath="C:/tmp/sample.exe" onAddressSelect={vi.fn()} onNavigateHex={vi.fn()} />);
+    fireEvent.click(screen.getByText('▶ Launch'));
+
+    await waitFor(() => expect(screen.getByText(/invalid breakpoint condition/)).toBeInTheDocument());
+  });
+
+  it('renders legacy numeric breakpoints normally', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({
+      sessionId: 1,
+      arch: 'x86-64',
+      warnings: [],
+      snapshot: baseSnapshot({ breakpoints: [0x401000] }),
+    });
+
+    render(<DebuggerPanel binaryPath="C:/tmp/sample.exe" onAddressSelect={vi.fn()} onNavigateHex={vi.fn()} />);
+    fireEvent.click(screen.getByText('▶ Launch'));
+    await waitFor(() => expect(screen.getByText(/Breakpoints \(1\)/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Breakpoints \(1\)/));
+
+    expect(screen.getByText('0x0000000000401000')).toBeInTheDocument();
   });
 });

@@ -20,6 +20,7 @@ import type {
   StartDebugResult,
   DebugStatus,
 } from './DebuggerPanel';
+import { breakpointAddress } from './DebuggerPanel';
 import {
   createTimeline,
   appendStep,
@@ -775,7 +776,9 @@ const StrikeView: React.FC<StrikeViewProps> = ({
           {snapshot && snapshot.breakpoints.length > 0 && (
             <div className="stk-bp-section">
               <div className="stk-pane-title stk-pane-title--sub">Breakpoints</div>
-              {snapshot.breakpoints.map(addr => (
+              {snapshot.breakpoints.map((bp) => {
+                const addr = breakpointAddress(bp);
+                return (
                 <div
                   key={addr}
                   className={`stk-bp-row${addr === snapshot.registers.rip ? ' stk-bp-row--hit' : ''}`}
@@ -793,7 +796,8 @@ const StrikeView: React.FC<StrikeViewProps> = ({
                     ✕
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

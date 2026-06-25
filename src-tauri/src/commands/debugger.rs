@@ -63,6 +63,211 @@ pub struct CallStackFrame {
     pub symbol_name: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Breakpoint {
+    pub address: u64,
+    pub enabled: bool,
+    pub condition: Option<String>,
+    pub hit_count: u64,
+    pub last_evaluation: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CompareOp {
+    Eq,
+    Ne,
+    Lt,
+    Gt,
+    Le,
+    Ge,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ConditionValue {
+    Register(String),
+    Number(u64),
+    Memory { base: Option<String>, displacement: i64 },
+    HitCount,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BreakpointCondition {
+    left: ConditionValue,
+    op: CompareOp,
+    right: ConditionValue,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BreakpointDecision {
+    Fire,
+    Skip,
+}
+
+fn parse_u64_value(token: &str) -> Result<u64, String> {
+    let trimmed = token.trim().replace('_', "");
+    if trimmed.is_empty() {
+        return Err("empty numeric value".to_string());
+    }
+    if let Some(hex) = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X")) {
+        return u64::from_str_radix(hex, 16).map_err(|_| format!("invalid hex value '{token}'"));
+    }
+    trimmed.parse::<u64>().map_err(|_| format!("invalid decimal value '{token}'"))
+}
+
+fn supported_register(name: &str) -> Option<&'static str> {
+    match name.trim().to_ascii_lowercase().as_str() {
+        "rax" => Some("rax"), "rbx" => Some("rbx"), "rcx" => Some("rcx"), "rdx" => Some("rdx"),
+        "rsi" => Some("rsi"), "rdi" => Some("rdi"), "rsp" => Some("rsp"), "rbp" => Some("rbp"),
+        "rip" => Some("rip"), "r8" => Some("r8"), "r9" => Some("r9"), "r10" => Some("r10"),
+        "r11" => Some("r11"), "r12" => Some("r12"), "r13" => Some("r13"), "r14" => Some("r14"),
+        "r15" => Some("r15"),
+        _ => None,
+    }
+}
+
+fn parse_memory_value(inner: &str) -> Result<ConditionValue, String> {
+    let compact = inner.trim().replace(' ', "");
+    if compact.is_empty() {
+        return Err("empty memory operand".to_string());
+    }
+    if compact.starts_with("0x") || compact.chars().all(|c| c.is_ascii_digit()) {
+        return Ok(ConditionValue::Memory { base: None, displacement: parse_u64_value(&compact)? as i64 });
+    }
+    let split_at = compact[1..]
+        .find(['+', '-'])
+        .map(|idx| idx + 1);
+    let (base_raw, displacement) = if let Some(idx) = split_at {
+        let (base, rest) = compact.split_at(idx);
+        let sign = rest.chars().next().unwrap_or('+');
+        let magnitude = parse_u64_value(&rest[1..])? as i64;
+        (base, if sign == '-' { -magnitude } else { magnitude })
+    } else {
+        (compact.as_str(), 0)
+    };
+    let base = supported_register(base_raw)
+        .ok_or_else(|| format!("unsupported memory base register '{base_raw}'"))?;
+    Ok(ConditionValue::Memory { base: Some(base.to_string()), displacement })
+}
+
+fn parse_condition_value(token: &str) -> Result<ConditionValue, String> {
+    let trimmed = token.trim();
+    if trimmed.is_empty() {
+        return Err("empty condition operand".to_string());
+    }
+    if trimmed.eq_ignore_ascii_case("hit_count") {
+        return Ok(ConditionValue::HitCount);
+    }
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        return parse_memory_value(&trimmed[1..trimmed.len() - 1]);
+    }
+    if let Some(name) = supported_register(trimmed) {
+        return Ok(ConditionValue::Register(name.to_string()));
+    }
+    Ok(ConditionValue::Number(parse_u64_value(trimmed)?))
+}
+
+fn parse_breakpoint_condition(condition: &str) -> Result<BreakpointCondition, String> {
+    let condition = condition.trim();
+    if condition.is_empty() {
+        return Err("empty breakpoint condition".to_string());
+    }
+    let operators = [
+        ("==", CompareOp::Eq), ("!=", CompareOp::Ne), ("<=", CompareOp::Le),
+        (">=", CompareOp::Ge), ("<", CompareOp::Lt), (">", CompareOp::Gt),
+    ];
+    for (needle, op) in operators {
+        if let Some((left, right)) = condition.split_once(needle) {
+            if right.contains("==") || right.contains("!=") || right.contains("<=") || right.contains(">=") || right.contains('<') || right.contains('>') {
+                return Err("condition must contain exactly one comparison operator".to_string());
+            }
+            return Ok(BreakpointCondition { left: parse_condition_value(left)?, op, right: parse_condition_value(right)? });
+        }
+    }
+    Err("condition must contain one comparison operator: == != < > <= >=".to_string())
+}
+
+fn register_value(regs: &RegisterState, name: &str) -> Option<u64> {
+    match name {
+        "rax" => Some(regs.rax), "rbx" => Some(regs.rbx), "rcx" => Some(regs.rcx), "rdx" => Some(regs.rdx),
+        "rsi" => Some(regs.rsi), "rdi" => Some(regs.rdi), "rsp" => Some(regs.rsp), "rbp" => Some(regs.rbp),
+        "rip" => Some(regs.rip), "r8" => Some(regs.r8), "r9" => Some(regs.r9), "r10" => Some(regs.r10),
+        "r11" => Some(regs.r11), "r12" => Some(regs.r12), "r13" => Some(regs.r13), "r14" => Some(regs.r14),
+        "r15" => Some(regs.r15), _ => None,
+    }
+}
+
+fn eval_breakpoint_condition<F>(
+    condition: &str,
+    regs: &RegisterState,
+    hit_count: u64,
+    mut read_memory_qword: F,
+) -> Result<bool, String>
+where
+    F: FnMut(u64) -> Result<u64, String>,
+{
+    let parsed = parse_breakpoint_condition(condition)?;
+    let mut resolve = |value: ConditionValue| -> Result<u64, String> {
+        match value {
+            ConditionValue::Number(v) => Ok(v),
+            ConditionValue::HitCount => Ok(hit_count),
+            ConditionValue::Register(name) => register_value(regs, &name).ok_or_else(|| format!("register '{name}' unavailable")),
+            ConditionValue::Memory { base, displacement } => {
+                let base_value = match base {
+                    Some(name) => register_value(regs, &name).ok_or_else(|| format!("register '{name}' unavailable"))?,
+                    None => 0,
+                };
+                let addr = if displacement < 0 {
+                    base_value.checked_sub(displacement.unsigned_abs()).ok_or_else(|| "memory address underflow".to_string())?
+                } else {
+                    base_value.checked_add(displacement as u64).ok_or_else(|| "memory address overflow".to_string())?
+                };
+                read_memory_qword(addr)
+            }
+        }
+    };
+    let left = resolve(parsed.left)?;
+    let right = resolve(parsed.right)?;
+    Ok(match parsed.op {
+        CompareOp::Eq => left == right,
+        CompareOp::Ne => left != right,
+        CompareOp::Lt => left < right,
+        CompareOp::Gt => left > right,
+        CompareOp::Le => left <= right,
+        CompareOp::Ge => left >= right,
+    })
+}
+
+fn evaluate_breakpoint_hit<F>(bp: &mut Breakpoint, regs: &RegisterState, read_memory_qword: F) -> (BreakpointDecision, Option<String>)
+where
+    F: FnMut(u64) -> Result<u64, String>,
+{
+    bp.hit_count = bp.hit_count.saturating_add(1);
+    if !bp.enabled {
+        bp.last_evaluation = Some("disabled".to_string());
+        return (BreakpointDecision::Skip, None);
+    }
+    let Some(condition) = bp.condition.as_deref().map(str::trim).filter(|c| !c.is_empty()) else {
+        bp.last_evaluation = Some("unconditional".to_string());
+        return (BreakpointDecision::Fire, None);
+    };
+    match eval_breakpoint_condition(condition, regs, bp.hit_count, read_memory_qword) {
+        Ok(true) => {
+            bp.last_evaluation = Some(format!("condition true at hit {}", bp.hit_count));
+            (BreakpointDecision::Fire, None)
+        }
+        Ok(false) => {
+            bp.last_evaluation = Some(format!("condition false at hit {}", bp.hit_count));
+            (BreakpointDecision::Skip, None)
+        }
+        Err(e) => {
+            let warning = format!("invalid breakpoint condition at {:#x}: {}; breakpoint fired", bp.address, e);
+            bp.last_evaluation = Some(warning.clone());
+            (BreakpointDecision::Fire, Some(warning))
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DebugSnapshot {
@@ -72,10 +277,11 @@ pub struct DebugSnapshot {
     pub stack: Vec<u64>,        // ~16 qwords at RSP
     /// Runtime call stack — advisory evidence only. Empty when unavailable.
     pub call_stack: Vec<CallStackFrame>,
-    pub breakpoints: Vec<u64>,
+    pub breakpoints: Vec<Breakpoint>,
     pub step_count: u32,
     pub exit_code: Option<i32>,
     pub last_event: String,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -188,7 +394,7 @@ mod win {
         StepOver,
         StepOut,
         Continue,
-        SetBreakpoint(u64),
+        SetBreakpoint(u64, Option<String>),
         RemoveBreakpoint(u64),
         Stop,
         Detach,
@@ -278,6 +484,19 @@ mod win {
             &mut read,
         );
         if ok != FALSE && read == 1 { Some(byte) } else { None }
+    }
+
+    unsafe fn read_qword(process: HANDLE, addr: u64) -> Option<u64> {
+        let mut value: u64 = 0;
+        let mut read = 0usize;
+        let ok = ReadProcessMemory(
+            process,
+            addr as *const _,
+            &mut value as *mut u64 as *mut _,
+            std::mem::size_of::<u64>(),
+            &mut read,
+        );
+        if ok != FALSE && read == std::mem::size_of::<u64>() { Some(value) } else { None }
     }
 
     // Write 1 byte to a process
@@ -413,7 +632,7 @@ mod win {
         status: DebugStatus,
         ctx: &CONTEXT,
         process: HANDLE,
-        bp_addrs: &[u64],
+        breakpoints: &[Breakpoint],
         step_count: u32,
         exit_code: Option<i32>,
         last_event: &str,
@@ -427,10 +646,11 @@ mod win {
             registers: regs,
             stack,
             call_stack,
-            breakpoints: bp_addrs.to_vec(),
+            breakpoints: breakpoints.to_vec(),
             step_count,
             exit_code,
             last_event: last_event.to_string(),
+            warnings: vec![],
         }
     }
 
@@ -462,7 +682,9 @@ mod win {
         main_thread:       HANDLE,
         thread_handles:    HashMap<u32, HANDLE>,
         bp_originals:      HashMap<u64, u8>,
-        user_bps:          std::collections::HashSet<u64>,
+        user_bps:          HashMap<u64, Breakpoint>,
+        pending_rearm:     Option<(u64, u8)>,
+        snapshot_warnings: Vec<String>,
         step_count:        u32,
         exit_code:         Option<i32>,
         current_ctx:       CONTEXT,
@@ -496,12 +718,76 @@ mod win {
         }
 
         fn make_current_snapshot(&self) -> DebugSnapshot {
-            let bp_list: Vec<u64> = self.user_bps.iter().copied().collect();
-            make_snapshot(
+            let bp_list: Vec<Breakpoint> = self.user_bps.values().cloned().collect();
+            let mut snap = make_snapshot(
                 self.session_id, self.status.clone(), &self.current_ctx,
                 self.process, &bp_list, self.step_count, self.exit_code,
                 &self.last_event_str,
-            )
+            );
+            snap.warnings.extend(self.snapshot_warnings.clone());
+            snap
+        }
+
+        fn complete_pending_rearm(&mut self) -> Result<bool, String> {
+            let Some((addr, orig)) = self.pending_rearm.take() else { return Ok(false); };
+            let mut ctx = self.current_ctx;
+            ctx.EFlags |= 0x100;
+            unsafe { set_ctx(self.current_thread, &ctx); }
+            unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
+            self.wait_for_single_step_after_breakpoint(addr, orig)?;
+            Ok(true)
+        }
+
+        fn wait_for_single_step_after_breakpoint(&mut self, addr: u64, orig: u8) -> Result<(), String> {
+            let timeout_ms = 10_000u32;
+            loop {
+                let mut evt: DEBUG_EVENT = unsafe { std::mem::zeroed() };
+                let ok = unsafe { WaitForDebugEvent(&mut evt, timeout_ms) };
+                if ok == FALSE {
+                    return Err("WaitForDebugEvent timed out while stepping over breakpoint".to_string());
+                }
+                let tid = evt.dwThreadId;
+                let thread = self.thread_handles.get(&tid).copied().unwrap_or(self.main_thread);
+                match evt.dwDebugEventCode {
+                    EXCEPTION_DEBUG_EVENT => {
+                        let exc = unsafe { &evt.u.Exception.ExceptionRecord };
+                        if exc.ExceptionCode == EXCEPTION_SINGLE_STEP {
+                            if self.user_bps.contains_key(&addr) {
+                                self.bp_originals.insert(addr, orig);
+                                unsafe { write_byte(self.process, addr, 0xCC); }
+                            }
+                            let ctx = unsafe { get_ctx(thread) }.ok_or_else(|| "GetThreadContext failed after breakpoint step".to_string())?;
+                            self.current_ctx = ctx;
+                            self.current_thread = thread;
+                            self.status = DebugStatus::Paused;
+                            self.last_event_str = "single-step/breakpoint-rearm".to_string();
+                            self.pending_event_pid = evt.dwProcessId;
+                            self.pending_event_tid = tid;
+                            return Ok(());
+                        }
+                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_EXCEPTION_NOT_HANDLED); }
+                    }
+                    EXIT_PROCESS_DEBUG_EVENT => {
+                        let info = unsafe { &evt.u.ExitProcess };
+                        self.exit_code = Some(info.dwExitCode as i32);
+                        self.status = DebugStatus::Exited;
+                        self.last_event_str = "exited".to_string();
+                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                        return Ok(());
+                    }
+                    LOAD_DLL_DEBUG_EVENT => {
+                        let info = unsafe { &evt.u.LoadDll };
+                        if info.hFile != INVALID_HANDLE_VALUE && info.hFile != 0 { unsafe { CloseHandle(info.hFile); } }
+                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                    }
+                    CREATE_THREAD_DEBUG_EVENT => {
+                        let info = unsafe { &evt.u.CreateThread };
+                        self.thread_handles.insert(tid, info.hThread);
+                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                    }
+                    _ => unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); },
+                }
+            }
         }
 
         /// Wait for the next relevant stop event. ContinueDebugEvent must already
@@ -538,18 +824,45 @@ mod win {
                             if let Some(orig) = self.bp_originals.remove(&addr) {
                                 unsafe { write_byte(self.process, addr, orig); }
                                 if let Some(mut ctx) = unsafe { get_ctx(thread) } {
-                                    ctx.Rip -= 1;
+                                    ctx.Rip = ctx.Rip.saturating_sub(1);
                                     unsafe { set_ctx(thread, &ctx); }
-                                    if self.user_bps.contains(&addr) {
-                                        self.bp_originals.insert(addr, orig);
-                                    }
-                                    self.current_ctx       = ctx;
-                                    self.current_thread    = thread;
-                                    self.status            = DebugStatus::Paused;
-                                    self.last_event_str    = format!("breakpoint@{:#x}", addr);
+                                    self.current_ctx = ctx;
+                                    self.current_thread = thread;
                                     self.pending_event_pid = evt.dwProcessId;
                                     self.pending_event_tid = tid;
-                                    return Ok(());
+
+                                    let mut should_break = true;
+                                    let mut event = format!("breakpoint@{:#x}", addr);
+                                    if let Some(bp) = self.user_bps.get_mut(&addr) {
+                                        let regs = ctx_to_regs(&ctx);
+                                        let process = self.process;
+                                        let (decision, warning) = evaluate_breakpoint_hit(bp, &regs, |memory_addr| {
+                                            unsafe { read_qword(process, memory_addr) }
+                                                .ok_or_else(|| format!("memory read failed at {memory_addr:#x}"))
+                                        });
+                                        if let Some(warning) = warning {
+                                            self.snapshot_warnings.push(warning);
+                                        }
+                                        should_break = decision == BreakpointDecision::Fire;
+                                        event = match bp.condition.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
+                                            Some(condition) => format!("breakpoint@{addr:#x}; condition {condition}; {}", bp.last_evaluation.clone().unwrap_or_default()),
+                                            None => format!("breakpoint@{addr:#x}"),
+                                        };
+                                    }
+
+                                    if should_break {
+                                        if self.user_bps.contains_key(&addr) {
+                                            self.pending_rearm = Some((addr, orig));
+                                        }
+                                        self.status = DebugStatus::Paused;
+                                        self.last_event_str = event;
+                                        return Ok(());
+                                    }
+
+                                    // False condition: execute the original instruction once, re-arm, then keep running.
+                                    self.wait_for_single_step_after_breakpoint(addr, orig)?;
+                                    unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
+                                    continue;
                                 }
                             }
                             // Unknown/system breakpoint — continue
@@ -599,6 +912,12 @@ mod win {
                     }
 
                     DebugOp::Step => {
+                        if self.complete_pending_rearm().unwrap_or(false) {
+                            let snap = self.make_current_snapshot();
+                            self.emit_snapshot(&snap);
+                            let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
+                            continue;
+                        }
                         if self.status == DebugStatus::Exited {
                             let snap = self.make_current_snapshot();
                             let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
@@ -623,6 +942,10 @@ mod win {
                     }
 
                     DebugOp::StepOver => {
+                        if let Err(e) = self.complete_pending_rearm() {
+                            let _ = cmd.resp.send(Err(e));
+                            continue;
+                        }
                         if self.status == DebugStatus::Exited {
                             let snap = self.make_current_snapshot();
                             let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
@@ -641,7 +964,7 @@ mod win {
                         if let Some(call_len) = maybe_call_len {
                             // Step over: place temp INT3 at the return address (RIP + call_len)
                             let over_addr    = rip + call_len as u64;
-                            let had_user_bp  = self.user_bps.contains(&over_addr);
+                            let had_user_bp  = self.user_bps.contains_key(&over_addr);
                             if !had_user_bp {
                                 if let Some(orig) = unsafe { read_byte(self.process, over_addr) } {
                                     self.bp_originals.entry(over_addr).or_insert(orig);
@@ -652,7 +975,7 @@ mod win {
                             match self.wait_for_stop() {
                                 Ok(()) => {
                                     // Remove temp BP if still present and not a user BP
-                                    if !had_user_bp && !self.user_bps.contains(&over_addr) {
+                                    if !had_user_bp && !self.user_bps.contains_key(&over_addr) {
                                         if let Some(orig) = self.bp_originals.remove(&over_addr) {
                                             unsafe { write_byte(self.process, over_addr, orig); }
                                         }
@@ -716,7 +1039,7 @@ mod win {
                             continue;
                         }
                         let ret_addr = u64::from_le_bytes(ret_addr_bytes);
-                        let had_user_bp = self.user_bps.contains(&ret_addr);
+                        let had_user_bp = self.user_bps.contains_key(&ret_addr);
                         if !had_user_bp {
                             if let Some(orig) = unsafe { read_byte(self.process, ret_addr) } {
                                 self.bp_originals.entry(ret_addr).or_insert(orig);
@@ -726,7 +1049,7 @@ mod win {
                         unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
                         match self.wait_for_stop() {
                             Ok(()) => {
-                                if !had_user_bp && !self.user_bps.contains(&ret_addr) {
+                                if !had_user_bp && !self.user_bps.contains_key(&ret_addr) {
                                     if let Some(orig) = self.bp_originals.remove(&ret_addr) {
                                         unsafe { write_byte(self.process, ret_addr, orig); }
                                     }
@@ -749,6 +1072,10 @@ mod win {
                     }
 
                     DebugOp::Continue => {
+                        if let Err(e) = self.complete_pending_rearm() {
+                            let _ = cmd.resp.send(Err(e));
+                            continue;
+                        }
                         if self.status == DebugStatus::Exited {
                             let snap = self.make_current_snapshot();
                             let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
@@ -769,11 +1096,19 @@ mod win {
                         }
                     }
 
-                    DebugOp::SetBreakpoint(addr) => {
-                        self.user_bps.insert(addr);
-                        if let Some(orig) = unsafe { read_byte(self.process, addr) } {
-                            self.bp_originals.insert(addr, orig);
-                            unsafe { write_byte(self.process, addr, 0xCC); }
+                    DebugOp::SetBreakpoint(addr, condition) => {
+                        self.user_bps.insert(addr, Breakpoint {
+                            address: addr,
+                            enabled: true,
+                            condition: condition.filter(|c| !c.trim().is_empty()),
+                            hit_count: 0,
+                            last_evaluation: None,
+                        });
+                        if self.pending_rearm.map(|(pending, _)| pending) != Some(addr) {
+                            if let Some(orig) = unsafe { read_byte(self.process, addr) } {
+                                self.bp_originals.insert(addr, orig);
+                                unsafe { write_byte(self.process, addr, 0xCC); }
+                            }
                         }
                         let snap = self.make_current_snapshot();
                         let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
@@ -781,6 +1116,9 @@ mod win {
 
                     DebugOp::RemoveBreakpoint(addr) => {
                         self.user_bps.remove(&addr);
+                        if self.pending_rearm.map(|(pending, _)| pending) == Some(addr) {
+                            self.pending_rearm = None;
+                        }
                         if let Some(orig) = self.bp_originals.remove(&addr) {
                             unsafe { write_byte(self.process, addr, orig); }
                         }
@@ -896,7 +1234,7 @@ mod win {
         thread_handles.insert(pi.dwThreadId, main_thread);
 
         let bp_originals: HashMap<u64, u8>              = HashMap::new();
-        let user_bps:     std::collections::HashSet<u64> = std::collections::HashSet::new();
+        let user_bps:     HashMap<u64, Breakpoint> = HashMap::new();
         let step_count  = 0u32;
         let exit_code: Option<i32> = None;
         let mut system_bp_hit = false;
@@ -955,6 +1293,7 @@ mod win {
                         step_count: 0,
                         exit_code: Some(code),
                         last_event: "exit".to_string(),
+                        warnings: vec!["Process exited before system breakpoint".to_string()],
                     };
                     let _ = initial_tx.send(Ok(StartDebugResult {
                         session_id,
@@ -974,7 +1313,7 @@ mod win {
         };
 
         // Send initial state to caller
-        let bp_list: Vec<u64> = user_bps.iter().copied().collect();
+        let bp_list: Vec<Breakpoint> = user_bps.values().cloned().collect();
         let initial_snapshot = make_snapshot(
             session_id, DebugStatus::Paused, &initial_ctx, process,
             &bp_list, 0, None, "system-breakpoint",
@@ -993,6 +1332,8 @@ mod win {
             thread_handles,
             bp_originals,
             user_bps,
+            pending_rearm: None,
+            snapshot_warnings: vec![],
             step_count,
             exit_code,
             current_ctx:       initial_ctx,
@@ -1046,7 +1387,7 @@ mod win {
         let mut thread_handles: HashMap<u32, HANDLE> = HashMap::new();
         let mut main_thread: HANDLE = 0;
         let bp_originals: HashMap<u64, u8>              = HashMap::new();
-        let user_bps:     std::collections::HashSet<u64> = std::collections::HashSet::new();
+        let user_bps:     HashMap<u64, Breakpoint> = HashMap::new();
         let step_count  = 0u32;
         let exit_code: Option<i32> = None;
 
@@ -1114,7 +1455,7 @@ mod win {
             }
         };
 
-        let bp_list: Vec<u64> = user_bps.iter().copied().collect();
+        let bp_list: Vec<Breakpoint> = user_bps.values().cloned().collect();
         let initial_snapshot = make_snapshot(
             session_id, DebugStatus::Paused, &initial_ctx, process,
             &bp_list, 0, None, "attach-breakpoint",
@@ -1133,6 +1474,8 @@ mod win {
             thread_handles,
             bp_originals,
             user_bps,
+            pending_rearm: None,
+            snapshot_warnings: vec![],
             step_count,
             exit_code,
             current_ctx:       initial_ctx,
@@ -1219,7 +1562,7 @@ mod linux {
         StepOver,
         StepOut,
         Continue,
-        SetBreakpoint(u64),
+        SetBreakpoint(u64, Option<String>),
         RemoveBreakpoint(u64),
         Stop,
         Detach,
@@ -1438,7 +1781,7 @@ mod linux {
                 }
             }
 
-            DebugOp::SetBreakpoint(addr) => {
+            DebugOp::SetBreakpoint(addr, condition) => {
                 // Read original byte and write 0xCC (INT 3)
                 let orig = ptrace::read(pid, addr as *mut _)
                     .map_err(|e| format!("read for bp: {}", e))?;
@@ -1531,6 +1874,7 @@ mod linux {
             step_count,
             exit_code,
             last_event: last_event.to_string(),
+            warnings: vec![],
         }
     }
 
@@ -1553,6 +1897,7 @@ mod linux {
             step_count,
             exit_code,
             last_event: last_event.to_string(),
+            warnings: vec![],
         }
     }
 
@@ -1697,7 +2042,7 @@ mod macos {
         StepOver,
         StepOut,
         Continue,
-        SetBreakpoint(u64),
+        SetBreakpoint(u64, Option<String>),
         RemoveBreakpoint(u64),
         Stop,
         Detach,
@@ -1954,7 +2299,7 @@ mod macos {
                 unsafe { libc::ptrace(libc::PT_DETACH, sess.pid, std::ptr::null_mut(), 0); }
                 Ok(DebugResponse::Stopped)
             }
-            DebugOp::SetBreakpoint(_) | DebugOp::RemoveBreakpoint(_) => {
+            DebugOp::SetBreakpoint(_, _) | DebugOp::RemoveBreakpoint(_) => {
                 // Breakpoint management uses the same INT3 approach as Linux
                 Ok(DebugResponse::Snapshot(sess.snapshot(DebugStatus::Paused, "breakpoint_set")))
             }
@@ -2161,12 +2506,12 @@ pub async fn debug_continue(session_id: u32) -> Result<DebugSnapshot, String> {
 }
 
 #[tauri::command]
-pub async fn debug_set_breakpoint(session_id: u32, address: u64) -> Result<DebugSnapshot, String> {
+pub async fn debug_set_breakpoint(session_id: u32, address: u64, condition: Option<String>) -> Result<DebugSnapshot, String> {
     snap_cmd!(
         session_id,
-        win::DebugOp::SetBreakpoint(address),
-        linux::DebugOp::SetBreakpoint(address),
-        macos::DebugOp::SetBreakpoint(address)
+        win::DebugOp::SetBreakpoint(address, condition.clone()),
+        linux::DebugOp::SetBreakpoint(address, condition.clone()),
+        macos::DebugOp::SetBreakpoint(address, condition)
     )
 }
 
@@ -2389,10 +2734,17 @@ mod tests {
             registers: RegisterState::default(),
             stack: vec![0xDEAD_BEEF_u64],
             call_stack: vec![],
-            breakpoints: vec![0x0040_1000_u64],
+            breakpoints: vec![Breakpoint {
+                address: 0x0040_1000_u64,
+                enabled: true,
+                condition: None,
+                hit_count: 0,
+                last_evaluation: None,
+            }],
             step_count: 3,
             exit_code: None,
             last_event: "single-step".to_string(),
+            warnings: vec![],
         };
         let json = serde_json::to_string(&snap).unwrap();
         // Tauri v2 frontend expects camelCase keys
@@ -2416,6 +2768,7 @@ mod tests {
             step_count: 0,
             exit_code: None,
             last_event: "state".to_string(),
+            warnings: vec![],
         };
         let json = serde_json::to_value(&snap).unwrap();
         assert_eq!(json["callStack"].as_array().unwrap().len(), 0);
@@ -2439,6 +2792,7 @@ mod tests {
             step_count: 0,
             exit_code: None,
             last_event: "state".to_string(),
+            warnings: vec![],
         };
         let json = serde_json::to_string(&snap).unwrap();
         assert!(json.contains("\"returnAddress\":4198400"));
@@ -2458,6 +2812,7 @@ mod tests {
             step_count: 0,
             exit_code: None,
             last_event: "starting".to_string(),
+            warnings: vec![],
         };
         let result = StartDebugResult {
             session_id: 1,
@@ -2507,6 +2862,83 @@ mod tests {
         let args = Some(vec!["--flag".to_string(), "value".to_string()]);
         let out = sanitize_debug_args(args).expect("valid args should pass");
         assert_eq!(out, vec!["--flag".to_string(), "value".to_string()]);
+    }
+
+
+    #[test]
+    fn parser_accepts_register_comparison() {
+        let parsed = parse_breakpoint_condition("rax == 0").expect("register comparison should parse");
+        assert_eq!(parsed.left, ConditionValue::Register("rax".to_string()));
+        assert_eq!(parsed.op, CompareOp::Eq);
+        assert_eq!(parsed.right, ConditionValue::Number(0));
+    }
+
+    #[test]
+    fn parser_accepts_register_relative_memory_comparison() {
+        let parsed = parse_breakpoint_condition("[rsp + 0x20] == 0x401000").expect("memory comparison should parse");
+        assert_eq!(parsed.left, ConditionValue::Memory { base: Some("rsp".to_string()), displacement: 0x20 });
+        assert_eq!(parsed.op, CompareOp::Eq);
+        assert_eq!(parsed.right, ConditionValue::Number(0x401000));
+    }
+
+    #[test]
+    fn parser_accepts_hit_count_comparison() {
+        let parsed = parse_breakpoint_condition("hit_count >= 3").expect("hit count comparison should parse");
+        assert_eq!(parsed.left, ConditionValue::HitCount);
+        assert_eq!(parsed.op, CompareOp::Ge);
+        assert_eq!(parsed.right, ConditionValue::Number(3));
+    }
+
+    #[test]
+    fn parser_rejects_unsafe_free_form_text() {
+        assert!(parse_breakpoint_condition("system('calc')").is_err());
+        assert!(parse_breakpoint_condition("rax == 0; shell").is_err());
+        assert!(parse_breakpoint_condition("rax + rcx").is_err());
+    }
+
+    #[test]
+    fn register_condition_fires_when_true_and_skips_when_false() {
+        let regs = RegisterState { rax: 0, ..RegisterState::default() };
+        assert!(eval_breakpoint_condition("rax == 0", &regs, 1, |_| Ok(0)).unwrap());
+        let regs = RegisterState { rax: 7, ..RegisterState::default() };
+        assert!(!eval_breakpoint_condition("rax == 0", &regs, 1, |_| Ok(0)).unwrap());
+    }
+
+    #[test]
+    fn hit_count_condition_skips_until_threshold() {
+        let regs = RegisterState::default();
+        assert!(!eval_breakpoint_condition("hit_count >= 3", &regs, 1, |_| Ok(0)).unwrap());
+        assert!(!eval_breakpoint_condition("hit_count >= 3", &regs, 2, |_| Ok(0)).unwrap());
+        assert!(eval_breakpoint_condition("hit_count >= 3", &regs, 3, |_| Ok(0)).unwrap());
+    }
+
+    #[test]
+    fn invalid_condition_fails_open_and_records_warning() {
+        let regs = RegisterState::default();
+        let mut bp = Breakpoint { address: 0x401000, enabled: true, condition: Some("not safe text".to_string()), hit_count: 0, last_evaluation: None };
+        let (decision, warning) = evaluate_breakpoint_hit(&mut bp, &regs, |_| Ok(0));
+        assert_eq!(decision, BreakpointDecision::Fire);
+        assert!(warning.expect("warning expected").contains("invalid breakpoint condition"));
+    }
+
+    #[test]
+    fn memory_read_failure_fails_open_and_records_warning() {
+        let regs = RegisterState { rsp: 0x700000, ..RegisterState::default() };
+        let mut bp = Breakpoint { address: 0x401000, enabled: true, condition: Some("[rsp + 0x20] == 0x401000".to_string()), hit_count: 0, last_evaluation: None };
+        let (decision, warning) = evaluate_breakpoint_hit(&mut bp, &regs, |_| Err("read failed".to_string()));
+        assert_eq!(decision, BreakpointDecision::Fire);
+        assert!(warning.expect("warning expected").contains("breakpoint fired"));
+    }
+
+    #[test]
+    fn false_condition_returns_skip_for_safe_step_over_rearm_path() {
+        let regs = RegisterState { rax: 1, ..RegisterState::default() };
+        let mut bp = Breakpoint { address: 0x401000, enabled: true, condition: Some("rax == 0".to_string()), hit_count: 0, last_evaluation: None };
+        let (decision, warning) = evaluate_breakpoint_hit(&mut bp, &regs, |_| Ok(0));
+        assert_eq!(decision, BreakpointDecision::Skip);
+        assert!(warning.is_none());
+        assert_eq!(bp.hit_count, 1);
+        assert!(bp.last_evaluation.unwrap().contains("condition false"));
     }
 
     // ctx_to_regs tests require the Windows CONTEXT struct — Windows-only

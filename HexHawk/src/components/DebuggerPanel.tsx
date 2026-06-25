@@ -36,16 +36,33 @@ export interface CallStackFrame {
   symbolName?: string | null;
 }
 
+export interface BreakpointInfo {
+  address: number;
+  enabled: boolean;
+  condition?: string | null;
+  hitCount: number;
+  lastEvaluation?: string | null;
+}
+
+export type Breakpoint = number | BreakpointInfo;
+
+export const breakpointAddress = (bp: Breakpoint): number =>
+  typeof bp === 'number' ? bp : bp.address;
+
+const breakpointInfo = (bp: Breakpoint): BreakpointInfo | null =>
+  typeof bp === 'number' ? null : bp;
+
 export interface DebugSnapshot {
   sessionId: number;
   status: DebugStatus;
   registers: RegisterState;
   stack: number[];
   callStack?: CallStackFrame[];
-  breakpoints: number[];
+  breakpoints: Breakpoint[];
   stepCount: number;
   exitCode: number | null;
   lastEvent: string;
+  warnings?: string[];
 }
 
 export interface StartDebugResult {
@@ -185,7 +202,7 @@ const StackView: React.FC<StackViewProps> = ({ stack, rsp, onNavigate }) => (
 );
 
 interface BreakpointListProps {
-  breakpoints: number[];
+  breakpoints: Breakpoint[];
   currentRip: number;
   onRemove: (addr: number) => void;
   onNavigate: (addr: number) => void;
@@ -198,28 +215,35 @@ const BreakpointList: React.FC<BreakpointListProps> = ({
     {breakpoints.length === 0 ? (
       <div className="dbg-empty">No breakpoints set</div>
     ) : (
-      breakpoints.map((addr) => (
-        <div
-          key={addr}
-          className={`dbg-bp-row${addr === currentRip ? ' dbg-bp-row--hit' : ''}`}
-        >
-          <span
-            className="dbg-bp-addr"
-            onClick={() => onNavigate(addr)}
-            title="Navigate to breakpoint"
+      breakpoints.map((bp) => {
+        const addr = breakpointAddress(bp);
+        const info = breakpointInfo(bp);
+        return (
+          <div
+            key={addr}
+            className={`dbg-bp-row${addr === currentRip ? ' dbg-bp-row--hit' : ''}`}
           >
-            {hex(addr)}
-          </span>
-          {addr === currentRip && <span className="dbg-bp-badge">● HIT</span>}
-          <button
-            className="dbg-bp-remove"
-            onClick={() => onRemove(addr)}
-            title="Remove breakpoint"
-          >
-            ✕
-          </button>
-        </div>
-      ))
+            <span
+              className="dbg-bp-addr"
+              onClick={() => onNavigate(addr)}
+              title="Navigate to breakpoint"
+            >
+              {hex(addr)}
+            </span>
+            {info?.condition && <span className="dbg-bp-cond" title="Runtime debugger control condition">if {info.condition}</span>}
+            {info && <span className="dbg-bp-hit-count">hits {info.hitCount}</span>}
+            {info?.lastEvaluation && <span className="dbg-bp-eval">{info.lastEvaluation}</span>}
+            {addr === currentRip && <span className="dbg-bp-badge">● HIT</span>}
+            <button
+              className="dbg-bp-remove"
+              onClick={() => onRemove(addr)}
+              title="Remove breakpoint"
+            >
+              ✕
+            </button>
+          </div>
+        );
+      })
     )}
   </div>
 );
@@ -302,6 +326,7 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [newBpInput, setNewBpInput] = useState('');
+  const [newBpCondition, setNewBpCondition] = useState('');
   const [memoryBytes, setMemoryBytes] = useState<number[] | null>(null);
   const [activeSection, setActiveSection] = useState<'regs' | 'stack' | 'memory' | 'bps'>('regs');
   const bpInputRef = useRef<HTMLInputElement>(null);
@@ -339,7 +364,7 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
       });
       setSessionId(result.sessionId);
       applySnapshot(result.snapshot);
-      setWarnings(result.warnings);
+      setWarnings([...result.warnings, ...(result.snapshot.warnings ?? [])]);
       setMemoryBytes(null);
     });
   };
@@ -349,6 +374,7 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
     await withLoading(async () => {
       const snap = await invoke<DebugSnapshot>('debug_step', { sessionId });
       applySnapshot(snap);
+      setWarnings((existing) => [...existing, ...(snap.warnings ?? [])]);
       setMemoryBytes(null);
     });
   };
@@ -358,6 +384,7 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
     await withLoading(async () => {
       const snap = await invoke<DebugSnapshot>('debug_continue', { sessionId });
       applySnapshot(snap);
+      setWarnings((existing) => [...existing, ...(snap.warnings ?? [])]);
       setMemoryBytes(null);
     });
   };
@@ -384,10 +411,13 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
       setError(String(e));
       return;
     }
+    const condition = newBpCondition.trim() || null;
     setNewBpInput('');
+    setNewBpCondition('');
     await withLoading(async () => {
-      const snap = await invoke<DebugSnapshot>('debug_set_breakpoint', { sessionId, address: addr });
+      const snap = await invoke<DebugSnapshot>('debug_set_breakpoint', { sessionId, address: addr, condition });
       applySnapshot(snap);
+      setWarnings((existing) => [...existing, ...(snap.warnings ?? [])]);
     });
   };
 
@@ -611,8 +641,18 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
                     value={newBpInput}
                     onChange={(e) => setNewBpInput(e.target.value)}
                     placeholder="0x4012a0 or decimal"
+                    aria-label="breakpoint address"
                     onKeyDown={(e) => e.key === 'Enter' && handleAddBreakpoint()}
                   />
+                  <input
+                    className="dbg-input"
+                    value={newBpCondition}
+                    onChange={(e) => setNewBpCondition(e.target.value)}
+                    placeholder="optional condition: rax == 0, [rsp + 0x20] != 0, hit_count >= 3"
+                    aria-label="breakpoint condition"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddBreakpoint()}
+                  />
+                  <span className="dbg-note">Conditions control debugger pausing only, not verdict logic.</span>
                   <button
                     className="dbg-btn dbg-btn--primary"
                     onClick={handleAddBreakpoint}
