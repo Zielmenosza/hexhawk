@@ -64,6 +64,26 @@ function warning(kind: AnalysisWarning['kind'], message: string, address?: numbe
   return { kind, message, address, severity: kind === 'empty-input' ? 'info' : 'warning' };
 }
 
+function symbolForAddress(instructions: Instruction[], address: number): string | undefined {
+  return instructions.find(instruction => instruction.address === address)?.symbol;
+}
+
+function parseImportSymbol(symbol?: string): { importName: string; moduleName?: string } | undefined {
+  if (!symbol) return undefined;
+  const normalized = symbol.trim();
+  if (!normalized) return undefined;
+
+  const moduleQualified = normalized.match(/^([A-Za-z0-9_.-]+)!(.+)$/);
+  if (moduleQualified) {
+    return { moduleName: moduleQualified[1], importName: moduleQualified[2].replace(/^__imp_/, '') };
+  }
+
+  const importPrefixed = normalized.match(/^(?:__imp_|imp_|import[:_])(.+)$/i);
+  if (importPrefixed) return { importName: importPrefixed[1] };
+
+  return undefined;
+}
+
 function isReturn(mnemonic: string): boolean {
   return mnemonic === 'ret' || mnemonic === 'retq' || mnemonic === 'retn';
 }
@@ -343,7 +363,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
 
     functions.push({
       id: `function_${formatAddress(candidate.address)}`,
-      name: `sub_${candidate.address.toString(16).toUpperCase()}`,
+      name: symbolForAddress(normalizedInstructions, candidate.address) ?? `sub_${candidate.address.toString(16).toUpperCase()}`,
       startAddress: candidate.address,
       endAddress: end.endAddress,
       instructions: functionInstructions,
@@ -360,6 +380,20 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
   const callGraphEdges = xrefs
     .filter(xref => xref.kind === 'call' && functionStarts.has(xref.to))
     .map(xref => ({ from: containingFunction(functions, xref.from)?.startAddress ?? xref.from, to: xref.to, callsite: xref.from, confidence: xref.confidence }));
+  const importCalls = xrefs
+    .filter(xref => xref.kind === 'call')
+    .flatMap(xref => {
+      const parsed = parseImportSymbol(symbolForAddress(normalizedInstructions, xref.to));
+      if (!parsed) return [];
+      return [{
+        callAddress: xref.from,
+        targetAddress: xref.to,
+        importName: parsed.importName,
+        moduleName: parsed.moduleName,
+        confidence: xref.confidence,
+        evidence: `direct call target symbol ${parsed.moduleName ? `${parsed.moduleName}!` : ''}${parsed.importName}`,
+      }];
+    });
 
   return {
     schema: 'hexhawk.disassembly_program.v1',
@@ -369,7 +403,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
     functions,
     basicBlocks,
     xrefs,
-    importCalls: [],
+    importCalls,
     dataReferences: [],
     stringReferences: [],
     jumpTableCandidates: [],

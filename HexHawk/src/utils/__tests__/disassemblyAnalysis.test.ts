@@ -59,6 +59,29 @@ describe('typed disassembly analysis foundation', () => {
     expect(xrefs).toContainEqual(expect.objectContaining({ kind: 'jump', from: 0x1015, to: 0x101c, confidence: 'high' }));
   });
 
+  it('uses trusted symbols for function names and direct import call evidence without verdict authority', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0x4000, mnemonic: 'push', operands: 'rbp', source: 'synthetic-test' },
+      { address: 0x4001, mnemonic: 'mov', operands: 'rbp, rsp', source: 'synthetic-test' },
+      { address: 0x4004, mnemonic: 'call', operands: '0x5000', source: 'synthetic-test' },
+      { address: 0x4009, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+      { address: 0x5000, mnemonic: 'jmp', operands: '0x6000', symbol: 'kernel32!CreateFileA', source: 'synthetic-test' },
+    ]);
+
+    expect(analysis.functions.find(fn => fn.startAddress === 0x5000)?.name).toBe('kernel32!CreateFileA');
+    expect(analysis.callGraph.nodes).toContainEqual(expect.objectContaining({ address: 0x5000, name: 'kernel32!CreateFileA' }));
+    expect(analysis.importCalls).toContainEqual(expect.objectContaining({
+      callAddress: 0x4004,
+      targetAddress: 0x5000,
+      importName: 'CreateFileA',
+      moduleName: 'kernel32',
+      confidence: 'high',
+    }));
+    expect(analysis.importCalls[0]?.evidence).toContain('direct call target symbol kernel32!CreateFileA');
+    expect(JSON.stringify(analysis)).not.toContain('classification');
+    expect(JSON.stringify(analysis)).not.toContain('threatScore');
+  });
+
   it('splits basic blocks at entries, jump targets, and post-transfer fallthroughs', () => {
     const blocks = splitBasicBlocks(fixture);
     const starts = blocks.map(block => block.startAddress);
