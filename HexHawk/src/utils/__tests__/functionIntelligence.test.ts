@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildFunctionIntelligence, correlateDebuggerToFunctions } from '../functionIntelligence';
+import {
+  buildFunctionIntelligence,
+  correlateDebuggerToFunctions,
+  exportFunctionIntelligenceJSON,
+  exportFunctionIntelligenceMarkdown,
+} from '../functionIntelligence';
 import type { DebugSnapshot } from '../../components/DebuggerPanel';
 import type { DecompileResult } from '../decompilerEngine';
 import type { FunctionModel, ProgramAnalysis } from '../disassemblyModel';
@@ -244,6 +249,43 @@ describe('FunctionIntelligence builder', () => {
     const fi = buildFunctionIntelligence(caller, analysis);
 
     expect(fi.callees[0].evidenceBasis).toBe('static-only');
+  });
+
+
+  it('exports parseable JSON with schema and authority fields', () => {
+    const fi = buildFunctionIntelligence(makeFunction(), makeAnalysis(), makeDecompileResult(), makeDebugSnapshot());
+    const parsed = JSON.parse(exportFunctionIntelligenceJSON(fi));
+
+    expect(parsed.export_schema).toBe('hexhawk.function_intelligence.v1');
+    expect(parsed.gyre_is_sole_verdict_authority).toBe(true);
+    expect(parsed.source_evidence_per_claim).toBe(true);
+    expect(parsed.generated_at).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it('exports Markdown with advisory disclaimer and all sections when empty', () => {
+    const fi = buildFunctionIntelligence(makeFunction(), makeAnalysis());
+    const markdown = exportFunctionIntelligenceMarkdown(fi);
+
+    expect(markdown).toContain('*Advisory analysis only. GYRE is sole verdict authority.*');
+    expect(markdown).toContain('## Identity');
+    expect(markdown).toContain('## Callers');
+    expect(markdown).toContain('## Callees');
+    expect(markdown).toContain('## Import Calls');
+    expect(markdown).toContain('## Pseudocode (advisory — not recovered source)');
+    expect(markdown).toContain('## Runtime Observations');
+    expect(markdown).toContain('## Analysis Limits');
+    expect(markdown).toContain('None observed');
+  });
+
+  it('does not export forbidden verdict field names from FunctionIntelligence exports', () => {
+    const fi = buildFunctionIntelligence(makeFunction(), makeAnalysis(), makeDecompileResult(), makeDebugSnapshot());
+    const json = exportFunctionIntelligenceJSON(fi);
+    const markdown = exportFunctionIntelligenceMarkdown(fi);
+
+    expect(json).not.toContain('classification');
+    expect(json).not.toContain('threatScore');
+    expect(markdown).not.toContain('classification');
+    expect(markdown).not.toContain('threatScore');
   });
 
 });

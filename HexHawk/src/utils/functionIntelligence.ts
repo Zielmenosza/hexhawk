@@ -370,3 +370,91 @@ export function buildFunctionIntelligence(
     advisory_analysis_only: true,
   };
 }
+
+
+function formatHex(address: number): string {
+  return `0x${address.toString(16).toUpperCase()}`;
+}
+
+function markdownEdgeRows(edges: FunctionCallEdge[]): string[] {
+  if (edges.length === 0) return ['| None observed | None observed | None observed |'];
+  return edges.map(edge => `| ${formatHex(edge.targetAddress)} | ${edge.targetName ?? edge.importName ?? 'Unknown'} | ${edge.evidenceBasis} |`);
+}
+
+function markdownImportRows(importCalls: FunctionIntelligence['importCalls']): string[] {
+  if (importCalls.length === 0) return ['| None observed | None observed | None observed | None observed |'];
+  return importCalls.map(entry => `| ${entry.importName} | ${entry.moduleName ?? 'Unknown'} | ${formatHex(entry.callAddress)} | ${entry.constantAnnotations.length ? entry.constantAnnotations.join(', ') : 'None observed'} |`);
+}
+
+function markdownRuntime(fi: FunctionIntelligence): string[] {
+  const lines: string[] = [];
+  if (!fi.debuggerCallStack?.length && !fi.conditionalBreakpointHits?.length) return ['None observed'];
+  for (const observation of fi.debuggerCallStack ?? []) {
+    lines.push(`- Call stack observed at ${formatHex(observation.observedAt)}`);
+    for (const frame of observation.frames) {
+      lines.push(`  - ${formatHex(frame.returnAddress)} ${frame.moduleName ? `${frame.moduleName}!` : ''}${frame.symbolName ?? 'unknown symbol'}`);
+    }
+  }
+  for (const hit of fi.conditionalBreakpointHits ?? []) {
+    lines.push(`- Conditional breakpoint ${formatHex(hit.address)} hit ${hit.hitCount} time(s): ${hit.condition}`);
+  }
+  return lines;
+}
+
+function markdownLimits(limits: FunctionIntelligenceLimit[]): string[] {
+  if (limits.length === 0) return ['- None observed'];
+  return limits.map(limit => `- ${limit.address !== undefined ? `${formatHex(limit.address)}: ` : ''}${limit.detail}`);
+}
+
+export function exportFunctionIntelligenceJSON(fi: FunctionIntelligence): string {
+  return JSON.stringify({
+    export_schema: 'hexhawk.function_intelligence.v1',
+    generated_at: new Date().toISOString(),
+    source_evidence_per_claim: true,
+    ...fi,
+    gyre_is_sole_verdict_authority: true,
+    advisory_analysis_only: true,
+  }, null, 2);
+}
+
+export function exportFunctionIntelligenceMarkdown(fi: FunctionIntelligence): string {
+  const generatedAt = new Date().toISOString();
+  const lines: string[] = [
+    `# Function: ${fi.name} @ ${formatHex(fi.address)}`,
+    '',
+    '## Identity',
+    `Name: ${fi.name} (${fi.nameSource})`,
+    `Address range: ${formatHex(fi.address)} – ${formatHex(fi.endAddress)}`,
+    `Calling convention: ${fi.callingConvention ? `${fi.callingConvention.abi} (${fi.callingConvention.analysisConfidence} confidence)` : 'Unknown (not proven)'}`,
+    `Boundary source: ${fi.boundarySource}`,
+    '',
+    `## Callers (${fi.callers.length})`,
+    '| Address | Name | Basis |',
+    '|---------|------|-------|',
+    ...markdownEdgeRows(fi.callers),
+    '',
+    `## Callees (${fi.callees.length})`,
+    '| Address | Name | Basis |',
+    '|---------|------|-------|',
+    ...markdownEdgeRows(fi.callees),
+    '',
+    '## Import Calls',
+    '| Import | Module | Address | Constants |',
+    '|--------|--------|---------|-----------|',
+    ...markdownImportRows(fi.importCalls),
+    '',
+    '## Pseudocode (advisory — not recovered source)',
+    fi.pseudocode ?? 'None observed',
+    '',
+    '## Runtime Observations',
+    ...markdownRuntime(fi),
+    '',
+    '## Analysis Limits',
+    ...markdownLimits(fi.limits),
+    '',
+    '---',
+    '*Advisory analysis only. GYRE is sole verdict authority.*',
+    `*Generated: ${generatedAt}*`,
+  ];
+  return lines.join('\n');
+}
