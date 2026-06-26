@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildFunctionIntelligence } from '../functionIntelligence';
+import { buildFunctionIntelligence, correlateDebuggerToFunctions } from '../functionIntelligence';
 import type { DebugSnapshot } from '../../components/DebuggerPanel';
 import type { DecompileResult } from '../decompilerEngine';
 import type { FunctionModel, ProgramAnalysis } from '../disassemblyModel';
@@ -180,4 +180,70 @@ describe('FunctionIntelligence builder', () => {
     expect(keysDeep(fi)).not.toContain('classification');
     expect(keysDeep(fi)).not.toContain('threatScore');
   });
+
+  it('correlates frame addresses within known function ranges', () => {
+    const fn = makeFunction();
+    const analysis = makeAnalysis(fn);
+    const correlation = correlateDebuggerToFunctions(analysis, makeDebugSnapshot()).get(fn.id);
+
+    expect(correlation).toMatchObject({ observedInCallStack: true, callStackDepth: 0, correlationBasis: 'address-range-match' });
+  });
+
+  it('correlates frame symbols when addresses do not land in a function range', () => {
+    const fn = makeFunction();
+    const snapshot = makeDebugSnapshot();
+    snapshot.callStack = [{ frameIndex: 0, returnAddress: 0x500000, framePointer: 0, symbolName: 'sub_401000' }];
+    const correlation = correlateDebuggerToFunctions(makeAnalysis(fn), snapshot).get(fn.id);
+
+    expect(correlation).toMatchObject({ observedInCallStack: true, callStackDepth: 0, correlationBasis: 'symbol-name-match' });
+  });
+
+  it('does not fabricate correlation for frames outside all known functions', () => {
+    const fn = makeFunction();
+    const snapshot = makeDebugSnapshot();
+    snapshot.callStack = [{ frameIndex: 0, returnAddress: 0x500000, framePointer: 0, symbolName: 'other_function' }];
+    const correlation = correlateDebuggerToFunctions(makeAnalysis(fn), snapshot).get(fn.id);
+
+    expect(correlation).toMatchObject({ observedInCallStack: false, correlationBasis: 'no-correlation' });
+  });
+
+  it('labels import-table call plus debugger frame as static-and-observed', () => {
+    const caller = makeFunction();
+    const imported = makeFunction({ id: 'function_402000', name: 'CreateFileW', startAddress: 0x402000, endAddress: 0x402010, instructions: [] });
+    const analysis = makeAnalysis(caller, {
+      functions: [caller, imported],
+      xrefs: [{ kind: 'call', from: 0x401005, to: 0x402000, confidence: 'high', evidence: 'direct call' }],
+      importCalls: [{ callAddress: 0x401005, targetAddress: 0x402000, importName: 'CreateFileW', moduleName: 'kernel32.dll', confidence: 'high', evidence: 'PE import table' }],
+    });
+    const snapshot = makeDebugSnapshot();
+    snapshot.callStack = [{ frameIndex: 0, returnAddress: 0x402000, framePointer: 0, symbolName: 'CreateFileW' }];
+
+    const fi = buildFunctionIntelligence(caller, analysis, undefined, snapshot);
+
+    expect(fi.callees[0].evidenceBasis).toBe('static-and-observed');
+  });
+
+  it('labels import-table call without debugger frame as import-table-proven', () => {
+    const caller = makeFunction();
+    const analysis = makeAnalysis(caller, {
+      xrefs: [{ kind: 'call', from: 0x401005, to: 0x402000, confidence: 'high', evidence: 'direct call' }],
+      importCalls: [{ callAddress: 0x401005, targetAddress: 0x402000, importName: 'CreateFileW', moduleName: 'kernel32.dll', confidence: 'high', evidence: 'PE import table' }],
+    });
+
+    const fi = buildFunctionIntelligence(caller, analysis);
+
+    expect(fi.callees[0].evidenceBasis).toBe('import-table-proven');
+  });
+
+  it('labels xref-only call edges as static-only', () => {
+    const caller = makeFunction();
+    const analysis = makeAnalysis(caller, {
+      xrefs: [{ kind: 'call', from: 0x401005, to: 0x402000, confidence: 'high', evidence: 'direct call' }],
+    });
+
+    const fi = buildFunctionIntelligence(caller, analysis);
+
+    expect(fi.callees[0].evidenceBasis).toBe('static-only');
+  });
+
 });

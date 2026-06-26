@@ -39,6 +39,20 @@ export interface FunctionCallEdge {
   evidenceBasis: 'static-only' | 'import-table-proven' | 'debugger-observed' | 'static-and-observed';
 }
 
+export interface ConditionalBreakpointHit {
+  address: number;
+  condition: string;
+  hitCount: number;
+}
+
+export interface FunctionDebugCorrelation {
+  functionId: string;
+  observedInCallStack: boolean;
+  callStackDepth?: number;
+  conditionalBreakpointHits: ConditionalBreakpointHit[];
+  correlationBasis: 'address-range-match' | 'symbol-name-match' | 'import-stub-match' | 'no-correlation';
+}
+
 export interface FunctionIntelligence {
   id: string;
   address: number;
@@ -104,6 +118,43 @@ function importForTarget(analysis: ProgramAnalysis, targetAddress: number | unde
 
 function importForCallsite(analysis: ProgramAnalysis, callAddress: number): ImportCall | undefined {
   return analysis.importCalls.find(entry => entry.callAddress === callAddress);
+}
+
+function breakpointHitsForFunction(fn: ProgramAnalysisFunction, snapshot?: DebugSnapshot): ConditionalBreakpointHit[] {
+  return (snapshot?.breakpoints ?? [])
+    .filter((bp): bp is Exclude<DebugSnapshot['breakpoints'][number], number> => typeof bp !== 'number')
+    .filter(bp => Boolean(bp.condition) && bp.hitCount > 0 && containsAddress(fn, bp.address))
+    .map(bp => ({ address: bp.address, condition: bp.condition ?? '', hitCount: bp.hitCount }));
+}
+
+export function correlateDebuggerToFunctions(
+  analysis: ProgramAnalysis,
+  snapshot: DebugSnapshot,
+): Map<string, FunctionDebugCorrelation> {
+  const correlations = new Map<string, FunctionDebugCorrelation>();
+  for (const fn of analysis.functions) {
+    const frames = snapshot.callStack ?? [];
+    const addressDepth = frames.findIndex(frame => containsAddress(fn, frame.returnAddress));
+    const symbolDepth = frames.findIndex(frame => (frame.symbolName ?? '').toLowerCase() === fn.name.toLowerCase());
+    const isImportStub = analysis.importCalls.some(entry => entry.targetAddress === fn.startAddress || entry.callAddress === fn.startAddress);
+    const importDepth = isImportStub ? frames.findIndex(frame => frame.returnAddress === fn.startAddress || containsAddress(fn, frame.returnAddress)) : -1;
+    const callStackDepth = addressDepth >= 0 ? addressDepth : symbolDepth >= 0 ? symbolDepth : importDepth >= 0 ? importDepth : undefined;
+    const correlationBasis: FunctionDebugCorrelation['correlationBasis'] = addressDepth >= 0
+      ? 'address-range-match'
+      : symbolDepth >= 0
+        ? 'symbol-name-match'
+        : importDepth >= 0
+          ? 'import-stub-match'
+          : 'no-correlation';
+    correlations.set(fn.id || formatFunctionId(fn.startAddress), {
+      functionId: fn.id || formatFunctionId(fn.startAddress),
+      observedInCallStack: callStackDepth !== undefined,
+      callStackDepth,
+      conditionalBreakpointHits: breakpointHitsForFunction(fn, snapshot),
+      correlationBasis,
+    });
+  }
+  return correlations;
 }
 
 function nameSourceFor(fn: ProgramAnalysisFunction, analysis: ProgramAnalysis): FunctionIntelligence['nameSource'] {
@@ -180,6 +231,13 @@ function edgeForXRef(xref: XRef, analysis: ProgramAnalysis, decompileResult: Dec
 
 function observedFunctionAddresses(snapshot: DebugSnapshot | undefined, analysis: ProgramAnalysis): Set<number> {
   const observed = new Set<number>();
+  if (snapshot) {
+    for (const [functionId, correlation] of correlateDebuggerToFunctions(analysis, snapshot)) {
+      if (!correlation.observedInCallStack) continue;
+      const fn = analysis.functions.find(candidate => (candidate.id || formatFunctionId(candidate.startAddress)) === functionId);
+      if (fn) observed.add(fn.startAddress);
+    }
+  }
   for (const frame of snapshot?.callStack ?? []) {
     const fn = functionForAddress(analysis, frame.returnAddress);
     if (fn) observed.add(fn.startAddress);
@@ -257,6 +315,7 @@ export function buildFunctionIntelligence(
   decompileResult?: DecompileResult,
   debugSnapshot?: DebugSnapshot,
 ): FunctionIntelligence {
+  const debugCorrelation = debugSnapshot ? correlateDebuggerToFunctions(analysis, debugSnapshot).get(fn.id || formatFunctionId(fn.startAddress)) : undefined;
   const observedAddresses = observedFunctionAddresses(debugSnapshot, analysis);
   const incoming = analysis.xrefs.filter(ref => ref.kind === 'call' && containsAddress(fn, ref.to));
   const outgoing = analysis.xrefs.filter(ref => ref.kind === 'call' && containsAddress(fn, ref.from));
@@ -268,8 +327,8 @@ export function buildFunctionIntelligence(
       callAddress: entry.callAddress,
       constantAnnotations: constantAnnotationsForImport(entry, decompileResult),
     }));
-  const debuggerCallStack = debuggerStacksForFunction(fn, debugSnapshot);
-  const conditionalBreakpointHits = conditionalHits(debugSnapshot);
+  const debuggerCallStack = debugCorrelation?.observedInCallStack ? debuggerStacksForFunction(fn, debugSnapshot) : undefined;
+  const conditionalBreakpointHits = debugCorrelation?.conditionalBreakpointHits.length ? debugCorrelation.conditionalBreakpointHits : conditionalHits(debugSnapshot);
   const hasBoundaryHeuristic = fn.startSource === 'prologue-pattern' || fn.startSource === 'alignment-gap' || fn.startSource === 'jump-table-target';
   const hasConstantAnnotation = importCalls.some(entry => entry.constantAnnotations.length > 0);
   const compactPseudocode = renderPseudocode(decompileResult, false);
