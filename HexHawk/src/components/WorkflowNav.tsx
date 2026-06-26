@@ -10,6 +10,7 @@ export type NavView =
   | 'strings'
   | 'disassembly'
   | 'cfg'
+  | 'function-notebook'
   | 'decompile'
   | 'talon'
   | 'verdict'
@@ -62,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'strings', plainLabel: 'Readable text', label: 'Strings', icon: '𝕊', minTier: 'free', requiresState: 'fileLoaded', description: 'Finds readable text such as URLs, file paths, registry keys, APIs, domains, and clues.' },
       { id: 'disassembly', plainLabel: 'Code map', label: 'Disassembly', icon: '⊞', minTier: 'free', requiresState: 'fileLoaded', description: 'Turns machine code into instructions and cross-references so you can follow what code may do.' },
       { id: 'cfg', plainLabel: 'Branch map', label: 'CFG', icon: '⬡', minTier: 'free', requiresState: 'fileLoaded', description: 'Draws blocks and branches so loops, exits, and decision points are easier to see.' },
+      { id: 'function-notebook', plainLabel: 'Function details', label: 'Function Notebook', icon: 'ƒ', minTier: 'free', requiresState: 'fileLoaded', description: 'Imports, calls, pseudocode, and evidence for the selected function.' },
       { id: 'decompile', plainLabel: 'Pseudocode', label: 'Decompile', icon: '⟨/⟩', minTier: 'free', requiresState: 'inspected', description: 'Shows a best-effort readable summary of code. Treat it as guidance, not recovered source.' },
       { id: 'talon', plainLabel: 'Code reasoning', label: 'TALON', icon: '🧠', minTier: 'pro', requiresState: 'inspected', description: 'Adds structured code reasoning and summaries for inspected instructions and functions.' },
     ],

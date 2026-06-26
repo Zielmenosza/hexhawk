@@ -100,6 +100,7 @@ import QuillPanel from './components/QuillPanel';
 import type { UserPluginInfo } from './components/QuillPanel';
 import PatchPanel from './components/PatchPanel';
 import { XRefPanel } from './components/XRefPanel';
+import FunctionNotebook from './components/FunctionNotebook';
 import type { Patch as PanelPatch } from './components/PatchPanel';
 import { detectPatchableBranches } from './utils/patchEngine';
 import type { PatchSuggestion } from './utils/patchEngine';
@@ -119,6 +120,7 @@ import {
 } from './utils/tauriGuards';
 import { buildAddressToBlockMap, buildProgramAnalysisAdapter, type AppBackendImport } from './utils/programAnalysisAdapter';
 import type { ProgramAnalysis } from './utils/disassemblyModel';
+import { buildFunctionIntelligence } from './utils/functionIntelligence';
 import {
   type QASubsystemStatus,
   type SubsystemSource,
@@ -270,11 +272,12 @@ type WorkspaceNavItem = {
   eyebrow: string;
 };
 
-type DisassemblyWorkspaceTab = 'overview' | 'patches' | 'xrefs' | 'patterns';
+type DisassemblyWorkspaceTab = 'overview' | 'patches' | 'xrefs' | 'patterns' | 'function-notebook';
 
 const WORKSPACE_NAV_ITEMS: WorkspaceNavItem[] = [
   { id: 'disassembly', label: 'Code map', eyebrow: 'instructions' },
   { id: 'cfg', label: 'Branch map', eyebrow: 'flow graph' },
+  { id: 'function-notebook', label: 'Function details', eyebrow: 'notebook' },
   { id: 'decompile', label: 'Pseudocode', eyebrow: 'best effort' },
   { id: 'talon', label: 'Code reasoning', eyebrow: 'TALON' },
   { id: 'nest', label: 'Evidence loop', eyebrow: 'NEST' },
@@ -340,6 +343,13 @@ const FEATURE_GUIDES: Partial<Record<NavView, FeatureGuide>> = {
     does: 'Draws basic blocks and edges so branches, exits, loops, and decision points are easier to follow.',
     how: ['Build CFG after disassembly.', 'Click a block to highlight its instructions.', 'Use the dominator side panel when you need deeper flow relationships.'],
     expect: 'A map of the analyzed range, not a guarantee that every possible runtime path was executed.',
+  },
+  'function-notebook': {
+    title: 'Function details notebook',
+    plainName: 'One function, all evidence',
+    does: 'Combines imports, callers, callees, pseudocode, runtime observations, and known limits for the selected function.',
+    how: ['Select a function in the Code map or Branch map.', 'Press F or choose Function details from the right-click menu.', 'Export JSON or Markdown when you need a reviewable function evidence package.'],
+    expect: 'Advisory function evidence only. GYRE remains the sole verdict authority.',
   },
   decompile: {
     title: 'Pseudocode view',
@@ -477,6 +487,7 @@ const DISASSEMBLY_WORKSPACE_TABS: Array<{ id: DisassemblyWorkspaceTab; label: st
   { id: 'overview', label: 'Instructions', detail: 'machine-code steps + selected-address analysis' },
   { id: 'patches', label: 'Patch plan', detail: 'queued edits + review before applying' },
   { id: 'xrefs', label: 'References', detail: 'who points to the selected address' },
+  { id: 'function-notebook', label: 'Function details', detail: 'imports, calls, pseudocode, and evidence' },
   { id: 'patterns', label: 'Pattern clues', detail: 'suspicious categories and why they matter' },
 ];
 
@@ -2038,6 +2049,14 @@ export default function App() {
   );
   const [expandedFunctions, setExpandedFunctions] = useState<Set<number>>(new Set());
 
+  const selectedFunctionIntelligence = useMemo(() => {
+    if (!programAnalysis) return null;
+    const pivotAddress = selectedFunction ?? selectedDisasmAddress ?? currentAddress;
+    if (pivotAddress === null) return null;
+    const fn = programAnalysis.functions.find(candidate => pivotAddress >= candidate.startAddress && pivotAddress <= candidate.endAddress);
+    return fn ? buildFunctionIntelligence(fn, programAnalysis) : null;
+  }, [programAnalysis, selectedFunction, selectedDisasmAddress, currentAddress]);
+
   // NEST-enriched verdict � set when a NEST session completes; cleared on new file load
   const [nestEnrichedVerdict, setNestEnrichedVerdict] = useState<BinaryVerdictResult | null>(null);
   React.useEffect(() => { setNestEnrichedVerdict(null); }, [binaryPath]);
@@ -3180,6 +3199,14 @@ export default function App() {
         }
       }
 
+      // F: Open Function details for the focused/selected function
+      if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.toLowerCase() === 'f') {
+        if (selectedFunction !== null || selectedDisasmAddress !== null || currentAddress !== null) {
+          e.preventDefault();
+          navigateView('function-notebook');
+        }
+      }
+
       // Arrow keys for navigation in disassembly
       if (activeTab === 'disassembly' && disassembly.length > 0) {
         if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && selectedDisasmAddress !== null) {
@@ -3202,7 +3229,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, currentAddress, selectedDisasmAddress, disassembly, historyIndex, history.length, showKeyboardHelp, contextMenu, inspectFile, scanStrings]);
+  }, [activeTab, currentAddress, selectedDisasmAddress, disassembly, historyIndex, history.length, showKeyboardHelp, contextMenu, inspectFile, scanStrings, selectedFunction, navigateView]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -3985,6 +4012,13 @@ export default function App() {
         action: () => { void buildCfg(); },
       },
       {
+        id: 'function-details',
+        label: 'Function details',
+        detail: 'Open imports, calls, pseudocode, and evidence for the selected function.',
+        disabled: selectedFunction === null && selectedDisasmAddress === null && currentAddress === null,
+        action: () => navigateView('function-notebook'),
+      },
+      {
         id: 'toggle-decompiler-output-mode',
         label: 'Toggle pseudocode call style',
         detail: 'Switch between compact import calls and annotated type comments.',
@@ -4094,6 +4128,8 @@ export default function App() {
     binaryPath,
     metadata,
     currentAddress,
+    selectedFunction,
+    selectedDisasmAddress,
     disassembly.length,
     historyIndex,
     history.length,
@@ -4389,6 +4425,7 @@ export default function App() {
                     <div><strong>Ctrl+H</strong> → Hex Viewer tab</div>
                     <div><strong>Ctrl+Shift+B</strong> → Bookmarks tab</div>
                     <div><strong>Ctrl+G</strong> → Jump to address</div>
+                    <div><strong>F</strong> → Function details for selected function</div>
                   </div>
                 </div>
                 <div>
@@ -4853,6 +4890,9 @@ export default function App() {
                         onNavigate={(addr) => handleSmartNavigation(addr, `XRef -> ${formatHex(addr)}`)}
                       />
                     )}
+                    {disassemblyWorkspaceTab === 'function-notebook' && (
+                      <FunctionNotebook functionIntelligence={selectedFunctionIntelligence} />
+                    )}
                     {disassemblyWorkspaceTab === 'patterns' && (
                       <>
                         {disassemblyAnalysis.suspiciousPatterns.length > 0 ? (
@@ -4909,6 +4949,13 @@ export default function App() {
                     )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── Function Notebook ───────────────────────────────────────────── */}
+            {activeView === 'function-notebook' && (
+              <div className="workspace-view-shell workspace-view-scroll" data-testid="panel-function-notebook">
+                <FunctionNotebook functionIntelligence={selectedFunctionIntelligence} />
               </div>
             )}
 
