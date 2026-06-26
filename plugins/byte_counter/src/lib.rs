@@ -1,9 +1,12 @@
 use plugin_api::{string_to_c_string, PluginEntry, PluginInfo, PluginKind, PluginResult};
 use std::ffi::{c_char, CString};
 
+static PLUGIN_NAME: [u8; 12] = *b"ByteCounter\0";
+static PLUGIN_DESCRIPTION: [u8; 47] = *b"Counts loaded bytes from a sample binary file.\0";
+
 static PLUGIN_INFO: PluginInfo = PluginInfo {
-    name: b"ByteCounter\0".as_ptr() as *const c_char,
-    description: b"Counts loaded bytes from a sample binary file.\0".as_ptr() as *const c_char,
+    name: PLUGIN_NAME.as_ptr() as *const c_char,
+    description: PLUGIN_DESCRIPTION.as_ptr() as *const c_char,
 };
 
 extern "C" fn get_info() -> *const PluginInfo {
@@ -24,7 +27,9 @@ extern "C" fn run_plugin(data: *const u8, len: usize) -> *mut c_char {
 
 extern "C" fn free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
-        unsafe { let _ = CString::from_raw(ptr); }
+        unsafe {
+            let _ = CString::from_raw(ptr);
+        }
     }
 }
 
