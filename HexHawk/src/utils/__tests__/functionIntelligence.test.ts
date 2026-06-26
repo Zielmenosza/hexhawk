@@ -1,0 +1,183 @@
+import { describe, expect, it } from 'vitest';
+import { buildFunctionIntelligence } from '../functionIntelligence';
+import type { DebugSnapshot } from '../../components/DebuggerPanel';
+import type { DecompileResult } from '../decompilerEngine';
+import type { FunctionModel, ProgramAnalysis } from '../disassemblyModel';
+
+function makeFunction(overrides: Partial<FunctionModel> = {}): FunctionModel {
+  return {
+    id: 'function_401000',
+    name: 'sub_401000',
+    startAddress: 0x401000,
+    endAddress: 0x401020,
+    instructions: [
+      { address: 0x401000, mnemonic: 'push', operands: 'rbp' },
+      { address: 0x401005, mnemonic: 'call', operands: '0x402000' },
+      { address: 0x40100a, mnemonic: 'ret', operands: '' },
+    ],
+    basicBlocks: [],
+    startReasons: ['call-target'],
+    startSource: 'call-target',
+    endReason: 'return',
+    confidence: 'high',
+    callingConvention: {
+      name: 'windows-x64',
+      confidence: 'medium',
+      source: 'windows-x64-shadow-space',
+      evidence: ['early use of rcx'],
+    },
+    warnings: [],
+    ...overrides,
+  };
+}
+
+function makeAnalysis(fn = makeFunction(), overrides: Partial<ProgramAnalysis> = {}): ProgramAnalysis {
+  return {
+    schema: 'hexhawk.disassembly_program.v1',
+    advisoryOnly: true,
+    authority: 'analysis_evidence_not_gyre_verdict',
+    instructions: fn.instructions,
+    functions: [fn],
+    basicBlocks: [],
+    xrefs: [],
+    importCalls: [],
+    dataReferences: [],
+    stringReferences: [],
+    jumpTableCandidates: [],
+    callGraph: { nodes: [], edges: [] },
+    warnings: [],
+    ...overrides,
+  };
+}
+
+function makeDecompileResult(overrides: Partial<DecompileResult> = {}): DecompileResult {
+  return {
+    functionName: 'sub_401000',
+    startAddress: 0x401000,
+    lines: [{ indent: 0, text: 'return CreateFileW();', kind: 'stmt', address: 0x401005 }],
+    varMap: new Map(),
+    irBlocks: [],
+    structured: { kind: 'seq', nodes: [] },
+    logicRegions: [],
+    recoveredStructs: [],
+    warnings: [],
+    instrCount: 3,
+    maturity: {
+      schemaVersion: '1.0.0',
+      advisoryOnly: true,
+      authorityBoundary: 'talon_veil_guidance_not_verdict_authority',
+      architecture: 'x86_64',
+      instructionSummary: { total: 3, lifted: 3, unknown: 0, unknownAddresses: [], failedDecodeRanges: [] },
+      cfgSummary: { blockCount: 1, edgeCount: 0, backEdgeCount: 0, unreachableBlockCount: 0, unreachableBlocks: [], fallbackPartitioningUsed: false },
+      callArgumentRecovery: { callCount: 1, recoveredCallCount: 1, unresolvedCallCount: 0, recoveredArgumentCount: 0, registerWindowCount: 0, stackWindowCount: 0, registerStackWindowCount: 0 },
+      stackFrameSummary: { localCount: 0, stackArgCount: 0, registerParamCount: 0, localNames: [], stackArgNames: [], registerParamNames: [] },
+      pseudocodeQuality: { uncertainLineCount: 0, warningCount: 0, conservativeRewriteCount: 0, logicRegionCount: 0 },
+      explicitIrSummary: {
+        schema: 'hexhawk.decompiler_maturity.explicit_ir.v1',
+        advisoryOnly: true,
+        authority: 'talon_decompiler_advisory_not_gyre_verdict',
+        liftedInstructionCount: 3,
+        unknownInstructionCount: 0,
+        recoveredCallsCount: 1,
+        recoveredArgsCount: 0,
+        recoveredVariablesCount: 0,
+        unresolvedIndirectJumps: 0,
+        unresolvedCalls: 0,
+        structuredBlockPercentage: 100,
+        fallbackMode: 'structured',
+        confidence: 'medium',
+        warnings: [],
+        proofLimits: [],
+      },
+      limitations: [],
+    },
+    ...overrides,
+  };
+}
+
+function makeDebugSnapshot(): DebugSnapshot {
+  return {
+    sessionId: 1,
+    status: 'Paused',
+    registers: { rax: 0, rbx: 0, rcx: 0, rdx: 0, rsi: 0, rdi: 0, rsp: 0, rbp: 0, rip: 0x401005, r8: 0, r9: 0, r10: 0, r11: 0, r12: 0, r13: 0, r14: 0, r15: 0, eflags: 0, cs: 0, ss: 0 },
+    stack: [],
+    callStack: [{ frameIndex: 0, returnAddress: 0x401010, framePointer: 0, symbolName: 'sub_401000', moduleName: 'sample.exe' }],
+    breakpoints: [{ address: 0x401005, enabled: true, condition: 'hit_count >= 1', hitCount: 1 }],
+    stepCount: 1,
+    exitCode: null,
+    lastEvent: 'breakpoint',
+    warnings: [],
+  };
+}
+
+function keysDeep(value: unknown): string[] {
+  if (!value || typeof value !== 'object') return [];
+  if (Array.isArray(value)) return value.flatMap(keysDeep);
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) => [key, ...keysDeep(child)]);
+}
+
+describe('FunctionIntelligence builder', () => {
+  it('builds a valid advisory object from only a function and analysis', () => {
+    const fn = makeFunction();
+    const fi = buildFunctionIntelligence(fn, makeAnalysis(fn));
+
+    expect(fi.id).toBe('function_401000');
+    expect(fi.address).toBe(0x401000);
+    expect(fi.endAddress).toBe(0x401020);
+    expect(fi.gyre_is_sole_verdict_authority).toBe(true);
+    expect(fi.advisory_analysis_only).toBe(true);
+    expect(fi.callers).toEqual([]);
+    expect(fi.callees).toEqual([]);
+    expect(fi.sources.hasDecompilerOutput).toBe(false);
+  });
+
+  it('populates pseudocode from a decompile result', () => {
+    const fn = makeFunction();
+    const fi = buildFunctionIntelligence(fn, makeAnalysis(fn), makeDecompileResult());
+
+    expect(fi.pseudocode).toContain('CreateFileW');
+    expect(fi.sources.hasDecompilerOutput).toBe(true);
+  });
+
+  it('populates debugger call stack from a debug snapshot', () => {
+    const fn = makeFunction();
+    const fi = buildFunctionIntelligence(fn, makeAnalysis(fn), undefined, makeDebugSnapshot());
+
+    expect(fi.debuggerCallStack?.[0].frames[0].symbolName).toBe('sub_401000');
+    expect(fi.conditionalBreakpointHits?.[0]).toMatchObject({ address: 0x401005, condition: 'hit_count >= 1', hitCount: 1 });
+    expect(fi.sources.hasDebuggerCallStack).toBe(true);
+    expect(fi.sources.hasConditionalBreakpointHit).toBe(true);
+  });
+
+  it('populates import calls with resolved constants when TALON IR exposes call args', () => {
+    const fn = makeFunction();
+    const analysis = makeAnalysis(fn, {
+      importCalls: [{ callAddress: 0x401005, targetAddress: 0x402000, importName: 'CreateFileW', moduleName: 'kernel32.dll', confidence: 'high', evidence: 'PE import table' }],
+    });
+    const decompileResult = makeDecompileResult({
+      irBlocks: [{
+        id: 'block_401000',
+        start: 0x401000,
+        end: 0x401020,
+        successors: [],
+        allSuccessors: [],
+        stmts: [{ op: 'call', address: 0x401005, target: 0x402000, name: 'CreateFileW', args: [{ kind: 'expr', text: 'path' }, { kind: 'const', value: 0x80000000 }] }],
+      }],
+    });
+
+    const fi = buildFunctionIntelligence(fn, analysis, decompileResult);
+
+    expect(fi.importCalls).toEqual([{ importName: 'CreateFileW', moduleName: 'kernel32.dll', callAddress: 0x401005, constantAnnotations: ['GENERIC_READ'] }]);
+    expect(fi.sources.hasImportTableEntry).toBe(true);
+    expect(fi.sources.hasConstantAnnotation).toBe(true);
+  });
+
+  it('always preserves GYRE sole authority and does not emit forbidden field names', () => {
+    const fn = makeFunction();
+    const fi = buildFunctionIntelligence(fn, makeAnalysis(fn), makeDecompileResult(), makeDebugSnapshot());
+
+    expect(fi.gyre_is_sole_verdict_authority).toBe(true);
+    expect(keysDeep(fi)).not.toContain('classification');
+    expect(keysDeep(fi)).not.toContain('threatScore');
+  });
+});
