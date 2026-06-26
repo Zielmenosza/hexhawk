@@ -1,6 +1,6 @@
 # HexHawk Investor One-Pager
 
-Date: 2026-06-20
+Date: 2026-06-26
 
 ## What HexHawk Is
 
@@ -16,28 +16,27 @@ HexHawk’s wedge is an integrated analyst workstation that keeps evidence, conf
 
 ## Current Proof
 
-Latest local validation and packaging pass proves:
+Latest source validation proves:
 
-- STRIKE benchmark provenance path fix committed and pushed.
-- All discovered frontend tests passed in a fresh release worktree: 47 files, 736 passed, 1 skipped.
-- Typecheck and production frontend build passing.
-- MSI and NSIS installers build from post-fix HEAD.
-- MSI extraction and NSIS install launch/render smoke passed.
-- Current artifacts are unsigned according to Authenticode checks.
-- Hosted updater metadata has not been refreshed/validated against the June 20 unsigned candidate NSIS hash.
-- Current release evidence: `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`.
+- Function Intelligence integration completed through v1.30: model, static/runtime correlation, JSON/Markdown export, Function Notebook UI, workflow wiring, and regression corpus.
+- byte_counter clippy blocker fixed in v1.31 without relaxing `-D warnings`.
+- Rust workspace tests passed: 85 backend tests + 20 `nest_cli` tests.
+- Rust clippy passed with `-D warnings`.
+- Typecheck and production frontend build passed.
+- Full frontend Vitest passed: 59 files, 832 tests.
+- Fresh packaging, signing-status checks, installer smoke, and Function Notebook export smoke remain pending before a new unsigned deployment-candidate tag.
 
 ## Current Product Status
 
-- Status: unsigned Windows deployment candidate for controlled internal testing.
-- Good for: board demos, investor demos, controlled internal testing, technical diligence.
-- Not yet for the stronger controlled external signed-tester gate: real public-trusted Authenticode custody, signed artifacts, hosted metadata validation, and exact signed-artifact native GUI proof are still required.
+- Status: validated Function Intelligence source candidate; fresh unsigned deployment-candidate gate pending.
+- Good for: board demos, investor demos, controlled source review, technical diligence.
+- Not yet for the stronger controlled external signed-tester gate: real public-trusted Authenticode custody, signed artifacts, hosted metadata validation, and exact signed-artifact native GUI/export proof are still required.
 - Not yet for: broad public download, procurement-ready enterprise rollout, automatic updater distribution.
 
 ## Differentiation
 
 - Local-first: core workflows run on the analyst machine.
-- Evidence-grade: outputs tie back to file identity, strings, metadata, disassembly, and evidence bundles.
+- Evidence-grade: outputs tie back to file identity, strings, metadata, disassembly, selected-function evidence, and evidence bundles.
 - Trust-safe AI: GYRE remains verdict authority; NEST orchestrates evidence; AETHERFRAME/Forge is optional bounded uplift/lineage metadata.
 - Native desktop: Rust/Tauri backend with React/TypeScript UI.
 - Commercial path: Windows installer, license activation flow, paid pilot packaging, and enterprise roadmap are in place, but release trust gates remain.
@@ -52,7 +51,8 @@ Latest local validation and packaging pass proves:
 
 ## Key Caveats
 
-- Current installer artifacts are unsigned.
+- Current source state still needs a fresh packaged release gate before a new unsigned deployment-candidate tag.
+- Public-trusted signing is not proven until Authenticode validates exact artifacts.
 - Updater metadata generation has an official-path plan, but hosted endpoint readiness remains blocked until exact hosted artifact/signature validation passes.
-- Full native GUI export parity must be rerun on the exact artifact intended for testers before external/public release; June 20 launch/render smoke covers installer health only.
+- Full native GUI and Function Notebook export parity must be rerun on the exact artifact intended for testers before external/public release.
 - HexHawk does not claim to detonate malware, bypass protections, prove exploitability, or let AI replace deterministic verdict authority.

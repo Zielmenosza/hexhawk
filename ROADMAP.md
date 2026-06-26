@@ -1,34 +1,45 @@
 # HexHawk Roadmap
 
-Last updated: 2026-06-20
+Last updated: 2026-06-26
 
-This roadmap reflects the current HexHawk source, documentation, and local installer state after the June 20 STRIKE provenance fix and unsigned deployment-candidate gate.
+This roadmap reflects the current HexHawk source state after the v1.30 Function Intelligence integration and v1.31 byte_counter clippy fix. It does not claim a fresh packaged deployment candidate until the release worktree, artifact, signing-status, installer-smoke, and Function Notebook export gates pass.
 
 ## Current Proven Baseline
 
-HexHawk is an internal-tester Windows build candidate with a working native Tauri/Rust packaging path.
+HexHawk is a validated source candidate on `feature/re-workbench-core-next`. The current branch adds a coherent Function Intelligence layer over recent reverse-engineering foundations.
 
-Validated in the June 20 deployment-candidate gate:
+Validated in this session before docs:
 
-- STRIKE benchmark report provenance path normalization: fixed and committed.
-- All discovered frontend tests: passing in a fresh release worktree (47 files, 736 passed, 1 skipped).
-- TypeScript `npx tsc --noEmit`: passing.
-- Production frontend build: passing, with existing Vite chunk/import warnings.
-- Windows Tauri release build: passing, with existing Rust warnings.
-- Fresh Windows MSI and NSIS artifacts were generated from post-fix HEAD `e625403`.
-- Authenticode status for the rebuilt MSI/NSIS artifacts: `NotSigned`.
-- MSI extraction GUI smoke: passed and rendered HexHawk onboarding UI.
-- NSIS silent install GUI smoke: passed, included the real `WebView2Loader.dll`, and uninstalled cleanly.
-- Current evidence file: `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`.
-- Deployment candidate tag: `v1.2.0-unsigned-deployment-candidate-20260620`.
+- Rust workspace tests: passed, 85 backend tests + 20 `nest_cli` tests.
+- `cargo clippy --workspace -- -D warnings`: passed after the byte_counter C string metadata fix.
+- TypeScript `npx tsc --noEmit`: passed.
+- Full frontend Vitest: passed, 59 files / 832 tests.
+- Production frontend build: passed with existing Vite chunk/import warnings.
+
+Completed source capabilities through v1.30/v1.31:
+
+- v1.17.0 PE import table parsing.
+- v1.18.0 queryable xref index.
+- v1.19.0 function-boundary recovery heuristics.
+- v1.20.0 Win32 constant semantic annotation.
+- v1.21.0 TALON pseudocode IR artefact cleanup.
+- v1.22.0 debugger call-stack reconstruction.
+- v1.23.0 conditional breakpoint expressions.
+- v1.24.0 calling-convention inference per function.
+- v1.25.0 canonical Function Intelligence model and builder.
+- v1.26.0 static/runtime debugger correlation.
+- v1.27.0 Function Intelligence JSON and Markdown export.
+- v1.28.0 Function Notebook UI.
+- v1.29.0 Function Notebook workflow wiring.
+- v1.30.0 Function Intelligence regression corpus.
+- v1.31.0 byte_counter clippy metadata fix.
 
 Current limitations:
 
-- No public-trusted signature is present.
-- No internal self-signed signature is present on the current target/release artifacts.
-- Updater artifacts remain disabled for local unsigned builds (`createUpdaterArtifacts: false`).
-- Hosted updater metadata was not regenerated/published for the June 20 unsigned candidate and must be validated against exact official signed artifacts before endpoint-readiness claims.
-- Public-release distribution and procurement posture remain pending.
+- No public-trusted signature is proven on current artifacts.
+- No updater-ready claim is made for this source state.
+- Fresh packaged native GUI/export parity for Function Notebook still requires the deployment-candidate gate.
+- Function Intelligence is advisory evidence only; it does not classify files or replace GYRE.
 
 ## Trust Hierarchy That Must Not Drift
 
@@ -39,6 +50,20 @@ Current limitations:
 5. NEXUS consumes/assists and must not compute verdict truth.
 
 ## Near-Term Priorities
+
+### P0 — Fresh v1.30/v1.31 unsigned deployment gate
+
+Goal: prove the exact packaged artifacts from the current source state before any deployment-candidate tag.
+
+- Build from a fresh release worktree.
+- Rerun Rust, TypeScript, Vitest, production build, and Tauri build.
+- Hash backend, CLI, MSI, NSIS, and WebView2Loader artifacts.
+- Verify Authenticode status.
+- Run MSI/NSIS smoke and Function Notebook JSON/Markdown export smoke.
+
+Exit criteria:
+
+- All gate steps pass on exact artifacts, or the candidate is reported failed without tagging.
 
 ### P0 — Real signing path
 

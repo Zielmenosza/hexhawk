@@ -2,7 +2,7 @@
 
 A Practical Guide to Binary Intelligence, Reverse Engineering, Evidence Workflows, Configuration, Plugins, Reports, and Advanced Jobs
 
-Date: 2026-06-01
+Date: 2026-06-26
 Audience: intelligent beginners, internal testers, technical operators, and analysts learning HexHawk.
 
 ## Quick Start (One Page)
@@ -27,9 +27,10 @@ Use this page first if you are new.
 2. Inspect metadata and hashes.
 3. Scan strings.
 4. Disassemble selected range.
-5. Review Verdict panel and confidence.
-6. Use NEST for evidence convergence when needed.
-7. Export report.
+5. Select a function and open Function details / Function Notebook to review imports, calls, pseudocode, runtime observations, and limits.
+6. Review Verdict panel and confidence.
+7. Use NEST for evidence convergence when needed.
+8. Export report or Function Intelligence JSON/Markdown when needed.
 
 ### 4) Authority rules (must remember)
 
@@ -156,16 +157,18 @@ HexHawk does not claim to:
 
 ## Current release posture
 
-Repository docs describe HexHawk as an internal-tester Windows build candidate. It is still not a broadly trusted public release. Current target/release artifacts are unsigned according to Authenticode checks; a prior internal self-signed evidence pass is historical and does not describe the current artifacts.
+Repository docs now describe HexHawk as a validated Function Intelligence source candidate until a fresh deployment gate proves exact packaged artifacts. It is still not a broadly trusted public release. Public-trusted signing, updater readiness, packaged native GUI proof, and Function Notebook export proof must be checked for the exact build you intend to share.
 
-Updater path status in current config:
+Current source validation has passed Rust tests, Rust clippy, TypeScript, full frontend tests, and production frontend build. That is source proof, not installer proof.
+
+Updater path status remains release-gated:
 
 - updater artifacts are disabled for local unsigned builds (`createUpdaterArtifacts: false`)
 - updater pubkey is configured
 - updater endpoint is configured
 - endpoint health/metadata validation still needs to be treated as a per-release gate
 
-Note: packaged native GUI parity passed for the current unsigned MSI artifact in `gui-evidence/release_hardening_native_gui_probe_2026-06-01_234839.json`. Rerun parity for every build you intend to trust, especially after signing.
+Rerun native GUI and Function Notebook export parity for every build you intend to trust, especially before any external signed-tester or public-release claim.
 
 ## The HexHawk mental model
 
@@ -173,7 +176,7 @@ Think of HexHawk as a layered workbench:
 
 - Load: select a file and establish identity.
 - Inspect: extract file facts.
-- Analyze: disassemble, build CFGs, run signatures, plugins, TALON, STRIKE, ECHO, and related surfaces.
+- Analyze: disassemble, build CFGs, inspect Function Notebook details, run signatures, plugins, TALON, STRIKE, ECHO, and related surfaces.
 - Decide: GYRE-linked verdict display and confidence.
 - Converge: NEST organizes evidence across iterations.
 - Package: CREST exports reports and evidence artifacts.
@@ -309,6 +312,7 @@ Expected outputs:
 - disassembly instructions
 - CFG nodes/edges for selected ranges
 - report JSON/Markdown-like output depending on UI path
+- Function Intelligence JSON/Markdown export for the selected function
 
 What not to conclude: one suspicious import, one string, or one decompiler phrase is not enough to claim malware.
 
@@ -393,7 +397,11 @@ Signature matching and ECHO-style correlation help find known patterns, crypto/o
 
 ## TALON decompiler evidence
 
-TALON and decompiler views help translate low-level code into more readable forms. Optional LLM narration may explain the result, but the underlying decompiler output and original bytes remain primary.
+TALON and decompiler views help translate low-level code into more readable forms. Optional LLM narration may explain the result, but the underlying decompiler output and original bytes remain primary. Current source work also cleans raw IR artefacts from pseudocode output.
+
+## Function Notebook evidence
+
+Function Notebook is a selected-function evidence view. It brings together imports, callers, callees, xrefs, recovered boundaries, Win32 constants, pseudocode, calling-convention hints, debugger observations, conditional breakpoint hits, and known analysis limits. It can export Function Intelligence JSON or Markdown. This is advisory evidence only; it is not a malware verdict and does not replace GYRE.
 
 ## STRIKE/runtime evidence
 

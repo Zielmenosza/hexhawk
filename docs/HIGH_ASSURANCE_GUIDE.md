@@ -1,6 +1,6 @@
 # HexHawk High-Assurance Guide
 
-Date: 2026-06-21
+Date: 2026-06-26
 
 ## Goal
 
@@ -28,4 +28,8 @@ For external high-assurance testers, do not ship until:
 
 ## Current Status
 
-The current source state is the unsigned deployment candidate `v1.9.0-unsigned-deployment-candidate-20260621` at `ad2e752`. June 21 local hashes are recorded in `docs/TESTER_RELEASE_STATUS.md`; the MSI/NSIS installer copies remain unsigned local handoff artifacts, and the last installer launch/render smoke evidence applies to the June 20 installer hashes. Full exact-artifact export parity, hosted updater validation, and public-trusted signing have not been completed. It is not yet a high-assurance external release.
+The current source state is a v1.30/v1.31 Function Intelligence source candidate on `feature/re-workbench-core-next`. Source validation in this session passed Rust tests, Rust clippy with `-D warnings`, TypeScript noEmit, full Vitest (59 files / 832 tests), and production frontend build.
+
+Function Intelligence and Function Notebook provide advisory selected-function evidence: imports, xrefs, function boundaries, constants, pseudocode, calling conventions, debugger observations, limits, and JSON/Markdown export. They do not become verdict authority.
+
+A fresh exact-artifact deployment gate is still required before calling this source state an unsigned deployment candidate. Public-trusted signing, updater readiness, and high-assurance external release status remain unproven until exact artifacts pass signing/status, installer smoke, and export authority-envelope checks.
