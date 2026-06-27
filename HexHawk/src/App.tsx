@@ -56,7 +56,7 @@ import { ControlFlowGraph } from './components/ControlFlowGraph';
 
 // Phase 8 � Decision Engine Components
 import { AnalysisGraph } from './components/AnalysisGraph';
-import { IntelligenceReport } from './components/IntelligenceReport';
+import { IntelligenceReport, type AiContributions } from './components/IntelligenceReport';
 import { SnapshotHistoryPanel } from './components/SnapshotHistoryPanel';
 import { AutoHealBanner } from './components/AutoHealBanner';
 import { diagnose } from './utils/selfHealEngine';
@@ -131,6 +131,7 @@ import {
 import { buildAddressToBlockMap, buildProgramAnalysisAdapter, type AppBackendImport } from './utils/programAnalysisAdapter';
 import type { ProgramAnalysis } from './utils/disassemblyModel';
 import { buildFunctionIntelligence } from './utils/functionIntelligence';
+import { runAetherframePatterns } from './utils/aetherframePatterns';
 import {
   type QASubsystemStatus,
   type SubsystemSource,
@@ -2286,8 +2287,82 @@ export default function App() {
   const [dismissedAnalystPrompts, setDismissedAnalystPrompts] = useState<AnalystPromptTrigger[]>([]);
 
   React.useEffect(() => {
+    setAiObservations([]);
+    setAcceptedAiObservations([]);
+    setAgentGateProposals([]);
+    setApprovedAgentGateProposals([]);
     setDismissedAnalystPrompts([]);
   }, [binaryPath]);
+
+  React.useEffect(() => {
+    if (!programAnalysis || programAnalysis.functions.length === 0) {
+      setAiObservations([]);
+      setAgentGateProposals([]);
+      return;
+    }
+
+    const observations = programAnalysis.functions.flatMap(fn =>
+      runAetherframePatterns(buildFunctionIntelligence(fn, programAnalysis)),
+    );
+    setAiObservations(prev => observations.map(observation => {
+      const previous = prev.find(item => item.id === observation.id);
+      return previous ? { ...observation, accepted: previous.accepted, dismissed: previous.dismissed } : observation;
+    }));
+
+    const proposals: AgentGateProposal[] = observations
+      .filter(observation => observation.kind === 'likely-purpose' || observation.kind === 'suspicious-pattern' || observation.kind === 'technique-hint')
+      .slice(0, 24)
+      .map(observation => ({
+        id: `agent-proposal-${observation.id}`,
+        proposalKind: observation.kind === 'likely-purpose' ? 'add-function-note' : 'flag-for-review',
+        title: observation.kind === 'likely-purpose' ? `${observation.title}?` : `Review ${observation.title.toLowerCase()}?`,
+        rationale: observation.body,
+        evidenceBasis: observation.evidenceBasis,
+        proposedValue: observation.kind === 'likely-purpose'
+          ? `${observation.title}: ${observation.body}`
+          : `Review note: ${observation.title}. ${observation.body}`,
+        source: observation.source,
+        functionId: observation.functionId,
+        address: observation.address,
+        gyre_is_sole_verdict_authority: true,
+        advisory_only: true,
+        does_not_affect_verdict: true,
+      }));
+    setAgentGateProposals(prev => proposals.filter(proposal =>
+      !prev.some(existing => existing.id === proposal.id && existing.does_not_affect_verdict)
+      && !approvedAgentGateProposals.some(existing => existing.id === proposal.id)
+    ));
+  }, [programAnalysis, approvedAgentGateProposals]);
+
+  const aiContributions = React.useMemo<AiContributions>(() => {
+    const patternCount = aiObservations.length;
+    const acceptedCount = acceptedAiObservations.length + approvedAgentGateProposals.length;
+    const sections: AiContributions['sections'] = [];
+    if (patternCount > 0) {
+      sections.push({
+        section: 'pattern_observations',
+        source: 'aetherframe-static',
+        count: patternCount,
+        advisory_only: true,
+        gyre_is_sole_verdict_authority: true,
+      });
+    }
+    if (acceptedCount > 0) {
+      sections.push({
+        section: 'analyst_accepted_suggestions',
+        source: 'agent-gate-approved',
+        count: acceptedCount,
+        advisory_only: true,
+        gyre_is_sole_verdict_authority: true,
+      });
+    }
+    return {
+      present: sections.length > 0,
+      sections,
+      ai_did_not_affect_verdict: true,
+      gyre_is_sole_verdict_authority: true,
+    };
+  }, [acceptedAiObservations.length, aiObservations.length, approvedAgentGateProposals.length]);
 
   const handleAiObservationChange = React.useCallback((updated: AiObservation) => {
     setAiObservations(prev => prev.map(observation => observation.id === updated.id ? updated : observation));
@@ -5233,6 +5308,7 @@ export default function App() {
                   binarySize={metadata?.file_size}
                   architecture={metadata?.architecture}
                   fileType={metadata?.file_type}
+                  aiContributions={aiContributions}
                 />
               </div>
             )}
