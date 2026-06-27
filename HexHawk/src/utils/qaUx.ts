@@ -103,6 +103,7 @@ export function getPanelFidelityForView(
     agent: browserMode ? 'simulation' : 'real-backend',
     repl: browserMode ? 'simulation' : 'real-backend',
     plugins: browserMode ? 'simulation' : 'real-backend',
+    'strike-api': 'ui-only',
     help: 'ui-only',
     about: 'ui-only',
   };

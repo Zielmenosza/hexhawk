@@ -1,0 +1,90 @@
+export interface StrikeApiMethodReference {
+  name: string;
+  signature: string;
+  description: string;
+  advisory: boolean;
+  verdictPipeline: boolean;
+  example: string;
+}
+
+export const STRIKE_API_METHODS: StrikeApiMethodReference[] = [
+  {
+    name: 'matchIL',
+    signature: 'strike.matchIL(pattern): ILMatchResult[]',
+    description: 'Match STRIKE IL opcode-tree patterns and return nodes plus wildcard bindings.',
+    advisory: true,
+    verdictPipeline: false,
+    example: "strike.matchIL({ opcode: 'call', operands: [{ wildcard: true, bind: 'target' }] })",
+  },
+  {
+    name: 'buildXRefIndex.callersOf',
+    signature: 'strike.buildXRefIndex(analysis).callersOf(addr): XRef[]',
+    description: 'Return call references targeting an address from a ProgramAnalysis cross-reference index.',
+    advisory: true,
+    verdictPipeline: false,
+    example: 'strike.buildXRefIndex(analysis).callersOf(0x401000)',
+  },
+  {
+    name: 'buildXRefIndex.calleesFrom',
+    signature: 'strike.buildXRefIndex(analysis).calleesFrom(addr): XRef[]',
+    description: 'Return direct calls made from an address using the ProgramAnalysis cross-reference index.',
+    advisory: true,
+    verdictPipeline: false,
+    example: 'strike.buildXRefIndex(analysis).calleesFrom(0x401020)',
+  },
+  {
+    name: 'resolveConstantAnnotation',
+    signature: 'strike.resolveConstantAnnotation(fn, idx, val): string | undefined',
+    description: 'Explain known Win32/API constants for an import argument position when a prototype is known.',
+    advisory: true,
+    verdictPipeline: false,
+    example: "strike.resolveConstantAnnotation('CreateFileW', 1, 0x80000000)",
+  },
+  {
+    name: 'getRecoveredStructs',
+    signature: 'strike.getRecoveredStructs(nodes): StrikeRecoveredStruct[]',
+    description: 'Recover advisory struct-like field groups from repeated IL memory accesses.',
+    advisory: true,
+    verdictPipeline: false,
+    example: 'strike.getRecoveredStructs(ilNodes)',
+  },
+  {
+    name: 'registerHook',
+    signature: 'strike.registerHook(event, handler): void',
+    description: 'Register isolated STRIKE extension hooks. Hook failures are logged and do not replace GYRE authority.',
+    advisory: true,
+    verdictPipeline: false,
+    example: "strike.registerHook('post-analysis', ctx => console.log(ctx.result))",
+  },
+  {
+    name: 'buildFunctionIntelligence',
+    signature: 'strike.buildFunctionIntelligence(fn, analysis, decompileResult?, debugSnapshot?): FunctionIntelligence',
+    description: 'Build the advisory per-function evidence notebook model from static analysis, pseudocode, and runtime snapshot evidence.',
+    advisory: true,
+    verdictPipeline: false,
+    example: 'strike.buildFunctionIntelligence(fn, analysis, decompileResult, debugSnapshot)',
+  },
+  {
+    name: 'exportFunctionIntelligenceJSON',
+    signature: 'strike.exportFunctionIntelligenceJSON(fi): string',
+    description: 'Export Function Intelligence JSON with GYRE sole-verdict and advisory-only envelope fields.',
+    advisory: true,
+    verdictPipeline: false,
+    example: 'strike.exportFunctionIntelligenceJSON(functionIntelligence)',
+  },
+];
+
+export function generateStrikeApiSchema(generatedAt: string = new Date().toISOString()) {
+  return {
+    schema: 'hexhawk.strike.api.v1' as const,
+    generated_at: generatedAt,
+    methods: STRIKE_API_METHODS.map(method => ({
+      name: method.name,
+      signature: method.signature,
+      description: method.description,
+      advisory: method.advisory,
+      verdict_pipeline: method.verdictPipeline,
+      example: method.example,
+    })),
+  };
+}

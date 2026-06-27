@@ -15,6 +15,8 @@ import type { RegisterState, DebugSnapshot } from '../components/DebuggerPanel';
 import type { BehavioralTag } from './correlationEngine';
 import type { DecompilerIrNode, DecompilerIrValue } from './decompilerTypes';
 import { buildXRefIndex } from './disassemblyAnalysis';
+import { buildFunctionIntelligence, exportFunctionIntelligenceJSON } from './functionIntelligence';
+import { STRIKE_API_METHODS, generateStrikeApiSchema } from './strikeApiReference';
 import type { ProgramAnalysis } from './disassemblyModel';
 import {
   annotateReachingDefinitions as annotateReachingDefinitionsPass,
@@ -37,6 +39,7 @@ export {
 } from './decompilerIr';
 export type { ReachingDefs } from './decompilerTypes';
 export { formatImportPrototype, IMPORT_PROTOTYPES, resolveConstantAnnotation } from './importPrototypes';
+export { STRIKE_API_METHODS, generateStrikeApiSchema } from './strikeApiReference';
 export type { ImportPrototype, ImportParameterPrototype } from './importPrototypes';
 
 
@@ -311,6 +314,10 @@ export const strike = {
   buildXRefIndex,
   resolveImportPrototype,
   resolveConstantAnnotation,
+  buildFunctionIntelligence,
+  exportFunctionIntelligenceJSON,
+  apiMethods: STRIKE_API_METHODS,
+  generateApiSchema: generateStrikeApiSchema,
   runPreAnalysisHooks: runStrikePreAnalysisHooks,
   runPostAnalysisHooks: runStrikePostAnalysisHooks,
 };

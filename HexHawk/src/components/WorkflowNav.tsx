@@ -27,6 +27,7 @@ export type NavView =
   | 'repl'
   | 'agent'
   | 'plugins'
+  | 'strike-api'
   | 'help'
   | 'about';
 
@@ -101,6 +102,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Help',
     items: [
       { id: 'help', label: 'Help', icon: '?', minTier: 'free', requiresState: 'noFile', description: 'Plain-language instructions, shortcuts, workflow guidance, and troubleshooting.' },
+      { id: 'strike-api', label: 'STRIKE API', icon: '⌘', minTier: 'free', requiresState: 'noFile', description: 'Searchable reference for advisory STRIKE scripting/query helpers.' },
       { id: 'about', label: 'About', icon: 'ℹ', minTier: 'free', requiresState: 'noFile', description: 'What HexHawk is, what it does locally, and how its trust model works.' },
     ],
   },

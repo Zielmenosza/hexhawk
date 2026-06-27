@@ -27,6 +27,7 @@ import type { LicenseInfo } from './utils/tauriLicense';
 
 // Workflow-driven UI
 import WorkflowNav from './components/WorkflowNav';
+import StrikeApiReferencePanel from './components/StrikeApiReferencePanel';
 import type { NavView, WorkflowState } from './components/WorkflowNav';
 import TopBar from './components/TopBar';
 import ActionBar from './components/ActionBar';
@@ -364,6 +365,13 @@ const FEATURE_GUIDES: Partial<Record<NavView, FeatureGuide>> = {
     does: 'Adds structured analysis over functions, instructions, and control flow to help explain what code appears to do.',
     how: ['Use after Inspect and Disassemble.', 'Follow address links back to the Code map.', 'Treat summaries as analyst guidance that should be checked against evidence.'],
     expect: 'Explanations and maturity notes, not final security truth.',
+  },
+  'strike-api': {
+    title: 'STRIKE API reference',
+    plainName: 'Scriptable advisory helpers',
+    does: 'Documents STRIKE query helpers for IL matching, xrefs, constants, hooks, and Function Intelligence exports.',
+    how: ['Search for a method by name or purpose.', 'Copy the method signature or example.', 'Remember all STRIKE outputs are advisory evidence, not GYRE verdict authority.'],
+    expect: 'Discoverable scripting/query surface with explicit authority boundaries.',
   },
   verdict: {
     title: 'Verdict',
@@ -4455,13 +4463,15 @@ export default function App() {
               <QASubsystemPanel statuses={qaSubsystemStatuses} />
             )}
 
-            {activeView !== 'help' && activeView !== 'about' && (
+            {activeView !== 'help' && activeView !== 'about' && activeView !== 'strike-api' && (
               <FeatureGuideCard guide={FEATURE_GUIDES[activeView]} />
             )}
 
             {WORKSPACE_VIEW_IDS.has(activeView) && (
               <WorkspaceTabStrip activeView={activeView} onSelect={navigateView} />
             )}
+
+            {activeView === 'strike-api' && <StrikeApiReferencePanel />}
 
             {/* Recent-files quick-access for the load view */}
             {activeView === 'load' && (
