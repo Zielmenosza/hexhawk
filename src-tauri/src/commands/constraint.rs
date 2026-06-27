@@ -261,7 +261,8 @@ mod tests {
 
     #[test]
     fn smtlib_limit_is_sane() {
-        assert!(MAX_SMTLIB_BYTES >= 1024);
+        let limit = MAX_SMTLIB_BYTES;
+        assert!(limit >= 1024);
     }
 
     #[test]

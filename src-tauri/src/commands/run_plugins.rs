@@ -266,9 +266,9 @@ mod tests {
             "sleep-4", "sleep-5", "sleep-6", "sleep-7",
         ];
 
-        for idx in 0..MAX_INFLIGHT_PLUGIN_WORKERS {
+        for name in names.iter().take(MAX_INFLIGHT_PLUGIN_WORKERS) {
             let plugin = SleepingPlugin {
-                name: names[idx],
+                name,
                 sleep_ms: 200,
             };
             let result = execute_plugin_with_timeout(
