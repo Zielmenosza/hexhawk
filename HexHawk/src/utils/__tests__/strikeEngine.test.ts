@@ -112,6 +112,7 @@ describe('STRIKE xref query surface', () => {
       schema: 'hexhawk.disassembly_program.v1' as const,
       advisoryOnly: true as const,
       authority: 'analysis_evidence_not_gyre_verdict' as const,
+      arch: 'x86-64' as const,
       instructions: [],
       functions: [],
       basicBlocks: [],

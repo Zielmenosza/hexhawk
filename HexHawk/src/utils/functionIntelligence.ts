@@ -25,7 +25,8 @@ export interface FunctionIntelligenceLimit {
     | 'no-debugger-observation'
     | 'partial-decompile'
     | 'ordinal-only-import'
-    | 'indirect-call';
+    | 'indirect-call'
+    | 'architecture-limit';
   address?: number;
   detail: string;
 }
@@ -183,6 +184,7 @@ function boundarySourceFor(fn: ProgramAnalysisFunction, analysis: ProgramAnalysi
 function normalizeAbi(name: string): FunctionIntelligenceCallingConvention['abi'] {
   if (name === 'sysv-x64' || name === 'sysv-amd64') return 'sysv-amd64';
   if (name === 'windows-x64' || name === 'cdecl' || name === 'stdcall') return name;
+  if (name === 'arm64-unknown') return 'unknown';
   return 'unknown';
 }
 
@@ -311,8 +313,11 @@ function buildLimits(fn: ProgramAnalysisFunction, analysis: ProgramAnalysis, dec
   if (fn.startSource === 'prologue-pattern' || fn.startSource === 'alignment-gap' || fn.confidence === 'low' || fn.confidence === 'unknown') {
     limits.push({ kind: 'inferred-boundary', address: fn.startAddress, detail: `Function boundary was inferred from ${fn.startSource} evidence.` });
   }
-  if (!fn.callingConvention || fn.callingConvention.name === 'unknown' || fn.callingConvention.confidence === 'low') {
-    limits.push({ kind: 'unproven-call-convention', address: fn.startAddress, detail: 'Calling convention is not fully proven by current static evidence.' });
+  if (analysis.arch === 'arm64') {
+    limits.push({ kind: 'architecture-limit', address: fn.startAddress, detail: 'ARM64 architecture detected. Disassembly available. Import resolution and calling-convention inference are limited for ARM64 in this release.' });
+  }
+  if (!fn.callingConvention || fn.callingConvention.name === 'unknown' || fn.callingConvention.name === 'arm64-unknown' || fn.callingConvention.confidence === 'low') {
+    limits.push({ kind: 'unproven-call-convention', address: fn.startAddress, detail: fn.callingConvention?.source === 'arm64-limited' ? 'ARM64 — calling convention inference not yet implemented.' : 'Calling convention is not fully proven by current static evidence.' });
   }
   for (const warning of fn.warnings) {
     if (warning.kind === 'indirect-call') limits.push({ kind: 'indirect-call', address: warning.address, detail: warning.message });

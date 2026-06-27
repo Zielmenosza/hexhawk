@@ -1,5 +1,5 @@
 import { buildProgramAnalysis } from './disassemblyAnalysis';
-import type { AnalysisWarning, BackendImport, Instruction, ProgramAnalysis, XRefKind as ProgramXRefKind } from './disassemblyModel';
+import type { AnalysisWarning, BackendImport, Instruction, ProgramAnalysis, ProgramArchitecture, XRefKind as ProgramXRefKind } from './disassemblyModel';
 
 export type AppBackendImport = BackendImport;
 
@@ -654,8 +654,9 @@ export function buildProgramAnalysisAdapter(
   instructions: AppDisassembledInstruction[],
   graph: AdapterCfgGraph | null,
   imports: Iterable<AppBackendImport> = [],
+  architecture?: ProgramArchitecture | string | null,
 ): ProgramAnalysisAdapterResult {
-  const programAnalysis = buildProgramAnalysis(toProgramInstructions(instructions), { imports });
+  const programAnalysis = buildProgramAnalysis(toProgramInstructions(instructions), { imports, architecture });
   const { referencesMap, jumpTargetsMap, xrefTypes } = buildLegacyReferenceMaps(instructions);
   const functions = detectLegacyFunctions(instructions, referencesMap, jumpTargetsMap);
   const loops = detectLoops(graph || { nodes: [], edges: [] });

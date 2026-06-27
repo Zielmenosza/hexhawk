@@ -58,7 +58,7 @@ pub(crate) fn capstone_for_arch(arch: Architecture, data: &[u8]) -> Result<(Caps
             .arm64()
             .mode(arch::arm64::ArchMode::Arm)
             .build()
-            .map_err(e)?, "AArch64", false)),
+            .map_err(e)?, "arm64", false)),
         Architecture::Mips => Ok((Capstone::new()
             .mips()
             .mode(arch::mips::ArchMode::Mips32)
@@ -101,6 +101,8 @@ pub struct DisassemblyResult {
     pub next_byte_offset: u64,
     /// Number of bytes that could not be decoded (skipped as data).
     pub bad_bytes: usize,
+    /// Advisory limits and architecture-specific caveats.
+    pub warnings: Vec<String>,
 }
 
 /// Robust disassembly with skip-on-error: when Capstone cannot decode bytes at
@@ -178,6 +180,7 @@ pub fn disassemble_file_range(
             has_more: false,
             next_byte_offset: 0,
             bad_bytes: 0,
+            warnings: vec![],
         });
     }
 
@@ -199,6 +202,7 @@ pub fn disassemble_file_range(
     let limit = max_instructions.unwrap_or(256) as usize;
 
     let (instructions, bad_bytes) = disasm_robust(&cs, slice, effective_offset as u64, limit);
+    let warnings = architecture_warnings(arch_name);
 
     let next_byte_offset = instructions
         .last()
@@ -218,6 +222,7 @@ pub fn disassemble_file_range(
         has_more,
         next_byte_offset,
         bad_bytes,
+        warnings,
     })
 }
 
@@ -246,3 +251,80 @@ fn snap_to_text_section(data: &[u8], offset: usize, length: usize) -> (usize, us
     (file_offset as usize, file_size as usize)
 }
 
+
+
+fn architecture_warnings(arch_name: &str) -> Vec<String> {
+    if arch_name == "arm64" {
+        vec!["ARM64 architecture detected. Disassembly available. Import resolution and calling-convention inference are limited for ARM64 in this release.".to_string()]
+    } else {
+        vec![]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn put_u16(buf: &mut [u8], offset: usize, value: u16) { buf[offset..offset + 2].copy_from_slice(&value.to_le_bytes()); }
+    fn put_u32(buf: &mut [u8], offset: usize, value: u32) { buf[offset..offset + 4].copy_from_slice(&value.to_le_bytes()); }
+    fn put_u64(buf: &mut [u8], offset: usize, value: u64) { buf[offset..offset + 8].copy_from_slice(&value.to_le_bytes()); }
+
+    fn minimal_elf64_aarch64_text() -> Vec<u8> {
+        let mut data = vec![0u8; 0x248];
+        data[0..4].copy_from_slice(b"\x7FELF");
+        data[4] = 2; // ELFCLASS64
+        data[5] = 1; // little endian
+        data[6] = 1; // version
+        put_u16(&mut data, 0x10, 2); // ET_EXEC
+        put_u16(&mut data, 0x12, 183); // EM_AARCH64
+        put_u32(&mut data, 0x14, 1);
+        put_u64(&mut data, 0x18, 0x400000);
+        put_u64(&mut data, 0x28, 0x128); // section header offset
+        put_u16(&mut data, 0x34, 64);
+        put_u16(&mut data, 0x3A, 64);
+        put_u16(&mut data, 0x3C, 3);
+        put_u16(&mut data, 0x3E, 2);
+
+        data[0x100..0x104].copy_from_slice(&[0xC0, 0x03, 0x5F, 0xD6]); // ret
+        data[0x104..0x108].copy_from_slice(&[0x1F, 0x20, 0x03, 0xD5]); // nop
+        data[0x108..0x119].copy_from_slice(b"\0.text\0.shstrtab\0");
+
+        let sh_text = 0x128 + 64;
+        put_u32(&mut data, sh_text, 1); // name .text
+        put_u32(&mut data, sh_text + 4, 1); // SHT_PROGBITS
+        put_u64(&mut data, sh_text + 8, 0x6); // alloc + exec
+        put_u64(&mut data, sh_text + 0x10, 0x400000);
+        put_u64(&mut data, sh_text + 0x18, 0x100);
+        put_u64(&mut data, sh_text + 0x20, 8);
+        put_u64(&mut data, sh_text + 0x30, 4);
+
+        let sh_names = 0x128 + 128;
+        put_u32(&mut data, sh_names, 7); // name .shstrtab
+        put_u32(&mut data, sh_names + 4, 3); // SHT_STRTAB
+        put_u64(&mut data, sh_names + 0x18, 0x108);
+        put_u64(&mut data, sh_names + 0x20, 0x11);
+        data
+    }
+
+    #[test]
+    fn valid_arm64_elf_disassembles_with_honest_warning() {
+        let path = std::env::temp_dir().join("hexhawk-arm64-test.elf");
+        fs::write(&path, minimal_elf64_aarch64_text()).expect("write elf");
+        let result = disassemble_file_range(path.to_string_lossy().to_string(), 0, 0x200, Some(8)).expect("disassemble");
+        let _ = fs::remove_file(path);
+
+        assert_eq!(result.arch, "arm64");
+        assert!(!result.is_fallback);
+        assert!(result.instructions.iter().any(|ins| ins.mnemonic == "ret"));
+        assert!(result.warnings.iter().any(|warning| warning.contains("ARM64 architecture detected")));
+    }
+
+    #[test]
+    fn x86_64_capstone_arch_is_unchanged_and_has_no_arm64_warning() {
+        let (_cs, arch, fallback) = capstone_for_arch(Architecture::X86_64, &[]).expect("capstone");
+        assert_eq!(arch, "x86-64");
+        assert!(!fallback);
+        assert!(architecture_warnings(arch).is_empty());
+    }
+}

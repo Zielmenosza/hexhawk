@@ -7,6 +7,8 @@ export type ConfidenceLevel = 'high' | 'medium' | 'low' | 'unknown';
 
 export type InstructionSource = 'backend' | 'synthetic-test' | 'imported-trace' | 'unknown';
 
+export type ProgramArchitecture = 'x86' | 'x86-64' | 'arm' | 'arm64' | 'mips' | 'powerpc' | 'unknown';
+
 export type BackendImport = {
   name?: string | null;
   dll: string;
@@ -89,6 +91,7 @@ export type CallingConventionName =
   | 'stdcall'
   | 'cdecl'
   | 'fastcall'
+  | 'arm64-unknown'
   | 'unknown';
 
 export type CallingConventionInfo = {
@@ -99,6 +102,7 @@ export type CallingConventionInfo = {
     | 'windows-x64-shadow-space'
     | 'sysv-register-use'
     | 'stack-cleanup'
+    | 'arm64-limited'
     | 'default-unknown';
   evidence: string[];
 };
@@ -177,7 +181,8 @@ export type AnalysisWarningKind =
   | 'empty-input'
   | 'non-contiguous-block'
   | 'fallthrough-estimated'
-  | 'overlapping-candidate';
+  | 'overlapping-candidate'
+  | 'architecture-limit';
 
 export type AnalysisWarning = {
   kind: AnalysisWarningKind;
@@ -190,6 +195,7 @@ export type ProgramAnalysis = {
   schema: 'hexhawk.disassembly_program.v1';
   advisoryOnly: true;
   authority: 'analysis_evidence_not_gyre_verdict';
+  arch: ProgramArchitecture;
   instructions: Instruction[];
   functions: FunctionModel[];
   basicBlocks: BasicBlock[];

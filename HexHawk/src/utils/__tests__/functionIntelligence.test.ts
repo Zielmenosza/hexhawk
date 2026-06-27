@@ -41,6 +41,7 @@ function makeAnalysis(fn = makeFunction(), overrides: Partial<ProgramAnalysis> =
     schema: 'hexhawk.disassembly_program.v1',
     advisoryOnly: true,
     authority: 'analysis_evidence_not_gyre_verdict',
+    arch: 'x86-64',
     instructions: fn.instructions,
     functions: [fn],
     basicBlocks: [],
@@ -290,6 +291,17 @@ describe('FunctionIntelligence builder', () => {
     expect(parsed.gyre_is_sole_verdict_authority).toBe(true);
   });
 
+
+  it('surfaces ARM64 calling-convention limits in function intelligence', () => {
+    const fn = makeFunction({
+      callingConvention: { name: 'arm64-unknown', confidence: 'low', source: 'arm64-limited', evidence: ['ARM64 — calling convention inference not yet implemented'] },
+    });
+    const fi = buildFunctionIntelligence(fn, makeAnalysis(fn, { arch: 'arm64' }));
+
+    expect(fi.callingConvention).toMatchObject({ abi: 'unknown', analysisConfidence: 'low' });
+    expect(fi.callingConvention?.evidence).toContain('ARM64');
+    expect(fi.limits.some(limit => limit.kind === 'architecture-limit' && limit.detail.includes('ARM64 architecture detected'))).toBe(true);
+  });
 
   it('exports parseable JSON with schema and authority fields', () => {
     const fi = buildFunctionIntelligence(makeFunction(), makeAnalysis(), makeDecompileResult(), makeDebugSnapshot());

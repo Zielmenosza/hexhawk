@@ -8,6 +8,7 @@ import type {
   FunctionStartSource,
   Instruction,
   ProgramAnalysis,
+  ProgramArchitecture,
   BackendImport,
   CallingConventionInfo,
   XRef,
@@ -22,6 +23,8 @@ export type DisassemblyAnalysisOptions = {
   imports?: Iterable<BackendImport>;
   /** Advisory jump-table targets detected by a prior pass. */
   jumpTableTargets?: Iterable<number>;
+  /** Architecture reported by the backend disassembler. */
+  architecture?: ProgramArchitecture | string | null;
 };
 
 export type FunctionStartCandidate = {
@@ -161,7 +164,16 @@ function inferCallingConvention(
   instructions: Instruction[],
   imports: Iterable<BackendImport> | undefined,
   startAddress: number,
+  architecture: ProgramArchitecture,
 ): CallingConventionInfo {
+  if (architecture === 'arm64') {
+    return {
+      name: 'arm64-unknown',
+      confidence: 'low',
+      source: 'arm64-limited',
+      evidence: ['ARM64 — calling convention inference not yet implemented'],
+    };
+  }
   const evidence: string[] = [];
   const prototype = resolveImportPrototype(importNameForFunction(fnName, imports, startAddress));
   if (prototype?.callingConvention) {
@@ -228,6 +240,17 @@ function inferCallingConvention(
   }
 
   return { name: 'unknown', confidence: 'low', source: 'default-unknown', evidence: ['no calling-convention pattern matched'] };
+}
+
+function normalizeProgramArchitecture(architecture: ProgramArchitecture | string | null | undefined): ProgramArchitecture {
+  const normalized = (architecture ?? 'x86-64').toString().trim().toLowerCase();
+  if (normalized === 'arm64' || normalized === 'aarch64') return 'arm64';
+  if (normalized === 'x64' || normalized === 'x86_64' || normalized === 'x86-64') return 'x86-64';
+  if (normalized === 'x86' || normalized === 'i386') return 'x86';
+  if (normalized.startsWith('arm')) return 'arm';
+  if (normalized.startsWith('mips')) return 'mips';
+  if (normalized.startsWith('powerpc') || normalized.startsWith('ppc')) return 'powerpc';
+  return 'unknown';
 }
 
 function parseImportSymbol(symbol?: string): { importName: string; moduleName?: string } | undefined {
@@ -601,7 +624,11 @@ export function splitBasicBlocks(instructions: Instruction[], xrefs: XRef[] = bu
 
 export function buildProgramAnalysis(instructions: Instruction[], options: DisassemblyAnalysisOptions = {}): ProgramAnalysis {
   const normalizedInstructions = [...instructions].sort((a, b) => a.address - b.address);
+  const arch = normalizeProgramArchitecture(options.architecture);
   const warnings: AnalysisWarning[] = [];
+  if (arch === 'arm64') {
+    warnings.push(warning('architecture-limit', 'ARM64 architecture detected. Disassembly available. Import resolution and calling-convention inference are limited for ARM64 in this release.'));
+  }
 
   if (normalizedInstructions.length === 0) {
     warnings.push(warning('empty-input', 'No disassembly instructions were supplied.'));
@@ -631,6 +658,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
       uniqueInstructions([...functionInstructions, ...functionBlocks.flatMap(block => block.instructions)]),
       options.imports,
       candidate.address,
+      arch,
     );
 
     functions.push({
@@ -674,6 +702,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
     schema: 'hexhawk.disassembly_program.v1',
     advisoryOnly: true,
     authority: 'analysis_evidence_not_gyre_verdict',
+    arch,
     instructions: normalizedInstructions,
     functions,
     basicBlocks,

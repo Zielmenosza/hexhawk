@@ -36,6 +36,7 @@ const LIMIT_TEXT: Record<FunctionIntelligenceLimit['kind'], string> = {
   'partial-decompile': 'Pseudocode is partial and should not be treated as recovered source.',
   'ordinal-only-import': 'An import was identified by ordinal only, without a symbolic API name.',
   'indirect-call': 'One or more indirect call targets could not be resolved to a known function or import.',
+  'architecture-limit': 'This architecture is supported with explicit analysis limits in this release.',
 };
 
 function plainLimit(limit: FunctionIntelligenceLimit): string {

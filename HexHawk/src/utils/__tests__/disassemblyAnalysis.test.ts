@@ -291,4 +291,38 @@ describe('typed disassembly analysis foundation', () => {
     expect(fn?.callingConvention?.name).toBe('windows-x64');
   });
 
+
+  it('uses honest ARM64 calling-convention limits instead of x86 heuristics', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0x4000, mnemonic: 'stp', operands: 'x29, x30, [sp, #-0x10]!', source: 'synthetic-test' },
+      { address: 0x4004, mnemonic: 'mov', operands: 'x29, sp', source: 'synthetic-test' },
+      { address: 0x4008, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ], { architecture: 'arm64' });
+
+    expect(analysis.arch).toBe('arm64');
+    expect(analysis.functions[0]?.callingConvention).toMatchObject({
+      name: 'arm64-unknown',
+      confidence: 'low',
+      source: 'arm64-limited',
+    });
+    expect(analysis.functions[0]?.callingConvention?.evidence.join(' ')).toContain('ARM64');
+    expect(analysis.warnings.some(warning => warning.message.includes('ARM64 architecture detected'))).toBe(true);
+  });
+
+  it('keeps x86-64 calling-convention behavior unchanged when architecture is x86-64', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0xA000, mnemonic: 'push', operands: 'rbp', source: 'synthetic-test' },
+      { address: 0xA001, mnemonic: 'mov', operands: 'rbp, rsp', source: 'synthetic-test' },
+      { address: 0xA004, mnemonic: 'sub', operands: 'rsp, 0x28', source: 'synthetic-test' },
+      { address: 0xA008, mnemonic: 'ret', operands: '', source: 'synthetic-test' },
+    ], { architecture: 'x86-64' });
+
+    expect(analysis.arch).toBe('x86-64');
+    expect(analysis.functions[0]?.callingConvention).toMatchObject({
+      name: 'windows-x64',
+      confidence: 'medium',
+      source: 'windows-x64-shadow-space',
+    });
+  });
+
 });

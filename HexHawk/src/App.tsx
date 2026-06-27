@@ -2528,10 +2528,10 @@ export default function App() {
   // ===== PHASE 5: ANALYSIS FUNCTIONS =====
 
   // Comprehensive analysis orchestration via ProgramAnalysis adapter.
-  const performFullAnalysis = (instructions: DisassembledInstruction[], graph: CfgGraph | null, imports: AppBackendImport[] = []) => {
+  const performFullAnalysis = (instructions: DisassembledInstruction[], graph: CfgGraph | null, imports: AppBackendImport[] = [], architecture: string | null = disasmArch) => {
     if (instructions.length === 0) return;
 
-    const adapter = buildProgramAnalysisAdapter(instructions, graph, imports);
+    const adapter = buildProgramAnalysisAdapter(instructions, graph, imports, architecture);
     setProgramAnalysis(adapter.programAnalysis);
     setReferencesMap(adapter.referencesMap);
     setJumpTargetsMap(adapter.jumpTargetsMap as Map<number, Set<number>>);
@@ -3607,7 +3607,7 @@ export default function App() {
       setDisasmNextByteOffset(null);
       setMessage(`Disassembly loaded from ${formatHex(startOffset)} (browser simulation)`);
       addLog(`Simulated disassembly for ${binaryPath} from ${formatHex(startOffset)}`, 'info');
-      performFullAnalysis(instructions, cfg);
+      performFullAnalysis(instructions, cfg, [], 'x86-64');
       setDisasmIsLoading(false);
       navigateView('disassembly');
       return;
@@ -3623,6 +3623,7 @@ export default function App() {
         imports?: AppBackendImport[];
         has_more: boolean;
         next_byte_offset: number;
+        warnings?: string[];
       }>('disassemble_file_range', {
         path: safePath,
         offset: safeRange.offset,
@@ -3660,9 +3661,10 @@ export default function App() {
       const archNote = response.is_fallback ? ` (⚠ unsupported arch - fell back to ${response.arch})` : ` (${response.arch})`;
       setMessage(`Disassembly loaded from ${formatHex(effectiveStart)} to ${formatHex(effectiveEnd)}${archNote}`);
       addLog(`Disassembled ${binaryPath} from ${formatHex(effectiveStart)} to ${formatHex(effectiveEnd)}${archNote}`, response.is_fallback ? 'warn' : 'info');
+      for (const warning of response.warnings ?? []) addLog(warning, 'warn');
       
       // PHASE 5: Perform analysis on disassembly
-      performFullAnalysis(instructions, cfg);
+      performFullAnalysis(instructions, cfg, response.imports ?? [], response.arch);
       
       navigateView('disassembly');
     } catch (error) {
@@ -3734,7 +3736,7 @@ export default function App() {
       }
       setMessage('CFG built successfully (browser-mode simulation).');
       addLog(`Simulated CFG build for ${binaryPath}`, 'info');
-      performFullAnalysis(disassembly.length > 0 ? disassembly : buildMockDisassembly(disasmOffset), response);
+      performFullAnalysis(disassembly.length > 0 ? disassembly : buildMockDisassembly(disasmOffset), response, [], disasmArch);
       navigateView('cfg');
       return;
     }
@@ -3767,7 +3769,7 @@ export default function App() {
       addLog(`Built CFG for ${binaryPath}`);
       
       // PHASE 5: Re-analyze with new CFG data
-      performFullAnalysis(disassembly, response);
+      performFullAnalysis(disassembly, response, [], disasmArch);
       
       navigateView('cfg');
     } catch (error) {

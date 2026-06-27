@@ -32,6 +32,7 @@ function analysis(func = fn(), overrides: Partial<ProgramAnalysis> = {}): Progra
     schema: 'hexhawk.disassembly_program.v1',
     advisoryOnly: true,
     authority: 'analysis_evidence_not_gyre_verdict',
+    arch: 'x86-64',
     instructions: func.instructions,
     functions: [func],
     basicBlocks: [],
