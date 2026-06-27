@@ -104,6 +104,8 @@ import type { UserPluginInfo } from './components/QuillPanel';
 import PatchPanel from './components/PatchPanel';
 import { XRefPanel } from './components/XRefPanel';
 import FunctionNotebook from './components/FunctionNotebook';
+import AiInsightPanel from './components/AiInsightPanel';
+import type { AiObservation } from './types/aiObservation';
 import type { Patch as PanelPatch } from './components/PatchPanel';
 import { detectPatchableBranches } from './utils/patchEngine';
 import type { PatchSuggestion } from './utils/patchEngine';
@@ -258,6 +260,7 @@ type AppTab =
   | 'debugger'
   | 'signatures'
   | 'talon'
+  | 'ai-observations'
   | 'document'
   | 'sandbox'
   | 'constraint'
@@ -281,6 +284,7 @@ const WORKSPACE_NAV_ITEMS: WorkspaceNavItem[] = [
   { id: 'disassembly', label: 'Code map', eyebrow: 'instructions' },
   { id: 'cfg', label: 'Branch map', eyebrow: 'flow graph' },
   { id: 'function-notebook', label: 'Function details', eyebrow: 'notebook' },
+  { id: 'ai-observations', label: 'AI observations', eyebrow: 'advisory' },
   { id: 'decompile', label: 'Pseudocode', eyebrow: 'best effort' },
   { id: 'talon', label: 'Code reasoning', eyebrow: 'TALON' },
   { id: 'nest', label: 'Evidence loop', eyebrow: 'NEST' },
@@ -2138,6 +2142,7 @@ export default function App() {
     const viewToTab: Partial<Record<NavView, AppTab>> = {
       metadata: 'metadata', inspect: 'metadata', hex: 'hex', strings: 'strings',
       disassembly: 'disassembly', cfg: 'cfg', decompile: 'decompile',
+      'ai-observations': 'ai-observations',
       talon: 'talon',
       verdict: 'graph', signals: 'metadata', nest: 'nest',
       activity: 'logs', patch: 'disassembly', constraint: 'constraint',
@@ -2179,6 +2184,10 @@ export default function App() {
       binaryPath,
       activeView,
       workflowState,
+      aiObservations: {
+        visible: aiObservations.filter(observation => !observation.accepted && !observation.dismissed).length,
+        accepted: acceptedAiObservations.length,
+      },
       panelFidelity,
       qaSubsystemStatuses,
       metadata: metadata
@@ -2276,6 +2285,16 @@ export default function App() {
   };
   const [pendingAgentSignals, setPendingAgentSignals] = useState<AgentSignalPending[]>([]);
   const [agentActionLog, setAgentActionLog] = useState<AgentActionEntry[]>([]);
+  const [aiObservations, setAiObservations] = useState<AiObservation[]>([]);
+  const [acceptedAiObservations, setAcceptedAiObservations] = useState<AiObservation[]>([]);
+
+  const handleAiObservationChange = React.useCallback((updated: AiObservation) => {
+    setAiObservations(prev => prev.map(observation => observation.id === updated.id ? updated : observation));
+  }, []);
+
+  const handleAcceptAiObservation = React.useCallback((updated: AiObservation) => {
+    setAcceptedAiObservations(prev => prev.some(observation => observation.id === updated.id) ? prev : [...prev, updated]);
+  }, []);
 
   const handleApproveAgentSignal = React.useCallback((pendingId: string) => {
     setPendingAgentSignals(prev => {
@@ -4216,7 +4235,7 @@ export default function App() {
     }
   }
 
-  const tabs: AppTab[] = ['metadata', 'hex', 'strings', 'cfg', 'plugins', 'disassembly', 'decompile', 'talon', 'constraint', 'document', 'sandbox', 'debugger', 'strike', 'signatures', 'echo', 'nest', 'repl', 'console', 'bookmarks', 'logs', 'graph', 'report', 'agent'];
+  const tabs: AppTab[] = ['metadata', 'hex', 'strings', 'cfg', 'plugins', 'disassembly', 'decompile', 'talon', 'ai-observations', 'constraint', 'document', 'sandbox', 'debugger', 'strike', 'signatures', 'echo', 'nest', 'repl', 'console', 'bookmarks', 'logs', 'graph', 'report', 'agent'];
 
   return (
     <div className="wf-shell" onContextMenu={openHexHawkContextMenu}>
@@ -4991,6 +5010,18 @@ export default function App() {
             {activeView === 'function-notebook' && (
               <div className="workspace-view-shell workspace-view-scroll" data-testid="panel-function-notebook">
                 <FunctionNotebook functionIntelligence={selectedFunctionIntelligence} />
+              </div>
+            )}
+
+            {/* ── AI Observations ───────────────────────────────────────────── */}
+            {activeView === 'ai-observations' && (
+              <div className="workspace-view-shell workspace-view-scroll" data-testid="panel-ai-observations">
+                <AiInsightPanel
+                  observations={aiObservations}
+                  onObservationChange={handleAiObservationChange}
+                  onAcceptAsNote={handleAcceptAiObservation}
+                  onRequestSummary={() => navigateView('function-notebook')}
+                />
               </div>
             )}
 

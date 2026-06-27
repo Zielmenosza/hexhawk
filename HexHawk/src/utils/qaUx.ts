@@ -87,6 +87,7 @@ export function getPanelFidelityForView(
     disassembly: browserMode ? 'simulation' : 'real-backend',
     cfg: browserMode ? 'simulation' : 'real-backend',
     'function-notebook': browserMode ? 'simulation' : 'real-backend',
+    'ai-observations': 'ui-only',
     decompile: browserMode ? 'simulation' : 'real-backend',
     verdict: browserMode ? 'simulation' : 'real-backend',
     signals: browserMode ? 'simulation' : 'real-backend',

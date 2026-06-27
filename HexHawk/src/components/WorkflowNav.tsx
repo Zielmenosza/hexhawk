@@ -13,6 +13,7 @@ export type NavView =
   | 'function-notebook'
   | 'decompile'
   | 'talon'
+  | 'ai-observations'
   | 'verdict'
   | 'signals'
   | 'report'
@@ -67,6 +68,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'function-notebook', plainLabel: 'Function details', label: 'Function Notebook', icon: 'ƒ', minTier: 'free', requiresState: 'fileLoaded', description: 'Imports, calls, pseudocode, and evidence for the selected function.' },
       { id: 'decompile', plainLabel: 'Pseudocode', label: 'Decompile', icon: '⟨/⟩', minTier: 'free', requiresState: 'inspected', description: 'Shows a best-effort readable summary of code. Treat it as guidance, not recovered source.' },
       { id: 'talon', plainLabel: 'Code reasoning', label: 'TALON', icon: '🧠', minTier: 'pro', requiresState: 'inspected', description: 'Adds structured code reasoning and summaries for inspected instructions and functions.' },
+      { id: 'ai-observations', plainLabel: 'AI observations', label: 'AI Observations', icon: '✦', minTier: 'free', requiresState: 'fileLoaded', description: 'Suggestions from AETHERFRAME — not verdicts.' },
     ],
   },
   {

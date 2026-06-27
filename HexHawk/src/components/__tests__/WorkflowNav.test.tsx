@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import WorkflowNav from '../WorkflowNav';
 
-describe('WorkflowNav Function Notebook wiring', () => {
+describe('WorkflowNav Function Notebook and AI observations wiring', () => {
   it('renders Function details navigation with plain-language description', () => {
     render(
       <WorkflowNav
@@ -36,5 +36,40 @@ describe('WorkflowNav Function Notebook wiring', () => {
     fireEvent.click(screen.getByTestId('nav-function-notebook'));
 
     expect(onSelect).toHaveBeenCalledWith('function-notebook');
+  });
+
+  it('renders AI observations navigation with advisory AETHERFRAME description', () => {
+    render(
+      <WorkflowNav
+        activeView="ai-observations"
+        workflowState="analyzed"
+        tier="enterprise"
+        fileName="sample.exe"
+        onSelect={vi.fn()}
+        onLoadFile={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('nav-ai-observations')).toBeInTheDocument();
+    expect(screen.getByText('AI observations')).toBeInTheDocument();
+    expect(screen.getByText(/Suggestions from AETHERFRAME — not verdicts/i)).toBeInTheDocument();
+  });
+
+  it('selects ai-observations view when clicked', () => {
+    const onSelect = vi.fn();
+    render(
+      <WorkflowNav
+        activeView="function-notebook"
+        workflowState="analyzed"
+        tier="enterprise"
+        fileName="sample.exe"
+        onSelect={onSelect}
+        onLoadFile={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('nav-ai-observations'));
+
+    expect(onSelect).toHaveBeenCalledWith('ai-observations');
   });
 });
