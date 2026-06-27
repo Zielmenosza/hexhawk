@@ -32,6 +32,7 @@ import type { NavView, WorkflowState } from './components/WorkflowNav';
 import TopBar from './components/TopBar';
 import ActionBar from './components/ActionBar';
 import WorkflowCta from './components/WorkflowCta';
+import FirstRunWelcomePanel from './components/FirstRunWelcomePanel';
 
 // Phase 6 UI Components
 import UnifiedAnalysisPanel from './components/UnifiedAnalysisPanel';
@@ -60,6 +61,7 @@ import { SnapshotHistoryPanel } from './components/SnapshotHistoryPanel';
 import { AutoHealBanner } from './components/AutoHealBanner';
 import { diagnose } from './utils/selfHealEngine';
 import type { HealPrescription } from './utils/selfHealEngine';
+import { hasLoadedFileBefore, markLoadedFile, shouldShowFirstRunPanel } from './utils/firstRunState';
 
 // Demangling (wired in M10 gap pass)
 import { demangle } from './utils/demangler';
@@ -2072,6 +2074,7 @@ export default function App() {
   // Self-heal banner dismiss state — reset when the binary changes
   const [healDismissed, setHealDismissed] = useState(false);
   const [showSelfHealBanner, setShowSelfHealBanner] = useState(false);
+  const [hasLoadedFile, setHasLoadedFile] = useState<boolean>(() => hasLoadedFileBefore());
   React.useEffect(() => { setHealDismissed(false); }, [binaryPath]);
   React.useEffect(() => { setShowSelfHealBanner(false); }, [binaryPath]);
 
@@ -2716,6 +2719,8 @@ export default function App() {
   const [hexIsLoadingMore, setHexIsLoadingMore] = useState(false);
 
   function prepareForBinarySelection(nextBinaryPath: string) {
+    markLoadedFile();
+    setHasLoadedFile(true);
     setBinaryPath(nextBinaryPath);
 
     // Reset file-bound state so a new binary does not inherit analysis from
@@ -3319,6 +3324,17 @@ export default function App() {
   };
 
   // Open native file picker and set binary path
+  function loadFirstRunFile(path: string) {
+    const safePath = sanitizeBridgePath(path, 'dropped file path');
+    prepareForBinarySelection(safePath);
+    setRecentFiles(prev => {
+      const next = [safePath, ...prev.filter(f => f !== safePath)].slice(0, 10);
+      localStorage.setItem('hexhawk.recentFiles', JSON.stringify(next));
+      return next;
+    });
+    void inspectFile(safePath);
+  }
+
   async function pickFile() {
     if (!hasTauriRuntime()) {
       if (typeof document === 'undefined') {
@@ -3395,20 +3411,21 @@ export default function App() {
     setMessage('Browse cancelled.');
   }
 
-  async function inspectFile() {
+  async function inspectFile(pathOverride?: string) {
+    const targetPath = pathOverride ?? binaryPath;
     if (!hasTauriRuntime()) {
-      const mockMeta = buildMockMetadata(binaryPath);
+      const mockMeta = buildMockMetadata(targetPath);
       const safeRange = sanitizeRange(hexOffset, hexLength);
       setMetadata(mockMeta);
       setPeExtras(null);
       setHexFileSize(mockMeta.file_size);
       setHexOffset(safeRange.offset);
-      setHexBytes(buildMockHexBytes(binaryPath, safeRange.offset, safeRange.length));
+      setHexBytes(buildMockHexBytes(targetPath, safeRange.offset, safeRange.length));
       setSelectedHexIndex(null);
       setSelectedDisasmAddress(null);
       setMessage('Browser mode inspection completed (simulated backend).');
-      addLog(`Simulated inspect for ${binaryPath}`, 'info');
-      addLog(`Seeded browser hex preview for ${binaryPath} at ${formatHex(safeRange.offset)}.`, 'info');
+      addLog(`Simulated inspect for ${targetPath}`, 'info');
+      addLog(`Seeded browser hex preview for ${targetPath} at ${formatHex(safeRange.offset)}.`, 'info');
       navigateView('inspect');
       return;
     }
@@ -3429,7 +3446,7 @@ export default function App() {
       }
       setHexFileSize(response.file_size ?? 0);
       setMessage('File inspection completed');
-      addLog(`Inspected file: ${binaryPath}`);
+      addLog(`Inspected file: ${targetPath}`);
       navigateView('inspect');
 
       // ── Corpus log ──────────────────────────────────────────────────────────
@@ -3453,7 +3470,7 @@ export default function App() {
         contributions[sig.source] = (contributions[sig.source] ?? 0) + sig.weight;
       }
 
-      const filename = binaryPath.split(/[/\\]/).pop() ?? binaryPath;
+      const filename = targetPath.split(/[/\\]/).pop() ?? targetPath;
 
       void appendCorpusLog({
         hash:                response.sha256,
@@ -4477,6 +4494,12 @@ export default function App() {
             {activeView === 'load' && (
               <div className="panel" data-testid="panel-load">
                 <h3>Open a file</h3>
+                {shouldShowFirstRunPanel(hasLoadedFile) && (
+                  <FirstRunWelcomePanel
+                    onBrowse={pickFile}
+                    onDropFile={loadFirstRunFile}
+                  />
+                )}
                 <div className="file-picker-row">
                   <span className="binary-path-display" title={binaryPath}>
                     {binaryPath.split(/[\\/]/).pop() || binaryPath}
@@ -5005,7 +5028,7 @@ export default function App() {
                     <div className="wf-cta-icon">⚖</div>
                     <h2 className="wf-cta-title">No analysis yet</h2>
                     <p className="wf-cta-body">Inspect a file first to generate a verdict.</p>
-                    <button type="button" className="wf-cta-primary-btn" onClick={inspectFile}>🔎 Inspect File</button>
+                    <button type="button" className="wf-cta-primary-btn" onClick={() => { void inspectFile(); }}>🔎 Inspect File</button>
                   </div>
                 ) : (
                   <>
