@@ -291,6 +291,19 @@ describe('FunctionIntelligence builder', () => {
     expect(parsed.gyre_is_sole_verdict_authority).toBe(true);
   });
 
+  it('exports no-correlation basis when no debugger snapshot is available', () => {
+    const fi = buildFunctionIntelligence(makeFunction(), makeAnalysis(), makeDecompileResult());
+    const parsed = JSON.parse(exportFunctionIntelligenceJSON(fi));
+
+    expect(parsed.debugCorrelation).toMatchObject({
+      functionId: 'function_401000',
+      observedInCallStack: false,
+      correlationBasis: 'no-correlation',
+    });
+    expect(parsed.debugCorrelation.conditionalBreakpointHits).toEqual([]);
+    expect(parsed.gyre_is_sole_verdict_authority).toBe(true);
+  });
+
 
   it('surfaces ARM64 calling-convention limits in function intelligence', () => {
     const fn = makeFunction({

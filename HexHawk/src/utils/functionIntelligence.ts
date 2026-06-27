@@ -357,7 +357,20 @@ export function buildFunctionIntelligence(
   decompileResult?: DecompileResult,
   debugSnapshot?: DebugSnapshot,
 ): FunctionIntelligence {
-  const debugCorrelation = debugSnapshot ? correlateDebuggerToFunctions(analysis, debugSnapshot).get(fn.id || formatFunctionId(fn.startAddress)) : undefined;
+  const functionId = fn.id || formatFunctionId(fn.startAddress);
+  const debugCorrelation = debugSnapshot
+    ? correlateDebuggerToFunctions(analysis, debugSnapshot).get(functionId) ?? {
+      functionId,
+      observedInCallStack: false,
+      conditionalBreakpointHits: [],
+      correlationBasis: 'no-correlation' as const,
+    }
+    : {
+      functionId,
+      observedInCallStack: false,
+      conditionalBreakpointHits: [],
+      correlationBasis: 'no-correlation' as const,
+    };
   const observedAddresses = observedFunctionAddresses(debugSnapshot, analysis);
   const incoming = analysis.xrefs.filter(ref => ref.kind === 'call' && containsAddress(fn, ref.to));
   const outgoing = analysis.xrefs.filter(ref => ref.kind === 'call' && containsAddress(fn, ref.from));
@@ -377,7 +390,7 @@ export function buildFunctionIntelligence(
   const annotatedPseudocode = renderPseudocode(decompileResult, true);
 
   return {
-    id: fn.id || formatFunctionId(fn.startAddress),
+    id: functionId,
     address: fn.startAddress,
     endAddress: fn.endAddress,
     name: fn.name || `sub_${fn.startAddress.toString(16)}`,
