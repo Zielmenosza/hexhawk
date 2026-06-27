@@ -191,15 +191,28 @@ fn usage() -> ! {
     usage_with_exit(2)
 }
 
+fn is_help_request(args: &[String]) -> bool {
+    matches!(args.get(1).map(String::as_str), Some("--help" | "-h"))
+}
+
+fn write_usage(mut output: impl Write) -> std::io::Result<()> {
+    writeln!(output, "Usage:")?;
+    writeln!(output, "  nest_cli disassemble <path> <offset> <length>")?;
+    writeln!(output, "  nest_cli cfg         <path> <offset> <length>")?;
+    writeln!(output, "  nest_cli inspect     <path>")?;
+    writeln!(output, "  nest_cli strings     <path>")?;
+    writeln!(output, "  nest_cli identify    <path>")?;
+    writeln!(output, "  nest_cli strike --headless <path> --out <report.json>")?;
+    writeln!(output, "  nest_cli serve --mcp")?;
+    Ok(())
+}
+
 fn usage_with_exit(code: i32) -> ! {
-    eprintln!("Usage:");
-    eprintln!("  nest_cli disassemble <path> <offset> <length>");
-    eprintln!("  nest_cli cfg         <path> <offset> <length>");
-    eprintln!("  nest_cli inspect     <path>");
-    eprintln!("  nest_cli strings     <path>");
-    eprintln!("  nest_cli identify    <path>");
-    eprintln!("  nest_cli strike --headless <path> --out <report.json>");
-    eprintln!("  nest_cli serve --mcp");
+    if code == 0 {
+        let _ = write_usage(std::io::stdout());
+    } else {
+        let _ = write_usage(std::io::stderr());
+    }
     std::process::exit(code);
 }
 
@@ -628,6 +641,10 @@ fn int_arg(args: &serde_json::Value, key: &str) -> Option<usize> {
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
 
+    if is_help_request(&args) {
+        usage_with_exit(0);
+    }
+
     // nest_cli serve --mcp
     if args.get(1).map(|s| s.as_str()) == Some("serve")
         && args.get(2).map(|s| s.as_str()) == Some("--mcp")
@@ -731,6 +748,43 @@ mod tests {
         );
         path.push(unique);
         path.to_string_lossy().to_string()
+    }
+
+    #[test]
+    fn help_flags_are_detected_before_bad_argument_handling() {
+        for flag in ["--help", "-h"] {
+            let args = vec!["nest_cli".to_string(), flag.to_string()];
+            assert!(is_help_request(&args), "{flag} should be a help request");
+        }
+    }
+
+    #[test]
+    fn no_args_and_invalid_commands_are_not_help_requests() {
+        let no_args = vec!["nest_cli".to_string()];
+        let invalid = vec!["nest_cli".to_string(), "unknown".to_string()];
+        let strike_missing_binary = vec![
+            "nest_cli".to_string(),
+            "strike".to_string(),
+            "--headless".to_string(),
+            "--out".to_string(),
+            "report.json".to_string(),
+        ];
+
+        assert!(!is_help_request(&no_args));
+        assert!(!is_help_request(&invalid));
+        assert!(!is_help_request(&strike_missing_binary));
+    }
+
+    #[test]
+    fn usage_text_contains_core_commands() {
+        let mut output = Vec::new();
+        write_usage(&mut output).expect("usage writes");
+        let text = String::from_utf8(output).expect("usage is utf8");
+
+        assert!(text.contains("Usage:"));
+        assert!(text.contains("nest_cli inspect     <path>"));
+        assert!(text.contains("nest_cli strike --headless <path> --out <report.json>"));
+        assert!(text.contains("nest_cli serve --mcp"));
     }
 
     #[test]
