@@ -2072,8 +2072,9 @@ export default function App() {
   const selectedFunctionIntelligence = useMemo(() => {
     if (!programAnalysis) return null;
     const pivotAddress = selectedFunction ?? selectedDisasmAddress ?? currentAddress;
-    if (pivotAddress === null) return null;
-    const fn = programAnalysis.functions.find(candidate => pivotAddress >= candidate.startAddress && pivotAddress <= candidate.endAddress);
+    const fn = pivotAddress === null
+      ? programAnalysis.functions[0]
+      : programAnalysis.functions.find(candidate => pivotAddress >= candidate.startAddress && pivotAddress <= candidate.endAddress) ?? programAnalysis.functions[0];
     return fn ? buildFunctionIntelligence(fn, programAnalysis) : null;
   }, [programAnalysis, selectedFunction, selectedDisasmAddress, currentAddress]);
 
@@ -2328,9 +2329,8 @@ export default function App() {
         advisory_only: true,
         does_not_affect_verdict: true,
       }));
-    setAgentGateProposals(prev => proposals.filter(proposal =>
-      !prev.some(existing => existing.id === proposal.id && existing.does_not_affect_verdict)
-      && !approvedAgentGateProposals.some(existing => existing.id === proposal.id)
+    setAgentGateProposals(proposals.filter(proposal =>
+      !approvedAgentGateProposals.some(existing => existing.id === proposal.id)
     ));
   }, [programAnalysis, approvedAgentGateProposals]);
 
