@@ -42,6 +42,76 @@ export type FunctionEndCandidate = {
   warnings: AnalysisWarning[];
 };
 
+export interface LibrarySignature {
+  name: string;
+  library: string;
+  bytePattern: string;
+  maskPattern?: string;
+  minLength: number;
+}
+
+export const BUILTIN_LIBRARY_SIGNATURES: LibrarySignature[] = [
+  { name: 'memcpy', library: 'msvcrt', bytePattern: '4883EC28488B4424', minLength: 8 },
+  { name: 'memset', library: 'msvcrt', bytePattern: '4883EC28488B4C24', minLength: 8 },
+  { name: 'strlen', library: 'msvcrt', bytePattern: '4883EC28488D0D00', maskPattern: 'FFFFFFFFFFFFFF??', minLength: 8 },
+  { name: 'strcpy', library: 'msvcrt', bytePattern: '48895C2408574883', minLength: 8 },
+  { name: 'strcmp', library: 'msvcrt', bytePattern: '4883EC284885C974', minLength: 8 },
+  { name: 'malloc', library: 'msvcrt', bytePattern: '40534883EC208BC1', minLength: 8 },
+  { name: 'free', library: 'msvcrt', bytePattern: '4885C9740C4883EC', minLength: 8 },
+  { name: 'sprintf', library: 'msvcrt', bytePattern: '48895C2410574883', minLength: 8 },
+  { name: 'printf', library: 'msvcrt', bytePattern: '4883EC28488D5424', minLength: 8 },
+  { name: 'exit', library: 'msvcrt', bytePattern: '4883EC28488BCBE8', minLength: 8 },
+];
+
+function parsePatternBytes(pattern: string): number[] {
+  const compact = pattern.replace(/\s+/g, '');
+  const bytes: number[] = [];
+  for (let index = 0; index < compact.length; index += 2) {
+    bytes.push(Number.parseInt(compact.slice(index, index + 2), 16));
+  }
+  return bytes;
+}
+
+function instructionBytesFromStart(instructions: Instruction[], startAddress: number, maxBytes: number): number[] {
+  const bytes: number[] = [];
+  for (const instruction of instructions.filter(entry => entry.address >= startAddress).sort((left, right) => left.address - right.address)) {
+    for (const byte of instruction.bytes ?? []) {
+      if (bytes.length >= maxBytes) return bytes;
+      bytes.push(byte & 0xff);
+    }
+    if (bytes.length >= maxBytes) return bytes;
+  }
+  return bytes;
+}
+
+function patternMatches(bytes: number[], signature: LibrarySignature): boolean {
+  const pattern = parsePatternBytes(signature.bytePattern);
+  if (pattern.length < signature.minLength || bytes.length < signature.minLength || bytes.length < pattern.length) return false;
+  const mask = signature.maskPattern?.replace(/\s+/g, '') ?? 'F'.repeat(signature.bytePattern.replace(/\s+/g, '').length);
+  for (let index = 0; index < pattern.length; index += 1) {
+    const maskPair = mask.slice(index * 2, index * 2 + 2);
+    if (maskPair === '??') continue;
+    if (bytes[index] !== pattern[index]) return false;
+  }
+  return true;
+}
+
+export function matchLibrarySignatures(
+  instructions: Instruction[],
+  signatures: LibrarySignature[],
+): Map<number, LibrarySignature> {
+  const matches = new Map<number, LibrarySignature>();
+  if (instructions.length === 0 || signatures.length === 0) return matches;
+  const starts = detectFunctionStartCandidates(instructions, buildXRefs(instructions)).map(candidate => candidate.address);
+  const maxPatternLength = Math.max(...signatures.map(signature => parsePatternBytes(signature.bytePattern).length));
+  for (const start of starts) {
+    const bytes = instructionBytesFromStart(instructions, start, maxPatternLength);
+    const match = signatures.find(signature => patternMatches(bytes, signature));
+    if (match) matches.set(start, match);
+  }
+  return matches;
+}
+
 function normalizeMnemonic(instruction: Pick<Instruction, 'mnemonic'>): string {
   return instruction.mnemonic.trim().toLowerCase();
 }
@@ -635,6 +705,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
   }
 
   const xrefs = buildXRefs(normalizedInstructions);
+  const signatureMatches = matchLibrarySignatures(normalizedInstructions, BUILTIN_LIBRARY_SIGNATURES);
   const startCandidates = detectFunctionStartCandidates(normalizedInstructions, xrefs, options);
   const basicBlocks = splitBasicBlocks(normalizedInstructions, xrefs);
   const functions: FunctionModel[] = [];
@@ -652,7 +723,18 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
         ? 'low'
         : 'medium';
 
-    const functionName = symbolForAddress(normalizedInstructions, candidate.address) ?? `sub_${candidate.address.toString(16).toUpperCase()}`;
+    const signatureMatch = signatureMatches.get(candidate.address);
+    const symbolName = symbolForAddress(normalizedInstructions, candidate.address);
+    const functionName = signatureMatch
+      ? `${signatureMatch.library}!${signatureMatch.name}`
+      : symbolName ?? `sub_${candidate.address.toString(16).toUpperCase()}`;
+    const nameSource: FunctionModel['nameSource'] = signatureMatch
+      ? 'library-signature'
+      : symbolName
+        ? 'symbol'
+        : candidate.reasons.includes('known-call-target') || candidate.reasons.includes('call-target') || candidate.reasons.includes('prologue-pattern')
+          ? 'heuristic'
+          : 'generated';
     const callingConvention = inferCallingConvention(
       functionName,
       uniqueInstructions([...functionInstructions, ...functionBlocks.flatMap(block => block.instructions)]),
@@ -664,6 +746,7 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
     functions.push({
       id: `function_${formatAddress(candidate.address)}`,
       name: functionName,
+      nameSource,
       startAddress: candidate.address,
       endAddress: end.endAddress,
       instructions: functionInstructions,
@@ -673,7 +756,9 @@ export function buildProgramAnalysis(instructions: Instruction[], options: Disas
       endReason: end.reason,
       confidence,
       callingConvention,
-      warnings: functionWarnings,
+      warnings: signatureMatch
+        ? [...functionWarnings, warning('library-signature-match', `Function name from pattern match — not cryptographically proven: ${signatureMatch.library}!${signatureMatch.name}.`, candidate.address)]
+        : functionWarnings,
     });
   }
 

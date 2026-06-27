@@ -303,6 +303,18 @@ describe('FunctionIntelligence builder', () => {
     expect(fi.limits.some(limit => limit.kind === 'architecture-limit' && limit.detail.includes('ARM64 architecture detected'))).toBe(true);
   });
 
+
+  it('exports library-signature name source with an advisory limit', () => {
+    const fn = makeFunction({ name: 'msvcrt!memcpy', nameSource: 'library-signature' });
+    const fi = buildFunctionIntelligence(fn, makeAnalysis(fn));
+    const parsed = JSON.parse(exportFunctionIntelligenceJSON(fi));
+
+    expect(fi.nameSource).toBe('library-signature');
+    expect(fi.sources.hasLibrarySignatureMatch).toBe(true);
+    expect(fi.limits.some(limit => limit.kind === 'library-signature-match' && limit.detail.includes('not cryptographically proven'))).toBe(true);
+    expect(parsed.nameSource).toBe('library-signature');
+  });
+
   it('exports parseable JSON with schema and authority fields', () => {
     const fi = buildFunctionIntelligence(makeFunction(), makeAnalysis(), makeDecompileResult(), makeDebugSnapshot());
     const parsed = JSON.parse(exportFunctionIntelligenceJSON(fi));

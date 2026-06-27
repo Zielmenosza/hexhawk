@@ -37,6 +37,7 @@ const LIMIT_TEXT: Record<FunctionIntelligenceLimit['kind'], string> = {
   'ordinal-only-import': 'An import was identified by ordinal only, without a symbolic API name.',
   'indirect-call': 'One or more indirect call targets could not be resolved to a known function or import.',
   'architecture-limit': 'This architecture is supported with explicit analysis limits in this release.',
+  'library-signature-match': 'Function name came from a library-signature pattern match and should be confirmed by an analyst.',
 };
 
 function plainLimit(limit: FunctionIntelligenceLimit): string {

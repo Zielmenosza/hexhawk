@@ -14,6 +14,7 @@ export interface FunctionIntelligenceSource {
   hasDebuggerCallStack: boolean;
   hasConditionalBreakpointHit: boolean;
   hasCallingConvention: boolean;
+  hasLibrarySignatureMatch: boolean;
 }
 
 export interface FunctionIntelligenceLimit {
@@ -26,7 +27,8 @@ export interface FunctionIntelligenceLimit {
     | 'partial-decompile'
     | 'ordinal-only-import'
     | 'indirect-call'
-    | 'architecture-limit';
+    | 'architecture-limit'
+    | 'library-signature-match';
   address?: number;
   detail: string;
 }
@@ -59,7 +61,7 @@ export interface FunctionIntelligence {
   address: number;
   endAddress: number;
   name: string;
-  nameSource: 'symbol' | 'import-table' | 'heuristic' | 'generated';
+  nameSource: 'symbol' | 'import-table' | 'library-signature' | 'heuristic' | 'generated';
 
   callingConvention?: {
     abi: 'windows-x64' | 'sysv-amd64' | 'cdecl' | 'stdcall' | 'unknown';
@@ -165,6 +167,7 @@ export function correlateDebuggerToFunctions(
 }
 
 function nameSourceFor(fn: ProgramAnalysisFunction, analysis: ProgramAnalysis): FunctionIntelligence['nameSource'] {
+  if (fn.nameSource === 'library-signature') return 'library-signature';
   if (analysis.importCalls.some(entry => entry.targetAddress === fn.startAddress || entry.callAddress === fn.startAddress)) return 'import-table';
   if (fn.startReasons.includes('symbol') || fn.startReasons.includes('export')) return 'symbol';
   if (fn.startReasons.some(reason => reason === 'prologue' || reason === 'prologue-pattern' || reason === 'call-target' || reason === 'known-call-target')) return 'heuristic';
@@ -313,6 +316,9 @@ function buildLimits(fn: ProgramAnalysisFunction, analysis: ProgramAnalysis, dec
   if (fn.startSource === 'prologue-pattern' || fn.startSource === 'alignment-gap' || fn.confidence === 'low' || fn.confidence === 'unknown') {
     limits.push({ kind: 'inferred-boundary', address: fn.startAddress, detail: `Function boundary was inferred from ${fn.startSource} evidence.` });
   }
+  if (fn.nameSource === 'library-signature') {
+    limits.push({ kind: 'library-signature-match', address: fn.startAddress, detail: 'Function name from pattern match — not cryptographically proven.' });
+  }
   if (analysis.arch === 'arm64') {
     limits.push({ kind: 'architecture-limit', address: fn.startAddress, detail: 'ARM64 architecture detected. Disassembly available. Import resolution and calling-convention inference are limited for ARM64 in this release.' });
   }
@@ -401,6 +407,7 @@ export function buildFunctionIntelligence(
       hasDebuggerCallStack: Boolean(debuggerCallStack?.length),
       hasConditionalBreakpointHit: Boolean(conditionalBreakpointHits?.length),
       hasCallingConvention: Boolean(fn.callingConvention && fn.callingConvention.name !== 'unknown'),
+      hasLibrarySignatureMatch: fn.nameSource === 'library-signature',
     },
     limits: buildLimits(fn, analysis, decompileResult, debugSnapshot),
     gyre_is_sole_verdict_authority: true,

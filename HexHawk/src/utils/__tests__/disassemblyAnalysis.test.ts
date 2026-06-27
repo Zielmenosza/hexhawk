@@ -6,6 +6,7 @@ import {
   detectFunctionEndCandidate,
   detectFunctionStartCandidates,
   splitBasicBlocks,
+  matchLibrarySignatures,
 } from '../disassemblyAnalysis';
 import type { Instruction } from '../disassemblyModel';
 
@@ -323,6 +324,38 @@ describe('typed disassembly analysis foundation', () => {
       confidence: 'medium',
       source: 'windows-x64-shadow-space',
     });
+  });
+
+
+  it('matches FLIRT-style library signatures at function starts', () => {
+    const instructions: Instruction[] = [
+      { address: 0x5000, mnemonic: 'sub', operands: 'rsp, 0x28', bytes: [0x48, 0x83, 0xec, 0x28], source: 'synthetic-test' },
+      { address: 0x5004, mnemonic: 'mov', operands: 'rax, [rsp+8]', bytes: [0x48, 0x8b, 0x44, 0x24], source: 'synthetic-test' },
+      { address: 0x5008, mnemonic: 'ret', operands: '', bytes: [0xc3], source: 'synthetic-test' },
+    ];
+    const matches = matchLibrarySignatures(instructions, [{ name: 'memcpy', library: 'msvcrt', bytePattern: '4883EC28488B4424', minLength: 8 }]);
+
+    expect(matches.get(0x5000)).toMatchObject({ name: 'memcpy', library: 'msvcrt' });
+  });
+
+  it('returns no signature matches for non-matching bytes without crashing', () => {
+    const instructions: Instruction[] = [
+      { address: 0x5100, mnemonic: 'nop', operands: '', bytes: [0x90, 0x90, 0x90, 0x90], source: 'synthetic-test' },
+      { address: 0x5104, mnemonic: 'ret', operands: '', bytes: [0xc3], source: 'synthetic-test' },
+    ];
+
+    expect(matchLibrarySignatures(instructions, [{ name: 'memcpy', library: 'msvcrt', bytePattern: '4883EC28488B4424', minLength: 8 }]).size).toBe(0);
+  });
+
+  it('renames matched functions with advisory library-signature provenance', () => {
+    const analysis = buildProgramAnalysis([
+      { address: 0x5200, mnemonic: 'sub', operands: 'rsp, 0x28', bytes: [0x48, 0x83, 0xec, 0x28], source: 'synthetic-test' },
+      { address: 0x5204, mnemonic: 'mov', operands: 'rax, [rsp+8]', bytes: [0x48, 0x8b, 0x44, 0x24], source: 'synthetic-test' },
+      { address: 0x5208, mnemonic: 'ret', operands: '', bytes: [0xc3], source: 'synthetic-test' },
+    ]);
+
+    expect(analysis.functions[0]).toMatchObject({ name: 'msvcrt!memcpy', nameSource: 'library-signature' });
+    expect(analysis.functions[0]?.warnings.some(warning => warning.kind === 'library-signature-match')).toBe(true);
   });
 
 });

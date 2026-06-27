@@ -118,6 +118,8 @@ export type FunctionModel = {
   startSource: FunctionStartSource;
   endReason: FunctionEndReason;
   confidence: ConfidenceLevel;
+  /** Advisory name provenance; never a GYRE verdict input. */
+  nameSource?: 'symbol' | 'import-table' | 'library-signature' | 'heuristic' | 'generated';
   /** Advisory ABI/calling-convention metadata; never a GYRE verdict input. */
   callingConvention?: CallingConventionInfo;
   warnings: AnalysisWarning[];
@@ -182,7 +184,8 @@ export type AnalysisWarningKind =
   | 'non-contiguous-block'
   | 'fallthrough-estimated'
   | 'overlapping-candidate'
-  | 'architecture-limit';
+  | 'architecture-limit'
+  | 'library-signature-match';
 
 export type AnalysisWarning = {
   kind: AnalysisWarningKind;

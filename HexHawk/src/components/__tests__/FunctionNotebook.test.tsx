@@ -30,6 +30,7 @@ function makeFi(): FunctionIntelligence {
       hasDebuggerCallStack: true,
       hasConditionalBreakpointHit: true,
       hasCallingConvention: true,
+      hasLibrarySignatureMatch: false,
     },
     limits: [{ kind: 'unresolved-call-target', address: 0x401020, detail: 'call rax' }],
     gyre_is_sole_verdict_authority: true,
