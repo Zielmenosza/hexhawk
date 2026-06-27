@@ -106,6 +106,8 @@ import { XRefPanel } from './components/XRefPanel';
 import FunctionNotebook from './components/FunctionNotebook';
 import AiInsightPanel from './components/AiInsightPanel';
 import type { AiObservation } from './types/aiObservation';
+import AgentGatePanel from './components/AgentGatePanel';
+import type { AgentGateProposal } from './components/AgentGatePanel';
 import type { Patch as PanelPatch } from './components/PatchPanel';
 import { detectPatchableBranches } from './utils/patchEngine';
 import type { PatchSuggestion } from './utils/patchEngine';
@@ -2082,9 +2084,6 @@ export default function App() {
   React.useEffect(() => { setHealDismissed(false); }, [binaryPath]);
   React.useEffect(() => { setShowSelfHealBanner(false); }, [binaryPath]);
 
-  // M12: Agent-approved signals (declared here so verdict memo can depend on them)
-  const [approvedAgentSignals, setApprovedAgentSignals] = useState<Array<{ id: string; finding: string; weight: number; certainty?: 'observed' | 'inferred' | 'heuristic' }>>([]);
-
   // Unified threat verdict � correlates structure, imports, strings, disassembly
   const verdict = useMemo<BinaryVerdictResult>(() => {
     if (!metadata) {
@@ -2099,9 +2098,8 @@ export default function App() {
       imports: metadata.imports ?? [],
       strings: strings.map(s => ({ text: s.text })),
       patterns: disassemblyAnalysis.suspiciousPatterns,
-      agentSignals: approvedAgentSignals.length > 0 ? approvedAgentSignals : undefined,
     });
-  }, [metadata, strings, disassemblyAnalysis.suspiciousPatterns, approvedAgentSignals]);
+  }, [metadata, strings, disassemblyAnalysis.suspiciousPatterns]);
 
 
   // --- Patch Intelligence suggestions ---
@@ -2269,13 +2267,7 @@ export default function App() {
   // PHASE 8: Auto-annotation engine state
   const [autoAnnotations, setAutoAnnotations] = useState<AutoAnnotation[]>([]);
 
-  // M12: Agent signal approval gate & action log
-  type AgentSignalPending = {
-    pendingId: string;
-    sessionId: string;
-    signal: { id: string; finding: string; weight: number; certainty: 'observed' | 'inferred' | 'heuristic' };
-    receivedAt: number;
-  };
+  // M12: Agent evidence review queue & action log
   type AgentActionEntry = {
     id: string;
     tool: string;
@@ -2283,7 +2275,8 @@ export default function App() {
     timestamp: number;
     approved: boolean | null; // null = pending
   };
-  const [pendingAgentSignals, setPendingAgentSignals] = useState<AgentSignalPending[]>([]);
+  const [agentGateProposals, setAgentGateProposals] = useState<AgentGateProposal[]>([]);
+  const [approvedAgentGateProposals, setApprovedAgentGateProposals] = useState<AgentGateProposal[]>([]);
   const [agentActionLog, setAgentActionLog] = useState<AgentActionEntry[]>([]);
   const [aiObservations, setAiObservations] = useState<AiObservation[]>([]);
   const [acceptedAiObservations, setAcceptedAiObservations] = useState<AiObservation[]>([]);
@@ -2296,35 +2289,28 @@ export default function App() {
     setAcceptedAiObservations(prev => prev.some(observation => observation.id === updated.id) ? prev : [...prev, updated]);
   }, []);
 
-  const handleApproveAgentSignal = React.useCallback((pendingId: string) => {
-    setPendingAgentSignals(prev => {
-      const entry = prev.find(p => p.pendingId === pendingId);
-      if (!entry) return prev;
-      setApprovedAgentSignals(a => [...a, entry.signal]);
-      setAgentActionLog(log => [...log, {
-        id: pendingId,
-        tool: 'inject_agent_signal',
-        summary: `Approved: "${entry.signal.finding}" (weight ${entry.signal.weight})`,
-        timestamp: Date.now(),
-        approved: true,
-      }]);
-      return prev.filter(p => p.pendingId !== pendingId);
-    });
+  const handleApproveAgentProposal = React.useCallback((proposal: AgentGateProposal) => {
+    const approved = { ...proposal, does_not_affect_verdict: true as const, advisory_only: true as const, gyre_is_sole_verdict_authority: true as const };
+    setApprovedAgentGateProposals(prev => prev.some(item => item.id === approved.id) ? prev : [...prev, approved]);
+    setAgentGateProposals(prev => prev.filter(item => item.id !== approved.id));
+    setAgentActionLog(log => [...log, {
+      id: approved.id,
+      tool: 'agent_gate_proposal',
+      summary: `Approved as note: "${approved.proposedValue}" — advisory only; does not affect GYRE verdict`,
+      timestamp: Date.now(),
+      approved: true,
+    }]);
   }, []);
 
-  const handleRejectAgentSignal = React.useCallback((pendingId: string) => {
-    setPendingAgentSignals(prev => {
-      const entry = prev.find(p => p.pendingId === pendingId);
-      if (!entry) return prev;
-      setAgentActionLog(log => [...log, {
-        id: pendingId,
-        tool: 'inject_agent_signal',
-        summary: `Rejected: "${entry.signal.finding}"`,
-        timestamp: Date.now(),
-        approved: false,
-      }]);
-      return prev.filter(p => p.pendingId !== pendingId);
-    });
+  const handleRejectAgentProposal = React.useCallback((proposal: AgentGateProposal) => {
+    setAgentGateProposals(prev => prev.filter(item => item.id !== proposal.id));
+    setAgentActionLog(log => [...log, {
+      id: proposal.id,
+      tool: 'agent_gate_proposal',
+      summary: `Rejected: "${proposal.proposedValue}"`,
+      timestamp: Date.now(),
+      approved: false,
+    }]);
   }, []);
   React.useEffect(() => {
     const newAnnotations = generateAutoAnnotations({
@@ -4369,6 +4355,7 @@ export default function App() {
           fileName={binaryPath.split(/[\\/]/).pop() ?? binaryPath}
           onSelect={navigateView}
           onLoadFile={pickFile}
+          agentQueueCount={agentGateProposals.length}
         />
 
         {/* ── Right: Main content ───────────────────────────────────────────── */}
@@ -5299,57 +5286,12 @@ export default function App() {
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} data-testid="panel-agent">
                 <div className="agent-gate-panel">
                   <h2 className="agent-gate-title">⬢ Agent suggestion review</h2>
-                  <p className="agent-gate-desc">
-                    External AI/agent tools may suggest analysis signals. HexHawk does not accept them automatically.
-                    Read each suggestion and approve only evidence-backed items before they can influence the signal list.
-                  </p>
-
-                  {/* Pending approvals */}
-                  <section className="agent-gate-section">
-                    <h3 className="agent-gate-section-title">
-                      Pending Approval ({pendingAgentSignals.length})
-                    </h3>
-                    {pendingAgentSignals.length === 0 ? (
-                      <p className="agent-gate-empty">No pending agent signals.</p>
-                    ) : (
-                      <ul className="agent-signal-list">
-                        {pendingAgentSignals.map(p => (
-                          <li key={p.pendingId} className="agent-signal-item">
-                            <div className="agent-signal-meta">
-                              <span className="agent-signal-id">{p.signal.id}</span>
-                              <span className={`agent-signal-certainty agent-cert-${p.signal.certainty}`}>{p.signal.certainty}</span>
-                              <span className="agent-signal-weight">w={p.signal.weight}</span>
-                            </div>
-                            <div className="agent-signal-finding">{p.signal.finding}</div>
-                            <div className="agent-signal-actions">
-                              <button type="button" className="agent-btn-approve" onClick={() => handleApproveAgentSignal(p.pendingId)}>✓ Approve</button>
-                              <button type="button" className="agent-btn-reject"  onClick={() => handleRejectAgentSignal(p.pendingId)}>✗ Reject</button>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-
-                  {/* Approved signals */}
-                  <section className="agent-gate-section">
-                    <h3 className="agent-gate-section-title">
-                      Active Agent Signals ({approvedAgentSignals.length})
-                    </h3>
-                    {approvedAgentSignals.length === 0 ? (
-                      <p className="agent-gate-empty">No approved agent signals in current verdict.</p>
-                    ) : (
-                      <ul className="agent-signal-list agent-signal-list--approved">
-                        {approvedAgentSignals.map(s => (
-                          <li key={s.id} className="agent-signal-item agent-signal-item--approved">
-                            <span className="agent-signal-id">{s.id}</span>
-                            <span className="agent-signal-finding">{s.finding}</span>
-                            <span className="agent-signal-weight">w={s.weight}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
+                  <AgentGatePanel
+                    proposals={agentGateProposals}
+                    approvedProposals={approvedAgentGateProposals}
+                    onApprove={handleApproveAgentProposal}
+                    onReject={handleRejectAgentProposal}
+                  />
 
                   {/* Agent action log */}
                   <section className="agent-gate-section">

@@ -8853,3 +8853,26 @@ pre {
   gap: 0.6rem;
   flex-wrap: wrap;
 }
+
+.wf-nav-item-badge {
+  min-width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 191, 87, 0.18);
+  border: 1px solid rgba(255, 191, 87, 0.6);
+  color: #ffdd99;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.agent-proposal-card h4 {
+  margin: 0.5rem 0;
+}
+
+.agent-proposal-boundary {
+  color: #ffdd99;
+  font-size: 0.85rem;
+}

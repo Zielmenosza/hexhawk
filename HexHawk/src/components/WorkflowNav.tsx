@@ -125,6 +125,7 @@ interface WorkflowNavProps {
   fileName: string;
   onSelect: (view: NavView) => void;
   onLoadFile: () => void;
+  agentQueueCount?: number;
 }
 
 export default function WorkflowNav({
@@ -134,6 +135,7 @@ export default function WorkflowNav({
   fileName,
   onSelect,
   onLoadFile,
+  agentQueueCount = 0,
 }: WorkflowNavProps) {
   const currentStateOrder = STATE_ORDER[workflowState];
 
@@ -196,6 +198,7 @@ export default function WorkflowNav({
                 </span>
                 {isLocked && <span className="wf-nav-item-lock">🔒</span>}
                 {!isLocked && isDisabled && <span className="wf-nav-item-lock" style={{ opacity: 0.4 }}>○</span>}
+                {item.id === 'agent' && agentQueueCount > 0 && <span className="wf-nav-item-badge" aria-label={`${agentQueueCount} pending agent suggestions`}>{agentQueueCount}</span>}
               </button>
             );
           })}
