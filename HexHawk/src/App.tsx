@@ -110,6 +110,7 @@ import AgentGatePanel from './components/AgentGatePanel';
 import type { AgentGateProposal } from './components/AgentGatePanel';
 import AnalystPromptCard from './components/AnalystPromptCard';
 import { getAnalystPrompt, selectAnalystPromptTrigger, type AnalystPromptTrigger } from './utils/analystPrompts';
+import HelpAiFeaturesSection from './components/HelpAiFeaturesSection';
 import type { Patch as PanelPatch } from './components/PatchPanel';
 import { detectPatchableBranches } from './utils/patchEngine';
 import type { PatchSuggestion } from './utils/patchEngine';
@@ -5527,6 +5528,8 @@ export default function App() {
                   <li><strong>AETHERFRAME / Forge</strong> may add optional confidence or packaging metadata when policy allows, but it must not change the classification.</li>
                   <li><strong>STRIKE, TALON, ECHO, and CFG views</strong> are analyst evidence surfaces. Treat them as places to inspect and corroborate, not as magic proof.</li>
                 </ul>
+
+                <HelpAiFeaturesSection />
 
                 <h4 style={{ color: '#00d4ff' }}>Troubleshooting</h4>
                 <ul style={{ color: '#ccc', paddingLeft: '1.2rem', marginTop: 0 }}>

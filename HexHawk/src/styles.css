@@ -8922,3 +8922,21 @@ pre {
   color: #dbe7ff;
   padding: 0.4rem 0.65rem;
 }
+
+.help-ai-features {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  border-radius: 0.75rem;
+  background: rgba(0, 212, 255, 0.055);
+  color: #ccc;
+}
+
+.help-ai-features h4,
+.help-ai-features h5 {
+  margin-top: 0;
+}
+
+.help-ai-features li {
+  margin: 0.35rem 0;
+}
