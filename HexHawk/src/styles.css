@@ -8876,3 +8876,49 @@ pre {
   color: #ffdd99;
   font-size: 0.85rem;
 }
+
+.analyst-prompt-card {
+  margin: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(122, 162, 247, 0.45);
+  border-left: 4px solid #7aa2f7;
+  border-radius: 0.75rem;
+  background: rgba(122, 162, 247, 0.08);
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.analyst-prompt-kicker {
+  color: #7aa2f7;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.25rem;
+}
+
+.analyst-prompt-card h3 {
+  margin: 0 0 0.5rem;
+  color: #dbe7ff;
+}
+
+.analyst-prompt-card p {
+  margin: 0.35rem 0;
+  color: #c9d4ee;
+}
+
+.analyst-prompt-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.analyst-prompt-actions button {
+  border: 1px solid rgba(122, 162, 247, 0.45);
+  border-radius: 0.5rem;
+  background: rgba(122, 162, 247, 0.12);
+  color: #dbe7ff;
+  padding: 0.4rem 0.65rem;
+}

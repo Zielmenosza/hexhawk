@@ -108,6 +108,8 @@ import AiInsightPanel from './components/AiInsightPanel';
 import type { AiObservation } from './types/aiObservation';
 import AgentGatePanel from './components/AgentGatePanel';
 import type { AgentGateProposal } from './components/AgentGatePanel';
+import AnalystPromptCard from './components/AnalystPromptCard';
+import { getAnalystPrompt, selectAnalystPromptTrigger, type AnalystPromptTrigger } from './utils/analystPrompts';
 import type { Patch as PanelPatch } from './components/PatchPanel';
 import { detectPatchableBranches } from './utils/patchEngine';
 import type { PatchSuggestion } from './utils/patchEngine';
@@ -2280,6 +2282,11 @@ export default function App() {
   const [agentActionLog, setAgentActionLog] = useState<AgentActionEntry[]>([]);
   const [aiObservations, setAiObservations] = useState<AiObservation[]>([]);
   const [acceptedAiObservations, setAcceptedAiObservations] = useState<AiObservation[]>([]);
+  const [dismissedAnalystPrompts, setDismissedAnalystPrompts] = useState<AnalystPromptTrigger[]>([]);
+
+  React.useEffect(() => {
+    setDismissedAnalystPrompts([]);
+  }, [binaryPath]);
 
   const handleAiObservationChange = React.useCallback((updated: AiObservation) => {
     setAiObservations(prev => prev.map(observation => observation.id === updated.id ? updated : observation));
@@ -4221,6 +4228,22 @@ export default function App() {
     }
   }
 
+  const analystPromptTrigger = React.useMemo(() => {
+    const observationText = aiObservations.map(observation => `${observation.title} ${observation.body}`).join(' ').toLowerCase();
+    return selectAnalystPromptTrigger({
+      workflowState,
+      activeView,
+      hasDisassembly: disassembly.length > 0,
+      hasFunctionSelected: currentAddress !== null,
+      hasShellcodePattern: observationText.includes('executable memory allocation') || observationText.includes('shellcode'),
+      hasDynamicResolution: observationText.includes('dynamic api resolution') || observationText.includes('getprocaddress'),
+      hasNoCallers: observationText.includes('unreferenced function'),
+      dismissedTriggers: dismissedAnalystPrompts,
+    });
+  }, [activeView, aiObservations, currentAddress, disassembly.length, dismissedAnalystPrompts, workflowState]);
+
+  const analystPrompt = analystPromptTrigger ? getAnalystPrompt(analystPromptTrigger) : null;
+
   const tabs: AppTab[] = ['metadata', 'hex', 'strings', 'cfg', 'plugins', 'disassembly', 'decompile', 'talon', 'ai-observations', 'constraint', 'document', 'sandbox', 'debugger', 'strike', 'signatures', 'echo', 'nest', 'repl', 'console', 'bookmarks', 'logs', 'graph', 'report', 'agent'];
 
   return (
@@ -5577,6 +5600,11 @@ export default function App() {
                 </ul>
               </div>
             )}
+            <AnalystPromptCard
+              prompt={analystPrompt}
+              onDismiss={(trigger) => setDismissedAnalystPrompts(prev => prev.includes(trigger) ? prev : [...prev, trigger])}
+              onNavigate={(targetView) => navigateView(targetView as NavView)}
+            />
           </div>
 
           {/* Operator Console � persistent bottom bar when view is active */}
