@@ -3431,7 +3431,7 @@ export default function App() {
     }
 
     try {
-      const safePath = sanitizeBridgePath(binaryPath, 'binary path');
+      const safePath = sanitizeBridgePath(targetPath, 'binary path');
       const response = await invoke<FileMetadata>('inspect_file_metadata', {
         path: safePath,
       });
@@ -4417,7 +4417,7 @@ export default function App() {
             hasCfg={cfg !== null && cfg.nodes.length > 0}
             hasVerdict={verdict !== null && verdict.classification !== 'unknown'}
             disassemblyLoading={disasmIsLoading}
-            onInspect={inspectFile}
+            onInspect={() => { void inspectFile(); }}
             onDisassemble={() => disassembleFile()}
             onBuildCfg={buildCfg}
             onScanStrings={scanStrings}
@@ -4566,7 +4566,7 @@ export default function App() {
                     hasCfg={cfg !== null && cfg.nodes.length > 0}
                     hasStrings={strings.length > 0}
                     onLoadFile={pickFile}
-                    onInspect={inspectFile}
+                    onInspect={() => { void inspectFile(); }}
                     onDisassemble={() => disassembleFile()}
                     onBuildCfg={buildCfg}
                     onScanStrings={scanStrings}
@@ -4617,7 +4617,7 @@ export default function App() {
                     hasCfg={cfg !== null && cfg.nodes.length > 0}
                     hasStrings={strings.length > 0}
                     onLoadFile={pickFile}
-                    onInspect={inspectFile}
+                    onInspect={() => { void inspectFile(); }}
                     onDisassemble={() => disassembleFile()}
                     onBuildCfg={buildCfg}
                     onScanStrings={scanStrings}
@@ -4633,7 +4633,7 @@ export default function App() {
                     hasCfg={cfg !== null && cfg.nodes.length > 0}
                     hasStrings={strings.length > 0}
                     onLoadFile={pickFile}
-                    onInspect={inspectFile}
+                    onInspect={() => { void inspectFile(); }}
                     onDisassemble={() => disassembleFile()}
                     onBuildCfg={buildCfg}
                     onScanStrings={scanStrings}
