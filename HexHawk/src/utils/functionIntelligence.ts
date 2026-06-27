@@ -92,6 +92,7 @@ export interface FunctionIntelligence {
     hitCount: number;
   }[];
 
+  debugCorrelation?: FunctionDebugCorrelation;
   sources: FunctionIntelligenceSource;
   limits: FunctionIntelligenceLimit[];
 
@@ -134,15 +135,20 @@ export function correlateDebuggerToFunctions(
   const correlations = new Map<string, FunctionDebugCorrelation>();
   for (const fn of analysis.functions) {
     const frames = snapshot.callStack ?? [];
+    const symbolDepth = frames.findIndex(frame => frame.symbolName === fn.name);
     const addressDepth = frames.findIndex(frame => containsAddress(fn, frame.returnAddress));
-    const symbolDepth = frames.findIndex(frame => (frame.symbolName ?? '').toLowerCase() === fn.name.toLowerCase());
-    const isImportStub = analysis.importCalls.some(entry => entry.targetAddress === fn.startAddress || entry.callAddress === fn.startAddress);
-    const importDepth = isImportStub ? frames.findIndex(frame => frame.returnAddress === fn.startAddress || containsAddress(fn, frame.returnAddress)) : -1;
-    const callStackDepth = addressDepth >= 0 ? addressDepth : symbolDepth >= 0 ? symbolDepth : importDepth >= 0 ? importDepth : undefined;
-    const correlationBasis: FunctionDebugCorrelation['correlationBasis'] = addressDepth >= 0
-      ? 'address-range-match'
-      : symbolDepth >= 0
-        ? 'symbol-name-match'
+    const importThunkAddresses = new Set(analysis.importCalls
+      .filter(entry => entry.targetAddress === fn.startAddress || entry.callAddress === fn.startAddress || entry.importName === fn.name)
+      .flatMap(entry => [entry.targetAddress, entry.callAddress])
+      .filter((address): address is number => typeof address === 'number'));
+    const importDepth = importThunkAddresses.size > 0
+      ? frames.findIndex(frame => importThunkAddresses.has(frame.returnAddress))
+      : -1;
+    const callStackDepth = symbolDepth >= 0 ? symbolDepth : addressDepth >= 0 ? addressDepth : importDepth >= 0 ? importDepth : undefined;
+    const correlationBasis: FunctionDebugCorrelation['correlationBasis'] = symbolDepth >= 0
+      ? 'symbol-name-match'
+      : addressDepth >= 0
+        ? 'address-range-match'
         : importDepth >= 0
           ? 'import-stub-match'
           : 'no-correlation';
@@ -227,6 +233,31 @@ function edgeForXRef(xref: XRef, analysis: ProgramAnalysis, decompileResult: Dec
           ? 'debugger-observed'
           : 'static-only',
   };
+}
+
+function appendDebuggerObservedCallees(
+  existing: FunctionCallEdge[],
+  fn: ProgramAnalysisFunction,
+  analysis: ProgramAnalysis,
+  debugSnapshot: DebugSnapshot | undefined,
+): FunctionCallEdge[] {
+  if (!debugSnapshot?.callStack?.length) return existing;
+  const seen = new Set(existing.map(edge => edge.targetAddress));
+  const appended: FunctionCallEdge[] = [];
+  for (const frame of debugSnapshot.callStack) {
+    const observed = functionForAddress(analysis, frame.returnAddress)
+      ?? analysis.functions.find(candidate => frame.symbolName === candidate.name);
+    if (!observed || observed.startAddress === fn.startAddress || seen.has(observed.startAddress)) continue;
+    const hasStaticXref = analysis.xrefs.some(ref => ref.kind === 'call' && containsAddress(fn, ref.from) && containsAddress(observed, ref.to));
+    if (hasStaticXref) continue;
+    seen.add(observed.startAddress);
+    appended.push({
+      targetAddress: observed.startAddress,
+      targetName: observed.name,
+      evidenceBasis: 'debugger-observed',
+    });
+  }
+  return appended.length ? [...existing, ...appended] : existing;
 }
 
 function observedFunctionAddresses(snapshot: DebugSnapshot | undefined, analysis: ProgramAnalysis): Set<number> {
@@ -348,13 +379,14 @@ export function buildFunctionIntelligence(
     instructionCount: fn.instructions.length,
     boundarySource: boundarySourceFor(fn, analysis),
     callers: incoming.map(ref => edgeForXRef(ref, analysis, decompileResult, observedAddresses)),
-    callees: outgoing.map(ref => edgeForXRef(ref, analysis, decompileResult, observedAddresses)),
+    callees: appendDebuggerObservedCallees(outgoing.map(ref => edgeForXRef(ref, analysis, decompileResult, observedAddresses)), fn, analysis, debugSnapshot),
     xrefCount: analysis.xrefs.filter(ref => containsAddress(fn, ref.from) || containsAddress(fn, ref.to)).length,
     importCalls,
     pseudocode: compactPseudocode || undefined,
     pseudocodeAnnotated: annotatedPseudocode || undefined,
     debuggerCallStack,
     conditionalBreakpointHits,
+    debugCorrelation,
     sources: {
       hasImportTableEntry: importCalls.length > 0 || analysis.importCalls.some(entry => entry.targetAddress === fn.startAddress || entry.callAddress === fn.startAddress),
       hasXRefIndex: analysis.xrefs.length > 0,

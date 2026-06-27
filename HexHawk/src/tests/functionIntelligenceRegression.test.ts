@@ -118,6 +118,7 @@ describe('FunctionIntelligence regression corpus', () => {
     expect(fi.importCalls.flatMap(entry => entry.constantAnnotations)).toEqual(expect.arrayContaining(['GENERIC_READ', 'MEM_COMMIT', 'PAGE_EXECUTE_READWRITE']));
     expect(fi.debuggerCallStack?.[0].frames[0].symbolName).toBe('sub_401000');
     expect(fi.conditionalBreakpointHits?.[0]).toMatchObject({ address: 0x401010, hitCount: 2 });
+    expect(exported.debugCorrelation.correlationBasis).toBe('symbol-name-match');
     expect(exported.gyre_is_sole_verdict_authority).toBe(true);
     expectNoVerdictFields(exported);
   });

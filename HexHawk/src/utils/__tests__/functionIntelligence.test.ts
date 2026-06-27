@@ -191,7 +191,7 @@ describe('FunctionIntelligence builder', () => {
     const analysis = makeAnalysis(fn);
     const correlation = correlateDebuggerToFunctions(analysis, makeDebugSnapshot()).get(fn.id);
 
-    expect(correlation).toMatchObject({ observedInCallStack: true, callStackDepth: 0, correlationBasis: 'address-range-match' });
+    expect(correlation).toMatchObject({ observedInCallStack: true, callStackDepth: 0, correlationBasis: 'symbol-name-match' });
   });
 
   it('correlates frame symbols when addresses do not land in a function range', () => {
@@ -201,6 +201,27 @@ describe('FunctionIntelligence builder', () => {
     const correlation = correlateDebuggerToFunctions(makeAnalysis(fn), snapshot).get(fn.id);
 
     expect(correlation).toMatchObject({ observedInCallStack: true, callStackDepth: 0, correlationBasis: 'symbol-name-match' });
+  });
+
+  it('correlates frame addresses within known function ranges when symbol does not match', () => {
+    const fn = makeFunction();
+    const snapshot = makeDebugSnapshot();
+    snapshot.callStack = [{ frameIndex: 0, returnAddress: 0x401010, framePointer: 0, symbolName: 'other_symbol' }];
+    const correlation = correlateDebuggerToFunctions(makeAnalysis(fn), snapshot).get(fn.id);
+
+    expect(correlation).toMatchObject({ observedInCallStack: true, callStackDepth: 0, correlationBasis: 'address-range-match' });
+  });
+
+  it('correlates import thunk frame addresses without fabricating symbol matches', () => {
+    const fn = makeFunction({ id: 'function_402100', name: 'CreateFileW', startAddress: 0x402100, endAddress: 0x402120, instructions: [], startSource: 'linear-sweep' });
+    const snapshot = makeDebugSnapshot();
+    snapshot.callStack = [{ frameIndex: 0, returnAddress: 0x402000, framePointer: 0, symbolName: 'kernel32_stub' }];
+    const analysis = makeAnalysis(fn, {
+      importCalls: [{ callAddress: 0x401005, targetAddress: 0x402000, importName: 'CreateFileW', moduleName: 'kernel32.dll', confidence: 'high', evidence: 'PE import table' }],
+    });
+    const correlation = correlateDebuggerToFunctions(analysis, snapshot).get(fn.id);
+
+    expect(correlation).toMatchObject({ observedInCallStack: true, callStackDepth: 0, correlationBasis: 'import-stub-match' });
   });
 
   it('does not fabricate correlation for frames outside all known functions', () => {
@@ -249,6 +270,24 @@ describe('FunctionIntelligence builder', () => {
     const fi = buildFunctionIntelligence(caller, analysis);
 
     expect(fi.callees[0].evidenceBasis).toBe('static-only');
+  });
+
+  it('adds debugger-observed callee when stack sees a function absent from static xrefs', () => {
+    const caller = makeFunction();
+    const observed = makeFunction({ id: 'function_403000', name: 'runtime_only', startAddress: 0x403000, endAddress: 0x403020, instructions: [] });
+    const snapshot = makeDebugSnapshot();
+    snapshot.callStack = [{ frameIndex: 0, returnAddress: 0x403010, framePointer: 0, symbolName: 'runtime_only' }];
+    const fi = buildFunctionIntelligence(caller, makeAnalysis(caller, { functions: [caller, observed] }), undefined, snapshot);
+
+    expect(fi.callees).toContainEqual(expect.objectContaining({ targetAddress: 0x403000, targetName: 'runtime_only', evidenceBasis: 'debugger-observed' }));
+  });
+
+  it('exports correlation basis with the function intelligence envelope', () => {
+    const fi = buildFunctionIntelligence(makeFunction(), makeAnalysis(), makeDecompileResult(), makeDebugSnapshot());
+    const parsed = JSON.parse(exportFunctionIntelligenceJSON(fi));
+
+    expect(parsed.debugCorrelation.correlationBasis).toBe('symbol-name-match');
+    expect(parsed.gyre_is_sole_verdict_authority).toBe(true);
   });
 
 
