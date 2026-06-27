@@ -26,6 +26,7 @@ interface Props {
   binarySize?: number;
   architecture?: string;
   fileType?: string;
+  aiContributions?: AiContributions;
 }
 
 export interface ReportSnapshot {
@@ -58,6 +59,94 @@ export interface ReportComparison {
 
 export const REPORT_SNAPSHOTS_STORAGE_KEY = 'hexhawk.reportSnapshots';
 const MAX_REPORT_SNAPSHOTS = 12;
+
+export type AiContributionSection = {
+  section: 'function_summary' | 'pattern_observations' | 'analyst_accepted_suggestions';
+  source: 'aetherframe-llm' | 'aetherframe-static-only' | 'aetherframe-static' | 'agent-gate-approved';
+  count?: number;
+  advisory_only: true;
+  gyre_is_sole_verdict_authority: true;
+};
+
+export interface AiContributions {
+  present: boolean;
+  sections: AiContributionSection[];
+  ai_did_not_affect_verdict: true;
+  gyre_is_sole_verdict_authority: true;
+}
+
+export const EMPTY_AI_CONTRIBUTIONS: AiContributions = {
+  present: false,
+  sections: [],
+  ai_did_not_affect_verdict: true,
+  gyre_is_sole_verdict_authority: true,
+};
+
+function normalizeAiContributions(ai?: AiContributions): AiContributions {
+  if (!ai || !ai.present || ai.sections.length === 0) {
+    return EMPTY_AI_CONTRIBUTIONS;
+  }
+  return {
+    present: true,
+    sections: ai.sections.map(section => ({
+      ...section,
+      advisory_only: true,
+      gyre_is_sole_verdict_authority: true,
+    })),
+    ai_did_not_affect_verdict: true,
+    gyre_is_sole_verdict_authority: true,
+  };
+}
+
+function formatAiSectionLabel(section: AiContributionSection['section']): string {
+  switch (section) {
+    case 'function_summary': return 'Function summary';
+    case 'pattern_observations': return 'Pattern observations';
+    case 'analyst_accepted_suggestions': return 'Accepted suggestions';
+    default: return section;
+  }
+}
+
+function formatAiSourceLabel(source: AiContributionSection['source']): string {
+  switch (source) {
+    case 'aetherframe-llm': return 'AETHERFRAME LLM';
+    case 'aetherframe-static-only': return 'AETHERFRAME static-only';
+    case 'aetherframe-static': return 'AETHERFRAME static';
+    case 'agent-gate-approved': return 'Analyst-approved';
+    default: return source;
+  }
+}
+
+function formatAiRole(section: AiContributionSection['section']): string {
+  switch (section) {
+    case 'function_summary': return 'Interpretation';
+    case 'pattern_observations': return 'Pattern match';
+    case 'analyst_accepted_suggestions': return 'Notes only';
+    default: return 'Advisory';
+  }
+}
+
+function appendAiContributionsMarkdown(lines: string[], ai: AiContributions): void {
+  lines.push('---');
+  lines.push('');
+  lines.push('## AI Contributions (advisory only)');
+  lines.push('');
+  lines.push('The following section records whether this report embedded AI-generated interpretations. These are advisory analysis only.');
+  lines.push('GYRE is the sole verdict authority. AI did not affect the GYRE verdict or NEST evidence convergence.');
+  lines.push('');
+  if (!ai.present || ai.sections.length === 0) {
+    lines.push('No AI observations were generated for this analysis.');
+    lines.push('');
+    return;
+  }
+  lines.push('| Section | Source | Role |');
+  lines.push('|---------|--------|------|');
+  for (const section of ai.sections) {
+    const count = typeof section.count === 'number' ? ` (${section.count})` : '';
+    lines.push(`| ${formatAiSectionLabel(section.section)}${count} | ${formatAiSourceLabel(section.source)} | ${formatAiRole(section.section)} |`);
+  }
+  lines.push('');
+}
 
 // ─── IOC Extraction ──────────────────────────────────────────────────────────
 
@@ -166,6 +255,7 @@ export type IntelligenceReportMarkdownOptions = {
     enabled: boolean;
     reason?: string;
   };
+  aiContributions?: AiContributions;
 };
 
 export function formatMarkdown(
@@ -288,6 +378,8 @@ export function formatMarkdown(
       lines.push(``);
     }
   }
+
+  appendAiContributionsMarkdown(lines, normalizeAiContributions(options.aiContributions ?? meta.aiContributions));
 
   const baseMarkdown = lines.join('\n');
   return refineHexHawkReportMarkdown({
@@ -529,7 +621,7 @@ function AlternativesList({ alternatives }: { alternatives: AlternativeHypothesi
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function IntelligenceReport({ verdict, binaryPath, binarySize, architecture, fileType }: Props) {
+export function IntelligenceReport({ verdict, binaryPath, binarySize, architecture, fileType, aiContributions }: Props) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [aetherframeMarkdownEnabled, setAetherframeMarkdownEnabled] = useState(true);
@@ -548,6 +640,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
     );
   }
 
+  const reportAiContributions = normalizeAiContributions(aiContributions);
   const verdictColor = THREAT_COLORS[verdict.classification] ?? '#888';
   const scoreColor = threatScoreColor(verdict.threatScore);
   const currentSnapshot = useMemo(
@@ -616,6 +709,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
       nest_evidence_bundle: null,
       nestEvidenceBundle: null,
       nest_evidence_bundle_status: 'not_embedded_in_report_export; use NEST evidence export after real native NEST completion',
+      ai_contributions: reportAiContributions,
       authority_doctrine: {
         gyre_is_sole_verdict_source: true,
         nest_role: 'evidence-orchestration-only',
@@ -652,6 +746,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
       enabled: aetherframeMarkdownEnabled,
       reason: aetherframeMarkdownEnabled ? 'report-panel-analyst-enabled' : 'high-assurance-report-panel-disabled',
     },
+    aiContributions: reportAiContributions,
   };
 
   const handleDownloadMarkdown = () => {
@@ -757,6 +852,26 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
         </div>
       </div>
       <div className="report-summary">{verdict.summary}</div>
+
+      <details className="report-section report-ai-contributions" open>
+        <summary className="report-section-title">How AI contributed</summary>
+        <p>
+          {reportAiContributions.present
+            ? 'This report includes labelled AI interpretation sections. They are advisory notes only and are separate from static evidence.'
+            : 'No AI observations were generated for this analysis. The report is based on static analysis and GYRE output.'}
+        </p>
+        <p>GYRE remains the sole verdict authority. AI did not affect the GYRE verdict or NEST evidence convergence.</p>
+        {reportAiContributions.sections.length > 0 && (
+          <ul>
+            {reportAiContributions.sections.map(section => (
+              <li key={`${section.section}-${section.source}`}>
+                {formatAiSectionLabel(section.section)} — {formatAiSourceLabel(section.source)} ({formatAiRole(section.section)})
+                {typeof section.count === 'number' ? `, ${section.count} item(s)` : ''}
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
 
       {/* ── Binary metadata ─────────────────────────────────────── */}
       {(binaryPath || architecture || fileType) && (

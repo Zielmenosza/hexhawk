@@ -364,4 +364,41 @@ describe('FunctionIntelligence builder', () => {
     expect(markdown).not.toContain('threatScore');
   });
 
+
+  it('exports AI contribution provenance for function summaries and pattern observations', () => {
+    const fi = buildFunctionIntelligence(makeFunction(), makeAnalysis(), makeDecompileResult(), makeDebugSnapshot());
+    const functionSummary = {
+      oneLiner: 'File read operation',
+      paragraphSummary: 'This function appears to open a file for reading.',
+      keyOperations: ['Uses CreateFileW'],
+      analystQuestions: ['What path reaches this API?'],
+      confidence: 'high' as const,
+      basis: '1 import call',
+      generatedBy: 'aetherframe-static-only' as const,
+      gyre_is_sole_verdict_authority: true as const,
+      advisory_only: true as const,
+      not_a_verdict: true as const,
+    };
+
+    const parsed = JSON.parse(exportFunctionIntelligenceJSON(fi, {
+      functionSummary,
+      patternObservationCount: 2,
+      analystAcceptedSuggestionCount: 1,
+    }));
+    const markdown = exportFunctionIntelligenceMarkdown(fi, { functionSummary, patternObservationCount: 2 });
+
+    expect(parsed.ai_contributions).toMatchObject({
+      present: true,
+      ai_did_not_affect_verdict: true,
+      gyre_is_sole_verdict_authority: true,
+    });
+    expect(parsed.ai_contributions.sections).toEqual(expect.arrayContaining([
+      expect.objectContaining({ section: 'function_summary', source: 'aetherframe-static-only', advisory_only: true }),
+      expect.objectContaining({ section: 'pattern_observations', source: 'aetherframe-static', count: 2, advisory_only: true }),
+      expect.objectContaining({ section: 'analyst_accepted_suggestions', source: 'agent-gate-approved', count: 1, advisory_only: true }),
+    ]));
+    expect(markdown).toContain('## AI Contributions (advisory only)');
+    expect(markdown).toContain('AI did not affect the GYRE verdict or NEST evidence convergence.');
+  });
+
 });

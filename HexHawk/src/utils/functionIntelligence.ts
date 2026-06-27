@@ -466,6 +466,44 @@ function markdownLimits(limits: FunctionIntelligenceLimit[]): string[] {
 
 export interface FunctionIntelligenceExportOptions {
   functionSummary?: FunctionSummary;
+  patternObservationCount?: number;
+  analystAcceptedSuggestionCount?: number;
+}
+
+function buildFunctionAiContributions(options: FunctionIntelligenceExportOptions) {
+  const sections = [];
+  if (options.functionSummary) {
+    sections.push({
+      section: 'function_summary',
+      source: options.functionSummary.generatedBy,
+      advisory_only: true,
+      gyre_is_sole_verdict_authority: true,
+    });
+  }
+  if ((options.patternObservationCount ?? 0) > 0) {
+    sections.push({
+      section: 'pattern_observations',
+      source: 'aetherframe-static',
+      count: options.patternObservationCount,
+      advisory_only: true,
+      gyre_is_sole_verdict_authority: true,
+    });
+  }
+  if ((options.analystAcceptedSuggestionCount ?? 0) > 0) {
+    sections.push({
+      section: 'analyst_accepted_suggestions',
+      source: 'agent-gate-approved',
+      count: options.analystAcceptedSuggestionCount,
+      advisory_only: true,
+      gyre_is_sole_verdict_authority: true,
+    });
+  }
+  return {
+    present: sections.length > 0,
+    sections,
+    ai_did_not_affect_verdict: true,
+    gyre_is_sole_verdict_authority: true,
+  };
 }
 
 export function exportFunctionIntelligenceJSON(fi: FunctionIntelligence, options: FunctionIntelligenceExportOptions = {}): string {
@@ -474,6 +512,7 @@ export function exportFunctionIntelligenceJSON(fi: FunctionIntelligence, options
     generated_at: new Date().toISOString(),
     source_evidence_per_claim: true,
     function_summary: options.functionSummary,
+    ai_contributions: buildFunctionAiContributions(options),
     ...fi,
     gyre_is_sole_verdict_authority: true,
     advisory_analysis_only: true,
@@ -508,6 +547,11 @@ export function exportFunctionIntelligenceMarkdown(fi: FunctionIntelligence, opt
       `Basis: ${options.functionSummary.basis}`,
       '',
     ] : []),
+    '## AI Contributions (advisory only)',
+    buildFunctionAiContributions(options).present
+      ? 'This function export includes labelled AI interpretation sections. GYRE remains the sole verdict authority. AI did not affect the GYRE verdict or NEST evidence convergence.'
+      : 'No AI observations were generated for this function export.',
+    '',
     `## Callers (${fi.callers.length})`,
     '| Address | Name | Basis |',
     '|---------|------|-------|',

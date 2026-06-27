@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { IntelligenceReport, formatMarkdown } from '../IntelligenceReport';
+import { IntelligenceReport, formatMarkdown, type AiContributions } from '../IntelligenceReport';
 import type { BinaryVerdictResult } from '../../utils/correlationEngine';
 
 function makeVerdict(overrides: Partial<BinaryVerdictResult> = {}): BinaryVerdictResult {
@@ -150,6 +150,35 @@ describe('IntelligenceReport', () => {
 
     expect(md).not.toContain('## AETHERFRAME Report Refinement Lineage');
     expect(md).toContain('| Classification | **CLEAN** |');
+    expect(md).toContain('## AI Contributions (advisory only)');
+    expect(md).toContain('No AI observations were generated for this analysis.');
+  });
+
+  it('Markdown export includes AI contributions when supplied', () => {
+    const verdict = makeVerdict();
+    const aiContributions: AiContributions = {
+      present: true,
+      sections: [
+        { section: 'function_summary', source: 'aetherframe-static-only', advisory_only: true, gyre_is_sole_verdict_authority: true },
+        { section: 'pattern_observations', source: 'aetherframe-static', count: 2, advisory_only: true, gyre_is_sole_verdict_authority: true },
+        { section: 'analyst_accepted_suggestions', source: 'agent-gate-approved', count: 1, advisory_only: true, gyre_is_sole_verdict_authority: true },
+      ],
+      ai_did_not_affect_verdict: true,
+      gyre_is_sole_verdict_authority: true,
+    };
+
+    const md = formatMarkdown(
+      verdict,
+      { verdict, binaryPath: 'sample.exe', aiContributions },
+      { aiContributions },
+    );
+
+    expect(md).toContain('## AI Contributions (advisory only)');
+    expect(md).toContain('| Function summary | AETHERFRAME static-only | Interpretation |');
+    expect(md).toContain('| Pattern observations (2) | AETHERFRAME static | Pattern match |');
+    expect(md).toContain('| Accepted suggestions (1) | Analyst-approved | Notes only |');
+    expect(md).not.toContain('classified as');
+    expect(md).not.toContain('confirmed malware');
   });
 
   it('uses the visible report policy toggle to disable AETHERFRAME Markdown packaging', async () => {
@@ -277,6 +306,11 @@ describe('IntelligenceReport', () => {
     expect(payload.aetherframe_report_packaging.proof_limits).toEqual(expect.arrayContaining([
       'This pass packages lineage and authority-boundary disclosure only.',
     ]));
+    expect((payload as any).ai_contributions).toMatchObject({
+      present: false,
+      ai_did_not_affect_verdict: true,
+      gyre_is_sole_verdict_authority: true,
+    });
   });
 
   it('records disabled AETHERFRAME report packaging metadata in JSON export without changing GYRE authority', async () => {
@@ -320,4 +354,43 @@ describe('IntelligenceReport', () => {
       gyre_is_sole_verdict_source: true,
     });
   });
+
+  it('exports JSON with supplied AI contribution provenance and visible panel summary', async () => {
+    const aiContributions: AiContributions = {
+      present: true,
+      sections: [
+        { section: 'function_summary', source: 'aetherframe-llm', advisory_only: true, gyre_is_sole_verdict_authority: true },
+        { section: 'pattern_observations', source: 'aetherframe-static', count: 3, advisory_only: true, gyre_is_sole_verdict_authority: true },
+      ],
+      ai_did_not_affect_verdict: true,
+      gyre_is_sole_verdict_authority: true,
+    };
+
+    render(
+      <IntelligenceReport
+        verdict={makeVerdict()}
+        binaryPath="sample.exe"
+        aiContributions={aiContributions}
+      />,
+    );
+
+    expect(screen.getByText('How AI contributed')).toBeTruthy();
+    expect(screen.getByText(/This report includes labelled AI interpretation sections/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /json/i }));
+
+    await waitFor(() => {
+      expect(lastBlob).toBeTruthy();
+    });
+
+    const payload = JSON.parse(await lastBlob!.text()) as { ai_contributions: AiContributions };
+    expect(payload.ai_contributions.present).toBe(true);
+    expect(payload.ai_contributions.ai_did_not_affect_verdict).toBe(true);
+    expect(payload.ai_contributions.sections).toEqual(expect.arrayContaining([
+      expect.objectContaining({ section: 'function_summary', source: 'aetherframe-llm', advisory_only: true }),
+      expect.objectContaining({ section: 'pattern_observations', source: 'aetherframe-static', count: 3, advisory_only: true }),
+    ]));
+    expect(JSON.stringify(payload.ai_contributions)).not.toContain('classified as');
+    expect(JSON.stringify(payload.ai_contributions)).not.toContain('confirmed malware');
+  });
+
 });
