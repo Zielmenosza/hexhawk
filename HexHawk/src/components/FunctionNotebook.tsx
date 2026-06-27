@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   exportFunctionIntelligenceJSON,
   exportFunctionIntelligenceMarkdown,
@@ -6,6 +6,8 @@ import {
   type FunctionIntelligence,
   type FunctionIntelligenceLimit,
 } from '../utils/functionIntelligence';
+import { generateFunctionSummary, type FunctionSummary } from '../utils/functionSummary';
+import { runAetherframePatterns } from '../utils/aetherframePatterns';
 
 interface FunctionNotebookProps {
   functionIntelligence: FunctionIntelligence | null;
@@ -87,6 +89,26 @@ function EdgeTable({ label, edges }: { label: string; edges: FunctionCallEdge[] 
 
 export function FunctionNotebook({ functionIntelligence }: FunctionNotebookProps) {
   const [mode, setMode] = useState<'compact' | 'annotated'>('compact');
+  const [summary, setSummary] = useState<FunctionSummary | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string>('');
+
+  const observations = useMemo(
+    () => functionIntelligence ? runAetherframePatterns(functionIntelligence) : [],
+    [functionIntelligence],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setCopyStatus('');
+    if (!functionIntelligence) {
+      setSummary(null);
+      return;
+    }
+    void generateFunctionSummary(functionIntelligence, observations).then(next => {
+      if (!cancelled) setSummary(next);
+    });
+    return () => { cancelled = true; };
+  }, [functionIntelligence, observations]);
 
   if (!functionIntelligence) {
     return (
@@ -102,6 +124,18 @@ export function FunctionNotebook({ functionIntelligence }: FunctionNotebookProps
   const shownPseudocode = mode === 'annotated' ? fi.pseudocodeAnnotated ?? fi.pseudocode : fi.pseudocode;
   const topBasis = fi.callees[0]?.evidenceBasis ?? 'no-correlation';
 
+  async function refreshSummary() {
+    setSummary(await generateFunctionSummary(fi, observations));
+  }
+
+  async function copySummary() {
+    const text = summary
+      ? [summary.oneLiner, summary.paragraphSummary, ...summary.keyOperations.map(op => `- ${op}`), `Basis: ${summary.basis}`].join('\n')
+      : 'No function summary generated yet.';
+    await navigator.clipboard?.writeText(text);
+    setCopyStatus('Copied summary');
+  }
+
   return (
     <section className="panel function-notebook" data-testid="function-notebook" aria-labelledby="function-notebook-heading">
       <header>
@@ -114,6 +148,35 @@ export function FunctionNotebook({ functionIntelligence }: FunctionNotebookProps
         </div>
         <p><strong>Advisory analysis only.</strong> GYRE remains the sole verdict authority.</p>
       </header>
+
+      <section className="function-summary-card" aria-labelledby="function-summary-heading">
+        <div className="function-summary-header">
+          <div>
+            <h3 id="function-summary-heading">What this function does</h3>
+            <p>AETHERFRAME — advisory, not a verdict</p>
+          </div>
+          <span>{summary?.generatedBy ?? 'aetherframe-static-only'}</span>
+        </div>
+        {summary ? (
+          <>
+            <p><strong>{summary.oneLiner}</strong></p>
+            <p>{summary.paragraphSummary}</p>
+            <h4>Key operations</h4>
+            <ul>{summary.keyOperations.map((operation, index) => <li key={index}>{operation}</li>)}</ul>
+            <h4>Questions to investigate</h4>
+            <ul>{summary.analystQuestions.map((question, index) => <li key={index}>{question}</li>)}</ul>
+            <p><strong>Basis:</strong> {summary.basis}</p>
+            <p><strong>Advisory only.</strong> GYRE remains the sole verdict authority. Not a verdict.</p>
+          </>
+        ) : (
+          <p>Generating static summary…</p>
+        )}
+        <div className="function-summary-actions">
+          <button type="button" onClick={() => { void refreshSummary(); }}>Refresh</button>
+          <button type="button" onClick={() => { void copySummary(); }}>Copy summary</button>
+          {copyStatus && <span role="status">{copyStatus}</span>}
+        </div>
+      </section>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <EdgeTable label="Callers" edges={fi.callers} />
@@ -154,8 +217,8 @@ export function FunctionNotebook({ functionIntelligence }: FunctionNotebookProps
       </section>
 
       <footer>
-        <button type="button" onClick={() => download(functionFilename(fi, 'json'), exportFunctionIntelligenceJSON(fi), 'application/json')}>Export JSON</button>
-        <button type="button" onClick={() => download(functionFilename(fi, 'md'), exportFunctionIntelligenceMarkdown(fi), 'text/markdown')}>Export Markdown</button>
+        <button type="button" onClick={() => download(functionFilename(fi, 'json'), exportFunctionIntelligenceJSON(fi, { functionSummary: summary ?? undefined }), 'application/json')}>Export JSON</button>
+        <button type="button" onClick={() => download(functionFilename(fi, 'md'), exportFunctionIntelligenceMarkdown(fi, { functionSummary: summary ?? undefined }), 'text/markdown')}>Export Markdown</button>
       </footer>
     </section>
   );

@@ -2,6 +2,7 @@ import type { DebugSnapshot } from '../components/DebuggerPanel';
 import type { DecompileResult, IRStmt } from './decompilerEngine';
 import type { FunctionModel, ImportCall, ProgramAnalysis, XRef } from './disassemblyModel';
 import { resolveConstantAnnotation } from './importPrototypes';
+import type { FunctionSummary } from './functionSummary';
 
 export type ProgramAnalysisFunction = FunctionModel;
 
@@ -463,18 +464,23 @@ function markdownLimits(limits: FunctionIntelligenceLimit[]): string[] {
   return limits.map(limit => `- ${limit.address !== undefined ? `${formatHex(limit.address)}: ` : ''}${limit.detail}`);
 }
 
-export function exportFunctionIntelligenceJSON(fi: FunctionIntelligence): string {
+export interface FunctionIntelligenceExportOptions {
+  functionSummary?: FunctionSummary;
+}
+
+export function exportFunctionIntelligenceJSON(fi: FunctionIntelligence, options: FunctionIntelligenceExportOptions = {}): string {
   return JSON.stringify({
     export_schema: 'hexhawk.function_intelligence.v1',
     generated_at: new Date().toISOString(),
     source_evidence_per_claim: true,
+    function_summary: options.functionSummary,
     ...fi,
     gyre_is_sole_verdict_authority: true,
     advisory_analysis_only: true,
   }, null, 2);
 }
 
-export function exportFunctionIntelligenceMarkdown(fi: FunctionIntelligence): string {
+export function exportFunctionIntelligenceMarkdown(fi: FunctionIntelligence, options: FunctionIntelligenceExportOptions = {}): string {
   const generatedAt = new Date().toISOString();
   const lines: string[] = [
     `# Function: ${fi.name} @ ${formatHex(fi.address)}`,
@@ -485,6 +491,23 @@ export function exportFunctionIntelligenceMarkdown(fi: FunctionIntelligence): st
     `Calling convention: ${fi.callingConvention ? `${fi.callingConvention.abi} (${fi.callingConvention.analysisConfidence} confidence)` : 'Unknown (not proven)'}`,
     `Boundary source: ${fi.boundarySource}`,
     '',
+    '## What this function does (AETHERFRAME — advisory, not a verdict)',
+    options.functionSummary
+      ? options.functionSummary.oneLiner
+      : 'No plain-English summary was generated for this export.',
+    '',
+    options.functionSummary?.paragraphSummary ?? '',
+    '',
+    ...(options.functionSummary ? [
+      'Key operations:',
+      ...options.functionSummary.keyOperations.map(operation => `- ${operation}`),
+      '',
+      'Questions to investigate:',
+      ...options.functionSummary.analystQuestions.map(question => `- ${question}`),
+      '',
+      `Basis: ${options.functionSummary.basis}`,
+      '',
+    ] : []),
     `## Callers (${fi.callers.length})`,
     '| Address | Name | Basis |',
     '|---------|------|-------|',

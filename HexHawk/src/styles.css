@@ -8816,3 +8816,40 @@ pre {
   display: flex;
   justify-content: flex-end;
 }
+
+.function-summary-card {
+  border: 1px solid rgba(255, 191, 87, 0.35);
+  background: rgba(255, 191, 87, 0.06);
+  border-radius: 0.7rem;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.function-summary-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.function-summary-header p {
+  color: #ffdd99;
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+}
+
+.function-summary-header > span {
+  border: 1px solid rgba(255, 191, 87, 0.45);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  color: #ffdd99;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.function-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
