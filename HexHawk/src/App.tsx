@@ -471,10 +471,10 @@ const FEATURE_GUIDES: Partial<Record<NavView, FeatureGuide>> = {
   },
   agent: {
     title: 'Agent Gate',
-    plainName: 'Approve or reject AI-proposed signals',
-    does: 'Shows suggestions from external AI/agent workflows and requires analyst approval before they affect signals.',
-    how: ['Read each proposed finding.', 'Approve only if the evidence is clear.', 'Reject vague or unsupported suggestions.'],
-    expect: 'Human-controlled advisory input. AI suggestions do not become security truth automatically.',
+    plainName: 'Review AI suggestions as notes',
+    does: 'Shows suggestions from external AI/agent workflows. Approving adds an analyst note only; it does not affect GYRE verdicts or analysis signals.',
+    how: ['Read each proposed note.', 'Approve only if the evidence is clear.', 'Reject vague or unsupported suggestions.'],
+    expect: 'Approved suggestions appear as advisory analyst notes with provenance labels.',
   },
   plugins: {
     title: 'Plugin Manager',

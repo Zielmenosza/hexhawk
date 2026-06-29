@@ -91,7 +91,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'debugger', plainLabel: 'Runtime trace review', label: 'Debugger', icon: '⚙', minTier: 'pro', requiresState: 'fileLoaded', description: 'Reviews debugger/trace evidence when available. Runtime evidence supports analysis; it is not the verdict source.' },
       { id: 'diff', plainLabel: 'Compare files', label: 'Binary Diff', icon: '⊕', minTier: 'pro', requiresState: 'fileLoaded', description: 'Compares two files to find changed bytes, strings, functions, blocks, and verdict differences.' },
       { id: 'repl', plainLabel: 'Interactive commands', label: 'REPL', icon: '>_', minTier: 'pro', requiresState: 'fileLoaded', description: 'Interactive command area for advanced inspection helpers tied to the current file.' },
-      { id: 'agent', plainLabel: 'Approve AI suggestions', label: 'Agent Gate', icon: '⬢', minTier: 'pro', requiresState: 'fileLoaded', description: 'External AI suggestions must be approved here before they can influence analysis signals.' },
+      { id: 'agent', plainLabel: 'Approve AI suggestions', label: 'Agent Gate', icon: '⬢', minTier: 'pro', requiresState: 'fileLoaded', description: 'Review AI suggestions here. Approving adds analyst notes only; it does not affect GYRE verdicts or analysis signals.' },
     ],
   },
   {

@@ -72,4 +72,22 @@ describe('WorkflowNav Function Notebook and AI observations wiring', () => {
 
     expect(onSelect).toHaveBeenCalledWith('ai-observations');
   });
+
+  it('describes Agent Gate approvals as advisory notes that do not affect verdicts or signals', () => {
+    render(
+      <WorkflowNav
+        activeView="agent"
+        workflowState="analyzed"
+        tier="enterprise"
+        fileName="sample.exe"
+        onSelect={vi.fn()}
+        onLoadFile={vi.fn()}
+        agentQueueCount={2}
+      />,
+    );
+
+    expect(screen.getByTestId('nav-agent')).toHaveTextContent(/Approving adds analyst notes only/i);
+    expect(screen.getByTestId('nav-agent')).toHaveTextContent(/does not affect GYRE verdicts or analysis signals/i);
+    expect(screen.getByLabelText('2 pending agent suggestions')).toBeInTheDocument();
+  });
 });
