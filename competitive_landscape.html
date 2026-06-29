@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>HexHawk — Competitive Landscape</title>
-<meta name="description" content="Evidence-scoped HexHawk competitive landscape against IDA Pro, Ghidra, Binary Ninja, Cutter, and x64dbg, aligned to the June 20 unsigned deployment-candidate gate.">
+<meta name="description" content="Evidence-scoped HexHawk competitive landscape against IDA Pro, Ghidra, Binary Ninja, Cutter, and x64dbg, aligned to the June 29 installed AI workflow probe and current CI/release blockers.">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <style>
   :root {
@@ -75,14 +75,14 @@
 <section class="hero">
   <div>
     <h1><span>HexHawk</span><br>Competitive Landscape</h1>
-    <p class="subtitle">Evidence-scoped comparison against IDA Pro, Ghidra, Binary Ninja, Cutter, and x64dbg · Updated 2026-06-20 after the unsigned deployment-candidate gate.</p>
-    <p class="small">This page is internal positioning material, not a public-release claim. Scores are directional estimates based on current HexHawk validation plus public competitor positioning. The June 20 candidate proves packaging and launch/render health, but mature reverse-engineering suites still lead in ecosystem depth and long-tail decompiler/debugger maturity.</p>
+    <p class="subtitle">Evidence-scoped comparison against IDA Pro, Ghidra, Binary Ninja, Cutter, and x64dbg · Updated 2026-06-29 after the installed AI workflow CDP probe.</p>
+    <p class="small">This page is internal positioning material, not a public-release claim. Scores are directional estimates based on current HexHawk validation plus public competitor positioning. The June 29 probe proves the installed native AI Observations / Agent Gate / Function Notebook export path on a local probe install, while mature reverse-engineering suites still lead in ecosystem depth and long-tail decompiler/debugger maturity.</p>
   </div>
   <div class="status-grid">
     <div class="pill good">HexHawk wedge: integrated local evidence + reports</div>
     <div class="pill good">Trust model: GYRE verdicts, NEST evidence, AETHERFRAME optional</div>
-    <div class="pill warn">Current artifacts: June 20 MSI/NSIS are Authenticode NotSigned</div>
-    <div class="pill warn">External release: blocked until signing, updater, full exact-artifact export proof</div>
+    <div class="pill warn">Current artifacts: local MSI/NSIS evidence remains Authenticode NotSigned</div>
+    <div class="pill warn">External release: blocked until signing, updater, CI, and full exact-artifact release export proof</div>
   </div>
 </section>
 
@@ -106,21 +106,21 @@
     <h2>Interpretation</h2>
     <div class="callouts">
       <div class="callout"><strong>HexHawk is differentiated, not dominant.</strong><span class="small">Its best current story is a local-first evidence/reporting workbench with explicit authority boundaries. It should not claim it beats IDA/Ghidra/Binary Ninja on mature decompiler ecosystems.</span></div>
-      <div class="callout"><strong>Release trust is the main commercial blocker.</strong><span class="small">The June 20 MSI extraction and NSIS install smokes passed, including WebView2Loader.dll in the NSIS payload, but the artifacts are still NotSigned. Public-trusted signing, hosted updater validation, and full exact-artifact export parity remain gating items.</span></div>
+      <div class="callout"><strong>Release trust is the main commercial blocker.</strong><span class="small">The installed AI workflow CDP probe now passes for AI Observations, Agent Gate wording, Function Notebook summary, and Function Notebook JSON export authority checks. That is QA evidence, not a full release gate. Public-trusted signing, hosted updater validation, green CI, and full exact-artifact release export parity remain gating items.</span></div>
       <div class="callout"><strong>AI must stay bounded.</strong><span class="small">AETHERFRAME/Forge and NEXUS are positioning strengths only because they are policy-gated and non-authoritative. GYRE remains the sole verdict authority; NEST remains evidence orchestration.</span></div>
     </div>
   </section>
   <section class="card full">
     <h2>Next Moves To Improve The Competitive Story</h2>
     <div class="roadmap">
-      <div class="step"><h3>1. Release trust</h3><p>Code-sign exe/MSI/NSIS, publish matching metadata, verify hosted hashes/signatures, and rerun native GUI proof on exact signed artifacts.</p></div>
+      <div class="step"><h3>1. Release trust</h3><p>Fix CI, code-sign exe/MSI/NSIS, publish matching metadata, verify hosted hashes/signatures, and rerun native GUI proof on exact signed artifacts.</p></div>
       <div class="step"><h3>2. Analysis depth</h3><p>Continue TALON decompiler maturity, STRIKE live-debugger proof, ECHO correlation, and exploitability-mode advisory slices without turning them into GYRE verdict truth.</p></div>
       <div class="step"><h3>3. Buyer proof</h3><p>Produce narrow, reproducible case studies showing time saved, evidence quality, report repeatability, and export-authority parity against real analyst workflows.</p></div>
     </div>
   </section>
 </div>
 
-<footer>HexHawk · Internal Competitive Analysis · 2026-06-20 · Scores are directional, evidence-scoped estimates; they are not benchmark guarantees or public-release-readiness claims.</footer>
+<footer>HexHawk · Internal Competitive Analysis · 2026-06-29 · Scores are directional, evidence-scoped estimates; they are not benchmark guarantees or public-release-readiness claims.</footer>
 
 <script>
 const TOOLS = ['HexHawk', 'IDA Pro', 'Ghidra', 'Binary Ninja', 'Cutter', 'x64dbg'];
@@ -179,7 +179,7 @@ new Chart(document.getElementById('overall'), {
   options: { indexAxis: 'y', ...chartBase, scales: { x: { min: 0, max: 100, grid: { color: '#21262d' } }, y: { grid: { display: false }, ticks: { color: '#e6edf3', font: { weight: 'bold' } } } }, plugins: { legend: { display: false } } }
 });
 const notes = {
-  'HexHawk': ['Evidence/report workflow, explicit GYRE/NEST/AETHERFRAME boundaries, June 20 MSI/NSIS build plus launch/render smoke', 'Unsigned artifacts, immature ecosystem, full exact-artifact export parity must be rerun before external release'],
+  'HexHawk': ['Evidence/report workflow, explicit GYRE/NEST/AETHERFRAME boundaries, installed AI workflow CDP probe for AI Observations, Agent Gate, and Function Notebook export authority checks', 'Unsigned artifacts, failing CI, immature ecosystem, and full exact-artifact release export parity still block external release'],
   'IDA Pro': ['Decompiler maturity, long-standing commercial workflows, plugin ecosystem', 'Cost, accessibility, no HexHawk-style built-in authority-boundary report model'],
   'Ghidra': ['Free, mature disassembly/decompiler, broad community', 'UX friction, reporting/evidence packaging less integrated'],
   'Binary Ninja': ['Modern UX, strong APIs, commercial polish', 'Cost, less focused on HexHawk-style malware evidence reports'],
