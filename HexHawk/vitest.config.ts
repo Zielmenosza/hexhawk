@@ -13,6 +13,8 @@ export default defineConfig({
       // Stub Tauri runtime APIs — not available in test environment
       '@tauri-apps/api/core': resolve(__dirname, 'src/test/__mocks__/tauri-core.ts'),
       '@tauri-apps/plugin-dialog': resolve(__dirname, 'src/test/__mocks__/tauri-dialog.ts'),
+      '@hexhawk/aetherframe-core/browser': resolve(__dirname, '../packages/aetherframe-core/src/browser.ts'),
+      '@hexhawk/aetherframe-core': resolve(__dirname, '../packages/aetherframe-core/src/index.ts'),
     },
   },
   test: {

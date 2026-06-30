@@ -66,6 +66,12 @@ function toRepoRelativePath(filePath: string | undefined): string {
     return 'n/a';
   }
 
+  const normalizedInput = filePath.replace(/\\/g, '/');
+  const anchoredInput = trimToStableProjectAnchor(normalizedInput);
+  if (anchoredInput) {
+    return anchoredInput;
+  }
+
   const resolvedPath = path.resolve(filePath);
   const configuredBase = process.env.HEXHAWK_BENCHMARK_ROOT
     ? path.resolve(process.env.HEXHAWK_BENCHMARK_ROOT)
