@@ -137,3 +137,40 @@ Green Windows/Linux/macOS build jobs prove buildability only. Public release rea
 release gate evidence such as signing/notarization status, installed-artifact smoke, updater metadata,
 checksums, and authority-preserving Function Intelligence export proof.
 Source: factory cycle 0001 final CI status, run 28476869500.
+
+---
+
+## Factory Cycle 0002 — Unsigned Early Access Packaging Path (2026-07-01)
+
+[RELEASE] Unsigned early access is a commercial/testing channel, not a public trust claim.
+A paid private package may help fund release trust, but payment does not prove Authenticode signing,
+Microsoft verification, updater readiness, or public/world-ready release posture.
+Source: factory cycle 0002 unsigned early-access policy.
+
+[RELEASE] NotSigned artifacts may be packaged for technical testers only when clearly labeled and
+hash-verified. The package must include SHA256 hashes, Authenticode status, exact artifact paths,
+installation limitations, and explicit unsigned early-access wording.
+Source: factory cycle 0002 unsigned early-access gate.
+
+[BOUNDARY] Payment/private distribution must not be confused with signed/public release readiness.
+Buyer-facing copy must say what customers are buying and what they are not buying.
+Source: factory cycle 0002 buyer note.
+
+[RELEASE] Auto-update must remain disabled until updater signing is proven.
+Tauri updater signatures and hosted metadata are separate gates. Manual updates are the only honest
+unsigned early-access update path until that proof exists.
+Source: factory cycle 0002 unsigned early-access policy.
+
+[BOUNDARY] Early-access release gates must preserve GYRE authority and advisory-only AI/AETHERFRAME
+boundaries. AETHERFRAME/Hermes may organize the factory cycle and package evidence, but must not
+mutate verdict/classification truth.
+Source: factory cycle 0002 gate and policy docs.
+
+[CUSTODY] Packaging scripts must not publish, upload, deploy, charge money, use credentials, sign
+artifacts, modify updater metadata, or change product behavior. They may only collect local artifacts,
+hash them, record Authenticode status, copy docs, and create a local zip.
+Source: scripts/release/build_unsigned_early_access_package.ps1.
+
+[PREVENTION] Factory improvement means better process, gates, reports, and evidence — not uncontrolled
+self-modification. Each factory cycle ends with evidence, lessons, validation, and a stop point.
+Source: factory cycle 0002 run report.

@@ -32,6 +32,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 KEY_VALIDATION_SCRIPTS = [
     "scripts/release/release-hardening.ps1",
+    "scripts/release/build_unsigned_early_access_package.ps1",
     "scripts/run_ai_workflow_cdp_probe.py",
     "scripts/native_gui_parity_probe.py",
     "scripts/strike_trace_import_native_probe.py",
@@ -50,6 +51,24 @@ AUTHORITY_CHECKLIST = [
     ("NEST evidence orchestration only", "docs/ENGINE_BOUNDARY_DOCTRINE.md"),
     ("No release-candidate tag without full gate", "docs/AETHERFRAME_FACTORY.md"),
     ("No public deployment without explicit approval", "docs/AETHERFRAME_FACTORY.md"),
+]
+
+RELEASE_CHANNELS = [
+    "source/dev",
+    "unsigned early access",
+    "unsigned deployment candidate",
+    "signed public release",
+]
+
+UNSIGNED_EARLY_ACCESS_CHECKLIST = [
+    "CI green on main",
+    "main clean and pushed",
+    "NotSigned status expected and recorded",
+    "no updater proof unless Tauri updater signatures are proven",
+    "package docs required: policy, install README, buyer note",
+    "exact-artifact proof required: paths, hashes, Authenticode status",
+    "no public-ready, signed, Microsoft-verified, or auto-update claim",
+    "no publish/upload/deploy/credentials/signing/product-behavior change",
 ]
 
 
@@ -95,7 +114,20 @@ def classify_candidate(tags, ci_status, is_clean):
     # green CI + clean tree
     if any("-rc" in t or "release-candidate" in t for t in tags):
         return "RELEASE_CANDIDATE (advisory — requires full gate before public release)"
-    return "CLEAN_BUILD — internal tester candidate only (no signing proven)"
+    return "CLEAN_BUILD — unsigned early access path possible; public/signed release still blocked"
+
+
+def classify_release_channel(tags, ci_status, is_clean):
+    """Advisory release-channel posture. Does not approve a release."""
+    if not is_clean:
+        return "source/dev"
+    if ci_status != "green":
+        return "source/dev"
+    if any("signed" in t and "public" in t for t in tags):
+        return "signed public release"
+    if any("unsigned-deployment-candidate" in t or "deployment-candidate" in t for t in tags):
+        return "unsigned deployment candidate"
+    return "unsigned early access"
 
 
 def check_gh_available():
@@ -239,10 +271,22 @@ def build_report(run_checks=False):
     # ── Candidate Classification ──
     h2("Candidate Classification (Advisory)")
     classification = classify_candidate(tags_list, ci_status, is_clean)
+    channel = classify_release_channel(tags_list, ci_status, is_clean)
     lines.append(f"  {classification}")
+    row("Release channel posture", channel)
     lines.append("")
     lines.append("  NOTE: This is factory posture only. GYRE is sole verdict/classification authority.")
     lines.append("  This classification does not substitute for the full release gate.")
+
+    h2("Release Channel Awareness (Advisory)")
+    for ch in RELEASE_CHANNELS:
+        marker = "CURRENT" if ch == channel else "available posture"
+        lines.append(f"  [{marker}] {ch}")
+
+    h2("Unsigned Early Access Checklist (Advisory)")
+    for item in UNSIGNED_EARLY_ACCESS_CHECKLIST:
+        lines.append(f"  - {item}")
+    lines.append("  This checklist does not publish, upload, sign, deploy, charge money, or approve public release.")
 
     # ── Known Blockers ──
     h2("Known Blockers")

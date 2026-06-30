@@ -187,3 +187,34 @@ Release-candidate tags: NEVER from a factory cycle. Require full release gate fi
 **Evidence:** CI push, watch run, record result
 
 **Lesson:** CI Yarn version must be pinned with corepack; workspace:* requires Yarn 2+
+
+---
+
+## Unsigned Early Access Factory Cycle
+
+Use this cycle type only for a controlled paid technical-preview channel for testers who understand unsigned Windows software. It does not approve public/world-ready release, signing, Microsoft verification, auto-update, publishing, or deployment.
+
+Steps:
+
+1. Verify CI green on `main`.
+2. Verify `main` is clean and pushed.
+3. Build or collect the exact MSI/NSIS artifacts being packaged.
+4. Hash artifacts and record exact paths.
+5. Verify Authenticode status is `NotSigned` for the unsigned early-access channel.
+6. Run installer smoke when claiming current installer proof.
+7. Run Function Notebook/export proof when claiming current workflow/export proof.
+8. Package artifacts only with unsigned early-access docs, hashes, release notes, and evidence manifest.
+9. Record buyer limitations: unsigned, manual updates, technical testers only, no public trust claim.
+10. Stop before public/signed/Microsoft-verified/updater-ready claims.
+11. Record factory evidence and lessons.
+
+Forbidden in this cycle type:
+
+- signing artifacts;
+- publishing/uploading/deploying packages;
+- creating GitHub Releases;
+- charging money from inside the script;
+- using credentials;
+- modifying updater metadata;
+- telling users to disable system security globally;
+- creating a deployment-candidate/public-release tag unless the separately defined gate passes.
