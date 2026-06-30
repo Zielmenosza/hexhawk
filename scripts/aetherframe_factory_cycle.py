@@ -136,11 +136,10 @@ def suggest_next_target(ci_status, tags, is_clean):
     if ci_status == "red":
         return (
             "CI stabilization — CI is failing on main. Fix CI before any new product work.\n"
-            "  Known failures (as of 2026-06-30):\n"
-            "    1. Yarn workspace install: TypeScript jobs fail because CI uses system yarn 1,\n"
-            "       but repo requires Yarn 4 (workspace:* protocol). Fix: corepack enable.\n"
-            "    2. Rust ptrace::write: mismatched type in debugger.rs L1790/L1805 on Linux.\n"
-            "       nix 0.29 ptrace::write expects c_long as data arg, not *mut _."
+            "  Use repo evidence and current GitHub Actions logs, not stale remembered failures:\n"
+            "    - gh run view <run-id> --log-failed\n"
+            "    - inspect the exact failing job/step before editing\n"
+            "    - commit one narrow fix per root cause where practical"
         )
     if not is_clean:
         return "Clean working tree — stage or reset outstanding changes before next cycle."
@@ -250,8 +249,7 @@ def build_report(run_checks=False):
     blockers = []
     if ci_status == "red":
         blockers.append("[CI] CI is failing on main — see CI Status above")
-        blockers.append("[CI] Yarn workspace install: corepack not enabled in CI (workspace:* resolution fails)")
-        blockers.append("[CI] Rust ptrace::write type mismatch in debugger.rs (Linux, nix 0.29)")
+        blockers.append("[CI] Inspect current failed logs with: gh run view <run-id> --log-failed")
     if not is_clean:
         blockers.append("[CUSTODY] Working tree is dirty — stage or reset before release gate")
 
