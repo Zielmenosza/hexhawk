@@ -77,7 +77,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Run component tests
-        run: yarn workspace hexhawk-ui exec vitest run --reporter=verbose --include 'src/components/__tests__/**'
+        run: yarn workspace hexhawk-ui exec vitest run --reporter=verbose 'src/components/__tests__/**'
 
   # ── TypeScript Tests (legacy alias kept for existing status checks) ──────────
   test-ts:

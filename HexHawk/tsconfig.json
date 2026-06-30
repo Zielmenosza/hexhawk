@@ -14,7 +14,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "@hexhawk/aetherframe-core": ["../packages/aetherframe-core/src/index.ts"],
+      "@hexhawk/aetherframe-core/*": ["../packages/aetherframe-core/src/*.ts"]
+    }
   },
   "include": ["src"],
   "references": [{ "path": "../packages/ui-components" }]
