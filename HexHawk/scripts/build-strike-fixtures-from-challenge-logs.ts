@@ -55,7 +55,8 @@ export function slugify(value: string): string {
 }
 
 export function challengeNameFromPath(targetPath: string): string {
-  const base = path.basename(targetPath);
+  const normalizedPath = targetPath.replace(/\\/g, '/');
+  const base = path.basename(normalizedPath);
   const ext = path.extname(base);
   return ext ? base.slice(0, -ext.length) : base;
 }

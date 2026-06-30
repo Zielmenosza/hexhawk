@@ -7,6 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      '@hexhawk/aetherframe-core/browser': path.resolve(__dirname, '../packages/aetherframe-core/src/browser.ts'),
+      '@hexhawk/aetherframe-core': path.resolve(__dirname, '../packages/aetherframe-core/src/index.ts'),
     },
   },
   server: {
