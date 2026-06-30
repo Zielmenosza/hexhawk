@@ -1787,7 +1787,7 @@ mod linux {
                     .map_err(|e| format!("read for bp: {}", e))?;
                 let patched = (orig & !0xFF) | 0xCC;
                 unsafe {
-                    ptrace::write(pid, addr as *mut _, patched as *mut _)
+                    ptrace::write(pid, addr as *mut _, patched as nix::libc::c_long)
                         .map_err(|e| format!("write bp: {}", e))?;
                 }
                 bp_originals.insert(addr, (orig & 0xFF) as u8);
@@ -1802,7 +1802,7 @@ mod linux {
                         .map_err(|e| format!("read for bp remove: {}", e))?;
                     let restored = (current & !0xFF) | orig_byte as i64;
                     unsafe {
-                        ptrace::write(pid, addr as *mut _, restored as *mut _)
+                        ptrace::write(pid, addr as *mut _, restored as nix::libc::c_long)
                             .map_err(|e| format!("write bp restore: {}", e))?;
                     }
                     bp_originals.remove(&addr);
