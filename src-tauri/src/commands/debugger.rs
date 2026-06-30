@@ -2083,10 +2083,12 @@ mod macos {
                 status,
                 registers: regs,
                 stack: vec![],
+                call_stack: vec![],
                 breakpoints: vec![],
                 step_count: self.step_count,
                 exit_code: self.exit_code,
                 last_event: last_event.to_string(),
+                warnings: vec![],
             }
         }
 

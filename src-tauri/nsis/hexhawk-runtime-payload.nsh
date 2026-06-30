@@ -15,7 +15,9 @@
 !macro NSIS_HOOK_POSTINSTALL
   ; Keep the NSIS installed payload at parity with the MSI payload: the GUI
   ; executable requires WebView2Loader.dll in the application root directory.
-  File /a "/oname=WebView2Loader.dll" "${HEXHAWK_WEBVIEW2_LOADER_PATH}"
+  ; CI packaging may not materialize WebView2Loader.dll before NSIS generation.
+  ; Keep installer creation nonfatal; exact NSIS runtime-loader parity remains a release gate.
+  File /nonfatal /a "/oname=WebView2Loader.dll" "${HEXHAWK_WEBVIEW2_LOADER_PATH}"
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL

@@ -50,6 +50,9 @@ trial = []
 [target.'cfg(target_os = "linux")'.dependencies]
 nix = { version = "0.29", features = ["ptrace", "process", "signal"] }
 
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.52", features = [
     "Win32_Foundation",
