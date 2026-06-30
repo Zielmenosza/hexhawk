@@ -124,7 +124,8 @@ if ($RequireNotSigned) {
 $head = (git rev-parse HEAD).Trim()
 $shortHead = (git rev-parse --short HEAD).Trim()
 $branch = (git rev-parse --abbrev-ref HEAD).Trim()
-$status = (git status --short).Trim()
+$statusLines = @(git status --short)
+$status = ($statusLines -join [Environment]::NewLine).Trim()
 $ciJson = $null
 try {
   $ciJson = gh run list --branch main --limit 1 --json databaseId,status,conclusion,headSha,url | ConvertFrom-Json
