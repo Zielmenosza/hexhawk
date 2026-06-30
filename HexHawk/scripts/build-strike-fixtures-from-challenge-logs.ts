@@ -278,7 +278,12 @@ export function writeScenariosFile(
 export function main(): void {
   const scenarios = collectScenarios();
   if (scenarios.length === 0) {
-    throw new Error('No challenge-derived NEST session logs found to build STRIKE fixtures.');
+    if (fs.existsSync(OUT_PATH)) {
+      console.log('No challenge-derived NEST session logs found; keeping committed STRIKE fixture file.');
+      console.log(`Output: ${OUT_PATH}`);
+      return;
+    }
+    throw new Error('No challenge-derived NEST session logs found and no committed STRIKE fixture file exists.');
   }
 
   writeScenariosFile(scenarios, OUT_PATH);
