@@ -23,8 +23,11 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
+      - name: Enable corepack (Yarn 4)
+        run: corepack enable
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Type-check
         run: yarn workspace hexhawk-ui exec tsc --noEmit
@@ -69,8 +72,11 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
+      - name: Enable corepack (Yarn 4)
+        run: corepack enable
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Run component tests
         run: yarn workspace hexhawk-ui exec vitest run --reporter=verbose --include 'src/components/__tests__/**'
@@ -135,8 +141,11 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
+      - name: Enable corepack (Yarn 4)
+        run: corepack enable
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Build Tauri app (Windows)
         run: yarn tauri:build
@@ -177,8 +186,11 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
+      - name: Enable corepack (Yarn 4)
+        run: corepack enable
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Build Tauri app (macOS)
         run: yarn tauri:build
@@ -237,8 +249,11 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
+      - name: Enable corepack (Yarn 4)
+        run: corepack enable
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Build Tauri app (Linux)
         run: yarn tauri:build
