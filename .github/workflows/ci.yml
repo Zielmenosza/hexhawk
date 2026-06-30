@@ -146,9 +146,6 @@ jobs:
 
       - name: Build Tauri app (Windows)
         run: yarn tauri:build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Upload MSI installer
         uses: actions/upload-artifact@v4
@@ -188,17 +185,14 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build Tauri app (macOS)
-        run: yarn tauri:build
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - name: Build Tauri app (macOS unsigned CI artifact)
+        # Do not inject signing/notarization credentials into the routine CI gate.
+        # Signed/notarized artifacts belong to the explicit release gate only.
+        run: |
+          unset APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY
+          unset APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
+          unset TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+          yarn tauri:build
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
@@ -252,9 +246,6 @@ jobs:
 
       - name: Build Tauri app (Linux)
         run: yarn tauri:build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
