@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-AetherFrame Advancement Factory — Cycle Reporter
+AetherFrame Advancement Cycle Reporter (legacy Factory compatibility)
 scripts/aetherframe_factory_cycle.py
 
 Purpose:
-  Run a bounded local factory cycle report. Does NOT change product code,
+  Run a bounded local AetherFrame Advancement Cycle report. Legacy Factory terminology is kept for compatibility. Does NOT change product code,
   deploy, sign, tag release candidates, delete folders, use credentials,
   run destructive cleanup, or make public claims.
 
@@ -15,7 +15,7 @@ Usage:
 
 Authority boundary:
   GYRE = sole verdict/classification authority.
-  AETHERFRAME = factory orchestration, scoring, recommendation only.
+  AETHERFRAME = advancement orchestration, scoring, recommendation only.
   This script = read-only reporter. Verdicts stay with GYRE.
 """
 
@@ -230,7 +230,7 @@ def build_report(run_checks=False):
         lines.append(f"  {text}")
 
     # Header
-    lines.append(f"# AetherFrame Factory Cycle Report")
+    lines.append(f"# AetherFrame Advancement Cycle Report (legacy Factory compatibility)")
     lines.append(f"\nGenerated: {now.strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append(f"Script: scripts/aetherframe_factory_cycle.py")
     lines.append(f"Repo: {REPO_ROOT}")
@@ -391,7 +391,7 @@ def build_report(run_checks=False):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="AetherFrame factory cycle reporter")
+    parser = argparse.ArgumentParser(description="AetherFrame Advancement Cycle reporter (legacy Factory compatibility)")
     parser.add_argument("--run-checks", action="store_true", help="Run lightweight validation checks")
     parser.add_argument("--out-dir", default="docs/aetherframe-runs", help="Output directory for reports")
     parser.add_argument("--stdout", action="store_true", help="Also print report to stdout")
