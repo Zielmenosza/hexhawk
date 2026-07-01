@@ -106,3 +106,54 @@ A cleanup execution cycle must receive explicit user approval naming exact paths
 - Evidence preservation plan: `docs/AETHERFRAME_EVIDENCE_PRESERVATION_PLAN.md`.
 - Classification report: `docs/aetherframe-runs/workspace-cleanup-classification-20260701-195437.md`.
 - This follow-up also performed no deletion, no movement/compression, no `git worktree remove`, no credential access, and no deployment.
+
+## W2 worktree cleanup executed
+
+- Executed: 2026-07-02 00:21:42.
+- Commit before removal: `6d81450`.
+- Approved W2 paths removed: 8.
+- Estimated GB recovered: **50.41 GB**.
+- Method: exact-path `git worktree remove --force`; non-empty residual folders left after worktree unregistration were deleted only by exact approved path with Python `shutil.rmtree`.
+- No credentials, deploy/publish steps, product code, release artifacts outside approved paths, or unapproved folders were touched.
+- GYRE remains the sole HexHawk verdict/classification authority. AetherFrame is advisory cleanup planning only.
+
+### Removed paths
+
+- `D:/Project/HexHawk-ai-overhaul-gate` — 6.82 GB; preserved summary `docs/preserved-evidence/hexhawk-ai-overhaul-gate.md`.
+- `D:/Project/HexHawk-ai-overhaul-gate-20260627` — 7.05 GB; preserved summary `docs/preserved-evidence/hexhawk-ai-overhaul-gate-20260627.md`.
+- `D:/Project/HexHawk-release-candidate-currenthead-postfeatures-20260621-123026` — 2.32 GB; preserved summary `docs/preserved-evidence/hexhawk-release-candidate-currenthead-postfeatures-20260621-123026.md`.
+- `D:/Project/HexHawk-release-candidate-v2.0-20260627-122322` — 6.81 GB; preserved summary `docs/preserved-evidence/hexhawk-release-candidate-v2.0-20260627-122322.md`.
+- `D:/Project/HexHawk-release-candidate-v2.1-20260627-133346` — 6.82 GB; preserved summary `docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-133346.md`.
+- `D:/Project/HexHawk-release-candidate-v2.1-20260627-151143` — 6.82 GB; preserved summary `docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-151143.md`.
+- `D:/Project/HexHawk-release-candidate-v2.1-20260627-190731` — 6.95 GB; preserved summary `docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-190731.md`.
+- `D:/Project/HexHawk-release-candidate-v2.1-20260627-194604` — 6.82 GB; preserved summary `docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-194604.md`.
+
+### Excluded paths
+
+- `D:/Project/HexHawk-rc-20260626-192557` — still registered and not touched; source/helper-script review required.
+
+### Remaining cleanup targets
+
+- Remaining HexHawk cleanup candidate estimate: **7.99 GB** across 21 folders.
+- Remaining dirty registered worktrees: 1.
+- `D:/Project/HexHawk-rc-20260626-192557` — 6.81 GB; registered=True; status=dirty.
+- `D:/Project/HexHawk-smoke-20260627-152540` — 0.13 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-20260627-134843` — 0.13 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-currenthead-postfeatures-20260621-123026` — 0.13 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-20260627-123927` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-ai-overhaul-smoke-20260627-final` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-ai-overhaul-smoke-20260627-final2` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-v212-final-20260627-192342` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-robust-existing-20260627c` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-robust-existing-20260627b` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-robust-existing-20260627` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-v213-installer-20260627-200021` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-ai-overhaul-smoke` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-ai-overhaul-smoke-20260627` — 0.07 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-phase0-9400` — 0.06 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-ai-probe-install` — 0.06 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-ai-probe-results` — 0.00 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-v213-function-notebook` — 0.00 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-v213-function-notebook-clean` — 0.00 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-v212-function-notebook` — 0.00 GB; registered=False; status=not a git worktree.
+- `D:/Project/HexHawk-smoke-v212-dom` — 0.00 GB; registered=False; status=not a git worktree.
