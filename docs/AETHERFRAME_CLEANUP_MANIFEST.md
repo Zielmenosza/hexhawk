@@ -100,3 +100,9 @@ Registered dirty worktrees are large, but they are **not** safe deletion targets
 ## Approval gate
 
 A cleanup execution cycle must receive explicit user approval naming exact paths. Until then, all cleanup tooling remains dry-run only.
+## 2026-07-01 classification follow-up
+
+- Decision table: `docs/AETHERFRAME_WORKSPACE_CLEANUP_DECISION_TABLE.md`.
+- Evidence preservation plan: `docs/AETHERFRAME_EVIDENCE_PRESERVATION_PLAN.md`.
+- Classification report: `docs/aetherframe-runs/workspace-cleanup-classification-20260701-195437.md`.
+- This follow-up also performed no deletion, no movement/compression, no `git worktree remove`, no credential access, and no deployment.
