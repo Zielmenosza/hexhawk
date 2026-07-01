@@ -242,6 +242,16 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    fn wait_for_active_plugin_workers(expected: usize) {
+        for _ in 0..50 {
+            if active_plugin_workers() == expected {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        assert_eq!(active_plugin_workers(), expected);
+    }
+
     #[test]
     fn execute_plugin_with_timeout_releases_slot_after_success() {
         let _lock = lock_tests();
@@ -254,7 +264,7 @@ mod tests {
         );
 
         assert!(result.is_ok());
-        assert_eq!(active_plugin_workers(), 0);
+        wait_for_active_plugin_workers(0);
     }
 
     #[test]
