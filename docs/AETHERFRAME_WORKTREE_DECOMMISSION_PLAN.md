@@ -2,7 +2,7 @@
 
 Generated: 2026-07-01 20:17:49
 
-Status: read-only custody/decommission planning. Nothing was deleted, moved, compressed, deployed, published, cleaned, or unregistered as a git worktree.
+Status: read-only custody/decommission planning. No cleanup execution, movement, compression, deployment, publishing, cleaning, or git worktree unregistration was performed.
 
 Authority note: GYRE remains the sole HexHawk verdict/classification authority. AetherFrame is advisory custody-planning support only.
 
@@ -17,15 +17,15 @@ Authority note: GYRE remains the sole HexHawk verdict/classification authority. 
 
 | Path | Size GB | HEAD | Reachable | Dirty Type | Unique Source? | Evidence? | Artifacts? | Risk | Recommendation |
 |---|---:|---|---|---|---|---|---|---|---|
-| `D:/Project/HexHawk-ai-overhaul-gate-20260627` | 7.05 | `d2a7d3f` | main=yes; origin=yes; tags=8 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | PRESERVE_EVIDENCE_THEN_REMOVE |
-| `D:/Project/HexHawk-release-candidate-v2.1-20260627-190731` | 6.95 | `ad8e3cf` | main=yes; origin=yes; tags=19 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | PRESERVE_EVIDENCE_THEN_REMOVE |
-| `D:/Project/HexHawk-ai-overhaul-gate` | 6.82 | `8947ab6` | main=yes; origin=yes; tags=8 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | PRESERVE_EVIDENCE_THEN_REMOVE |
-| `D:/Project/HexHawk-release-candidate-v2.1-20260627-194604` | 6.82 | `6ae9f2b` | main=yes; origin=yes; tags=18 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | PRESERVE_EVIDENCE_THEN_REMOVE |
-| `D:/Project/HexHawk-release-candidate-v2.1-20260627-133346` | 6.82 | `5c6d814` | main=yes; origin=yes; tags=21 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | PRESERVE_EVIDENCE_THEN_REMOVE |
-| `D:/Project/HexHawk-release-candidate-v2.1-20260627-151143` | 6.82 | `e677543` | main=yes; origin=yes; tags=20 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | PRESERVE_EVIDENCE_THEN_REMOVE |
-| `D:/Project/HexHawk-release-candidate-v2.0-20260627-122322` | 6.81 | `3310d0c` | main=yes; origin=yes; tags=28 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | PRESERVE_EVIDENCE_THEN_REMOVE |
+| `D:/Project/HexHawk-ai-overhaul-gate-20260627` | 7.05 | `d2a7d3f` | main=yes; origin=yes; tags=8 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
+| `D:/Project/HexHawk-release-candidate-v2.1-20260627-190731` | 6.95 | `ad8e3cf` | main=yes; origin=yes; tags=19 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
+| `D:/Project/HexHawk-ai-overhaul-gate` | 6.82 | `8947ab6` | main=yes; origin=yes; tags=8 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
+| `D:/Project/HexHawk-release-candidate-v2.1-20260627-194604` | 6.82 | `6ae9f2b` | main=yes; origin=yes; tags=18 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
+| `D:/Project/HexHawk-release-candidate-v2.1-20260627-133346` | 6.82 | `5c6d814` | main=yes; origin=yes; tags=21 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
+| `D:/Project/HexHawk-release-candidate-v2.1-20260627-151143` | 6.82 | `e677543` | main=yes; origin=yes; tags=20 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
+| `D:/Project/HexHawk-release-candidate-v2.0-20260627-122322` | 6.81 | `3310d0c` | main=yes; origin=yes; tags=28 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
 | `D:/Project/HexHawk-rc-20260626-192557` | 6.81 | `3bbf1ac` | main=yes; origin=yes; tags=29 | SOURCE_CHANGES_PRESENT; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml, untracked helper scripts | yes | yes | yes | High | NEEDS_SOURCE_REVIEW |
-| `D:/Project/HexHawk-release-candidate-currenthead-postfeatures-20260621-123026` | 2.32 | `ad2e752` | main=yes; origin=yes; tags=52 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | PRESERVE_EVIDENCE_THEN_REMOVE |
+| `D:/Project/HexHawk-release-candidate-currenthead-postfeatures-20260621-123026` | 2.32 | `ad2e752` | main=yes; origin=yes; tags=52 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
 
 ## Key finding
 
@@ -636,6 +636,22 @@ No credential-risk dirty paths were identified by path-name scan. Credentials we
 - Recommendation: **keep local / do not stage by default; it captured pre-commit validation from the prior cleanup cycle and is useful but stale versus current HEAD.**
 - Do not delete it in this run. If the user wants all validation artifacts tracked, stage it in a separate docs-only commit; otherwise leave it local or include it in a later explicit cleanup approval.
 
+## W2 Evidence Preservation Status
+
+Updated: 2026-07-01 20:39:46
+
+The eight W2 worktrees now have compact evidence summaries under `docs/preserved-evidence/` and are indexed in `docs/AETHERFRAME_PRESERVED_EVIDENCE_INDEX.md`. They are marked `EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL`; this does not approve or record cleanup execution.
+
+- `D:/Project/HexHawk-ai-overhaul-gate` — preserved summary: `docs/preserved-evidence/hexhawk-ai-overhaul-gate.md`
+- `D:/Project/HexHawk-ai-overhaul-gate-20260627` — preserved summary: `docs/preserved-evidence/hexhawk-ai-overhaul-gate-20260627.md`
+- `D:/Project/HexHawk-release-candidate-currenthead-postfeatures-20260621-123026` — preserved summary: `docs/preserved-evidence/hexhawk-release-candidate-currenthead-postfeatures-20260621-123026.md`
+- `D:/Project/HexHawk-release-candidate-v2.0-20260627-122322` — preserved summary: `docs/preserved-evidence/hexhawk-release-candidate-v2.0-20260627-122322.md`
+- `D:/Project/HexHawk-release-candidate-v2.1-20260627-133346` — preserved summary: `docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-133346.md`
+- `D:/Project/HexHawk-release-candidate-v2.1-20260627-151143` — preserved summary: `docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-151143.md`
+- `D:/Project/HexHawk-release-candidate-v2.1-20260627-190731` — preserved summary: `docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-190731.md`
+- `D:/Project/HexHawk-release-candidate-v2.1-20260627-194604` — preserved summary: `docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-194604.md`
+
+
 ## Future approval language
 
-Any future `git worktree remove "<exact path>"` command must be copied into a new approval-bound execution plan and rechecked immediately before use. This document does not approve or execute that command.
+Any future worktree decommission command must be copied into a new approval-bound execution plan and rechecked immediately before use. This document does not approve or execute that action.
