@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Docs | HexHawk Beginner Guide and Feature Map</title>
-  <meta name="description" content="Simple HexHawk docs explaining the workbench, reversing-tool feature map, engine names, first run, and current unsigned-build limits.">
+  <title>Docs | HexHawk Early Access Guide</title>
+  <meta name="description" content="HexHawk early-access documentation for pricing, downloads, trust boundaries, and tester workflow.">
   <link rel="canonical" href="https://hexhawk.ke/docs/">
-  <meta property="og:title" content="Docs | HexHawk Beginner Guide and Feature Map">
-  <meta property="og:description" content="Simple HexHawk docs explaining the workbench, reversing-tool feature map, engine names, first run, and current unsigned-build limits.">
+  <meta property="og:title" content="Docs | HexHawk Early Access Guide">
+  <meta property="og:description" content="HexHawk early-access documentation for pricing, downloads, trust boundaries, and tester workflow.">
   <meta property="og:url" content="https://hexhawk.ke/docs/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="HexHawk">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Docs | HexHawk Beginner Guide and Feature Map">
-  <meta name="twitter:description" content="Simple HexHawk docs explaining the workbench, reversing-tool feature map, engine names, first run, and current unsigned-build limits.">
+  <meta name="twitter:title" content="Docs | HexHawk Early Access Guide">
+  <meta name="twitter:description" content="HexHawk early-access documentation for pricing, downloads, trust boundaries, and tester workflow.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -33,22 +33,23 @@
       <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/pricing" href="/pricing#enterprise">Team Demo</a>
+      <a data-path="/pricing" href="/pricing#founder">Early Access</a>
     </nav>
   </div>
 </header>
 <main id="main-content" class="container">
-  <section class="hero"><span class="kicker">Docs</span><h1>Start here if you are new.</h1><p class="lead">These notes explain HexHawk in plain language. If you know established reverse-engineering workbenches, think of HexHawk as a newer Windows workbench focused on evidence-first analysis and reviewable reports, not as a full replacement for every feature in those ecosystems.</p></section>
-  <section class="section"><div class="grid three"><article class="card"><h3>First run</h3><p>Use a test computer, open a safe sample file, and begin with hashes, imports, strings, sections, and code views.</p></article><article class="card"><h3>Words to know</h3><p>GYRE decides the final label. NEST organizes evidence. CREST makes reports. STRIKE handles trace evidence where configured. AETHERFRAME suggests improvements when allowed.</p></article><article class="card"><h3>Limits</h3><p>If a result was not proven, treat it as a clue, not a final fact. The Windows build is still unsigned.</p></article></div></section>
-  <section class="section"><div class="section-heading"><span class="kicker">FEATURE MAP</span><h2>Common reversing-tool ideas in HexHawk terms.</h2></div><div class="grid three"><article class="card"><span class="badge">Available</span><h3>Disassembly-style view</h3><p>Instruction and flow clues for understanding a binary.</p></article><article class="card"><span class="badge">Available</span><h3>Decompiler-style guidance</h3><p>Readable-code help when possible, with limits shown.</p></article><article class="card"><span class="badge">Internal tester</span><h3>Trace and plugin work</h3><p>Imported trace evidence and plugin hooks are being shaped for controlled testing.</p></article></div></section>
-  <section class="section caveat"><h2>Rule for every report</h2><p>A good report should answer: What file was checked? What facts were found? Who made the final label? What is still unknown?</p></section>
+
+<section class="hero"><span class="kicker">Docs</span><h1>Start with the early-access limits, then test carefully.</h1><p class="lead">These public docs explain how to evaluate HexHawk without confusing private paid access with a signed public release.</p></section>
+<section class="section"><div class="grid three"><article class="card"><h3>Early-access policy</h3><p>The package is unsigned, technical-tester only, manually delivered, and hash-verified.</p><a href="/downloads">Read download limits</a></article><article class="card"><h3>Pricing research</h3><p>Founder pricing is benchmarked against mature commercial reversing suites and free/open-source tools.</p><a href="/pricing">View pricing</a></article><article class="card"><h3>Trust model</h3><p>GYRE is sole verdict authority. NEST organizes evidence. AI/AETHERFRAME/helper layers stay advisory.</p><a href="/trust">Read trust guide</a></article></div></section>
+<section class="section"><h2>Recommended tester flow</h2><div class="flow"><span>Request private package</span><span>Verify SHA256 hashes</span><span>Install on test machine</span><span>Send feedback report</span></div></section>
+
 </main>
 <footer class="footer">
   <div class="container footer-grid">
     <div>
       <strong>HexHawk</strong>
-      <p>Step-by-step file analysis with clear facts, source labels, and human review.</p>
-      <p class="mono">v1.0 unsigned test build · 2026-06-20</p>
+      <p>Local-first binary analysis with clear facts, source labels, and human review.</p>
+      <p class="mono">Unsigned early-access channel · manual updates only</p>
     </div>
     <div>
       <h4>Product</h4>
@@ -67,8 +68,9 @@
     </div>
     <div>
       <h4>Contact</h4>
-      <a href="mailto:contact@hexhawk.ke">Request Early Access</a>
-      <a href="mailto:sales@hexhawk.ke">Schedule a Demo</a>
+      <a href="mailto:contact@hexhawk.ke?subject=HexHawk%20early%20access">Request Early Access</a>
+      <a href="mailto:sales@hexhawk.ke?subject=HexHawk%20team%20demo">Schedule a Demo</a>
+      <a href="/payments">Payment status</a>
     </div>
   </div>
 </footer>

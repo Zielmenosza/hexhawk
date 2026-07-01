@@ -66,6 +66,9 @@ p, li { color: var(--muted); line-height: 1.65; }
 .card a { color: var(--accent); font-weight: 700; }
 .tier { display: flex; flex-direction: column; }
 .tier .btn { margin-top: auto; }
+.tier.featured { border-color: rgba(24,210,195,.75); box-shadow: 0 24px 80px rgba(24,210,195,.12); }
+.price { margin: 4px 0 0; color: var(--text); font-size: clamp(34px, 5vw, 54px); line-height: 1; font-weight: 700; letter-spacing: -.04em; }
+.price-note { margin: 4px 0 16px; color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-transform: uppercase; }
 .status-strip { border-color: rgba(255,180,84,.42); background: rgba(255,180,84,.08); margin: 8px 0 26px; color: #ffe2b8; }
 .status-strip strong { color: var(--warn); }
 .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }

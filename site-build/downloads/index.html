@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Downloads | HexHawk Windows Test Build</title>
-  <meta name="description" content="Download the HexHawk Windows test build, check its hash, and understand that it is unsigned and not a public finished release.">
+  <title>Downloads | HexHawk Private Unsigned Early Access</title>
+  <meta name="description" content="HexHawk download instructions, package hashes, and unsigned early-access limits for technical testers.">
   <link rel="canonical" href="https://hexhawk.ke/downloads/">
-  <meta property="og:title" content="Downloads | HexHawk Windows Test Build">
-  <meta property="og:description" content="Download the HexHawk Windows test build, check its hash, and understand that it is unsigned and not a public finished release.">
+  <meta property="og:title" content="Downloads | HexHawk Private Unsigned Early Access">
+  <meta property="og:description" content="HexHawk download instructions, package hashes, and unsigned early-access limits for technical testers.">
   <meta property="og:url" content="https://hexhawk.ke/downloads/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="HexHawk">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Downloads | HexHawk Windows Test Build">
-  <meta name="twitter:description" content="Download the HexHawk Windows test build, check its hash, and understand that it is unsigned and not a public finished release.">
+  <meta name="twitter:title" content="Downloads | HexHawk Private Unsigned Early Access">
+  <meta name="twitter:description" content="HexHawk download instructions, package hashes, and unsigned early-access limits for technical testers.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
@@ -33,22 +33,25 @@
       <a data-path="/trust" href="/trust">Trust &amp; Assurance</a>
       <a data-path="/downloads" href="/downloads">Downloads</a>
       <a data-path="/docs" href="/docs">Docs</a>
-      <a data-path="/pricing" href="/pricing#enterprise">Team Demo</a>
+      <a data-path="/pricing" href="/pricing#founder">Early Access</a>
     </nav>
   </div>
 </header>
 <main id="main-content" class="container">
-  <section class="hero"><span class="kicker">Downloads</span><h1>Download the Windows test build.</h1><p class="lead">This build is for careful testing and demos. It is useful, but it is not ready for everyone yet. Because it is unsigned, Windows may show a warning. Check the hash before installing.</p></section>
-  <section class="status-strip"><strong>Current build status:</strong> unsigned Windows test build. Use it only in a controlled test environment. Do not treat it as a signed release for everyone.</section>
-  <section class="section split"><div><h2>Before you install</h2><p>Use a test machine if possible. Keep notes about which installer you used and which hash you checked.</p><ul class="checklist"><li>Good for: careful internal testing, demos, and careful review.</li><li>Not for: public or company-wide rollout, or automatic updater use.</li><li>Expected: Windows may warn because the build is unsigned.</li></ul></div><div class="card"><h3>Simple install checklist</h3><ol><li>Download the installer.</li><li>Compare its SHA-256 hash.</li><li>Install only if the hash matches.</li><li>Stop if Windows or your security tools show an unexpected warning beyond unsigned publisher status.</li></ol></div></section>
-  <section class="section"><h2>Known current artifacts</h2><p>The exact hashes are shown so testers can prove they downloaded the expected files. If a hash does not match, do not install.</p><div class="table-wrap"><table><thead><tr><th>Artifact</th><th>SHA-256</th><th>Status</th></tr></thead><tbody><tr><td class="mono">hexhawk-backend.exe</td><td class="mono small">48de54c39a0f06164ac82a2a6bd5dd9439aa90b53188efbcc5caa790c0657ad1</td><td><span class="status warn">Unsigned</span></td></tr><tr><td class="mono">nest_cli.exe</td><td class="mono small">d4efba77ae2df7a6fa265ff37f051389a87192d3cc7da774862110ba1c723e0a</td><td><span class="status ok">Hash recorded</span></td></tr></tbody></table></div></section>
+
+<section class="hero"><span class="kicker">Downloads</span><h1>The current HexHawk package is private, unsigned, and manual.</h1><p class="lead">The site is ready to host buyer instructions and verification data, but the program package itself is not being published as a public download. Request the Founder Build if you are a technical tester who accepts unsigned Windows software risk.</p></section>
+<section class="status-strip"><strong>Current package classification:</strong> Unsigned early-access local package created; not published. No signed-release, Microsoft-verified, public/world-ready, or auto-update claim is made.</section>
+<section class="section split"><div><h2>Before you install</h2><p>Use a controlled test machine. Verify hashes. Keep the package manifest. Do not disable Windows security globally. If Windows or endpoint security blocks the unsigned package, report the exact warning and wait for guidance or a signed build.</p><ul class="checklist"><li>Good for: private testing, demos, workflow feedback, install feedback.</li><li>Not for: public download, company-wide rollout, production malware handling, or automatic updates.</li><li>Expected: Windows unknown-publisher or reputation warnings because the artifacts are unsigned.</li></ul></div><div class="card"><h3>Request the private package</h3><p>Current package name:</p><p class="mono small">HexHawk_Early_Access_UNSIGNED_v1.0.0_20260701.zip</p><p>Private delivery only after buyer/tester acknowledgement.</p><a class="btn primary" href="mailto:sales@hexhawk.ke?subject=HexHawk%20Founder%20Build%20package%20request">Request package</a></div></section>
+<section class="section"><h2>Current local package evidence</h2><p>These hashes are for the local package generated from commit <span class="mono">c6009a072759c9ae01e66bd241a70abaf36e03eb</span>. They are verification data, not a public download promise.</p><div class="table-wrap"><table><thead><tr><th>Artifact</th><th>SHA-256</th><th>Authenticode</th></tr></thead><tbody><tr><td class="mono">HexHawk_1.0.0_x64_en-US.msi</td><td class="mono small">0b6a8e885accd45b6c1633f5db79af839302d8c45311ab5d48ef4ddeefe0d14e</td><td><span class="status warn">NotSigned</span></td></tr><tr><td class="mono">HexHawk_1.0.0_x64-setup.exe</td><td class="mono small">fae7b573054a3938bc38c7ae21f341b54a2772629526cbda1c829a663ce59c71</td><td><span class="status warn">NotSigned</span></td></tr><tr><td class="mono">nest_cli.exe</td><td class="mono small">c4be723b6aaffafac18d04ea06928177bea0b5d46ee13f8ef65d51621225beb9</td><td><span class="status warn">NotSigned</span></td></tr><tr><td class="mono">HexHawk_Early_Access_UNSIGNED_v1.0.0_20260701.zip</td><td class="mono small">234a96e19675fe7293786215cb1a9b7cc01af23997332734f045bf3d24f69d87</td><td><span class="status warn">Unsigned package zip</span></td></tr></tbody></table></div></section>
+<section class="section"><div class="section-heading"><span class="kicker">PACKAGE CONTENTS</span><h2>What a private buyer should receive.</h2></div><div class="grid three"><article class="card"><h3>Installers</h3><p>MSI and NSIS setup executable for Windows testing, plus nest_cli.exe when included.</p></article><article class="card"><h3>Verification</h3><p>SHA256SUMS.txt, EVIDENCE_MANIFEST.json, PACKAGE_CONTENTS.txt, and generated release notes.</p></article><article class="card"><h3>Buyer docs</h3><p>Unsigned policy, install README, buyer note, known limitations, and support/contact instructions.</p></article></div></section>
+
 </main>
 <footer class="footer">
   <div class="container footer-grid">
     <div>
       <strong>HexHawk</strong>
-      <p>Step-by-step file analysis with clear facts, source labels, and human review.</p>
-      <p class="mono">v1.0 unsigned test build · 2026-06-20</p>
+      <p>Local-first binary analysis with clear facts, source labels, and human review.</p>
+      <p class="mono">Unsigned early-access channel · manual updates only</p>
     </div>
     <div>
       <h4>Product</h4>
@@ -67,8 +70,9 @@
     </div>
     <div>
       <h4>Contact</h4>
-      <a href="mailto:contact@hexhawk.ke">Request Early Access</a>
-      <a href="mailto:sales@hexhawk.ke">Schedule a Demo</a>
+      <a href="mailto:contact@hexhawk.ke?subject=HexHawk%20early%20access">Request Early Access</a>
+      <a href="mailto:sales@hexhawk.ke?subject=HexHawk%20team%20demo">Schedule a Demo</a>
+      <a href="/payments">Payment status</a>
     </div>
   </div>
 </footer>
