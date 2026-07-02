@@ -1,13 +1,13 @@
 # AetherFrame Cleanup Manifest
 
-Status: dry-run cleanup plan only — no deletion performed
+Status: cleanup manifest — records approved worktree cleanup executions and remaining candidates
 Generated: 2026-07-01 19:29:31
 
 ## Scope
 
 This manifest separates small repo Factory/AetherFrame docs/scripts from large external smoke/release/probe folders under `D:/Project`.
 
-No files or folders were deleted. No git worktrees were removed. No credentials were touched. No artifacts were moved, compressed, uploaded, or published.
+Initial manifest generation was dry-run only. Later approved worktree cleanup executions are recorded below. No credentials were touched, and no artifacts were moved, compressed, uploaded, or published by this documentation run.
 
 ## Tiny repo docs/scripts
 
@@ -130,13 +130,13 @@ A cleanup execution cycle must receive explicit user approval naming exact paths
 
 ### Excluded paths
 
-- `D:/Project/HexHawk-rc-20260626-192557` — still registered and not touched; source/helper-script review required.
+- `D:/Project/HexHawk-rc-20260626-192557` — later helper-reviewed, evidence-preserved, and removed after explicit approval; see RC cleanup execution section.
 
 ### Remaining cleanup targets
 
-- Remaining HexHawk cleanup candidate estimate: **7.99 GB** across 21 folders.
-- Remaining dirty registered worktrees: 1.
-- `D:/Project/HexHawk-rc-20260626-192557` — 6.81 GB; registered=True; status=dirty.
+- Remaining HexHawk cleanup candidate estimate after RC removal: **about 1.18 GB** across non-worktree smoke/probe folders.
+- Remaining dirty registered worktrees: 0.
+- Only `D:/Project/HexHawk` remains registered as a worktree.
 - `D:/Project/HexHawk-smoke-20260627-152540` — 0.13 GB; registered=False; status=not a git worktree.
 - `D:/Project/HexHawk-smoke-20260627-134843` — 0.13 GB; registered=False; status=not a git worktree.
 - `D:/Project/HexHawk-smoke-currenthead-postfeatures-20260621-123026` — 0.13 GB; registered=False; status=not a git worktree.
@@ -157,3 +157,20 @@ A cleanup execution cycle must receive explicit user approval naming exact paths
 - `D:/Project/HexHawk-smoke-v213-function-notebook-clean` — 0.00 GB; registered=False; status=not a git worktree.
 - `D:/Project/HexHawk-smoke-v212-function-notebook` — 0.00 GB; registered=False; status=not a git worktree.
 - `D:/Project/HexHawk-smoke-v212-dom` — 0.00 GB; registered=False; status=not a git worktree.
+
+
+## RC worktree cleanup executed
+
+- Executed/recorded: 2026-07-02 18:57:24 +0200.
+- Removed path: `D:/Project/HexHawk-rc-20260626-192557`.
+- Estimated recovered space from RC cleanup: **about 6.81 GiB**.
+- Total large worktree cleanup recovered: **about 57.22 GB** (W2 50.41 GB + RC 6.81 GB).
+- Prior preservation summary: `docs/preserved-evidence/hexhawk-rc-20260626-192557.md`.
+- Prior helper review report: `docs/aetherframe-runs/rc-worktree-helper-review-20260702-183049.md`.
+- Method: exact-path `git worktree remove --force`; Git unregistered the worktree but left a non-git residual directory, which was removed only by exact path after confirming no worktree registration and no `.git` directory remained.
+- Remaining registered worktrees: only `D:/Project/HexHawk`.
+- Safety: no credentials touched, no deploy/publish, no product code changed, no unapproved folder removed, and no release artifacts outside the exact target were staged or modified by this documentation run.
+
+### Remaining cleanup candidates after RC removal
+
+The remaining candidates are non-registered smoke/probe/package folders under `D:/Project`, each requiring separate evidence review and explicit approval before any future housekeeping. No additional folder was removed in this documentation run.

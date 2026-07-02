@@ -24,7 +24,7 @@ Authority note: GYRE remains the sole HexHawk verdict/classification authority. 
 | `D:/Project/HexHawk-release-candidate-v2.1-20260627-133346` | 6.82 | `5c6d814` | main=yes; origin=yes; tags=21 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | REMOVED_AFTER_EVIDENCE_PRESERVATION |
 | `D:/Project/HexHawk-release-candidate-v2.1-20260627-151143` | 6.82 | `e677543` | main=yes; origin=yes; tags=20 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | REMOVED_AFTER_EVIDENCE_PRESERVATION |
 | `D:/Project/HexHawk-release-candidate-v2.0-20260627-122322` | 6.81 | `3310d0c` | main=yes; origin=yes; tags=28 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | REMOVED_AFTER_EVIDENCE_PRESERVATION |
-| `D:/Project/HexHawk-rc-20260626-192557` | 6.81 | `3bbf1ac` | main=yes; origin=yes; tags=33 | HELPERS_PRESERVED_AS_TEXT_SUMMARY_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml, reviewed untracked helper scripts | no unique source needed | yes | yes | Low/Medium | SAFE_REMOVE_AFTER_APPROVAL |
+| `D:/Project/HexHawk-rc-20260626-192557` | 6.81 | `3bbf1ac` | main=yes; origin=yes; tags=33 | HELPERS_PRESERVED_AS_TEXT_SUMMARY_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml, reviewed untracked helper scripts | no unique source needed | yes | yes | Low/Medium | REMOVED_AFTER_HELPER_REVIEW_AND_EVIDENCE_PRESERVATION |
 | `D:/Project/HexHawk-release-candidate-currenthead-postfeatures-20260621-123026` | 2.32 | `ad2e752` | main=yes; origin=yes; tags=52 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | REMOVED_AFTER_EVIDENCE_PRESERVATION |
 
 ## Key finding
@@ -690,5 +690,23 @@ Target: `D:/Project/HexHawk-rc-20260626-192557`
 - Reachability: ancestor of `main` = yes; ancestor of `origin/main` = yes.
 - Helper scripts reviewed: `check-authenticode.ps1`, `installer-smoke.ps1`.
 - Helper conclusion: both helpers are older/superseded by current repo release tooling and contain no secret-pattern hits; preserve as text summary only, do not copy into main as live scripts.
-- Final classification for this path: **SAFE_REMOVE_AFTER_APPROVAL**.
-- This update leaves the worktree registered. Any future decommission still requires explicit user approval and a fresh exact-path pre-check.
+- Final classification for this path after helper review: **SAFE_REMOVE_AFTER_APPROVAL**.
+- Later execution update: the path was removed after explicit approval; see the RC cleanup execution update below.
+
+
+## RC cleanup execution update — 2026-07-02 18:57:24 +0200
+
+Target: `D:/Project/HexHawk-rc-20260626-192557`
+
+- Execution type: approved exact-path cleanup recording for the formerly excluded RC registered worktree.
+- Final status: **REMOVED_AFTER_HELPER_REVIEW_AND_EVIDENCE_PRESERVATION**.
+- Removal date/time: 2026-07-02 18:57:24 +0200.
+- Commit before removal: `975339c` (`[DOCS] Preserve RC worktree helper review`).
+- Prior preservation summary: `docs/preserved-evidence/hexhawk-rc-20260626-192557.md`.
+- Prior helper review report: `docs/aetherframe-runs/rc-worktree-helper-review-20260702-183049.md`.
+- Method: exact-path `git worktree remove --force "D:/Project/HexHawk-rc-20260626-192557"`.
+- Execution note: Git unregistered the worktree but left a non-git residual directory.
+- Residual cleanup condition: the exact residual path was removed only after confirming the path was no longer registered as a worktree, no `.git` directory remained, and no wildcard deletion was used.
+- Estimated recovery: **about 6.81 GiB**.
+- Post-removal verification: target path absent; target no longer registered; only `D:/Project/HexHawk` remains registered as a worktree.
+- Safety: no credentials, deploy/publish steps, product code changes, release artifacts outside the exact target, or unapproved folders were touched in the removal-only run.
