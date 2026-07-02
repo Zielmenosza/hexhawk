@@ -24,7 +24,7 @@ Authority note: GYRE remains the sole HexHawk verdict/classification authority. 
 | `D:/Project/HexHawk-release-candidate-v2.1-20260627-133346` | 6.82 | `5c6d814` | main=yes; origin=yes; tags=21 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | REMOVED_AFTER_EVIDENCE_PRESERVATION |
 | `D:/Project/HexHawk-release-candidate-v2.1-20260627-151143` | 6.82 | `e677543` | main=yes; origin=yes; tags=20 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | REMOVED_AFTER_EVIDENCE_PRESERVATION |
 | `D:/Project/HexHawk-release-candidate-v2.0-20260627-122322` | 6.81 | `3310d0c` | main=yes; origin=yes; tags=28 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | REMOVED_AFTER_EVIDENCE_PRESERVATION |
-| `D:/Project/HexHawk-rc-20260626-192557` | 6.81 | `3bbf1ac` | main=yes; origin=yes; tags=29 | SOURCE_CHANGES_PRESENT; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml, untracked helper scripts | yes | yes | yes | High | NEEDS_SOURCE_REVIEW |
+| `D:/Project/HexHawk-rc-20260626-192557` | 6.81 | `3bbf1ac` | main=yes; origin=yes; tags=33 | HELPERS_PRESERVED_AS_TEXT_SUMMARY_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml, reviewed untracked helper scripts | no unique source needed | yes | yes | Low/Medium | SAFE_REMOVE_AFTER_APPROVAL |
 | `D:/Project/HexHawk-release-candidate-currenthead-postfeatures-20260621-123026` | 2.32 | `ad2e752` | main=yes; origin=yes; tags=52 | EVIDENCE_ONLY; Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml | no | yes | yes | Medium | REMOVED_AFTER_EVIDENCE_PRESERVATION |
 
 ## Key finding
@@ -163,8 +163,8 @@ M .yarn/install-state.gz
 - Size / modified: 6.81 GB / 2026-06-26 19:41:21
 - Branch/HEAD: `(detached HEAD)` / `3bbf1ac92273c1024b12db1da6b3e80b2d3be326`
 - Reachability: main=yes, origin/main=yes, tags=v1.32.0-docs-function-intelligence-status, v1.33.0-nest-cli-help-exit, v2.0.0-unsigned-deployment-candidate-20260627, v2.1.0-function-intelligence-correlation, v2.1.0-unsigned-deployment-candidate-20260627, v2.1.1-function-intelligence-export-correlation-basis, v2.1.13-aetherframe-factory-integration, v2.1.14-workspace-cleanup-classification ...
-- Classification: **C. SOURCE_CHANGES_PRESENT**
-- Recommendation: **NEEDS_SOURCE_REVIEW** — Untracked helper scripts, unique commits, or actual source/config content changes require review.
+- Classification: **HELPERS_PRESERVED_AS_TEXT_SUMMARY_ONLY**
+- Recommendation: **SAFE_REMOVE_AFTER_APPROVAL** — The untracked helper scripts were reviewed on 2026-07-02 and summarized in `docs/preserved-evidence/hexhawk-rc-20260626-192557.md`; current repo release tooling supersedes them, and HEAD is reachable from both `main` and `origin/main`.
 - Dirty categories: Yarn install state, generated Tauri schemas, line-ending/status noise in snapshots, line-ending/status noise in Cargo.toml, untracked helper scripts
 - Actual content-changing diff paths: .yarn/install-state.gz, src-tauri/gen/schemas/acl-manifests.json, src-tauri/gen/schemas/desktop-schema.json, src-tauri/gen/schemas/windows-schema.json
 - Status-only line-ending/no-content paths: yarn/install-state.gz, HexHawk/src/__tests__/__snapshots__/talonEngine.test.ts.snap, HexHawk/src/components/tests/__snapshots__/AuthorityBanner.test.tsx.snap, src-tauri/Cargo.toml
@@ -678,3 +678,17 @@ The eight W2 worktrees now have compact evidence summaries under `docs/preserved
 ## Future approval language
 
 Any future worktree decommission command must be copied into a new approval-bound execution plan and rechecked immediately before use. This document does not approve or execute that action.
+
+
+## RC helper review update — 2026-07-02 18:30:49 +0200
+
+Target: `D:/Project/HexHawk-rc-20260626-192557`
+
+- Review type: read-only helper/evidence preservation review.
+- Summary created: `docs/preserved-evidence/hexhawk-rc-20260626-192557.md`.
+- HEAD reviewed: `3bbf1ac92273c1024b12db1da6b3e80b2d3be326`.
+- Reachability: ancestor of `main` = yes; ancestor of `origin/main` = yes.
+- Helper scripts reviewed: `check-authenticode.ps1`, `installer-smoke.ps1`.
+- Helper conclusion: both helpers are older/superseded by current repo release tooling and contain no secret-pattern hits; preserve as text summary only, do not copy into main as live scripts.
+- Final classification for this path: **SAFE_REMOVE_AFTER_APPROVAL**.
+- This update leaves the worktree registered. Any future decommission still requires explicit user approval and a fresh exact-path pre-check.

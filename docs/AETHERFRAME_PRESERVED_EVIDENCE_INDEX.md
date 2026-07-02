@@ -18,6 +18,7 @@ Authority note: GYRE remains the sole HexHawk verdict/classification authority. 
 | [`HexHawk-release-candidate-v2.1-20260627-151143`](docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-151143.md) | 6.82 | `e677543` | 21 | yes: 1 named evidence, 9 release/report markdown, 15 screenshot paths summarized | 5 | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
 | [`HexHawk-release-candidate-v2.1-20260627-190731`](docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-190731.md) | 6.95 | `ad8e3cf` | 20 | yes: 1 named evidence, 9 release/report markdown, 15 screenshot paths summarized | 5 | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
 | [`HexHawk-release-candidate-v2.1-20260627-194604`](docs/preserved-evidence/hexhawk-release-candidate-v2.1-20260627-194604.md) | 6.82 | `6ae9f2b` | 19 | yes: 1 named evidence, 9 release/report markdown, 15 screenshot paths summarized | 5 | EVIDENCE_PRESERVED_PENDING_REMOVAL_APPROVAL |
+| [`HexHawk-rc-20260626-192557`](docs/preserved-evidence/hexhawk-rc-20260626-192557.md) | 6.81 | `3bbf1ac` | 33 | yes: helper scripts summarized, evidence/artifact metadata and selected hashes preserved | 5 selected artifacts plus helper hashes | SAFE_REMOVE_AFTER_APPROVAL |
 
 ## Eligible for later removal after user approval
 
@@ -34,9 +35,9 @@ These paths have compact evidence summaries and artifact hashes preserved. They 
 
 Estimated later recoverable space for this W2 set after explicit approval: **50.41 GB**.
 
-## Still excluded
+## RC helper review result
 
-- `D:/Project/HexHawk-rc-20260626-192557` — excluded because untracked helper scripts require source review before any preservation-to-decommission decision.
+- `D:/Project/HexHawk-rc-20260626-192557` — helper scripts reviewed and summarized in `docs/preserved-evidence/hexhawk-rc-20260626-192557.md`; recommendation is `SAFE_REMOVE_AFTER_APPROVAL` for a future explicit approval-gated run. It remains registered after this preservation review.
 
 ## Approval boundary
 
