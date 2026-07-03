@@ -200,6 +200,31 @@ def tests_recommended(ci_status):
     )
 
 
+def next_prompt_candidate_guidance():
+    """Static, non-executing guidance for human-reviewed next prompt handoff."""
+    return [
+        "  For major AetherFrame/Hermes runs, consider ending the final report with a review-gated NEXT PROMPT CANDIDATE.",
+        "  This reporter does not generate, execute, schedule, or submit prompts. The candidate is inert text only.",
+        "  Include:",
+        "    - next mission",
+        "    - evidence from current run",
+        "    - hard rules and authority boundaries",
+        "    - missing user inputs and external approvals",
+        "    - validation",
+        "    - stop conditions",
+        "    - readiness flags:",
+        "      - Safe to run as-is: yes/no",
+        "      - Requires user edits first: yes/no",
+        "      - Requires external information first: yes/no",
+        "      - Requires destructive approval: yes/no",
+        "      - Requires deployment approval: yes/no",
+        "      - Requires payment/credential input: yes/no",
+        "      - Requires package/release approval: yes/no",
+        "  Do not execute the next prompt automatically, assume approval, create autonomous loops, deploy, delete, publish, sign, upload, use credentials, or deliver packages.",
+        "  If no safe next prompt should be generated, say so and stop.",
+    ]
+
+
 def release_gate_allowed(ci_status, is_clean):
     if ci_status != "green":
         return False, "CI must be green"
@@ -357,6 +382,10 @@ def build_report(run_checks=False):
     h2("Tests Recommended for Next Slice")
     for l in tests_recommended(ci_status).splitlines():
         lines.append(f"{l}")
+
+    # ── Next Prompt Candidate Guidance ──
+    h2("NEXT PROMPT CANDIDATE GUIDANCE")
+    lines.extend(next_prompt_candidate_guidance())
 
     # ── Authority Boundary Checklist ──
     h2("Authority Boundary Checklist")

@@ -30,6 +30,8 @@ AetherFrame may advise, compare, refine, package, validate, report, and recommen
 
 Every cycle ends with evidence, lessons when applicable, and a stop condition.
 
+AetherFrame cycles may propose a `NEXT PROMPT CANDIDATE` for the next logical user-reviewed run. The candidate is inert text only. AetherFrame cycles must not execute their own proposed next prompt, schedule it, or treat it as approval. Human review remains the boundary between cycles.
+
 ## Protected authority boundaries
 
 - GYRE remains the sole verdict/classification authority.

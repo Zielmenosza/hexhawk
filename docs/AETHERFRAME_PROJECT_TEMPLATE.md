@@ -83,6 +83,38 @@ Exactly when the cycle must stop.
 - remaining blockers;
 - approval-required next steps.
 
+### Next Prompt Candidate
+
+For major runs, include a review-gated `NEXT PROMPT CANDIDATE` after the final report and recommended next action when safe to draft. The candidate is inert text only and must not be executed automatically.
+
+Required fields:
+
+- Title
+- Mission
+- Current known state
+- Evidence from this run
+- Hard rules
+- Required user inputs
+- External approvals required
+- Readiness flags
+- Phases
+- Validation
+- Commit/tag instructions, only if needed
+- Stop conditions
+- Final report requirements
+
+Required readiness flags:
+
+- Safe to run as-is: yes/no
+- Requires user edits first: yes/no
+- Requires external information first: yes/no
+- Requires destructive approval: yes/no
+- Requires deployment approval: yes/no
+- Requires payment/credential input: yes/no
+- Requires package/release approval: yes/no
+
+Do not generate a candidate if doing so would imply approval for deletion, deployment, payment, package delivery, release, credential use, or public claims. If no safe next prompt should be generated, say so and stop.
+
 ## Example: HexHawk
 
 ### Project name
@@ -155,6 +187,10 @@ Example: “Define and validate an unsigned early-access package path without pu
 
 Stop when evidence is recorded, validation completes, and next approval-required action is identified.
 
+### Next Prompt Candidate
+
+For HexHawk, major AetherFrame runs should consider a `NEXT PROMPT CANDIDATE` that preserves GYRE/AETHERFRAME/Hermes authority boundaries and keeps deploy, delete, publish, signing, credential, payment, package delivery, and public release steps explicitly approval-gated.
+
 ## Blank reusable template
 
 ```md
@@ -185,4 +221,6 @@ Stop when evidence is recorded, validation completes, and next approval-required
 ## Stop conditions
 
 ## Final report format
+
+## Next Prompt Candidate
 ```

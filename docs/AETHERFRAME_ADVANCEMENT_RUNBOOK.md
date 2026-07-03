@@ -11,7 +11,8 @@ Every AetherFrame Advancement Cycle follows the same outer shape:
 5. validation;
 6. evidence report;
 7. lesson capture;
-8. stop condition.
+8. next prompt candidate handoff when safe;
+9. stop condition.
 
 AetherFrame does not deploy, delete, publish, sign, charge money, use credentials, or claim release readiness without explicit human approval and a separate gate.
 
@@ -40,6 +41,45 @@ Capture durable lessons in `docs/AETHERFRAME_LESSONS.md`.
 
 ### Stop condition
 Stop after validation/reporting, or earlier if a blocker or approval gate is reached.
+
+## Next Prompt Candidate Handoff
+
+Major AetherFrame Advancement Cycles should end with a review-gated `NEXT PROMPT CANDIDATE` when a safe next prompt can be drafted. The candidate is inert text only. It must not be executed by the cycle that generated it, scheduled automatically, or used to assume user approval.
+
+Generate the handoff after major release/package, website/payment, cleanup/provenance, CI/fix, or AetherFrame advancement cycles. Do not force it after a preflight failure, a narrow verification-only task, a run where the safest next step is simply waiting for user input, or any case where drafting the prompt would encourage deletion, deployment, payment, package delivery, release, or credential use without approval.
+
+To decide the next step:
+
+- use current repo evidence first: `git status`, `git rev-parse`, tags, worktrees, changed files, and CI state;
+- cite the completed run's concrete evidence: commits, tags, reports, validation commands, package hashes, routes, or blockers;
+- choose one bounded next mission, not a multi-run program;
+- mark every missing user input as a placeholder or explicit blocker;
+- put approval-gated actions behind stop conditions.
+
+Every candidate should include the section name and fields defined in `docs/AETHERFRAME_NEXT_PROMPT_PROTOCOL.md`, especially readiness flags:
+
+- Safe to run as-is: yes/no
+- Requires user edits first: yes/no
+- Requires external information first: yes/no
+- Requires destructive approval: yes/no
+- Requires deployment approval: yes/no
+- Requires payment/credential input: yes/no
+- Requires package/release approval: yes/no
+
+Automation-loop prevention:
+
+- never tell Hermes to execute the generated prompt automatically;
+- never call Hermes recursively or schedule the prompt from the reporter;
+- keep human review as the boundary between cycles;
+- if approvals or inputs are missing, make that visible in the readiness flags and stop.
+
+Safe stop pattern:
+
+1. Final report.
+2. Recommended next action.
+3. `NEXT PROMPT CANDIDATE`, if safe to draft.
+4. Readiness flags.
+5. Stop.
 
 ## CI Stabilization Cycle
 
