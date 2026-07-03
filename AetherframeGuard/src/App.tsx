@@ -682,6 +682,23 @@ export function App() {
     return '#59e4dc';
   }
 
+  function benchmarkSourceLabel(source: string | undefined): string {
+    switch (source) {
+      case 'manual':
+        return 'Manual Re-test';
+      case 'suggested-before':
+        return 'Apply flow: before settings';
+      case 'suggested-after':
+        return 'Apply flow: after settings, re-test still required';
+      case 'boot':
+        return 'Boot/background sample';
+      case 'auto':
+        return 'Auto-monitor sample';
+      default:
+        return source ? `Source: ${source}` : 'Source unknown';
+    }
+  }
+
   const calibrationBaselines = calibrationResult
     ? {
         security: calibrationResult.baselineSecurity,
@@ -827,13 +844,15 @@ export function App() {
             <h2>Benchmark</h2>
             <button onClick={runBenchmarkCapture} disabled={systemActionBusy}>{benchmarkBusy ? 'Capturing…' : 'Re-test'}</button>
           </div>
-          {['Baseline', 'Latest', 'Best'].map((label) => {
+          <p className="panel-desc short-note">Benchmark cards show source provenance. Treat Manual Re-test gameplay/practice-map samples as stronger evidence than Apply-flow or background samples.</p>
+          {['Baseline', 'Latest', 'Best observed'].map((label) => {
             const session = label === 'Baseline' ? benchmarkStatus.baseline : label === 'Latest' ? benchmarkStatus.latest : benchmarkStatus.best;
             return (
               <div key={label} className="boot-entry">
                 <span className="boot-num">{label}</span>
                 <span className="boot-score-pos">{session?.avgFps !== null && session?.avgFps !== undefined ? `${session.avgFps.toFixed(1)} FPS` : 'FPS n/a'}</span>
                 <span className="boot-latency">{session ? `${session.confidence.toFixed(0)}% conf · ${session.objectiveScore.toFixed(1)} obj · ${session.stabilityScore.toFixed(0)}% stable · ${session.sceneClassification || 'unknown'}` : ''}</span>
+                {session ? <small className="panel-desc short-note">{benchmarkSourceLabel(session.source)} · {session.timestamp}</small> : null}
               </div>
             );
           })}

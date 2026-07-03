@@ -124,6 +124,17 @@ live telemetry and benchmark evidence.
 - CS2 config review flags risky-looking lines for user review only; it is not a cheat detector, malware verdict, or anti-cheat bypass.
 - Background/boot tasks are advanced features because they run with high Windows privileges. Prefer the manual button until the behavior is verified on your machine.
 
+## AetherFrame operating notes
+
+AetherFrameGuard uses AETHERFRAME-style ranking as a bounded optimization process, not as product authority.
+For current posture and safe next gates, see:
+
+- `docs/AETHERFRAME_GUARD_STATUS_DASHBOARD.md`
+- `docs/AETHERFRAME_GUARD_IMPROVEMENT_PLAN.md`
+- `docs/AETHERFRAME_GUARD_TESTER_CYCLE.md`
+
+The most important operating rule is to keep **Measure/Re-test** separate from **Apply**. Applying a setting changes configuration; only repeated gameplay-like measurements can support an improvement claim.
+
 ## Run
 
 ```bash
