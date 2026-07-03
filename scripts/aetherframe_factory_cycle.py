@@ -9,9 +9,10 @@ Purpose:
   run destructive cleanup, or make public claims.
 
 Usage:
-  python scripts/aetherframe_factory_cycle.py
-  python scripts/aetherframe_factory_cycle.py --run-checks  # run lightweight validations
-  python scripts/aetherframe_factory_cycle.py --out-dir docs/aetherframe-runs
+  python scripts/aetherframe_factory_cycle.py                    # print report to stdout only
+  python scripts/aetherframe_factory_cycle.py --run-checks       # run lightweight validations, stdout only
+  python scripts/aetherframe_factory_cycle.py --write-report     # also write docs/aetherframe-runs/factory-cycle-<timestamp>.md
+  python scripts/aetherframe_factory_cycle.py --out-dir docs/aetherframe-runs --write-report
 
 Authority boundary:
   GYRE = sole verdict/classification authority.
@@ -221,7 +222,7 @@ def next_prompt_candidate_guidance():
         "      - Requires payment/credential input: yes/no",
         "      - Requires package/release approval: yes/no",
         "  Do not execute the next prompt automatically, assume approval, create autonomous loops, deploy, delete, publish, sign, upload, use credentials, or deliver packages.",
-        "  If no safe next prompt should be generated, say so and stop.",
+        "  If no safe next prompt should be generated, use NO SAFE NEXT PROMPT with the reason and stop.",
     ]
 
 
@@ -422,25 +423,24 @@ def build_report(run_checks=False):
 def main():
     parser = argparse.ArgumentParser(description="AetherFrame Advancement Cycle reporter (legacy Factory compatibility)")
     parser.add_argument("--run-checks", action="store_true", help="Run lightweight validation checks")
-    parser.add_argument("--out-dir", default="docs/aetherframe-runs", help="Output directory for reports")
-    parser.add_argument("--stdout", action="store_true", help="Also print report to stdout")
+    parser.add_argument("--out-dir", default="docs/aetherframe-runs", help="Output directory for reports when --write-report is set")
+    parser.add_argument("--write-report", action="store_true", help="Write the report to docs/aetherframe-runs instead of stdout-only mode")
+    parser.add_argument("--stdout", action="store_true", help="Print report to stdout; retained for compatibility and now true by default unless --write-report is used alone")
     args = parser.parse_args()
 
     report, ts = build_report(run_checks=args.run_checks)
 
-    # Ensure output directory exists
-    out_dir = os.path.join(REPO_ROOT, args.out_dir)
-    os.makedirs(out_dir, exist_ok=True)
+    if args.write_report:
+        out_dir = os.path.join(REPO_ROOT, args.out_dir)
+        os.makedirs(out_dir, exist_ok=True)
+        report_path = os.path.join(out_dir, f"factory-cycle-{ts}.md")
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(report)
+        print(f"Report written: {report_path}")
 
-    # Write report
-    report_path = os.path.join(out_dir, f"factory-cycle-{ts}.md")
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(report)
-
-    print(f"Report written: {report_path}")
-
-    if args.stdout:
-        print("\n" + "=" * 72)
+    if args.stdout or not args.write_report:
+        if args.write_report:
+            print("\n" + "=" * 72)
         print(report)
 
     return 0

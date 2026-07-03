@@ -77,9 +77,11 @@ Safe stop pattern:
 
 1. Final report.
 2. Recommended next action.
-3. `NEXT PROMPT CANDIDATE`, if safe to draft.
-4. Readiness flags.
+3. `NEXT PROMPT CANDIDATE`, if safe to draft; otherwise `NO SAFE NEXT PROMPT — <reason>`.
+4. Readiness flags or missing-approval reason.
 5. Stop.
+
+Use explicit `NO SAFE NEXT PROMPT` outcomes when waiting for user input, when an approval gate has been reached, when preflight/CI failed, or when drafting a prompt would encourage unsafe escalation.
 
 ## CI Stabilization Cycle
 
@@ -189,6 +191,39 @@ Evidence requirements:
 
 Stop condition:
 - site payload ready, or deployment completed only if approved.
+
+## Commercial Operations Lane
+
+Allowed actions:
+- qualify technical testers;
+- draft outreach and buyer-facing templates;
+- track payment/support/delivery gates in docs;
+- prepare manual fulfillment process;
+- request feedback using approved templates.
+
+Forbidden actions:
+- creating payment accounts or links without user-provided/approved mechanism;
+- using credentials or secrets;
+- deploying website/payment changes without explicit approval;
+- delivering packages without fresh package verification and approved private channel;
+- storing buyer PII, payment details, or private delivery links in this repo;
+- claiming signed, Microsoft verified, public/world-ready, auto-updating, guaranteed refund, or guaranteed detection status unless separately approved/proven.
+
+Validation gates:
+- current CI/status baseline recorded;
+- payment/support/delivery inputs marked supplied or missing;
+- unsafe-claim scan;
+- package delivery remains stopped unless separately approved.
+
+Evidence requirements:
+- tester profile;
+- outreach/qualification script;
+- payment/support/delivery gate status;
+- feedback capture path;
+- explicit stop-before-payment/package/deploy statement.
+
+Stop condition:
+- recruitment/qualification materials ready, or user input/approval gate reached before payment, deployment, or package delivery.
 
 ## Evidence Export Cycle
 

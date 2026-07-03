@@ -31,7 +31,19 @@ Do not force one when:
 - the safest next step is to wait for user input;
 - generating a prompt would encourage deletion, deployment, payment, package delivery, release, or credential use without approval.
 
-If no safe next prompt should be generated, say so explicitly and stop.
+If no safe next prompt should be generated, say so explicitly using a `NO SAFE NEXT PROMPT` outcome and stop.
+
+## No Safe Next Prompt outcomes
+
+At the end of a major run, choose exactly one:
+
+- `NEXT PROMPT CANDIDATE` — safe to draft for later human review.
+- `NO SAFE NEXT PROMPT — waiting for user input` — the next step depends on missing user-provided information.
+- `NO SAFE NEXT PROMPT — approval gate reached` — the next step is deployment, deletion, payment, package delivery, release, credential handling, or another approval-gated action.
+- `NO SAFE NEXT PROMPT — preflight/CI failed` — the current run did not establish a safe baseline.
+- `NO SAFE NEXT PROMPT — prompt would encourage unsafe escalation` — drafting the prompt would make an unapproved dangerous action too easy.
+
+A `NO SAFE NEXT PROMPT` outcome should still include the reason, missing input or approval, and safest human next action.
 
 ## Required final-run handoff shape
 
