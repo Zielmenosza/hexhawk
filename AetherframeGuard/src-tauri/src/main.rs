@@ -2001,18 +2001,43 @@ fn push_benchmark_session(session: BenchmarkSession) {
     save_benchmark_state(&state);
 }
 
-fn benchmark_status_from_state(state: &BenchmarkState) -> BenchmarkStatus {
-    let baseline = state.sessions.first().cloned();
-    let latest = state.sessions.last().cloned();
-    let best = state
-        .sessions
-        .iter()
+fn benchmark_session_is_user_facing_evidence(session: &BenchmarkSession) -> bool {
+    session.source == "manual"
+        && session.confidence >= 55.0
+        && session.scene_classification != "menu_or_lobby"
+}
+
+fn best_benchmark_session<'a>(
+    sessions: impl Iterator<Item = &'a BenchmarkSession>,
+) -> Option<BenchmarkSession> {
+    sessions
         .max_by(|a, b| {
             a.objective_score
                 .partial_cmp(&b.objective_score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         })
-        .cloned();
+        .cloned()
+}
+
+fn benchmark_status_from_state(state: &BenchmarkState) -> BenchmarkStatus {
+    let preferred_sessions: Vec<&BenchmarkSession> = state
+        .sessions
+        .iter()
+        .filter(|session| benchmark_session_is_user_facing_evidence(session))
+        .collect();
+    let user_facing_sessions: Vec<&BenchmarkSession> = if preferred_sessions.is_empty() {
+        state.sessions.iter().collect()
+    } else {
+        preferred_sessions
+    };
+
+    let baseline = user_facing_sessions
+        .first()
+        .map(|session| (*session).clone());
+    let latest = user_facing_sessions
+        .last()
+        .map(|session| (*session).clone());
+    let best = best_benchmark_session(user_facing_sessions.into_iter());
 
     BenchmarkStatus {
         total_sessions: state.total_sessions,
@@ -5657,6 +5682,72 @@ start "" /high "C:\Program Files (x86)\Steam\steam.exe" -applaunch 730 +exec aut
         assert!(
             cs2_optimization_objective_score(&gameplay) > cs2_optimization_objective_score(&menu)
         );
+    }
+
+    fn test_benchmark_session(source: &str, scene: &str, objective_score: f64) -> BenchmarkSession {
+        BenchmarkSession {
+            id: format!("{}-{}", source, objective_score),
+            timestamp: format!("2026-07-03T{:02}:00:00Z", objective_score as u32),
+            source: source.to_string(),
+            promotion_score: 70.0,
+            counter_strike_score: 70.0,
+            avg_fps: Some(objective_score),
+            avg_frametime_ms: Some(5.0),
+            pc_latency_ms: Some(10.0),
+            network_latency_ms: Some(30.0),
+            system_latency_ms: Some(2.0),
+            fps_1pct_low: Some(objective_score - 10.0),
+            fps_0_1pct_low: Some(objective_score - 20.0),
+            stutter_count: 1,
+            stability_score: 90.0,
+            scene_classification: scene.to_string(),
+            confidence: 80.0,
+            objective_score,
+            notes: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn benchmark_status_prefers_manual_gameplay_for_user_facing_cards() {
+        let apply_before = test_benchmark_session("suggested-before", "unknown", 91.0);
+        let manual_first = test_benchmark_session("manual", "gameplay_candidate", 62.0);
+        let auto_high = test_benchmark_session("auto", "gameplay_candidate", 99.0);
+        let manual_best = test_benchmark_session("manual", "gameplay_candidate", 84.0);
+        let state = BenchmarkState {
+            total_sessions: 4,
+            sessions: vec![
+                apply_before,
+                manual_first.clone(),
+                auto_high,
+                manual_best.clone(),
+            ],
+            last_guardrail_active: false,
+            last_guardrail_note: None,
+        };
+
+        let status = benchmark_status_from_state(&state);
+
+        assert_eq!(status.baseline.unwrap().id, manual_first.id);
+        assert_eq!(status.latest.unwrap().id, manual_best.id);
+        assert_eq!(status.best.unwrap().id, manual_best.id);
+    }
+
+    #[test]
+    fn benchmark_status_falls_back_when_no_manual_gameplay_evidence_exists() {
+        let apply_before = test_benchmark_session("suggested-before", "unknown", 40.0);
+        let apply_after = test_benchmark_session("suggested-after", "unknown", 64.0);
+        let state = BenchmarkState {
+            total_sessions: 2,
+            sessions: vec![apply_before.clone(), apply_after.clone()],
+            last_guardrail_active: false,
+            last_guardrail_note: None,
+        };
+
+        let status = benchmark_status_from_state(&state);
+
+        assert_eq!(status.baseline.unwrap().id, apply_before.id);
+        assert_eq!(status.latest.unwrap().id, apply_after.id);
+        assert_eq!(status.best.unwrap().id, apply_after.id);
     }
 
     #[test]
