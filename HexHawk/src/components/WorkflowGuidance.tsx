@@ -54,9 +54,9 @@ function generateWorkflowSteps(analysis: DisassemblyAnalysis): WorkflowStep[] {
     });
     steps.push({
       step: steps.length + 1,
-      title: 'Bypass or Patch Defenses',
+      title: 'Review Anti-Analysis Impact',
       description:
-        'Consider dynamic analysis or patching anti-analysis checks.',
+        'Document which debugger or VM checks are present and decide whether an approved external runtime workflow is needed.',
       action: 'Examine pattern details',
       priority: 'high',
     });
