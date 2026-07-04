@@ -775,7 +775,7 @@ export function App() {
         <div>
           <p className="eyebrow">CS2 FPS helper</p>
           <h1>AetherFrameGuard</h1>
-          <p className="panel-desc simple-lead">Measure live for 20 seconds → Apply safe settings → Re-test. Advanced tools are collapsed below.</p>
+          <p className="panel-desc simple-lead">Measure live for 20 seconds → Apply backed-up CS2 + Windows gaming settings → Re-test. Advanced tools are collapsed below.</p>
         </div>
         <button onClick={runAnalysis} disabled={systemActionBusy}>{loading ? 'Measuring…' : 'Measure'}</button>
       </div>
@@ -790,7 +790,7 @@ export function App() {
             <span>1. Measure</span><small>{loading ? 'Capturing live data…' : '20 sec live FPS/PC capture'}</small>
           </button>
           <button className="action-card" onClick={applySuggestedFpsSettings} disabled={systemActionBusy}>
-            <span>2. Apply safe CS2 settings</span><small>Backs up files first</small>
+            <span>2. Apply CS2 + Windows gaming settings</span><small>Backs up CS2/Windows first</small>
           </button>
           <button className="action-card" onClick={runBenchmarkCapture} disabled={systemActionBusy}>
             <span>3. Re-test</span><small>{benchmarkBusy ? 'Capturing…' : 'Compare latest vs best'}</small>
