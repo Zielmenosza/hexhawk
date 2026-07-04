@@ -58,6 +58,23 @@ describe('decompiler regressions - synthetic fixtures', () => {
     expect(callLine?.text).toContain('42');
   });
 
+  it('renders compact prototype parameter comments for recovered imported-call arguments', () => {
+    const instructions: DisassembledInstruction[] = [
+      { address: 0x1200, mnemonic: 'mov', operands: 'rcx, 0' },
+      { address: 0x1204, mnemonic: 'mov', operands: 'rdx, 0x80000000' },
+      { address: 0x1208, mnemonic: 'mov', operands: 'r8, 1' },
+      { address: 0x120c, mnemonic: 'call', operands: 'CreateFileW' },
+      { address: 0x1211, mnemonic: 'ret', operands: '' },
+    ];
+
+    const result = decompile(instructions, null, { startAddress: 0x1200, endAddress: 0x1211, functionName: 'named_args' });
+    const callLine = result.lines.find(l => l.text.includes('CreateFileW('));
+
+    expect(callLine?.text).toContain('/* lpFileName */');
+    expect(callLine?.text).toContain('/* dwDesiredAccess */ GENERIC_READ');
+    expect(callLine?.text).toContain('/* dwShareMode */ FILE_SHARE_READ');
+  });
+
   it('applies first-pass loop-counter naming heuristics', () => {
     const instructions: DisassembledInstruction[] = [
       { address: 0x3000, mnemonic: 'mov', operands: 'rcx, 0' },

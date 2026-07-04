@@ -1113,6 +1113,14 @@ function renderCallStatement(stmt: Extract<IRStmt, { op: 'call' }>, varMap: VarM
     return `/* ${stmt.resolvedPrototype.returnType} */ ${target}(\n${args.join(',\n')}\n);`;
   }
 
+  if (stmt.resolvedPrototype && rawArgs.length > 0) {
+    const namedArgs = rawArgs.map((arg, index) => {
+      const param = stmt.resolvedPrototype?.parameters[index];
+      return param ? `/* ${param.name} */ ${arg}` : arg;
+    });
+    return `${target}(${namedArgs.join(', ')});`;
+  }
+
   return `${target}(${rawArgs.join(', ')});`;
 }
 

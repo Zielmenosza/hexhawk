@@ -11,7 +11,7 @@
  * This engine provides the frontend intelligence layer on top of raw snapshots.
  */
 
-import type { RegisterState, DebugSnapshot } from '../components/DebuggerPanel';
+import type { Breakpoint, RegisterState, DebugSnapshot } from '../components/DebuggerPanel';
 import type { BehavioralTag } from './correlationEngine';
 import type { DecompilerIrNode, DecompilerIrValue } from './decompilerTypes';
 import { buildXRefIndex } from './disassemblyAnalysis';
@@ -378,12 +378,21 @@ export interface StrikeDelta {
 
 // ── Timeline types ────────────────────────────────────────────────────────────
 
+export interface StrikeBreakpointHit {
+  address: number;
+  enabled: boolean;
+  condition?: string | null;
+  hitCount?: number;
+  lastEvaluation?: string | null;
+}
+
 export interface StrikeStep {
   index:          number;
   timestamp:      number;          // Date.now() at append time
   snapshot:       DebugSnapshot;
   delta:          StrikeDelta | null;  // null for the first step
   hitBreakpoint:  boolean;
+  breakpointHit?: StrikeBreakpointHit;
   event:          string;          // snapshot.lastEvent
 }
 
@@ -457,6 +466,10 @@ export interface StrikeCorrelationSignal {
 
 // ── Helper: jump classification ───────────────────────────────────────────────
 
+function hasEventToken(event: string, token: string): boolean {
+  return new RegExp(`(?:^|[^a-z0-9_])${token}(?:$|[^a-z0-9_])`, 'i').test(event);
+}
+
 function classifyJump(
   prevRip: number,
   currRip: number,
@@ -465,14 +478,20 @@ function classifyJump(
   const ev = event.toLowerCase();
   if (ev.includes('exception') || ev.includes('access violation')) return 'exception';
 
+  // Prefer explicit debugger event tokens over distance heuristics. A direct call
+  // may advance only a few bytes in synthetic traces, and an indirect jmp can be
+  // nearby; token-aware classification keeps call-stack reconstruction stable.
+  if ((ev.includes('getprocaddress') || ev.includes('loadlibrary') || ev.includes('resolver')) &&
+      (hasEventToken(ev, 'call') || hasEventToken(ev, 'jmp'))) return 'indirect';
+  if (hasEventToken(ev, 'jmp') && hasEventToken(ev, 'call')) return 'indirect';
+  if (hasEventToken(ev, 'call') || hasEventToken(ev, 'called')) return 'call';
+  if (hasEventToken(ev, 'ret') || hasEventToken(ev, 'return')) return 'ret';
+  if (hasEventToken(ev, 'jmp') || ev.includes('indirect jump')) return 'indirect';
+
   const delta = currRip - prevRip;
 
   // Sequential: RIP advanced by a typical instruction length (1–15 bytes)
   if (delta > 0 && delta <= 15) return 'sequential';
-
-  // Detect call / ret from event string when available
-  if (ev.includes(' call ') || ev.includes('called')) return 'call';
-  if (ev.includes(' ret')   || ev.includes('return')) return 'ret';
 
   // Moderate backward jump — likely branch or short ret
   if (delta < 0 && delta > -0x10000) return 'branch-taken';
@@ -533,19 +552,46 @@ export function createTimeline(sessionId: number): StrikeTimeline {
   };
 }
 
+function breakpointAddressOf(bp: Breakpoint): number {
+  return typeof bp === 'number' ? bp : bp.address;
+}
+
+function breakpointEnabled(bp: Breakpoint): boolean {
+  return typeof bp === 'number' ? true : bp.enabled;
+}
+
+export function findBreakpointHit(snapshot: DebugSnapshot): StrikeBreakpointHit | null {
+  const rip = snapshot.registers.rip;
+  for (const bp of snapshot.breakpoints) {
+    if (!breakpointEnabled(bp)) continue;
+    if (breakpointAddressOf(bp) !== rip) continue;
+    if (typeof bp === 'number') return { address: bp, enabled: true };
+    return {
+      address: bp.address,
+      enabled: bp.enabled,
+      condition: bp.condition ?? null,
+      hitCount: bp.hitCount,
+      lastEvaluation: bp.lastEvaluation ?? null,
+    };
+  }
+  return null;
+}
+
 export function appendStep(
   timeline: StrikeTimeline,
   snapshot: DebugSnapshot,
 ): { timeline: StrikeTimeline; step: StrikeStep } {
   const prev  = timeline.steps[timeline.steps.length - 1] ?? null;
   const delta = prev ? computeDelta(prev.snapshot, snapshot) : null;
+  const breakpointHit = findBreakpointHit(snapshot);
 
   const step: StrikeStep = {
     index:         timeline.steps.length,
     timestamp:     Date.now(),
     snapshot,
     delta,
-    hitBreakpoint: snapshot.breakpoints.includes(snapshot.registers.rip),
+    hitBreakpoint: breakpointHit !== null,
+    breakpointHit: breakpointHit ?? undefined,
     event:         snapshot.lastEvent,
   };
 

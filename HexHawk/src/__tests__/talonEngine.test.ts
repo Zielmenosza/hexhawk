@@ -244,6 +244,36 @@ describe('talonDecompile', () => {
     expect(result.summary.behavioralTags).toContain('code-injection');
   });
 
+  it('normalizes decorated import names before intent classification', () => {
+    const result = talonDecompile([
+      ins(0x3100, 'push', 'rbp'),
+      ins(0x3101, 'call', 'kernel32!__imp_WriteProcessMemory@20'),
+      ins(0x3106, 'call', 'createremotethread@12'),
+      ins(0x310b, 'call', 'LoadLibraryA$stub'),
+      ins(0x3110, 'ret', ''),
+    ], null);
+
+    const intentText = result.lines
+      .filter(l => l.kind === 'intent-comment')
+      .map(l => l.text)
+      .join('\n');
+
+    expect(intentText).toContain('Process injection: WriteProcessMemory');
+    expect(intentText).toContain('Process injection: CreateRemoteThread');
+    expect(intentText).toContain('Dynamic resolve: LoadLibraryA');
+    expect(result.summary.behavioralTags).toContain('code-injection');
+  });
+
+  it('does not count low-confidence non-code intents as uncertain code statements', () => {
+    const result = talonDecompile([
+      ins(0x3200, 'jmp', '0x401000'),
+    ], null);
+
+    expect(result.summary.intents.some(intent => intent.confidence < 58)).toBe(true);
+    expect(result.summary.totalStatements).toBe(0);
+    expect(result.summary.uncertainStatements).toBe(0);
+  });
+
   it('empty instruction list returns a result without stmt lines', () => {
     const result = talonDecompile([], null);
     const stmtLines = result.lines.filter(l => l.kind === 'stmt' || l.kind === 'uncertain');

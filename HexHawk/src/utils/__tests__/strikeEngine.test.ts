@@ -2,8 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   createTimeline,
   appendStep,
+  buildCallStack,
   clearStrikeHooksForTests,
+  computeDelta,
   createStrikeQuerySurface,
+  findBreakpointHit,
   registerHook,
   resolveImportPrototype,
   runStrikePostAnalysisHooks,
@@ -68,6 +71,62 @@ describe('strikeEngine appendStep', () => {
 
     expect(timeline.steps[0].snapshot.stepCount).toBe(20);
     expect(timeline.steps[MAX_STRIKE_TIMELINE_STEPS - 1].snapshot.stepCount).toBe(total - 1);
+  });
+
+  it('detects structured breakpoint hits and ignores disabled breakpoint records', () => {
+    const disabled = makeSnapshot(0, 0x401000);
+    disabled.breakpoints = [{ address: 0x401000, enabled: false, condition: 'rax == 1', hitCount: 9 }];
+    expect(findBreakpointHit(disabled)).toBeNull();
+
+    const snapshot = makeSnapshot(1, 0x401000);
+    snapshot.breakpoints = [
+      { address: 0x401000, enabled: true, condition: 'rax == 1', hitCount: 3, lastEvaluation: 'true' },
+      0x402000,
+    ];
+
+    const hit = findBreakpointHit(snapshot);
+    expect(hit).toEqual({
+      address: 0x401000,
+      enabled: true,
+      condition: 'rax == 1',
+      hitCount: 3,
+      lastEvaluation: 'true',
+    });
+
+    const { step } = appendStep(createTimeline(7), snapshot);
+    expect(step.hitBreakpoint).toBe(true);
+    expect(step.breakpointHit?.condition).toBe('rax == 1');
+  });
+
+  it('classifies explicit call/ret/jmp event tokens before distance heuristics', () => {
+    const callPrev = makeSnapshot(0, 0x1000);
+    const callCurr = makeSnapshot(1, 0x1005);
+    callCurr.lastEvent = 'call 0x2000';
+    expect(computeDelta(callPrev, callCurr).jumpType).toBe('call');
+
+    const retPrev = makeSnapshot(2, 0x2000);
+    const retCurr = makeSnapshot(3, 0x2005);
+    retCurr.lastEvent = 'ret';
+    expect(computeDelta(retPrev, retCurr).jumpType).toBe('ret');
+
+    const jmpPrev = makeSnapshot(4, 0x3000);
+    const jmpCurr = makeSnapshot(5, 0x3004);
+    jmpCurr.lastEvent = 'jmp rax';
+    expect(computeDelta(jmpPrev, jmpCurr).jumpType).toBe('indirect');
+  });
+
+  it('builds call stack from explicit call tokens even for short RIP deltas', () => {
+    let timeline = createTimeline(7);
+    const entry = makeSnapshot(0, 0x1000);
+    const call = makeSnapshot(1, 0x1005);
+    call.lastEvent = 'call 0x2000';
+
+    timeline = appendStep(timeline, entry).timeline;
+    timeline = appendStep(timeline, call).timeline;
+
+    const stack = buildCallStack(timeline);
+    expect(stack).toHaveLength(1);
+    expect(stack[0]).toMatchObject({ callSite: 0x1000, calleeAddress: 0x1005, depth: 0 });
   });
 });
 

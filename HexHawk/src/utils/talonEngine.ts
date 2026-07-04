@@ -217,23 +217,57 @@ interface CallIntentInfo {
   tag?: BehavioralTag;
 }
 
+function normalizeApiName(name: string): string {
+  const cleaned = name
+    .trim()
+    .replace(/^.*!/, '')              // kernel32!CreateFileW
+    .replace(/^__imp_+/i, '')         // __imp_WriteProcessMemory
+    .replace(/^imp_+/i, '')
+    .replace(/\$.*$/, '')             // LoadLibraryA$stub
+    .replace(/@\d+$/, '')             // CreateRemoteThread@12
+    .replace(/^_+/, '');              // _CreateFileW
+
+  const lower = cleaned.toLowerCase();
+  const knownNames = [
+    ...Array.from(ANTI_DEBUG_APIS),
+    ...Array.from(INJECT_APIS),
+    ...Array.from(WIPER_APIS),
+    ...Array.from(RESOURCE_APIS),
+    ...Array.from(SYSINFO_APIS),
+    ...Array.from(MEMORY_PROTECT_APIS),
+    ...Array.from(CONCURRENCY_APIS),
+    ...Array.from(CRYPTO_APIS),
+    ...Array.from(NETWORK_APIS),
+    ...Array.from(EXEC_APIS),
+    ...Array.from(REG_APIS),
+    ...Array.from(FILE_APIS),
+    ...Array.from(DYNAMIC_LOAD_APIS),
+    ...Array.from(ALLOC_APIS),
+    ...Array.from(FREE_APIS),
+    ...Array.from(STRING_APIS),
+  ];
+
+  return knownNames.find(api => api.toLowerCase() === lower) ?? cleaned;
+}
+
 function detectCallIntent(name: string): CallIntentInfo | null {
-  if (ANTI_DEBUG_APIS.has(name))       return { label: `Anti-debug: ${name}`,              confidence: 96, category: 'security', tag: 'anti-analysis' };
-  if (INJECT_APIS.has(name))           return { label: `Process injection: ${name}`,        confidence: 96, category: 'security', tag: 'code-injection' };
-  if (WIPER_APIS.has(name))            return { label: `Wiper/shutdown: ${name}`,           confidence: 95, category: 'security', tag: 'file-destruction' };
-  if (RESOURCE_APIS.has(name))         return { label: `Embedded payload extraction: ${name}`, confidence: 90, category: 'security', tag: 'code-decryption' };
-  if (SYSINFO_APIS.has(name))          return { label: `Host fingerprint: ${name}`,         confidence: 88, category: 'security', tag: 'data-exfiltration' };
-  if (MEMORY_PROTECT_APIS.has(name))   return { label: `Memory protect change: ${name}`,   confidence: 89, category: 'security', tag: 'code-injection' };
-  if (CONCURRENCY_APIS.has(name))      return { label: `Thread synchronization: ${name}`,  confidence: 82, category: 'api' };
-  if (CRYPTO_APIS.has(name))           return { label: `Crypto: ${name}`,                  confidence: 94, category: 'security', tag: 'data-encryption' };
-  if (NETWORK_APIS.has(name))          return { label: `Network I/O: ${name}`,             confidence: 93, category: 'io',       tag: 'c2-communication' };
-  if (EXEC_APIS.has(name))             return { label: `Process exec: ${name}`,            confidence: 94, category: 'io',       tag: 'process-execution' };
-  if (REG_APIS.has(name))              return { label: `Registry write: ${name}`,          confidence: 91, category: 'io',       tag: 'persistence' };
-  if (FILE_APIS.has(name))             return { label: `File I/O: ${name}`,                confidence: 92, category: 'io' };
-  if (DYNAMIC_LOAD_APIS.has(name))     return { label: `Dynamic resolve: ${name}`,         confidence: 90, category: 'security', tag: 'dynamic-resolution' };
-  if (ALLOC_APIS.has(name))            return { label: `Memory alloc: ${name}`,            confidence: 90, category: 'memory' };
-  if (FREE_APIS.has(name))             return { label: `Memory free: ${name}`,             confidence: 90, category: 'memory' };
-  if (STRING_APIS.has(name))           return { label: `String op: ${name}`,               confidence: 89, category: 'memory' };
+  const apiName = normalizeApiName(name);
+  if (ANTI_DEBUG_APIS.has(apiName))       return { label: `Anti-debug: ${apiName}`,              confidence: 96, category: 'security', tag: 'anti-analysis' };
+  if (INJECT_APIS.has(apiName))           return { label: `Process injection: ${apiName}`,        confidence: 96, category: 'security', tag: 'code-injection' };
+  if (WIPER_APIS.has(apiName))            return { label: `Wiper/shutdown: ${apiName}`,           confidence: 95, category: 'security', tag: 'file-destruction' };
+  if (RESOURCE_APIS.has(apiName))         return { label: `Embedded payload extraction: ${apiName}`, confidence: 90, category: 'security', tag: 'code-decryption' };
+  if (SYSINFO_APIS.has(apiName))          return { label: `Host fingerprint: ${apiName}`,         confidence: 88, category: 'security', tag: 'data-exfiltration' };
+  if (MEMORY_PROTECT_APIS.has(apiName))   return { label: `Memory protect change: ${apiName}`,   confidence: 89, category: 'security', tag: 'code-injection' };
+  if (CONCURRENCY_APIS.has(apiName))      return { label: `Thread synchronization: ${apiName}`,  confidence: 82, category: 'api' };
+  if (CRYPTO_APIS.has(apiName))           return { label: `Crypto: ${apiName}`,                  confidence: 94, category: 'security', tag: 'data-encryption' };
+  if (NETWORK_APIS.has(apiName))          return { label: `Network I/O: ${apiName}`,             confidence: 93, category: 'io',       tag: 'c2-communication' };
+  if (EXEC_APIS.has(apiName))             return { label: `Process exec: ${apiName}`,            confidence: 94, category: 'io',       tag: 'process-execution' };
+  if (REG_APIS.has(apiName))              return { label: `Registry write: ${apiName}`,          confidence: 91, category: 'io',       tag: 'persistence' };
+  if (FILE_APIS.has(apiName))             return { label: `File I/O: ${apiName}`,                confidence: 92, category: 'io' };
+  if (DYNAMIC_LOAD_APIS.has(apiName))     return { label: `Dynamic resolve: ${apiName}`,         confidence: 90, category: 'security', tag: 'dynamic-resolution' };
+  if (ALLOC_APIS.has(apiName))            return { label: `Memory alloc: ${apiName}`,            confidence: 90, category: 'memory' };
+  if (FREE_APIS.has(apiName))             return { label: `Memory free: ${apiName}`,             confidence: 90, category: 'memory' };
+  if (STRING_APIS.has(apiName))           return { label: `String op: ${apiName}`,               confidence: 89, category: 'memory' };
   return null;
 }
 
@@ -633,7 +667,7 @@ function buildFunctionSummary(
   const allIntents = [...blockIntentMap.values()];
 
   const totalStmts = talonLines.filter(l => l.kind === 'stmt' || l.kind === 'uncertain').length;
-  const uncertainStmts = talonLines.filter(l => l.lineConfidence < 58).length;
+  const uncertainStmts = talonLines.filter(l => (l.kind === 'stmt' || l.kind === 'uncertain') && l.lineConfidence < 58).length;
 
   // Lifting coverage: fraction of IR stmts that are NOT 'unknown'
   const allIRStmts = result.irBlocks.flatMap(b => b.stmts);
