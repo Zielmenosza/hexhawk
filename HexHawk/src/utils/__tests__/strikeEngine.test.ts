@@ -73,6 +73,42 @@ describe('strikeEngine appendStep', () => {
     expect(timeline.steps[MAX_STRIKE_TIMELINE_STEPS - 1].snapshot.stepCount).toBe(total - 1);
   });
 
+
+  it('does not append duplicate evidence snapshots from command responses and events', () => {
+    const timeline = createTimeline(7);
+    const snap = makeSnapshot(1, 0x401000);
+
+    const first = appendStep(timeline, snap);
+    const second = appendStep(first.timeline, { ...snap, registers: { ...snap.registers } });
+
+    expect(second.timeline.steps).toHaveLength(1);
+    expect(second.step).toBe(first.step);
+    expect(second.timeline).toBe(first.timeline);
+  });
+
+  it('keeps repeated addresses when step count advances so loops remain visible', () => {
+    let timeline = createTimeline(7);
+    timeline = appendStep(timeline, makeSnapshot(1, 0x401000)).timeline;
+    timeline = appendStep(timeline, makeSnapshot(2, 0x401000)).timeline;
+
+    expect(timeline.steps).toHaveLength(2);
+    expect(timeline.steps.map(s => s.snapshot.stepCount)).toEqual([1, 2]);
+  });
+
+  it('keeps same-step snapshots when status or event changes', () => {
+    let timeline = createTimeline(7);
+    const paused = makeSnapshot(1, 0x401000);
+    const breakpoint = { ...makeSnapshot(1, 0x401000), lastEvent: 'breakpoint hit' };
+    const exited = { ...makeSnapshot(1, 0x401000), status: 'Exited' as const, lastEvent: 'process exited' };
+
+    timeline = appendStep(timeline, paused).timeline;
+    timeline = appendStep(timeline, breakpoint).timeline;
+    timeline = appendStep(timeline, exited).timeline;
+
+    expect(timeline.steps).toHaveLength(3);
+    expect(timeline.steps.map(s => s.event)).toEqual(['step', 'breakpoint hit', 'process exited']);
+  });
+
   it('detects structured breakpoint hits and ignores disabled breakpoint records', () => {
     const disabled = makeSnapshot(0, 0x401000);
     disabled.breakpoints = [{ address: 0x401000, enabled: false, condition: 'rax == 1', hitCount: 9 }];

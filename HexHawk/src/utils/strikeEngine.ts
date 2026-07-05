@@ -577,11 +577,25 @@ export function findBreakpointHit(snapshot: DebugSnapshot): StrikeBreakpointHit 
   return null;
 }
 
+export function snapshotEvidenceKey(snapshot: DebugSnapshot): string {
+  return [
+    snapshot.sessionId,
+    snapshot.stepCount,
+    snapshot.registers.rip,
+    snapshot.status,
+    snapshot.lastEvent,
+  ].join('|');
+}
+
 export function appendStep(
   timeline: StrikeTimeline,
   snapshot: DebugSnapshot,
 ): { timeline: StrikeTimeline; step: StrikeStep } {
   const prev  = timeline.steps[timeline.steps.length - 1] ?? null;
+  if (prev && snapshotEvidenceKey(prev.snapshot) === snapshotEvidenceKey(snapshot)) {
+    return { timeline, step: prev };
+  }
+
   const delta = prev ? computeDelta(prev.snapshot, snapshot) : null;
   const breakpointHit = findBreakpointHit(snapshot);
 
