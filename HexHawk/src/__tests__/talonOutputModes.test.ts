@@ -11,11 +11,11 @@ const CREATE_FILE_CALL: DisassembledInstruction[] = [
 ];
 
 describe('TALON compact and annotated output modes', () => {
-  it('formats known import calls compactly by default with no type comments', () => {
+  it('formats known import calls compactly by default with lightweight parameter comments but no type comments', () => {
     const result = decompile(CREATE_FILE_CALL, null, { functionName: 'open_file' });
     const text = result.lines.map(line => line.text).join('\n');
 
-    expect(text).toContain('CreateFileW(fileName, GENERIC_READ /* 0x80000000 */');
+    expect(text).toContain('CreateFileW(/* lpFileName */ fileName, /* dwDesiredAccess */ GENERIC_READ /* 0x80000000 */');
     expect(text).not.toContain('/* LPCWSTR lpFileName */');
     expect(text).not.toContain('/* HANDLE */');
   });
