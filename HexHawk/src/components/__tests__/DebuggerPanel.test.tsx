@@ -80,6 +80,38 @@ describe('DebuggerPanel call stack display', () => {
   });
 });
 
+
+describe('DebuggerPanel STRIKE live lens', () => {
+  beforeEach(() => {
+    vi.mocked(invoke).mockReset();
+  });
+
+  it('shows challenge-derived runtime patterns and keeps them advisory', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce({
+      sessionId: 1,
+      arch: 'x86-64',
+      warnings: [],
+      snapshot: baseSnapshot({ stepCount: 0, lastEvent: 'system-breakpoint' }),
+    });
+    vi.mocked(invoke).mockResolvedValueOnce(baseSnapshot({
+      stepCount: 1,
+      lastEvent: 'IsDebuggerPresent call',
+      registers: { ...baseSnapshot().registers, rip: 0x401030 },
+    }));
+
+    render(<DebuggerPanel binaryPath="C:/tmp/sample.exe" onAddressSelect={vi.fn()} onNavigateHex={vi.fn()} />);
+    fireEvent.click(screen.getByText('▶ Launch'));
+
+    await waitFor(() => expect(screen.getByText('STRIKE live lens — challenge-derived runtime evidence')).toBeInTheDocument());
+    expect(screen.getByText(/do not change GYRE verdicts/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('⤵ Step'));
+
+    await waitFor(() => expect(screen.getByText(/Anti-Debug Probe/)).toBeInTheDocument());
+    expect(screen.getByText(/anti-analysis/)).toBeInTheDocument();
+  });
+});
+
 describe('DebuggerPanel conditional breakpoints', () => {
   beforeEach(() => {
     vi.mocked(invoke).mockReset();

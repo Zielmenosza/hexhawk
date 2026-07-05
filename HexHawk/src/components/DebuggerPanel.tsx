@@ -13,6 +13,13 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { sanitizeAddress, sanitizeBridgePath, sanitizeHexOrDecAddress } from '../utils/tauriGuards';
+import {
+  appendStep,
+  createTimeline,
+  detectPatterns,
+  extractCorrelationSignals,
+  type StrikeTimeline,
+} from '../utils/strikeEngine';
 
 // ── Types mirroring Rust structs ──────────────────────────────────────────────
 
@@ -328,13 +335,20 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
   const [newBpInput, setNewBpInput] = useState('');
   const [newBpCondition, setNewBpCondition] = useState('');
   const [memoryBytes, setMemoryBytes] = useState<number[] | null>(null);
+  const [strikeTimeline, setStrikeTimeline] = useState<StrikeTimeline | null>(null);
   const [activeSection, setActiveSection] = useState<'regs' | 'stack' | 'memory' | 'bps'>('regs');
   const bpInputRef = useRef<HTMLInputElement>(null);
 
-  const applySnapshot = useCallback((snap: DebugSnapshot) => {
+  const applySnapshot = useCallback((snap: DebugSnapshot, resetTimeline = false) => {
     setSession((prev) => {
       setPrevRegs(prev?.registers ?? null);
       return snap;
+    });
+    setStrikeTimeline((prev) => {
+      const base = resetTimeline || prev === null || prev.sessionId !== snap.sessionId
+        ? createTimeline(snap.sessionId)
+        : prev;
+      return appendStep(base, snap).timeline;
     });
   }, []);
 
@@ -363,7 +377,7 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
         args: [],
       });
       setSessionId(result.sessionId);
-      applySnapshot(result.snapshot);
+      applySnapshot(result.snapshot, true);
       setWarnings([...result.warnings, ...(result.snapshot.warnings ?? [])]);
       setMemoryBytes(null);
     });
@@ -398,6 +412,7 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
     setSessionId(null);
     setPrevRegs(null);
     setMemoryBytes(null);
+    setStrikeTimeline(null);
     setWarnings([]);
   };
 
@@ -450,6 +465,16 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
   const isActive = sessionId !== null && session !== null;
   const isPaused = session?.status === 'Paused';
   const isExited = session?.status === 'Exited';
+
+  const strikePatterns = useMemo(
+    () => (strikeTimeline ? detectPatterns(strikeTimeline).slice(0, 4) : []),
+    [strikeTimeline],
+  );
+
+  const strikeSignals = useMemo(
+    () => (strikeTimeline ? extractCorrelationSignals(strikeTimeline) : null),
+    [strikeTimeline],
+  );
 
   const memHexRows = useMemo(() => {
     if (!memoryBytes || memoryBytes.length === 0) return [];
@@ -585,6 +610,38 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
       {/* Main content */}
       {isActive && session && (
         <div className="dbg-content">
+          <div className="dbg-live-lens" aria-label="STRIKE live lens — advisory runtime evidence">
+            <div className="dbg-section-header">STRIKE live lens — challenge-derived runtime evidence</div>
+            <div className="dbg-note">
+              Advisory only: runtime patterns help decide where to step/break next; they do not change GYRE verdicts.
+            </div>
+            <div className="dbg-lens-metrics">
+              <span>steps {strikeSignals?.stepCount ?? 0}</span>
+              <span>risk {strikeSignals?.riskScore ?? 0}/100</span>
+              <span>{strikeSignals?.behavioralTags.length ? strikeSignals.behavioralTags.join(', ') : 'no runtime behavior tags yet'}</span>
+            </div>
+            {strikePatterns.length > 0 ? (
+              <div className="dbg-pattern-list">
+                {strikePatterns.map(pattern => (
+                  <button
+                    key={pattern.tag}
+                    type="button"
+                    className="dbg-pattern-chip"
+                    onClick={() => {
+                      const step = strikeTimeline?.steps[pattern.firstStep];
+                      if (step) onAddressSelect(step.snapshot.registers.rip);
+                    }}
+                    title={`Jump to first observed step for ${pattern.label}`}
+                  >
+                    {pattern.label} · {pattern.confidence}% · step {pattern.firstStep}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="dbg-empty">No challenge-trained runtime pattern yet. Step through resolver, anti-debug, unpacker, or ROP paths to populate the lens.</div>
+            )}
+          </div>
+
           {/* Section nav */}
           <div className="dbg-section-nav">
             {(['regs', 'stack', 'bps', 'memory'] as const).map((s) => (

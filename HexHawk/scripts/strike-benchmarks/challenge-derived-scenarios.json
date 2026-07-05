@@ -194,10 +194,10 @@
   {
     "id": "challenge-crackme-shroud",
     "name": "Challenge Replay - crackme_shroud",
-    "description": "Derived from real NEST session logs (crackme_shroud), verdict=dropper, confidence=99, iterations=4, stop=confidence-threshold",
+    "description": "Derived from real NEST session logs (crackme_shroud), verdict=dropper, confidence=54, iterations=5, stop=plateau",
     "source": {
       "challenge": "crackme_shroud",
-      "targetPath": "D:\\Project\\HexHawk\\Challenges\\crackme_shroud.exe",
+      "targetPath": "D:/Project/HexHawk/Challenges/crackme_shroud.exe",
       "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\crackme_shroud\\session.log",
       "resultPath": "D:\\Project\\HexHawk\\nest_tests\\crackme_shroud\\result.json",
       "fidelity": "derived-from-session"
@@ -228,7 +228,7 @@
       "requiredPatternTags": [
         "dynamic-api-resolution"
       ],
-      "minRiskScore": 30
+      "minRiskScore": 20
     }
   },
   {
@@ -416,10 +416,10 @@
   {
     "id": "challenge-gujian3",
     "name": "Challenge Replay - Gujian3",
-    "description": "Derived from real NEST session logs (Gujian3), verdict=dropper, confidence=79, iterations=4, stop=confidence-threshold",
+    "description": "Derived from real NEST session logs (Gujian3), verdict=rat, confidence=77, iterations=4, stop=confidence-threshold",
     "source": {
       "challenge": "Gujian3",
-      "targetPath": "..\\Challenges\\Gujian3.exe",
+      "targetPath": "D:\\Project\\HexHawk\\Challenges\\Gujian3.exe",
       "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\Gujian3\\session.log",
       "resultPath": "D:\\Project\\HexHawk\\nest_tests\\Gujian3\\result.json",
       "fidelity": "derived-from-session"
@@ -430,27 +430,37 @@
         "event": "step"
       },
       {
+        "rip": 4743145,
+        "event": "IsDebuggerPresent"
+      },
+      {
+        "rip": 4743163,
+        "event": "gs:0x60 peb walk"
+      },
+      {
         "rip": 5070777,
         "event": "getprocaddress call"
       },
       {
-        "rip": 5406649,
+        "rip": 5402553,
         "event": "loadlibrary call"
       },
       {
-        "rip": 5738425,
+        "rip": 5758905,
         "event": "jmp resolver"
       },
       {
-        "rip": 5738441,
+        "rip": 5758921,
         "event": "step"
       }
     ],
     "expectations": {
       "requiredPatternTags": [
+        "anti-debug-probe",
+        "peb-walk",
         "dynamic-api-resolution"
       ],
-      "minRiskScore": 24
+      "minRiskScore": 58
     }
   },
   {
@@ -506,10 +516,10 @@
   {
     "id": "challenge-keygenme",
     "name": "Challenge Replay - keygenme",
-    "description": "Derived from real NEST session logs (keygenme), verdict=dropper, confidence=99, iterations=4, stop=confidence-threshold",
+    "description": "Derived from real NEST session logs (keygenme), verdict=rat, confidence=69, iterations=5, stop=plateau",
     "source": {
       "challenge": "keygenme",
-      "targetPath": "D:\\Project\\HexHawk\\Challenges\\ch76\\keygenme.exe",
+      "targetPath": "D:/Project/HexHawk/Challenges/ch76/keygenme.exe",
       "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\keygenme\\session.log",
       "resultPath": "D:\\Project\\HexHawk\\nest_tests\\keygenme\\result.json",
       "fidelity": "derived-from-session"
@@ -520,27 +530,37 @@
         "event": "step"
       },
       {
+        "rip": 4754969,
+        "event": "IsDebuggerPresent"
+      },
+      {
+        "rip": 4754987,
+        "event": "gs:0x60 peb walk"
+      },
+      {
         "rip": 5082601,
         "event": "getprocaddress call"
       },
       {
-        "rip": 5418473,
+        "rip": 5414377,
         "event": "loadlibrary call"
       },
       {
-        "rip": 5750249,
+        "rip": 5770729,
         "event": "jmp resolver"
       },
       {
-        "rip": 5750265,
+        "rip": 5770745,
         "event": "step"
       }
     ],
     "expectations": {
       "requiredPatternTags": [
+        "anti-debug-probe",
+        "peb-walk",
         "dynamic-api-resolution"
       ],
-      "minRiskScore": 30
+      "minRiskScore": 52
     }
   },
   {
@@ -785,6 +805,118 @@
         "rop-chain"
       ],
       "maxRiskScore": 15
+    }
+  },
+  {
+    "id": "challenge-pwn109-1644300507645",
+    "name": "Challenge Replay - pwn109-1644300507645",
+    "description": "Derived from real NEST session logs (pwn109-1644300507645), verdict=clean, confidence=15, iterations=2, stop=max-iterations",
+    "source": {
+      "challenge": "pwn109-1644300507645",
+      "targetPath": "../Challenges/pwn109-1644300507645.pwn109",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\pwn109-1644300507645\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\pwn109-1644300507645\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4568367,
+        "event": "step"
+      },
+      {
+        "rip": 4568369,
+        "event": "step"
+      },
+      {
+        "rip": 4568375,
+        "event": "call local"
+      },
+      {
+        "rip": 4568377,
+        "event": "step"
+      },
+      {
+        "rip": 4568381,
+        "event": "ret local"
+      },
+      {
+        "rip": 4568385,
+        "event": "step"
+      },
+      {
+        "rip": 4568389,
+        "event": "step"
+      },
+      {
+        "rip": 4568393,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "forbiddenPatternTags": [
+        "dynamic-api-resolution",
+        "self-modifying-code",
+        "oep-transfer",
+        "anti-debug-probe",
+        "rop-chain"
+      ],
+      "maxRiskScore": 15
+    }
+  },
+  {
+    "id": "challenge-pwn110-1644300525386",
+    "name": "Challenge Replay - pwn110-1644300525386",
+    "description": "Derived from real NEST session logs (pwn110-1644300525386), verdict=suspicious, confidence=40, iterations=5, stop=plateau",
+    "source": {
+      "challenge": "pwn110-1644300525386",
+      "targetPath": "../Challenges/pwn110-1644300525386.pwn110",
+      "sessionLogPath": "D:\\Project\\HexHawk\\nest_tests\\pwn110-1644300525386\\session.log",
+      "resultPath": "D:\\Project\\HexHawk\\nest_tests\\pwn110-1644300525386\\result.json",
+      "fidelity": "derived-from-session"
+    },
+    "steps": [
+      {
+        "rip": 4985411,
+        "event": "step"
+      },
+      {
+        "rip": 4985413,
+        "event": "step"
+      },
+      {
+        "rip": 4985419,
+        "event": "call local"
+      },
+      {
+        "rip": 4985421,
+        "event": "step"
+      },
+      {
+        "rip": 4985425,
+        "event": "ret local"
+      },
+      {
+        "rip": 4985429,
+        "event": "step"
+      },
+      {
+        "rip": 4985433,
+        "event": "step"
+      },
+      {
+        "rip": 4985437,
+        "event": "step"
+      }
+    ],
+    "expectations": {
+      "forbiddenPatternTags": [
+        "dynamic-api-resolution",
+        "self-modifying-code",
+        "oep-transfer",
+        "anti-debug-probe",
+        "rop-chain"
+      ],
+      "maxRiskScore": 25
     }
   },
   {

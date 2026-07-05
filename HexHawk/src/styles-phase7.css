@@ -1488,6 +1488,8 @@
   margin-bottom: 0.4rem;
 }
 .dc-sidebar-stat { font-size: 0.78rem; color: #557; padding: 0.1rem 0.25rem; }
+.dc-next-steps { margin: 0.35rem 0 0; padding-left: 1.1rem; color: #6f8190; font-size: 0.76rem; line-height: 1.45; }
+.dc-next-steps li { margin-bottom: 0.35rem; }
 .dc-vardict { margin-bottom: 1rem; }
 .dc-vardict-header {
   font-size: 0.72rem;
@@ -1644,6 +1646,47 @@
 .dbg-note { color: #334; font-size: 0.78rem; margin-top: 0.5rem; font-style: italic; }
 
 .dbg-content { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+
+.dbg-live-lens {
+  padding: 0.7rem 1rem;
+  background: linear-gradient(90deg, rgba(0,212,255,0.08), rgba(120,70,255,0.04));
+  border-bottom: 1px solid rgba(0,212,255,0.18);
+  flex-shrink: 0;
+}
+.dbg-lens-metrics {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #7a9bb0;
+}
+.dbg-lens-metrics span {
+  padding: 0.18rem 0.45rem;
+  border: 1px solid rgba(0,212,255,0.18);
+  border-radius: 999px;
+  background: rgba(4, 10, 18, 0.42);
+}
+.dbg-pattern-list {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  margin-top: 0.55rem;
+}
+.dbg-pattern-chip {
+  border: 1px solid rgba(255,170,0,0.32);
+  border-radius: 999px;
+  background: rgba(255,170,0,0.08);
+  color: #f0bf57;
+  padding: 0.25rem 0.55rem;
+  font: inherit;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+.dbg-pattern-chip:hover {
+  background: rgba(255,170,0,0.16);
+  border-color: rgba(255,170,0,0.52);
+}
 
 .dbg-section-nav {
   display: flex;

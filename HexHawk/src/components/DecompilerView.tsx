@@ -300,8 +300,33 @@ function downloadText(content: string, filename: string, mimeType: string) {
   URL.revokeObjectURL(url);
 }
 
+export function buildDeepDecompilerNextSteps(result: DecompileResult): string[] {
+  const m = result.maturity;
+  const steps: string[] = [];
+  if (m.instructionSummary.unknown > 0 || m.explicitIrSummary.unknownInstructionCount > 0) {
+    steps.push(`Prioritize unknown-opcode lift at ${m.instructionSummary.unknownAddresses.slice(0, 3).map(formatHex).join(', ') || 'reported unknown addresses'} before trusting nearby pseudocode.`);
+  }
+  if (m.callArgumentRecovery.callCount > 0 && m.callArgumentRecovery.unresolvedCallCount > 0) {
+    steps.push(`Recover call arguments for ${m.callArgumentRecovery.unresolvedCallCount}/${m.callArgumentRecovery.callCount} unresolved call(s); inspect caller register/stack windows first.`);
+  }
+  if (m.cfgSummary.backEdgeCount > 0 || result.logicRegions.length > 0) {
+    steps.push('Review loops and high-confidence logic regions side-by-side with disassembly; challenge-style packers often hide the real branch intent there.');
+  }
+  if (m.cfgSummary.fallbackPartitioningUsed || m.cfgSummary.unreachableBlockCount > 0) {
+    steps.push('Treat CFG shape as provisional; reconcile fallback/unreachable blocks with live STRIKE stepping before exporting conclusions.');
+  }
+  if (result.recoveredStructs.length > 0) {
+    steps.push(`Use recovered struct candidates (${result.recoveredStructs.length}) as naming hints only; verify fields against memory references and NEST evidence.`);
+  }
+  if (steps.length === 0) {
+    steps.push('Good starter slice: compare pseudocode, Raw IR, and live RIP stepping for the selected function before writing conclusions.');
+  }
+  return steps;
+}
+
 function MaturityPanel({ result }: { result: DecompileResult }) {
   const { maturity } = result;
+  const nextSteps = buildDeepDecompilerNextSteps(result);
   return (
     <div className="dc-sidebar-section" data-testid="decompiler-maturity-telemetry">
       <div className="dc-sidebar-title">Maturity telemetry</div>
@@ -324,6 +349,10 @@ function MaturityPanel({ result }: { result: DecompileResult }) {
       <div className="dc-sidebar-stat">
         Quality: {maturity.pseudocodeQuality.uncertainLineCount} uncertain lines · {maturity.pseudocodeQuality.conservativeRewriteCount} safe rewrites
       </div>
+      <div className="dc-sidebar-title">Deep analysis next moves</div>
+      <ol className="dc-next-steps">
+        {nextSteps.map(step => <li key={step}>{step}</li>)}
+      </ol>
       {maturity.cfgSummary.fallbackPartitioningUsed && (
         <div className="dc-warning-item">⚠ CFG fallback partitioning used</div>
       )}
