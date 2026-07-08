@@ -19,6 +19,7 @@
     "strike:benchmark": "tsx scripts/run-strike-benchmark.ts",
     "strike:benchmark:update-baseline": "yarn strike:fixtures && yarn strike:benchmark --stability-runs 3 --max-score-drop 5 --write-baseline",
     "strike:benchmark:ci": "yarn strike:fixtures && tsx scripts/run-strike-benchmark.ts --stability-runs 3 --max-score-drop 5",
+    "challenge:recreate-c": "tsx scripts/recreate-challenges.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
