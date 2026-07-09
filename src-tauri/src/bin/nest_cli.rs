@@ -275,6 +275,141 @@ fn gyre_headless_verdict(_metadata: &cmd_inspect::FileMetadata) -> StrikeReportV
     }
 }
 
+struct OperationalContextRule {
+    id: &'static str,
+    markers: &'static [&'static str],
+    min_hits: usize,
+    description: &'static str,
+}
+
+const OPERATIONAL_CONTEXT_RULES: &[OperationalContextRule] = &[
+    OperationalContextRule {
+        id: "legacy.magic_btrieve.context",
+        markers: &[
+            "mgbtrv.dll",
+            "wbtrv32.dll",
+            "btrieve",
+            "btrv",
+            "get_first",
+            "get_next",
+            "set_owner",
+            "clear_owner",
+        ],
+        min_hits: 1,
+        description: "Magic/Btrieve runtime markers present; treat as legacy data-access context and seek the main application/runtime before structural claims",
+    },
+    OperationalContextRule {
+        id: "legacy.magic_security_file.reference",
+        markers: &["usr_std.eng", "user.ddf", "mgusrdmp", "usrupd.exe"],
+        min_hits: 1,
+        description: "Magic security-file references present; report credential-related findings as redacted candidates until runtime/app callsites confirm field meaning",
+    },
+    OperationalContextRule {
+        id: "ops.database_access.context",
+        markers: &[
+            "sqlite3.dll",
+            "libsqlite3",
+            "odbc32.dll",
+            "sqlsrv32.dll",
+            "libpq.dll",
+            "mysqlclient",
+            "mysqldump",
+            "database=",
+            "dsn=",
+            "jdbc:",
+        ],
+        min_hits: 1,
+        description: "Database/client-access markers present; prioritize schema/config discovery and separate business data access from threat behavior",
+    },
+    OperationalContextRule {
+        id: "ops.legacy_record_store.context",
+        markers: &[".dbf", ".cdx", ".fpt", "foxpro", "vfp9r.dll", "xbase", "paradox", ".mdb"],
+        min_hits: 1,
+        description: "Legacy record-store markers present; consider fixed-record/table heuristics, dictionary files, and version diffs before asserting semantics",
+    },
+    OperationalContextRule {
+        id: "ops.managed_runtime.context",
+        markers: &[
+            "mscoree.dll",
+            "clr.dll",
+            "system.runtime",
+            "java/lang/",
+            "jvm.dll",
+            "python.dll",
+            "pyinstaller",
+            "electron.asar",
+            "node.dll",
+        ],
+        min_hits: 1,
+        description: "Managed/packaged runtime markers present; pivot to manifest, bundle, bytecode, or package-layer analysis before low-level native conclusions",
+    },
+    OperationalContextRule {
+        id: "ops.installer_updater.context",
+        markers: &[
+            "inno setup",
+            "nullsoft",
+            "nsis",
+            "squirrel",
+            "msiexec",
+            "update.exe",
+            "autoupdate",
+            "installer",
+            "setup.exe",
+        ],
+        min_hits: 1,
+        description: "Installer/updater markers present; distinguish deployment mechanics from payload behavior and preserve package custody evidence",
+    },
+    OperationalContextRule {
+        id: "ops.credential_material.candidate",
+        markers: &[
+            "password",
+            "passwd",
+            "pwd=",
+            "credential",
+            "secret",
+            "api_key",
+            "apikey",
+            "token=",
+            "bearer ",
+            "oauth",
+        ],
+        min_hits: 1,
+        description: "Credential-adjacent markers present; emit labels/offsets only by default and redact values unless explicit reveal approval exists",
+    },
+    OperationalContextRule {
+        id: "ops.report_template.context",
+        markers: &["report", "template", "operator", "e-mail address", "customer status", "form", "ledger"],
+        min_hits: 2,
+        description: "Report/template vocabulary present; avoid mistaking UI/report labels for stored secrets or executable behavior",
+    },
+];
+
+fn operational_context_corpus(
+    metadata: &cmd_inspect::FileMetadata,
+    strings: &[String],
+) -> Vec<String> {
+    let mut corpus: Vec<String> = strings.iter().map(|s| s.to_ascii_lowercase()).collect();
+    corpus.extend(metadata.imports.iter().flat_map(|import| {
+        [
+            import.name.to_ascii_lowercase(),
+            import.library.to_ascii_lowercase(),
+        ]
+    }));
+    corpus.extend(metadata.pe_imports.iter().flat_map(|import| {
+        [
+            import.name.clone().unwrap_or_default().to_ascii_lowercase(),
+            import.dll.to_ascii_lowercase(),
+            import
+                .ordinal
+                .map(|ordinal| format!("{}#{}", import.dll.to_ascii_lowercase(), ordinal))
+                .unwrap_or_default(),
+        ]
+    }));
+    corpus.extend(metadata.exports.iter().map(|export| export.name.to_ascii_lowercase()));
+    corpus.retain(|entry| !entry.is_empty());
+    corpus
+}
+
 fn collect_headless_signals(
     metadata: &cmd_inspect::FileMetadata,
     strings: &[String],
@@ -297,6 +432,26 @@ fn collect_headless_signals(
             weight: 0.3,
         });
     }
+
+    let corpus = operational_context_corpus(metadata, strings);
+    for rule in OPERATIONAL_CONTEXT_RULES {
+        let hit_count = rule
+            .markers
+            .iter()
+            .filter(|marker| corpus.iter().any(|entry| entry.contains(**marker)))
+            .count();
+        if hit_count >= rule.min_hits {
+            signals.push(StrikeSignal {
+                id: rule.id.to_string(),
+                description: format!(
+                    "{} ({} marker family hit(s)); advisory workflow context only, not standalone GYRE verdict evidence",
+                    rule.description, hit_count
+                ),
+                weight: 0.1,
+            });
+        }
+    }
+
     signals
 }
 
@@ -851,5 +1006,76 @@ mod tests {
 
         let _ = fs::remove_file(fixture_path);
         let _ = fs::remove_file(out_path);
+    }
+
+    fn minimal_metadata() -> cmd_inspect::FileMetadata {
+        cmd_inspect::FileMetadata {
+            file_type: "PE/MZ".to_string(),
+            architecture: "x86".to_string(),
+            entry_point: 0,
+            file_size: 1024,
+            image_base: 0,
+            sections: Vec::new(),
+            imports_count: 0,
+            exports_count: 0,
+            symbols_count: 0,
+            imports: Vec::new(),
+            pe_imports: Vec::new(),
+            exports: Vec::new(),
+            sha256: "0".repeat(64),
+            sha1: "0".repeat(40),
+            md5: "0".repeat(32),
+        }
+    }
+
+    #[test]
+    fn headless_signals_flag_magic_btrieve_context_without_changing_verdict() {
+        let metadata = minimal_metadata();
+        let strings = vec![
+            "MGbtrv.dll".to_string(),
+            "wbtrv32.dll".to_string(),
+            "usr_std.eng".to_string(),
+        ];
+
+        let signals = collect_headless_signals(&metadata, &strings);
+        let ids: Vec<&str> = signals.iter().map(|s| s.id.as_str()).collect();
+
+        assert!(ids.contains(&"legacy.magic_btrieve.context"));
+        assert!(ids.contains(&"legacy.magic_security_file.reference"));
+        assert_eq!(gyre_headless_verdict(&metadata).classification, "unknown");
+    }
+
+    #[test]
+    fn headless_signals_map_general_operational_contexts_without_verdict_escalation() {
+        let mut metadata = minimal_metadata();
+        metadata.imports_count = 2;
+        metadata.imports = vec![
+            cmd_inspect::ImportEntry {
+                name: "SQLConnectW".to_string(),
+                library: "ODBC32.dll".to_string(),
+            },
+            cmd_inspect::ImportEntry {
+                name: "CorExeMain".to_string(),
+                library: "mscoree.dll".to_string(),
+            },
+        ];
+        let strings = vec![
+            "Database=customer.db;DSN=legacy".to_string(),
+            "Operator Report Template".to_string(),
+            "password label present but value is not emitted".to_string(),
+            "electron.asar".to_string(),
+            "Inno Setup installer".to_string(),
+        ];
+
+        let signals = collect_headless_signals(&metadata, &strings);
+        let ids: Vec<&str> = signals.iter().map(|s| s.id.as_str()).collect();
+
+        assert!(ids.contains(&"imports.present"));
+        assert!(ids.contains(&"ops.database_access.context"));
+        assert!(ids.contains(&"ops.managed_runtime.context"));
+        assert!(ids.contains(&"ops.installer_updater.context"));
+        assert!(ids.contains(&"ops.credential_material.candidate"));
+        assert!(ids.contains(&"ops.report_template.context"));
+        assert_eq!(gyre_headless_verdict(&metadata).classification, "unknown");
     }
 }
