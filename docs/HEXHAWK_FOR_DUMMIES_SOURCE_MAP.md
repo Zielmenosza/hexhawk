@@ -1,8 +1,8 @@
 # HexHawk for Dummies Source Map
 
-Date: 2026-06-01
+Date: 2026-07-09
 
-This map ties the main claims in `HEXHAWK_FOR_DUMMIES.md` and `HEXHAWK_FOR_DUMMIES_CAPABILITY_INVENTORY.md` to repository evidence inspected for this publication.
+This map ties the main claims in `HEXHAWK_FOR_DUMMIES.md`, the consumer/product refresh, and `HEXHAWK_FOR_DUMMIES_CAPABILITY_INVENTORY.md` to repository evidence inspected for this publication.
 
 ## Product status and authority boundaries
 
@@ -108,3 +108,12 @@ The screenshot pass created `scripts/capture_hexhawk_screenshots.py` for manual 
 
 These screenshots are visual examples unless a row explicitly states otherwise. Browser/dev-mode captures must not be used as packaged native Tauri/WebView2 proof, installed-artifact export parity proof, or release-readiness evidence.
 
+
+## 2026-07-09 consumer/product refresh source notes
+
+| Claim | Source references |
+| --- | --- |
+| The For Dummies guide is comprehensive for the current buyer/tester/operator story, while release proof remains gated | `docs/HEXHAWK_FOR_DUMMIES.md`, `docs/TESTER_RELEASE_STATUS.md`, `docs/HIGH_ASSURANCE_GUIDE.md` |
+| The plain-English product pattern is input, process, output, when-to-use, and what-not-to-claim | `docs/HEXHAWK_FOR_DUMMIES.md`, `README.md`, `site-build/index.html`, `site-build/features/index.html`, `site-build/docs/index.html` |
+| Competitive positioning should be job-fit, not a universal decompiler/debugger replacement claim | `competitive_landscape.html`, `site-build/competitive_landscape.html`, `docs/INVESTOR_ONE_PAGER.md`, `docs/INVESTOR_DILIGENCE_BRIEF.md` |
+| The website now exposes docs and compare paths for buyer-friendly evaluation | `site-build/index.html`, `site-build/features/index.html`, `site-build/products/index.html`, `site-build/docs/index.html` |

@@ -1,12 +1,12 @@
 # HexHawk
 
-HexHawk is a native desktop reverse-engineering and binary-intelligence platform built with Rust, Tauri, React, and TypeScript.
+HexHawk is a native desktop reverse-engineering and binary-intelligence platform built with Rust, Tauri, React, and TypeScript. In plain English: it helps a tester open a local binary, see what facts and code evidence exist, keep helper output labelled, and export a reviewable report.
 
 It combines local static analysis, disassembly, decompiler assistance, debugger/trace evidence, signature correlation, NEST evidence convergence, GYRE verdict synthesis, and CREST-style reporting in one analyst workflow.
 
-## Current State (2026-06-26 Function Intelligence source candidate)
+## Current State (2026-07-09 consumer/product docs refresh)
 
-HexHawk is currently a validated source candidate on `feature/re-workbench-core-next` after the v1.30 Function Intelligence integration and v1.31 byte_counter clippy fix. It is not yet a freshly packaged unsigned deployment candidate from this source state, not a publicly trusted signed release, not updater-ready, and not enterprise/procurement-ready distribution.
+HexHawk is currently positioned as a validated Function Intelligence source candidate plus controlled early-access workbench after the v1.30 Function Intelligence integration, v1.31 byte_counter clippy fix, and 2026-07-09 consumer/product documentation refresh. It is not yet a freshly packaged unsigned deployment candidate from this source state, not a publicly trusted signed release, not updater-ready, and not enterprise/procurement-ready distribution.
 
 Current source validation from this session:
 
@@ -36,6 +36,17 @@ Function Intelligence and Function Notebook are advisory evidence surfaces. GYRE
 ### Historical artifact boundary
 
 Older June 20/21 release evidence remains useful provenance, but it does not prove the current v1.30/v1.31 source state as a packaged candidate unless a fresh release worktree rebuild, artifact hashes, signing checks, installer smoke, and Function Notebook/export smoke are completed for the exact artifacts.
+
+
+## Product explanation for new evaluators
+
+- Input: a local binary such as an EXE, DLL, SYS, BIN, or supported sample path.
+- Process: HexHawk records identity facts, shows strings/imports/code/function evidence, keeps helper output labelled, and organizes supporting evidence around GYRE verdict authority.
+- Output: a report or export package with source labels, uncertainty, and limits.
+- Best fit: reviewable local reverse-engineering and evidence handoff.
+- Not a fit for: one-click safety claims, unreviewed AI verdicts, automatic sandbox detonation, or procurement/public-release trust before the exact artifact gates pass.
+
+Start with `docs/HEXHAWK_FOR_DUMMIES.md` for the comprehensive beginner/buyer guide and `competitive_landscape.html` for job-fit positioning against mature RE tools.
 
 ## Engine Stack and Authority Boundaries
 

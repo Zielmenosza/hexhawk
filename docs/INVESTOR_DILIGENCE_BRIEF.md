@@ -1,6 +1,6 @@
 # HexHawk Investor Diligence Brief
 
-Date: 2026-06-26
+Date: 2026-07-09
 
 ## Executive Summary
 
@@ -15,6 +15,20 @@ This is appropriate for engineering, investor, and board demonstration as a sour
 - Backend/commands: Rust.
 - CLI: `nest_cli` for headless/runtime evidence operations.
 - Packaging: Windows MSI and NSIS artifacts.
+
+
+## Product-Friendly Buyer Narrative
+
+The simplest buyer narrative is: “HexHawk turns a local binary into a reviewable evidence package.” A buyer should not need to decode internal engine names first. The public/product explanation should lead with:
+
+- what file or artifact the user opens;
+- what evidence HexHawk extracts or organizes;
+- which module is responsible for verdict authority;
+- which helper outputs are advisory;
+- what report/export the buyer can hand to a reviewer;
+- what release/trust gates are still not satisfied.
+
+This keeps the product friendlier than traditional RE jargon while preserving the high-assurance boundary that AI or helper layers do not own security truth.
 
 ## Trust Model
 

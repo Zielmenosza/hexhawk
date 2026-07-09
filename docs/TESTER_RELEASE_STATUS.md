@@ -1,6 +1,6 @@
 # HexHawk Tester Release Status
 
-Date: 2026-06-26
+Date: 2026-07-09
 
 ## Recommendation
 
@@ -11,6 +11,11 @@ Unsigned deployment candidate from the current source state: PENDING. A fresh re
 Controlled external signed-tester gate: NO. Public-trusted Authenticode custody is not proven, updater metadata has not been validated against current exact artifacts, and signed-artifact native GUI/export parity has not been run.
 
 Public release: NO.
+
+
+## Documentation and Website Status
+
+Consumer/product documentation has been refreshed to make the product stranger-readable: what HexHawk does, what goes in, what comes out, when to use each module, when not to use it, and how HexHawk compares by job-to-be-done against mature reversing tools. This is copy/readiness work only; it does not by itself satisfy the unsigned deployment, signing, updater, installer-smoke, or external-tester gates below.
 
 ## Current Source State
 

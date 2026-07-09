@@ -1,10 +1,17 @@
 # HexHawk High-Assurance Guide
 
-Date: 2026-06-26
+Date: 2026-07-09
 
 ## Goal
 
 High-assurance HexHawk workflows prioritize deterministic evidence, explicit policy gates, and replayable exports over convenience or AI-driven shortcuts.
+
+
+## Consumer-safe explanation
+
+High-assurance mode is the “show your work” version of HexHawk. It should make clear what file was reviewed, what evidence was collected, which engine produced each statement, what GYRE decided, what NEST grouped, whether AETHERFRAME/Forge or NEXUS helped with wording/context, and what remains unproven.
+
+For buyers and testers, the promise is not “trust the AI.” The promise is “trust the chain of custody enough to review it”: input identity, deterministic evidence, labelled helper output, replayable exports, and visible stop conditions.
 
 ## Required Behavior
 

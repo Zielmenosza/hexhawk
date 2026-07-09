@@ -1,10 +1,10 @@
 # HexHawk Investor One-Pager
 
-Date: 2026-06-26
+Date: 2026-07-09
 
 ## What HexHawk Is
 
-HexHawk is a local-first desktop reverse-engineering and binary-intelligence platform for malware analysts, incident responders, SOC teams, and security researchers.
+HexHawk is a local-first desktop reverse-engineering and binary-intelligence platform for malware analysts, incident responders, SOC teams, security researchers, and technical evaluators who need evidence they can explain to another person.
 
 It helps analysts inspect binaries, extract evidence, reason over disassembly/decompiler views, correlate signals, and export structured reports without relying on opaque cloud detonation or unverifiable AI claims.
 
@@ -32,6 +32,18 @@ Latest source validation proves:
 - Good for: board demos, investor demos, controlled source review, technical diligence.
 - Not yet for the stronger controlled external signed-tester gate: real public-trusted Authenticode custody, signed artifacts, hosted metadata validation, and exact signed-artifact native GUI/export proof are still required.
 - Not yet for: broad public download, procurement-ready enterprise rollout, automatic updater distribution.
+
+
+## Consumer/Product Wedge
+
+HexHawk should be explained as a product, not a pile of engine names:
+
+1. **Input:** open a suspicious or unknown binary locally.
+2. **Evidence:** inspect hashes, metadata, imports, strings, code, function notes, signatures, and approved runtime observations.
+3. **Authority:** GYRE owns classification; NEST organizes evidence; helper/AI layers remain labelled.
+4. **Output:** export a report that a manager, reviewer, or second analyst can follow.
+
+The commercial wedge is evidence-to-report continuity with explicit authority boundaries. Mature RE tools remain stronger for broad decompiler/debugger ecosystem depth; HexHawk should win when the buyer cares about local custody, labelled evidence, uncertainty, and handoff quality.
 
 ## Differentiation
 

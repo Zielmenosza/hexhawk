@@ -1,7 +1,7 @@
 # HexHawk for Dummies Capability Inventory
 
-Date: 2026-06-01
-Scope: repository-grounded capability inventory for `docs/HEXHAWK_FOR_DUMMIES.md`.
+Date: 2026-07-09
+Scope: repository-grounded capability inventory for `docs/HEXHAWK_FOR_DUMMIES.md`, refreshed with the 2026-07-09 buyer/product explanation pass.
 
 This inventory was prepared from the current source tree, repository docs, command registration, package manifests, and a small `nest_cli` smoke command. It does not treat historical validation claims as newly rerun tests unless explicitly stated.
 
@@ -51,3 +51,17 @@ HexHawk is documented as an internal-tester Windows build candidate. It is not y
 - NEST schema docs include a design-only status line; code and tests now implement parts of the lifecycle. The publication presents NEST export as supported only with validation caveats.
 - Agent/MCP patch and signal paths are proposal/approval surfaces, not autonomous mutation paths.
 - Dynamic behavior/debugger workflows are documented as authorized analyst workflows, not malware detonation.
+
+
+## Consumer/product capability summary
+
+For buyer-facing material, capabilities should be grouped by job rather than acronym:
+
+- **Open and identify:** file picker/path input, hashes, type, metadata, sections, imports, strings.
+- **Inspect code:** disassembly, CFG, ProgramAnalysis, TALON pseudocode, Function Intelligence.
+- **Correlate evidence:** ECHO signatures, STRIKE runtime notes, analyst notes, plugins, binary diff where appropriate.
+- **Decide with boundaries:** GYRE classification/base confidence remains authoritative; NEST organizes supporting evidence.
+- **Improve with disclosure:** AETHERFRAME/Forge and NEXUS can help with wording/context only when labelled and policy-bounded.
+- **Handoff:** CREST/report exports preserve source labels, uncertainty, and remaining proof gaps.
+
+This summary is documentation/product language; it does not add new runtime proof beyond the inventory rows and release gates below.

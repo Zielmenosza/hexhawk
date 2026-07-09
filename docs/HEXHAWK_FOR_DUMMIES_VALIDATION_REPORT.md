@@ -1,12 +1,13 @@
 # HexHawk for Dummies Validation Report
 
-Date: 2026-06-01
+Date: 2026-07-09
 
 This report documents validation performed for:
 
 - `docs/HEXHAWK_FOR_DUMMIES_CAPABILITY_INVENTORY.md`
 - `docs/HEXHAWK_FOR_DUMMIES.md`
 - `docs/HEXHAWK_FOR_DUMMIES_SOURCE_MAP.md`
+- 2026-07-09 consumer/product website and competitive-landscape refresh
 
 ## Repository inspection performed
 
@@ -241,3 +242,41 @@ Remaining unproven:
 - Typed NEST evidence bundle export parity.
 - Native SmartScreen warning UX from a specific installed artifact on a target endpoint policy.
 
+
+## 2026-07-09 consumer/product validation update
+
+Files intentionally refreshed in this update:
+
+- `docs/HEXHAWK_FOR_DUMMIES.md`
+- `docs/HIGH_ASSURANCE_GUIDE.md`
+- `docs/INVESTOR_ONE_PAGER.md`
+- `docs/INVESTOR_DILIGENCE_BRIEF.md`
+- `docs/TESTER_RELEASE_STATUS.md`
+- `docs/HEXHAWK_FOR_DUMMIES_SOURCE_MAP.md`
+- `docs/HEXHAWK_FOR_DUMMIES_CAPABILITY_INVENTORY.md`
+- `docs/HEXHAWK_FOR_DUMMIES_ENGINEERING_REVIEW.md`
+- `README.md`
+- `competitive_landscape.html`
+- `site-build/index.html`
+- `site-build/features/index.html`
+- `site-build/products/index.html`
+- `site-build/docs/index.html`
+- `site-build/competitive_landscape.html`
+
+Validation performed for this update:
+
+```bash
+python - <<'PY'
+from html.parser import HTMLParser
+from pathlib import Path
+for rel in ['site-build/index.html','site-build/features/index.html','site-build/products/index.html','site-build/docs/index.html','competitive_landscape.html','site-build/competitive_landscape.html']:
+    HTMLParser().feed(Path(rel).read_text(encoding='utf-8'))
+    print('html-ok', rel)
+PY
+
+python - <<'PY'
+# local site-build href target check
+PY
+```
+
+Observed results: HTML parser checks passed for the edited website/competitive pages, and the local `site-build` href check reported `missing_count 0`. No source build, packaged installer smoke, signing verification, updater verification, or native GUI parity was rerun for this copy/docs update.

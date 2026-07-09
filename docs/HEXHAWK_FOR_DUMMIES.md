@@ -1,9 +1,24 @@
 # HexHawk for Dummies
 
-A Practical Guide to Binary Intelligence, Reverse Engineering, Evidence Workflows, Configuration, Plugins, Reports, and Advanced Jobs
+A Practical Buyer and Operator Guide to Binary Intelligence, Reverse Engineering, Evidence Workflows, Configuration, Plugins, Reports, and Advanced Jobs
 
-Date: 2026-06-26
-Audience: intelligent beginners, internal testers, technical operators, and analysts learning HexHawk.
+Date: 2026-07-09
+Audience: first-time technical buyers, internal testers, security operators, malware analysts, incident responders, and analysts learning HexHawk.
+
+
+## Is this guide comprehensive?
+
+Yes for the current product story and tester workflow: it covers what HexHawk is, who should use it, what goes in, what comes out, how the main modules fit together, how to operate safely, how to export reports, how to verify release artifacts, and what claims remain gated.
+
+Comprehensive does not mean finished forever. Treat this guide as the public-facing acceptance checklist for each release:
+
+- If a buyer asks “what do I upload or open?”, point them to **Input** sections.
+- If a tester asks “what button do I click next?”, point them to the first-analysis flow and GUI workflow.
+- If a reviewer asks “why should I trust the output?”, point them to GYRE, NEST, CREST, and trust verification.
+- If a security leader asks “where does this fit beside IDA, Ghidra, Binary Ninja, Cutter, x64dbg, or a sandbox?”, point them to the competitive landscape and the “when to use / when not to use” sections.
+- If a release owner asks “can we publish this broadly?”, point them to the release-status and high-assurance gates.
+
+For consumer/product clarity, every module should be explainable in this pattern: **What it is → Input → What HexHawk does → Output → When to use it → What it does not prove**.
 
 ## Quick Start (One Page)
 
@@ -81,6 +96,23 @@ What this means: HexHawk can help you investigate a suspicious file and explain 
 What not to assume: a clean-looking result is not a lifetime safety certificate, a suspicious result is not proof of malware, and an AI explanation is not a verdict.
 
 
+
+## Product map in plain English
+
+| Product/module | Plain-English job | Input | Output | Use it when | Do not use it as |
+| --- | --- | --- | --- | --- | --- |
+| HexHawk workbench | A local desk for inspecting unknown programs and packaging evidence | EXE, DLL, SYS, BIN, or supported binary path | File facts, code views, function evidence, GYRE verdict, NEST groups, CREST report | You need a reviewable reverse-engineering workflow | A guarantee that a file is safe |
+| GYRE | The classification authority | Evidence gathered from the file/workflow | Verdict and base confidence | You need the official HexHawk classification source | A substitute for reviewing supporting evidence |
+| NEST | The evidence organizer | Hashes, observations, conflicting signals, notes, GYRE-linked results | Grouped evidence, convergence notes, bundle/export context | Signals are messy or a handoff needs structure | A second verdict engine |
+| TALON | Readable-code helper | Disassembly, control flow, imports, function context | Pseudocode-style reconstruction with limits | Assembly is too slow to read directly | Exact original source code |
+| STRIKE | Runtime-evidence organizer | Approved trace/debugger observations | Timelines, behavioral notes, runtime evidence links | You already have controlled runtime observations | A cloud sandbox or automatic detonation promise |
+| ECHO | Signature/correlation helper | Code/data patterns or known indicators | Exact/fuzzy matches to review | A match may explain a familiar library or malware-family clue | Final malware proof by itself |
+| AETHERFRAME/Forge | Bounded improvement and lineage layer | Draft reports, confidence context, review budgets/policies | Suggested refinements, lineage metadata, proof-limit notes | You want safer wording, clearer evidence, or bounded confidence uplift | Verdict authority or unrestricted AI mutation |
+| NEXUS | Analyst assistant layer | User questions, selected evidence, workflow context | Plain-English help, navigation, draft notes | You want help understanding or writing about evidence | Unreviewed security truth |
+| CREST | Report packager | File facts, GYRE result, NEST evidence, notes, labelled helper output | Handoff report/export package | Another person needs to review or repeat your work | Independent proof disconnected from source evidence |
+
+Buyer summary: HexHawk is strongest when the deliverable is not just “I looked at a binary,” but “here is the file identity, the evidence path, the labelled helper output, the verdict authority, and the remaining uncertainty.”
+
 ## About the screenshots
 
 The images in this guide are visual aids for beginners. This revision replaces the two previous TODO placeholders with source-backed evidence cards. UI labels can vary slightly by version, tier, and build mode.
@@ -121,7 +153,7 @@ A screenshot is not verdict provenance. For audit or high-assurance work, rely o
 
 ## What HexHawk is
 
-HexHawk is a native desktop reverse-engineering and binary-intelligence workbench built with Rust, Tauri, React, and TypeScript. It brings common analyst tasks into one local workflow:
+HexHawk is a native desktop reverse-engineering and binary-intelligence workbench built with Rust, Tauri, React, and TypeScript. In consumer terms: it is a local app for opening an unknown program, seeing the facts and code evidence, keeping helper/AI output labelled, and exporting a report another person can review. It brings common analyst tasks into one local workflow:
 
 - open a local file
 - inspect metadata, hashes, sections, imports, and exports
@@ -142,7 +174,7 @@ HexHawk is for malware analysts, reverse engineers, incident responders, SOC eng
 
 ## What problems it solves
 
-HexHawk reduces tool switching. Instead of using one tool for strings, another for disassembly, another for notes, another for reports, and another for evidence packaging, HexHawk gives a single analyst cockpit.
+HexHawk reduces tool switching and makes the analysis handoff easier to trust. Instead of using one tool for strings, another for disassembly, another for notes, another for reports, and another for evidence packaging, HexHawk gives a single analyst cockpit.
 
 ## What it does not promise
 
@@ -157,7 +189,7 @@ HexHawk does not claim to:
 
 ## Current release posture
 
-Repository docs now describe HexHawk as a validated Function Intelligence source candidate until a fresh deployment gate proves exact packaged artifacts. It is still not a broadly trusted public release. Public-trusted signing, updater readiness, packaged native GUI proof, and Function Notebook export proof must be checked for the exact build you intend to share.
+Repository docs now describe HexHawk as a validated Function Intelligence source candidate and controlled early-access workbench until a fresh deployment gate proves exact packaged artifacts. It is still not a broadly trusted public release. Public-trusted signing, updater readiness, packaged native GUI proof, and Function Notebook export proof must be checked for the exact build you intend to share.
 
 Current source validation has passed Rust tests, Rust clippy, TypeScript, full frontend tests, and production frontend build. That is source proof, not installer proof.
 
@@ -1289,3 +1321,31 @@ Operator: ______________________________
 - [ ] Trust verdict: ACCEPT / CONDITIONAL / REJECT.
 - [ ] Exceptions documented (for example: untrusted-root internal signing).
 - [ ] Reviewer sign-off captured.
+
+---
+
+# Part 21: Buyer / Evaluator FAQ
+
+## Is HexHawk a replacement for IDA Pro, Ghidra, Binary Ninja, Cutter, or x64dbg?
+
+Not as a universal decompiler/debugger replacement today. Those tools are mature reverse-engineering suites with deep ecosystems. HexHawk's sharper wedge is evidence-to-report continuity: local file facts, function evidence, labelled helper output, GYRE verdict authority, NEST evidence grouping, and CREST handoff packages.
+
+## Is HexHawk a malware sandbox?
+
+No. STRIKE can organize approved runtime/debugger observations, but HexHawk should not be described as a cloud detonation sandbox or as something that automatically executes malware for you.
+
+## What should a new tester do first?
+
+Use a known safe sample on a controlled machine, record hashes, inspect file facts, review strings/imports/functions, check GYRE and NEST labels, export a report, and write down what remains unknown.
+
+## What does a good HexHawk output look like?
+
+A good output says: this was the input file; these are the hashes and identity facts; these observations came from static analysis, function evidence, runtime notes, signatures, or analyst notes; GYRE owns the verdict; NEST organized supporting evidence; AETHERFRAME/NEXUS comments are advisory; these limits remain.
+
+## What should sales or docs never imply?
+
+Do not imply one-click safety, public-release readiness, automatic updater readiness, procurement-ready signing, sandbox detonation, exploit proof, or AI-owned classification unless exact current evidence proves it.
+
+## What makes the guide complete enough to publish?
+
+It is complete enough when a stranger can answer these questions without internal tribal knowledge: what HexHawk does, who it is for, what file/input it needs, what output it produces, which module decides what, how to verify a package, what remains gated, and when another tool category may be a better fit.

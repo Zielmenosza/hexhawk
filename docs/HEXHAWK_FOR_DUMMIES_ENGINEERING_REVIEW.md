@@ -1,10 +1,10 @@
 # HexHawk for Dummies Engineering Review
 
-Date: 2026-06-01
+Date: 2026-07-09
 
 ## Bottom line
 
-The guide makes sense as a beginner-facing HexHawk orientation manual and as an engineering acceptance-test outline. It explains the product in the right mental model: load a file, collect evidence, inspect strings/disassembly/CFG, review GYRE-linked verdict surfaces, optionally use NEST/AETHERFRAME/AI within their boundaries, then package evidence through reports.
+The guide now makes sense as a beginner-facing, buyer-facing, and operator-facing HexHawk orientation manual as well as an engineering acceptance-test outline. It explains the product in the right mental model: load a file, collect evidence, inspect strings/disassembly/CFG, review GYRE-linked verdict surfaces, optionally use NEST/AETHERFRAME/AI within their boundaries, then package evidence through reports.
 
 HexHawk appears coherent from the guide and the inspected source/screenshot evidence, but the guide also exposes the remaining product-validation gap: most current screenshots are browser/dev-mode orientation captures, not native packaged Tauri/WebView2 proof. Therefore, the guide should be treated as a strong onboarding and engineering checklist, not as proof that every workflow is production-ready in a signed/native artifact.
 
@@ -118,3 +118,9 @@ A Word version with embedded images was generated at:
 `docs/HEXHAWK_FOR_DUMMIES.docx`
 
 The export embeds local images into the DOCX package rather than relying on external Markdown image links.
+
+## 2026-07-09 comprehensiveness update
+
+The refreshed guide is comprehensive for current documentation and website positioning because it now answers the main outside-reader questions: what HexHawk is, who it is for, what input it takes, what output it produces, which module decides what, how helper/AI output is bounded, how reports are handed off, how artifacts are verified, and where mature RE tools remain stronger.
+
+It is still not a substitute for release validation. The engineering acceptance gap remains: native packaged workflow proof, exact-artifact export parity, signing/updater trust, and external-tester gates must be rerun before stronger public-release claims.
