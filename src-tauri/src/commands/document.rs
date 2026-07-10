@@ -378,6 +378,7 @@ pub fn analyze_office(path: String) -> OfficeAnalysisResult {
 }
 
 const MAX_VBA_PROJECT_BYTES: u64 = 16 * 1024 * 1024;
+const MAX_OLE2_VBA_STREAM_BYTES: u64 = 16 * 1024 * 1024;
 
 /// OOXML: unzip → find vbaProject.bin → treat as OLE2
 fn analyze_ooxml(path: &str) -> OfficeAnalysisResult {
@@ -524,8 +525,31 @@ fn analyze_ole2(path: &str) -> OfficeAnalysisResult {
                 Ok(s) => s,
                 Err(_) => continue,
             };
-            if stream.read_to_end(&mut buf).is_err() {
-                continue;
+            if stream.len() > MAX_OLE2_VBA_STREAM_BYTES {
+                return OfficeAnalysisResult {
+                    modules: vec![],
+                    signals: vec![],
+                    parse_error: Some(format!(
+                        "OLE2 VBA stream exceeds maximum allowed size of {} MB ({} bytes).",
+                        MAX_OLE2_VBA_STREAM_BYTES / (1024 * 1024),
+                        stream.len()
+                    )),
+                };
+            }
+            let mut limited = stream.take(MAX_OLE2_VBA_STREAM_BYTES + 1);
+            match limited.read_to_end(&mut buf) {
+                Ok(_) if buf.len() as u64 <= MAX_OLE2_VBA_STREAM_BYTES => {}
+                Ok(_) => {
+                    return OfficeAnalysisResult {
+                        modules: vec![],
+                        signals: vec![],
+                        parse_error: Some(format!(
+                            "OLE2 VBA stream exceeds maximum allowed size of {} MB.",
+                            MAX_OLE2_VBA_STREAM_BYTES / (1024 * 1024)
+                        )),
+                    };
+                }
+                Err(_) => continue,
             }
         }
 
@@ -691,6 +715,28 @@ mod tests {
         assert!(
             error.contains("VBA project exceeds maximum allowed size"),
             "expected OOXML VBA size guard, got: {error:?}"
+        );
+    }
+
+    #[test]
+    fn analyze_ole2_rejects_oversized_vba_module_stream_before_reading_into_memory() {
+        let path = std::env::temp_dir().join("hexhawk_oversized_ole2_vba_stream.doc");
+        {
+            let mut comp = cfb::create(&path).expect("create ole fixture");
+            comp.create_storage_all("/VBA").expect("create vba storage");
+            let mut stream = comp.create_stream("/VBA/OversizedModule").expect("create vba stream");
+            let chunk = vec![b'A'; 64 * 1024];
+            for _ in 0..257 {
+                stream.write_all(&chunk).expect("write oversized ole stream");
+            }
+        }
+
+        let result = analyze_office(path.to_string_lossy().to_string());
+        let error = result.parse_error.unwrap_or_default();
+        assert!(
+            error.contains("OLE2 VBA stream exceeds maximum allowed size"),
+            "expected OLE2 stream size guard, got: {error:?}, modules={}",
+            result.modules.len()
         );
     }
 }
