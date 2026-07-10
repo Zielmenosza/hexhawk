@@ -1,0 +1,31 @@
+{
+  "commit": "483e92a5b19c1eb2f75bd03601b4aa1c817ba85d",
+  "fixtures": [
+    {
+      "BadByteRate": 0.0,
+      "CFGEdgeCount": 1,
+      "CFGNodeCount": 2,
+      "DecodeSuccessRate": 1.0,
+      "byte_count": 7,
+      "name": "x86_nop_mov_ret"
+    },
+    {
+      "BadByteRate": 0.0,
+      "CFGEdgeCount": 2,
+      "CFGNodeCount": 3,
+      "DecodeSuccessRate": 1.0,
+      "byte_count": 6,
+      "name": "x86_conditional_branch_ret"
+    },
+    {
+      "BadByteRate": 0.0,
+      "CFGEdgeCount": 2,
+      "CFGNodeCount": 2,
+      "DecodeSuccessRate": 1.0,
+      "byte_count": 6,
+      "name": "x86_call_ret"
+    }
+  ],
+  "generated_at": "2026-07-09T21:22:09.946265+00:00",
+  "schema": "hexhawk.analysis_baseline.v1"
+}

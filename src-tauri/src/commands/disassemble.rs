@@ -116,7 +116,7 @@ fn disasm_robust(
     slice: &[u8],
     base_addr: u64,
     limit: usize,
-) -> (Vec<DisassembledInstruction>, usize) {
+) -> (Vec<DisassembledInstruction>, usize, usize) {
     let mut result = Vec::with_capacity(limit);
     let mut pos: usize = 0;
     let mut bad_bytes: usize = 0;
@@ -150,7 +150,7 @@ fn disasm_robust(
         }
     }
 
-    (result, bad_bytes)
+    (result, bad_bytes, pos)
 }
 
 #[tauri::command]
@@ -201,16 +201,14 @@ pub fn disassemble_file_range(
 
     let limit = max_instructions.unwrap_or(256) as usize;
 
-    let (instructions, bad_bytes) = disasm_robust(&cs, slice, effective_offset as u64, limit);
+    let (instructions, bad_bytes, consumed_bytes) = disasm_robust(&cs, slice, effective_offset as u64, limit);
     let warnings = architecture_warnings(arch_name);
 
-    let next_byte_offset = instructions
-        .last()
-        .map(|ins| {
-            // For .byte directives, advance by 1
-            if ins.is_bad { ins.address + 1 } else { ins.address + 1 } // approximate; exact for good insns
-        })
-        .unwrap_or(end_file_offset);
+    let next_byte_offset = if instructions.is_empty() {
+        end_file_offset
+    } else {
+        effective_offset as u64 + consumed_bytes as u64
+    };
 
     let has_more = next_byte_offset < end_file_offset && instructions.len() == limit;
 
@@ -326,5 +324,23 @@ mod tests {
         assert_eq!(arch, "x86-64");
         assert!(!fallback);
         assert!(architecture_warnings(arch).is_empty());
+    }
+
+    #[test]
+    fn x86_pagination_advances_by_decoded_instruction_length() {
+        let path = std::env::temp_dir().join("hexhawk-x86-pagination.bin");
+        // NOP; MOV EAX,1 (5 bytes); RET. The second page must resume at offset 6,
+        // not offset 2, otherwise it starts in the middle of the MOV immediate.
+        fs::write(&path, [0x90, 0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3]).expect("write fixture");
+        let result = disassemble_file_range(path.to_string_lossy().to_string(), 0, 7, Some(2)).expect("disassemble");
+        let _ = fs::remove_file(path);
+
+        assert_eq!(result.instructions.len(), 2);
+        assert_eq!(result.instructions[0].address, 0);
+        assert_eq!(result.instructions[0].mnemonic, "nop");
+        assert_eq!(result.instructions[1].address, 1);
+        assert_eq!(result.instructions[1].mnemonic, "mov");
+        assert_eq!(result.next_byte_offset, 6);
+        assert!(result.has_more);
     }
 }
