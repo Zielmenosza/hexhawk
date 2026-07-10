@@ -337,6 +337,8 @@ pub fn analyze_office(path: String) -> OfficeAnalysisResult {
     }
 }
 
+const MAX_VBA_PROJECT_BYTES: u64 = 16 * 1024 * 1024;
+
 /// OOXML: unzip → find vbaProject.bin → treat as OLE2
 fn analyze_ooxml(path: &str) -> OfficeAnalysisResult {
     let file = match std::fs::File::open(path) {
@@ -367,10 +369,42 @@ fn analyze_ooxml(path: &str) -> OfficeAnalysisResult {
     let mut vba_bytes: Option<Vec<u8>> = None;
     for &vba_path in &vba_paths {
         if let Ok(mut entry) = archive.by_name(vba_path) {
+            if entry.size() > MAX_VBA_PROJECT_BYTES {
+                return OfficeAnalysisResult {
+                    modules: vec![],
+                    signals: vec![],
+                    parse_error: Some(format!(
+                        "VBA project exceeds maximum allowed size of {} MB ({} bytes).",
+                        MAX_VBA_PROJECT_BYTES / (1024 * 1024),
+                        entry.size()
+                    )),
+                };
+            }
+
             let mut buf = Vec::new();
-            if entry.read_to_end(&mut buf).is_ok() {
-                vba_bytes = Some(buf);
-                break;
+            let mut limited = entry.take(MAX_VBA_PROJECT_BYTES + 1);
+            match limited.read_to_end(&mut buf) {
+                Ok(_) if buf.len() as u64 <= MAX_VBA_PROJECT_BYTES => {
+                    vba_bytes = Some(buf);
+                    break;
+                }
+                Ok(_) => {
+                    return OfficeAnalysisResult {
+                        modules: vec![],
+                        signals: vec![],
+                        parse_error: Some(format!(
+                            "VBA project exceeds maximum allowed size of {} MB.",
+                            MAX_VBA_PROJECT_BYTES / (1024 * 1024)
+                        )),
+                    };
+                }
+                Err(e) => {
+                    return OfficeAnalysisResult {
+                        modules: vec![],
+                        signals: vec![],
+                        parse_error: Some(format!("read VBA project: {e}")),
+                    };
+                }
             }
         }
     }
@@ -515,4 +549,33 @@ fn extract_vba_text(buf: &[u8]) -> String {
     }
 
     lines.join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs::File;
+    use std::io::Write;
+
+    #[test]
+    fn analyze_ooxml_rejects_oversized_vba_project_before_reading_into_memory() {
+        let path = std::env::temp_dir().join("hexhawk_oversized_vba_project.docm");
+        let file = File::create(&path).expect("create ooxml fixture");
+        let mut zip = zip::ZipWriter::new(file);
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        zip.start_file("word/vbaProject.bin", options).expect("start vba entry");
+        let chunk = vec![b'A'; 64 * 1024];
+        for _ in 0..257 {
+            zip.write_all(&chunk).expect("write oversized vba entry");
+        }
+        zip.finish().expect("finish zip");
+
+        let result = analyze_office(path.to_string_lossy().to_string());
+        let error = result.parse_error.unwrap_or_default();
+        assert!(
+            error.contains("VBA project exceeds maximum allowed size"),
+            "expected OOXML VBA size guard, got: {error:?}"
+        );
+    }
 }
