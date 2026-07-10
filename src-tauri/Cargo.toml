@@ -31,6 +31,7 @@ hmac = "0.12"
 md-5 = "0.10"
 tokio = { version = "1", features = ["sync", "rt"] }
 lopdf = { version = "0.33", default-features = false, features = ["nom_parser"] }
+flate2 = "1"
 cfb = "0.10"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 walkdir = "2"

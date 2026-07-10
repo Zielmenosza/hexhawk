@@ -188,6 +188,8 @@ fn derive_office_signals(modules: &[VbaModule]) -> Vec<DocSignal> {
 
 // ─── PDF analysis ─────────────────────────────────────────────────────────────
 
+const MAX_PDF_DECOMPRESSED_STREAM_BYTES: u64 = 1024 * 1024;
+
 #[tauri::command]
 pub fn analyze_pdf(path: String) -> PdfAnalysisResult {
     match analyze_pdf_inner(&path) {
@@ -218,14 +220,14 @@ fn analyze_pdf_inner(path: &str) -> Result<PdfAnalysisResult, String> {
     for (&(id, _gen), obj) in &doc.objects {
         match obj {
             lopdf::Object::Dictionary(dict) => {
-                inspect_pdf_dict(id, dict, &doc, &mut javascript, &mut embedded_files, &mut uri_actions);
+                inspect_pdf_dict(id, dict, &doc, &mut javascript, &mut embedded_files, &mut uri_actions)?;
             }
             lopdf::Object::Stream(stream) => {
-                inspect_pdf_dict(id, &stream.dict, &doc, &mut javascript, &mut embedded_files, &mut uri_actions);
+                inspect_pdf_dict(id, &stream.dict, &doc, &mut javascript, &mut embedded_files, &mut uri_actions)?;
                 // Also try to decode the stream itself if it looks like JS
                 if let Ok(lopdf::Object::Name(subtype)) = stream.dict.get(b"Subtype") {
                     if subtype == b"JavaScript" {
-                        if let Ok(content) = stream.decompressed_content() {
+                        if let Some(content) = decode_pdf_stream_content_bounded(stream)? {
                             let source = lossy_utf8(&content);
                             let dangerous_patterns = scan_js_patterns(&source);
                             javascript.push(PdfScript { object_id: id, source, dangerous_patterns });
@@ -254,7 +256,7 @@ fn inspect_pdf_dict(
     javascript: &mut Vec<PdfScript>,
     embedded_files: &mut Vec<String>,
     uri_actions: &mut Vec<String>,
-) {
+) -> Result<(), String> {
     // Check /Type = /EmbeddedFile
     if let Ok(lopdf::Object::Name(t)) = dict.get(b"Type") {
         if t == b"EmbeddedFile" {
@@ -271,7 +273,7 @@ fn inspect_pdf_dict(
         if subtype == b"JavaScript" {
             // /JS is either a string or a reference to a stream
             let source_opt = extract_js_from_action(dict, doc);
-            if let Some(source) = source_opt {
+            if let Some(source) = source_opt? {
                 let dangerous_patterns = scan_js_patterns(&source);
                 javascript.push(PdfScript { object_id: id, source, dangerous_patterns });
             }
@@ -287,23 +289,61 @@ fn inspect_pdf_dict(
             }
         }
     }
+    Ok(())
 }
 
-fn extract_js_from_action(dict: &lopdf::Dictionary, doc: &lopdf::Document) -> Option<String> {
-    let js_obj = dict.get(b"JS").ok()?;
+fn extract_js_from_action(dict: &lopdf::Dictionary, doc: &lopdf::Document) -> Result<Option<String>, String> {
+    let Ok(js_obj) = dict.get(b"JS") else {
+        return Ok(None);
+    };
     match js_obj {
-        lopdf::Object::String(bytes, _) => Some(lossy_utf8(bytes)),
-        lopdf::Object::Reference(r) => {
-            match doc.get_object(*r).ok()? {
-                lopdf::Object::String(bytes, _) => Some(lossy_utf8(bytes)),
-                lopdf::Object::Stream(stream) => {
-                    stream.decompressed_content().ok().map(|b| lossy_utf8(&b))
-                }
-                _ => None,
+        lopdf::Object::String(bytes, _) => Ok(Some(lossy_utf8(bytes))),
+        lopdf::Object::Reference(r) => match doc.get_object(*r).ok() {
+            Some(lopdf::Object::String(bytes, _)) => Ok(Some(lossy_utf8(bytes))),
+            Some(lopdf::Object::Stream(stream)) => {
+                Ok(decode_pdf_stream_content_bounded(stream)?.map(|b| lossy_utf8(&b)))
             }
-        }
-        _ => None,
+            _ => Ok(None),
+        },
+        _ => Ok(None),
     }
+}
+
+fn decode_pdf_stream_content_bounded(stream: &lopdf::Stream) -> Result<Option<Vec<u8>>, String> {
+    if stream.dict.get(b"Subtype").and_then(lopdf::Object::as_name_str).ok() == Some("Image") {
+        return Ok(None);
+    }
+    if stream.dict.get(b"Filter").is_err() {
+        if stream.content.len() as u64 > MAX_PDF_DECOMPRESSED_STREAM_BYTES {
+            return Err(format!(
+                "PDF stream exceeds maximum allowed decompressed size of {} MB.",
+                MAX_PDF_DECOMPRESSED_STREAM_BYTES / (1024 * 1024)
+            ));
+        }
+        return Ok(Some(stream.content.clone()));
+    }
+
+    let filters = match stream.filters() {
+        Ok(filters) => filters,
+        Err(_) => return Ok(None),
+    };
+    if filters.len() != 1 || filters[0] != "FlateDecode" {
+        return Ok(None);
+    }
+
+    let decoder = flate2::read::ZlibDecoder::new(stream.content.as_slice());
+    let mut limited = decoder.take(MAX_PDF_DECOMPRESSED_STREAM_BYTES + 1);
+    let mut output = Vec::new();
+    limited
+        .read_to_end(&mut output)
+        .map_err(|e| format!("decode PDF stream: {e}"))?;
+    if output.len() as u64 > MAX_PDF_DECOMPRESSED_STREAM_BYTES {
+        return Err(format!(
+            "PDF stream exceeds maximum allowed decompressed size of {} MB.",
+            MAX_PDF_DECOMPRESSED_STREAM_BYTES / (1024 * 1024)
+        ));
+    }
+    Ok(Some(output))
 }
 
 fn dict_str(dict: &lopdf::Dictionary, key: &[u8]) -> Option<String> {
@@ -556,6 +596,81 @@ mod tests {
     use super::*;
     use std::fs::File;
     use std::io::Write;
+
+    fn write_pdf_with_javascript_stream(path: &std::path::Path, content: Vec<u8>, flate_decode: bool) {
+        use lopdf::{dictionary, Document, Object, Stream};
+
+        let mut doc = Document::with_version("1.5");
+        let stream = if flate_decode {
+            Stream::new(dictionary! { "Filter" => "FlateDecode" }, content)
+        } else {
+            Stream::new(dictionary! {}, content)
+        };
+        let stream_id = doc.add_object(stream);
+        let action_id = doc.add_object(dictionary! {
+            "S" => "JavaScript",
+            "JS" => Object::Reference(stream_id),
+        });
+        let catalog_id = doc.add_object(dictionary! {
+            "Type" => "Catalog",
+            "OpenAction" => Object::Reference(action_id),
+        });
+        doc.trailer.set("Root", catalog_id);
+        doc.save(path).expect("write pdf fixture");
+    }
+
+    fn deflate_bytes(content: &[u8]) -> Vec<u8> {
+        use flate2::write::ZlibEncoder;
+        use flate2::Compression;
+
+        let mut encoder = ZlibEncoder::new(Vec::new(), Compression::best());
+        encoder.write_all(content).expect("compress pdf js stream");
+        encoder.finish().expect("finish compression")
+    }
+
+    #[test]
+    fn analyze_pdf_extracts_small_uncompressed_javascript_stream_reference() {
+        let path = std::env::temp_dir().join("hexhawk_small_uncompressed_pdf_js_stream.pdf");
+        write_pdf_with_javascript_stream(&path, b"app.launchURL('https://example.test')".to_vec(), false);
+
+        let result = analyze_pdf(path.to_string_lossy().to_string());
+        let _ = std::fs::remove_file(path);
+
+        assert!(result.parse_error.is_none(), "unexpected parse error: {:?}", result.parse_error);
+        assert_eq!(result.javascript.len(), 1);
+        assert!(result.javascript[0].source.contains("app.launchURL"));
+    }
+
+    #[test]
+    fn analyze_pdf_extracts_small_flate_javascript_stream_reference() {
+        let path = std::env::temp_dir().join("hexhawk_small_flate_pdf_js_stream.pdf");
+        let compressed = deflate_bytes(b"eval('safe synthetic fixture')");
+        write_pdf_with_javascript_stream(&path, compressed, true);
+
+        let result = analyze_pdf(path.to_string_lossy().to_string());
+        let _ = std::fs::remove_file(path);
+
+        assert!(result.parse_error.is_none(), "unexpected parse error: {:?}", result.parse_error);
+        assert_eq!(result.javascript.len(), 1);
+        assert!(result.javascript[0].source.contains("eval("));
+    }
+
+    #[test]
+    fn analyze_pdf_rejects_oversized_decompressed_javascript_stream() {
+        let path = std::env::temp_dir().join("hexhawk_oversized_pdf_js_stream.pdf");
+        let oversized = vec![b'A'; 1024 * 1024 + 1];
+        let compressed = deflate_bytes(&oversized);
+        write_pdf_with_javascript_stream(&path, compressed, true);
+
+        let result = analyze_pdf(path.to_string_lossy().to_string());
+        let _ = std::fs::remove_file(path);
+        let error = result.parse_error.unwrap_or_default();
+        assert!(
+            error.contains("PDF stream exceeds maximum allowed decompressed size"),
+            "expected PDF stream decompression guard, got parse_error={error:?}, scripts={}",
+            result.javascript.len()
+        );
+    }
 
     #[test]
     fn analyze_ooxml_rejects_oversized_vba_project_before_reading_into_memory() {
