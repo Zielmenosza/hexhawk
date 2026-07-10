@@ -130,7 +130,7 @@ pub fn build_cfg(path: String, offset: usize, length: usize) -> Result<CfgGraph,
     }.map_err(|e| format!("Failed to initialize Capstone: {e}"))?;
 
     let instructions = cs
-        .disasm_all(slice, offset as u64)
+        .disasm_all(slice, effective_offset as u64)
         .map_err(|e| format!("Failed to disassemble for CFG: {}", e))?;
 
     if instructions.is_empty() {
@@ -428,4 +428,75 @@ pub fn build_cfg(path: String, offset: usize, length: usize) -> Result<CfgGraph,
     }
 
     Ok(CfgGraph { nodes, edges })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn put_u16(buf: &mut [u8], offset: usize, value: u16) { buf[offset..offset + 2].copy_from_slice(&value.to_le_bytes()); }
+    fn put_u32(buf: &mut [u8], offset: usize, value: u32) { buf[offset..offset + 4].copy_from_slice(&value.to_le_bytes()); }
+    fn put_u64(buf: &mut [u8], offset: usize, value: u64) { buf[offset..offset + 8].copy_from_slice(&value.to_le_bytes()); }
+
+    fn minimal_elf64_x86_64_text_at_nonzero_offset() -> Vec<u8> {
+        let mut data = vec![0u8; 0x248];
+        data[0..4].copy_from_slice(b"\x7FELF");
+        data[4] = 2; // ELFCLASS64
+        data[5] = 1; // little endian
+        data[6] = 1; // version
+        put_u16(&mut data, 0x10, 2); // ET_EXEC
+        put_u16(&mut data, 0x12, 62); // EM_X86_64
+        put_u32(&mut data, 0x14, 1);
+        put_u64(&mut data, 0x18, 0x400000);
+        put_u64(&mut data, 0x28, 0x128); // section header offset
+        put_u16(&mut data, 0x34, 64);
+        put_u16(&mut data, 0x3A, 64);
+        put_u16(&mut data, 0x3C, 3);
+        put_u16(&mut data, 0x3E, 2);
+
+        data[0x100..0x107].copy_from_slice(&[0x90, 0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3]);
+        data[0x108..0x119].copy_from_slice(b"\0.text\0.shstrtab\0");
+
+        let sh_text = 0x128 + 64;
+        put_u32(&mut data, sh_text, 1); // name .text
+        put_u32(&mut data, sh_text + 4, 1); // SHT_PROGBITS
+        put_u64(&mut data, sh_text + 8, 0x6); // alloc + exec
+        put_u64(&mut data, sh_text + 0x10, 0x400000);
+        put_u64(&mut data, sh_text + 0x18, 0x100);
+        put_u64(&mut data, sh_text + 0x20, 7);
+        put_u64(&mut data, sh_text + 0x30, 16);
+
+        let sh_names = 0x128 + 128;
+        put_u32(&mut data, sh_names, 7); // name .shstrtab
+        put_u32(&mut data, sh_names + 4, 3); // SHT_STRTAB
+        put_u64(&mut data, sh_names + 0x18, 0x108);
+        put_u64(&mut data, sh_names + 0x20, 0x11);
+        data
+    }
+
+    #[test]
+    fn cfg_node_addresses_match_disassembly_after_text_section_snap() {
+        let path = std::env::temp_dir().join("hexhawk-cfg-snap-address-basis.elf");
+        fs::write(&path, minimal_elf64_x86_64_text_at_nonzero_offset()).expect("write elf");
+        let path_string = path.to_string_lossy().to_string();
+        let cfg = build_cfg(path_string, 0, 0x200).expect("cfg");
+        let _ = fs::remove_file(path);
+
+        let instruction_addresses: std::collections::BTreeSet<u64> = [0x100, 0x101, 0x106].into_iter().collect();
+        assert!(instruction_addresses.contains(&0x100));
+        let mismatched: Vec<u64> = cfg
+            .nodes
+            .iter()
+            .filter(|node| node.block_type.as_deref() != Some("external"))
+            .filter_map(|node| node.start)
+            .filter(|start| !instruction_addresses.contains(start))
+            .collect();
+        assert!(
+            mismatched.is_empty(),
+            "CFG node addresses must use the same snapped text-section basis as disassembly; cfg={:?}, disassembly={:?}",
+            mismatched,
+            instruction_addresses
+        );
+    }
 }
