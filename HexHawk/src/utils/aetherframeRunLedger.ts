@@ -7,6 +7,20 @@ export type AetherframeRunLedgerInput = {
   currentBranch?: string;
 };
 
+export type TestEvidenceKind =
+  | 'claim_only'
+  | 'command_only'
+  | 'result_only'
+  | 'command_and_result'
+  | 'contradicted';
+
+export type TestEvidence = {
+  claim: string;
+  command: string | null;
+  result: string | null;
+  evidence_kind: TestEvidenceKind;
+};
+
 export type AetherframeRunLedgerJson = {
   repo: string;
   current_branch: string;
@@ -15,6 +29,7 @@ export type AetherframeRunLedgerJson = {
   staged_files: string[];
   forbidden_path_hits: string[];
   claimed_tests: string[];
+  test_evidence: TestEvidence[];
   claimed_commits: string[];
   detected_human_approval_requests: string[];
   commit_ready: boolean;
@@ -45,9 +60,16 @@ const DEFAULT_FORBIDDEN_PATHS = [
 
 const TEST_COMMAND_PATTERN = /\b(cargo\s+test|yarn\s+(?:workspace\s+\S+\s+)?test|npm\s+test|pnpm\s+test|vitest(?:\s+run)?|pytest|cargo\s+clippy|tsc\s+--noEmit)\b/i;
 const TEST_PASS_CLAIM_PATTERN = /\b(test(?:s|ed|ing)?|validation|suite|check(?:s)?)\b.*\b(pass(?:ed|es)?|green|ok|success(?:ful)?)\b|\b(pass(?:ed|es)?|green|ok|success(?:ful)?)\b.*\b(test(?:s|ed|ing)?|validation|suite|check(?:s)?)\b/i;
+const TEST_RESULT_PATTERN = /\b\d+\s+(?:tests?\s+)?passed\b.*\b\d+\s+(?:tests?\s+)?failed\b/i;
+const EXPLICIT_FAILED_MARKER_PATTERN = /\b(?:test result:\s*)?FAILED\b/;
+const OTHER_FAILURE_PATTERN = /\bexit code\s+[1-9]\d*\b|\bpanicked at\b|\berror:\s*test failed\b|\b[1-9]\d*\s+(?:tests?\s+)?failed\b/i;
 const COMMIT_PATTERN = /\b(?:commit(?:ted)?|commit hash|sha)\b[^\n]*(?:[0-9a-f]{7,40}|\[[A-Z][^\]]*\])/i;
 const HUMAN_APPROVAL_PATTERN = /\b(?:approval|approve|human review|operator review|manual review|wait for approval|stop for approval)\b/i;
 const AUTHORITY_TOUCH_PATTERN = /\b(?:GYRE|verdict|classification|sole verdict|threat score|source engine)\b/i;
+
+function isExplicitFailure(line: string): boolean {
+  return EXPLICIT_FAILED_MARKER_PATTERN.test(line) || OTHER_FAILURE_PATTERN.test(line);
+}
 
 function normalizePath(path: string): string {
   return path.trim().replace(/\\+/g, '/').replace(/^\.\//, '');
@@ -104,6 +126,74 @@ function linesMatching(report: string, pattern: RegExp): string[] {
     .filter(line => line.length > 0 && pattern.test(line));
 }
 
+function classifyTestEvidence(reportLines: string[]): TestEvidence[] {
+  const commandIndexes = reportLines
+    .map((line, index) => TEST_COMMAND_PATTERN.test(line) ? index : -1)
+    .filter(index => index >= 0);
+  const consumed = new Set<number>();
+  const indexedEvidence: Array<{ index: number; evidence: TestEvidence }> = [];
+
+  for (let commandPosition = 0; commandPosition < commandIndexes.length; commandPosition += 1) {
+    const commandIndex = commandIndexes[commandPosition];
+    const nextCommandIndex = commandIndexes[commandPosition + 1] ?? reportLines.length;
+    const followingIndexes = Array.from(
+      { length: nextCommandIndex - commandIndex - 1 },
+      (_, offset) => commandIndex + offset + 1,
+    );
+    const failureIndex = followingIndexes.find(index => isExplicitFailure(reportLines[index]));
+    const resultIndex = followingIndexes.find(index => TEST_RESULT_PATTERN.test(reportLines[index]));
+    const claimIndex = followingIndexes.find(index => TEST_PASS_CLAIM_PATTERN.test(reportLines[index]));
+    const selectedResultIndex = failureIndex ?? resultIndex;
+
+    consumed.add(commandIndex);
+    followingIndexes
+      .filter(index =>
+        isExplicitFailure(reportLines[index])
+        || TEST_RESULT_PATTERN.test(reportLines[index])
+        || TEST_PASS_CLAIM_PATTERN.test(reportLines[index]),
+      )
+      .forEach(index => consumed.add(index));
+
+    indexedEvidence.push({
+      index: commandIndex,
+      evidence: {
+        claim: claimIndex === undefined ? '' : reportLines[claimIndex],
+        command: reportLines[commandIndex],
+        result: selectedResultIndex === undefined ? null : reportLines[selectedResultIndex],
+        evidence_kind: failureIndex !== undefined
+          ? 'contradicted'
+          : resultIndex !== undefined
+            ? 'command_and_result'
+            : 'command_only',
+      },
+    });
+  }
+
+  reportLines.forEach((line, index) => {
+    if (consumed.has(index) || TEST_COMMAND_PATTERN.test(line)) return;
+    if (isExplicitFailure(line)) {
+      indexedEvidence.push({
+        index,
+        evidence: { claim: '', command: null, result: line, evidence_kind: 'contradicted' },
+      });
+    } else if (TEST_RESULT_PATTERN.test(line)) {
+      indexedEvidence.push({
+        index,
+        evidence: { claim: '', command: null, result: line, evidence_kind: 'result_only' },
+      });
+    } else if (TEST_PASS_CLAIM_PATTERN.test(line)) {
+      indexedEvidence.push({
+        index,
+        evidence: { claim: line, command: null, result: null, evidence_kind: 'claim_only' },
+      });
+    }
+  });
+
+  return indexedEvidence
+    .sort((left, right) => left.index - right.index)
+    .map(item => item.evidence);
+}
+
 export function buildAetherframeRunLedger(input: AetherframeRunLedgerInput): AetherframeRunLedgerJson {
   const gitStatusShort = input.gitStatusShort ?? '';
   const currentBranch = input.currentBranch ?? 'unknown';
@@ -114,9 +204,13 @@ export function buildAetherframeRunLedger(input: AetherframeRunLedgerInput): Aet
   const forbiddenPathHits = changedFiles.filter(path => forbiddenRules.some(rule => pathMatchesRule(path, rule)));
   const disallowedPathHits = changedFiles.filter(path => !isAllowed(path, allowedRules));
   const reportLines = input.agentReport.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-  const claimedTests = reportLines.filter(line => TEST_COMMAND_PATTERN.test(line) || TEST_PASS_CLAIM_PATTERN.test(line));
-  const commandEvidence = reportLines.filter(line => TEST_COMMAND_PATTERN.test(line));
-  const passClaims = reportLines.filter(line => TEST_PASS_CLAIM_PATTERN.test(line));
+  const testEvidence = classifyTestEvidence(reportLines);
+  const claimedTests = reportLines.filter(line =>
+    TEST_COMMAND_PATTERN.test(line)
+    || TEST_PASS_CLAIM_PATTERN.test(line)
+    || TEST_RESULT_PATTERN.test(line)
+    || isExplicitFailure(line),
+  );
   const claimedCommits = linesMatching(input.agentReport, COMMIT_PATTERN);
   const explicitApprovalRequests = linesMatching(input.agentReport, HUMAN_APPROVAL_PATTERN);
   const authorityTouches = reportLines.filter(line => AUTHORITY_TOUCH_PATTERN.test(line));
@@ -140,8 +234,18 @@ export function buildAetherframeRunLedger(input: AetherframeRunLedgerInput): Aet
   if (disallowedPathHits.length > 0) {
     reasonsNotReady.push(`changed files outside allowed paths: ${disallowedPathHits.join(', ')}`);
   }
-  if (passClaims.length > 0 && commandEvidence.length === 0) {
+  const evidenceKinds = new Set(testEvidence.map(evidence => evidence.evidence_kind));
+  if (evidenceKinds.has('claim_only')) {
     reasonsNotReady.push('agent report claims tests/checks passed but includes no recognizable test command evidence');
+  }
+  if (evidenceKinds.has('command_only')) {
+    reasonsNotReady.push('agent report includes a test command without concrete result evidence');
+  }
+  if (evidenceKinds.has('result_only')) {
+    reasonsNotReady.push('agent report includes concrete test result text without a recognizable test command');
+  }
+  if (evidenceKinds.has('contradicted')) {
+    reasonsNotReady.push('agent report contains contradicted test evidence');
   }
   if (authorityTouches.length > 0) {
     reasonsNotReady.push('agent report references GYRE/verdict/classification authority; human approval required before commit readiness');
@@ -164,6 +268,7 @@ export function buildAetherframeRunLedger(input: AetherframeRunLedgerInput): Aet
     staged_files: stagedFiles,
     forbidden_path_hits: Array.from(new Set(forbiddenPathHits)),
     claimed_tests: Array.from(new Set(claimedTests)),
+    test_evidence: testEvidence,
     claimed_commits: Array.from(new Set(claimedCommits)),
     detected_human_approval_requests: Array.from(new Set(detectedHumanApprovalRequests)),
     commit_ready: reasonsNotReady.length === 0,
