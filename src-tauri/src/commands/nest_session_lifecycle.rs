@@ -1,13 +1,17 @@
+use crate::commands::gyre_snapshot::{
+    resolve_recorded_snapshot_at_root, snapshot_root, GyreRecordedVerdictSnapshot,
+    GYRE_SNAPSHOT_PROVENANCE, GYRE_SNAPSHOT_SCHEMA_VERSION, SUPPORTED_GYRE_BUILD_ID,
+    SUPPORTED_GYRE_SCHEMA_VERSION,
+};
 use crate::commands::nest_evidence::{
     validate_bundle, ActorType, ExecutionMode, ExportMode, FileBoundProofStatus, IdentitySource,
-    MutationPolicy, NestActor, NestAuditEvent, NestAuditRefs, NestBinaryHashes,
-    NestBinaryIdentity, NestConvergence, NestConvergenceSnapshot, NestDeltaItem, NestDeltasFile,
-    NestEvidenceBundle, NestFileBoundProof, NestFinalVerdictNestLinkage,
-    NestFinalVerdictSnapshot, NestGyreLinkage, NestImmutability, NestInputWindow,
-    NestIterationItem, NestIterationsFile, NestIterationVerdictSnapshot, NestManifest,
-    NestManifestFile, NestRefinementExecution, NestReplayInfo, NestRuntimeProof,
-    NestSessionConfig, NestSessionRecord, NestSignalDeltaSummary, NestTimestamps,
-    NestValidationIssue, RuntimeProofStatus, RuntimeMode, SessionStatus,
+    MutationPolicy, NestActor, NestAuditEvent, NestAuditRefs, NestBinaryHashes, NestBinaryIdentity,
+    NestConvergence, NestConvergenceSnapshot, NestDeltaItem, NestDeltasFile, NestEvidenceBundle,
+    NestFileBoundProof, NestFinalVerdictNestLinkage, NestFinalVerdictSnapshot, NestGyreLinkage,
+    NestImmutability, NestInputWindow, NestIterationItem, NestIterationVerdictSnapshot,
+    NestIterationsFile, NestManifest, NestManifestFile, NestRefinementExecution, NestReplayInfo,
+    NestRuntimeProof, NestSessionConfig, NestSessionRecord, NestSignalDeltaSummary, NestTimestamps,
+    NestValidationIssue, RuntimeMode, RuntimeProofStatus, SessionStatus,
 };
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
@@ -45,10 +49,11 @@ pub struct NestSessionCreateRequest {
     pub export_mode: Option<ExportMode>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NestSessionAppendIterationRequest {
     pub session_id: String,
+    pub client_iteration_key: String,
     pub started_at: Option<String>,
     pub completed_at: Option<String>,
     pub duration_ms: Option<u64>,
@@ -73,18 +78,46 @@ pub struct NestSessionAppendIterationRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NestSessionAppendIterationResponse {
+    pub session_id: String,
+    pub iteration_count: u32,
+    pub iteration_id: String,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct NestIterationAppendRecord {
+    iteration_id: String,
+    request: NestSessionAppendIterationRequest,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NestSessionFinalizeRequest {
     pub session_id: String,
+    pub gyre_snapshot_id: String,
+    // Legacy renderer fields remain deserializable during migration, but are never
+    // authoritative and never populate a new final snapshot.
+    #[serde(default)]
     pub verdict_snapshot_id: Option<String>,
-    pub source_engine: String,
-    pub gyre_is_sole_verdict_source: bool,
-    pub classification: String,
-    pub confidence: u32,
-    pub threat_score: u32,
-    pub summary: String,
-    pub signal_count: u64,
-    pub contradiction_count: u64,
-    pub reasoning_chain_hash: String,
+    #[serde(default)]
+    pub source_engine: Option<String>,
+    #[serde(default)]
+    pub gyre_is_sole_verdict_source: Option<bool>,
+    #[serde(default)]
+    pub classification: Option<String>,
+    #[serde(default)]
+    pub confidence: Option<u32>,
+    #[serde(default)]
+    pub threat_score: Option<u32>,
+    #[serde(default)]
+    pub summary: Option<String>,
+    #[serde(default)]
+    pub signal_count: Option<u64>,
+    #[serde(default)]
+    pub contradiction_count: Option<u64>,
+    #[serde(default)]
+    pub reasoning_chain_hash: Option<String>,
     pub linked_iteration_id: Option<String>,
     pub nest_summary: Option<String>,
     pub runtime_proof: Option<NestRuntimeProof>,
@@ -149,6 +182,8 @@ struct NestSessionLifecycleState {
     status: SessionStatus,
     notes: Vec<String>,
     iterations: Vec<NestIterationItem>,
+    #[serde(default)]
+    iteration_append_records: HashMap<String, NestIterationAppendRecord>,
     deltas: Vec<NestDeltaItem>,
     final_verdict_snapshot: Option<NestFinalVerdictSnapshot>,
     runtime_proof: Option<NestRuntimeProof>,
@@ -241,15 +276,20 @@ fn persist_state(root: &Path, state: &NestSessionLifecycleState) -> Result<(), S
         .map_err(|e| format!("Failed to persist lifecycle state: {e}"))
 }
 
-fn load_state_from_disk(root: &Path, session_id: &str) -> Result<NestSessionLifecycleState, String> {
+fn load_state_from_disk(
+    root: &Path,
+    session_id: &str,
+) -> Result<NestSessionLifecycleState, String> {
     let path = state_path(root, session_id);
     let text = std::fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read lifecycle state at {}: {e}", path.display()))?;
-    serde_json::from_str(&text)
-        .map_err(|e| format!("Failed to parse lifecycle state JSON: {e}"))
+    serde_json::from_str(&text).map_err(|e| format!("Failed to parse lifecycle state JSON: {e}"))
 }
 
-fn get_or_load_state(app: &tauri::AppHandle, session_id: &str) -> Result<NestSessionLifecycleState, String> {
+fn get_or_load_state(
+    app: &tauri::AppHandle,
+    session_id: &str,
+) -> Result<NestSessionLifecycleState, String> {
     if let Some(in_mem) = LIFECYCLE_SESSIONS.lock().unwrap().get(session_id).cloned() {
         return Ok(in_mem);
     }
@@ -310,15 +350,13 @@ fn to_summary(state: &NestSessionLifecycleState) -> NestSessionLifecycleSummary 
 }
 
 fn build_session_record(state: &NestSessionLifecycleState) -> Result<NestSessionRecord, String> {
-    let final_verdict = state
-        .final_verdict_snapshot
-        .as_ref()
-        .ok_or_else(|| "Cannot build session record before final verdict snapshot exists".to_string())?;
+    let final_verdict = state.final_verdict_snapshot.as_ref().ok_or_else(|| {
+        "Cannot build session record before final verdict snapshot exists".to_string()
+    })?;
 
-    let last_iter = state
-        .iterations
-        .last()
-        .ok_or_else(|| "Cannot build session record before at least one iteration exists".to_string())?;
+    let last_iter = state.iterations.last().ok_or_else(|| {
+        "Cannot build session record before at least one iteration exists".to_string()
+    })?;
 
     Ok(NestSessionRecord {
         schema_name: "nest.session".to_string(),
@@ -547,9 +585,16 @@ fn build_evidence_bundle(state: &NestSessionLifecycleState) -> Result<NestEviden
     })
 }
 
-fn write_bundle_files(bundle: &mut NestEvidenceBundle, output_dir: &Path) -> Result<Vec<String>, String> {
-    std::fs::create_dir_all(output_dir)
-        .map_err(|e| format!("Failed to create export directory {}: {e}", output_dir.display()))?;
+fn write_bundle_files(
+    bundle: &mut NestEvidenceBundle,
+    output_dir: &Path,
+) -> Result<Vec<String>, String> {
+    std::fs::create_dir_all(output_dir).map_err(|e| {
+        format!(
+            "Failed to create export directory {}: {e}",
+            output_dir.display()
+        )
+    })?;
 
     let mut written = Vec::new();
 
@@ -579,7 +624,8 @@ fn write_bundle_files(bundle: &mut NestEvidenceBundle, output_dir: &Path) -> Res
     let audit_refs_json = serde_json::to_value(&bundle.audit_refs)
         .map_err(|e| format!("Failed to encode audit_refs.json: {e}"))?;
 
-    let (binary_identity_bytes, binary_identity_hash) = write_json("binary_identity.json", &binary_identity_json)?;
+    let (binary_identity_bytes, binary_identity_hash) =
+        write_json("binary_identity.json", &binary_identity_json)?;
     let (session_bytes, session_hash) = write_json("session.json", &session_json)?;
     let (iterations_bytes, iterations_hash) = write_json("iterations.json", &iterations_json)?;
     let (deltas_bytes, deltas_hash) = write_json("deltas.json", &deltas_json)?;
@@ -662,7 +708,9 @@ pub fn nest_create_session(
     let created_at = now_iso();
 
     let actor = NestActor {
-        id: request.actor_id.unwrap_or_else(|| "system:nest-lifecycle".to_string()),
+        id: request
+            .actor_id
+            .unwrap_or_else(|| "system:nest-lifecycle".to_string()),
         actor_type: request.actor_type.unwrap_or(ActorType::System),
         display_name: request
             .actor_display_name
@@ -708,6 +756,7 @@ pub fn nest_create_session(
         status: SessionStatus::Pending,
         notes: Vec::new(),
         iterations: Vec::new(),
+        iteration_append_records: HashMap::new(),
         deltas: Vec::new(),
         final_verdict_snapshot: None,
         runtime_proof: None,
@@ -739,20 +788,59 @@ pub fn nest_create_session(
     Ok(to_summary(&state))
 }
 
-#[tauri::command]
-pub fn nest_append_iteration(
-    app: tauri::AppHandle,
-    request: NestSessionAppendIterationRequest,
-) -> Result<NestSessionLifecycleSummary, String> {
-    let mut state = get_or_load_state(&app, &request.session_id)?;
+const MAX_CLIENT_ITERATION_KEY_BYTES: usize = 128;
 
-    if matches!(state.status, SessionStatus::Completed | SessionStatus::Cancelled | SessionStatus::Failed) {
+fn validate_client_iteration_key(value: &str) -> Result<(), String> {
+    if value.is_empty()
+        || value.len() > MAX_CLIENT_ITERATION_KEY_BYTES
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+    {
+        return Err(format!(
+            "client_iteration_key must be 1..={MAX_CLIENT_ITERATION_KEY_BYTES} ASCII letters, digits, '_' or '-'"
+        ));
+    }
+    Ok(())
+}
+
+fn append_iteration_to_state(
+    state: &mut NestSessionLifecycleState,
+    request: NestSessionAppendIterationRequest,
+) -> Result<NestSessionAppendIterationResponse, String> {
+    validate_client_iteration_key(&request.client_iteration_key)?;
+    if request.session_id != state.session_id {
+        return Err("Append request session_id does not match lifecycle session".to_string());
+    }
+
+    if let Some(existing) = state
+        .iteration_append_records
+        .get(&request.client_iteration_key)
+    {
+        if existing.request != request {
+            return Err(
+                "client_iteration_key conflicts with a different persisted iteration payload"
+                    .to_string(),
+            );
+        }
+        return Ok(NestSessionAppendIterationResponse {
+            session_id: state.session_id.clone(),
+            iteration_count: state.iterations.len() as u32,
+            iteration_id: existing.iteration_id.clone(),
+            replayed: true,
+        });
+    }
+
+    if matches!(
+        state.status,
+        SessionStatus::Completed | SessionStatus::Cancelled | SessionStatus::Failed
+    ) {
         return Err("Cannot append iteration to a finalized session".to_string());
     }
 
     let idx = state.iterations.len() as u32 + 1;
-    let started_at = request.started_at.unwrap_or_else(now_iso);
-    let completed_at = request.completed_at.unwrap_or_else(now_iso);
+    let started_at = request.started_at.clone().unwrap_or_else(now_iso);
+    let completed_at = request.completed_at.clone().unwrap_or_else(now_iso);
     let iteration_id = format!("nestiter_{}_{idx:04}", state.ulid);
 
     let iteration = NestIterationItem {
@@ -791,19 +879,25 @@ pub fn nest_append_iteration(
         let delta = NestDeltaItem {
             delta_id: format!("nestdelta_{}_{:04}_{:04}", state.ulid, idx - 1, idx),
             from_iteration_id: prev.iteration_id.clone(),
-            to_iteration_id: iteration_id,
+            to_iteration_id: iteration_id.clone(),
             from_iteration_index: prev.iteration_index,
             to_iteration_index: idx,
             binary_sha256: state.binary_sha256.clone(),
             confidence_delta: request.confidence as i64 - prev.verdict_snapshot.confidence as i64,
             classification_changed: prev.verdict_snapshot.classification != request.classification,
             signal_delta_summary: Some(NestSignalDeltaSummary {
-                added_count: request.signal_count.saturating_sub(prev.verdict_snapshot.signal_count),
-                removed_count: prev.verdict_snapshot.signal_count.saturating_sub(request.signal_count),
+                added_count: request
+                    .signal_count
+                    .saturating_sub(prev.verdict_snapshot.signal_count),
+                removed_count: prev
+                    .verdict_snapshot
+                    .signal_count
+                    .saturating_sub(request.signal_count),
                 unchanged_count: request.signal_count.min(prev.verdict_snapshot.signal_count),
             }),
             contradiction_delta: Some(
-                request.contradiction_count as i64 - prev.verdict_snapshot.contradiction_count as i64,
+                request.contradiction_count as i64
+                    - prev.verdict_snapshot.contradiction_count as i64,
             ),
             refinement_execution: Some(NestRefinementExecution {
                 action_types: request.executed_action_types.clone().unwrap_or_default(),
@@ -826,9 +920,118 @@ pub fn nest_append_iteration(
 
     state.status = SessionStatus::Running;
     state.iterations.push(iteration);
+    state.iteration_append_records.insert(
+        request.client_iteration_key.clone(),
+        NestIterationAppendRecord {
+            iteration_id: iteration_id.clone(),
+            request,
+        },
+    );
 
-    upsert_state(&app, state.clone())?;
-    Ok(to_summary(&state))
+    Ok(NestSessionAppendIterationResponse {
+        session_id: state.session_id.clone(),
+        iteration_count: state.iterations.len() as u32,
+        iteration_id,
+        replayed: false,
+    })
+}
+
+#[tauri::command]
+pub fn nest_append_iteration(
+    app: tauri::AppHandle,
+    request: NestSessionAppendIterationRequest,
+) -> Result<NestSessionAppendIterationResponse, String> {
+    let mut state = get_or_load_state(&app, &request.session_id)?;
+    let response = append_iteration_to_state(&mut state, request)?;
+    if !response.replayed {
+        upsert_state(&app, state)?;
+    }
+    Ok(response)
+}
+
+fn build_final_verdict_snapshot(
+    state: &NestSessionLifecycleState,
+    request: &NestSessionFinalizeRequest,
+    gyre_snapshot: &GyreRecordedVerdictSnapshot,
+    linked_iteration_id: String,
+) -> NestFinalVerdictSnapshot {
+    NestFinalVerdictSnapshot {
+        schema_name: "nest.final_verdict_snapshot".to_string(),
+        schema_version: LIFECYCLE_SCHEMA_VERSION.to_string(),
+        bundle_id: state.bundle_id.clone(),
+        session_id: state.session_id.clone(),
+        binary_id: state.binary_id.clone(),
+        binary_sha256: state.binary_sha256.clone(),
+        verdict_snapshot_id: gyre_snapshot.snapshot_id.clone(),
+        source_engine: "gyre".to_string(),
+        gyre_build_id: gyre_snapshot.gyre_build_id.clone(),
+        gyre_schema_version: gyre_snapshot.gyre_schema_version.clone(),
+        classification: gyre_snapshot.classification.clone(),
+        confidence: gyre_snapshot.base_confidence,
+        threat_score: gyre_snapshot.threat_score,
+        summary: gyre_snapshot.summary.clone(),
+        signal_count: gyre_snapshot.signal_count,
+        contradiction_count: gyre_snapshot.contradiction_count,
+        reasoning_chain_hash: gyre_snapshot.reasoning_chain_hash.clone(),
+        linked_iteration_id: linked_iteration_id.clone(),
+        nest_linkage: NestFinalVerdictNestLinkage {
+            session_id: state.session_id.clone(),
+            final_iteration_id: linked_iteration_id,
+            nest_enrichment_applied: true,
+            gyre_is_sole_verdict_source: true,
+            nest_summary: request.nest_summary.clone(),
+        },
+    }
+}
+
+fn validate_gyre_snapshot_for_finalization(
+    state: &NestSessionLifecycleState,
+    gyre_snapshot: &GyreRecordedVerdictSnapshot,
+) -> Result<(), String> {
+    if gyre_snapshot.binary_sha256 != state.binary_sha256 {
+        return Err(
+            "GYRE snapshot binary SHA-256 does not match NEST lifecycle binary".to_string(),
+        );
+    }
+    if gyre_snapshot.schema_name != "gyre.recorded_verdict_snapshot"
+        || gyre_snapshot.schema_version != GYRE_SNAPSHOT_SCHEMA_VERSION
+        || gyre_snapshot.provenance != GYRE_SNAPSHOT_PROVENANCE
+        || gyre_snapshot.gyre_schema_version != SUPPORTED_GYRE_SCHEMA_VERSION
+        || gyre_snapshot.gyre_build_id != SUPPORTED_GYRE_BUILD_ID
+    {
+        return Err("GYRE snapshot metadata is unsupported for NEST finalization".to_string());
+    }
+    Ok(())
+}
+
+fn resolve_gyre_snapshot_for_finalization_at_root(
+    root: &Path,
+    state: &NestSessionLifecycleState,
+    snapshot_id: &str,
+) -> Result<GyreRecordedVerdictSnapshot, String> {
+    let snapshot = resolve_recorded_snapshot_at_root(root, snapshot_id)?;
+    validate_gyre_snapshot_for_finalization(state, &snapshot)?;
+    Ok(snapshot)
+}
+
+fn resolve_linked_iteration_id(
+    state: &NestSessionLifecycleState,
+    requested: Option<&str>,
+) -> Result<String, String> {
+    if state.iterations.is_empty() {
+        return Err("Cannot finalize session before at least one iteration exists".to_string());
+    }
+    let linked_iteration_id = requested
+        .map(str::to_string)
+        .unwrap_or_else(|| state.iterations.last().unwrap().iteration_id.clone());
+    if !state
+        .iterations
+        .iter()
+        .any(|iteration| iteration.iteration_id == linked_iteration_id)
+    {
+        return Err("linked_iteration_id does not exist in this session".to_string());
+    }
+    Ok(linked_iteration_id)
 }
 
 #[tauri::command]
@@ -837,60 +1040,20 @@ pub fn nest_finalize_session(
     request: NestSessionFinalizeRequest,
 ) -> Result<NestSessionLifecycleSummary, String> {
     let mut state = get_or_load_state(&app, &request.session_id)?;
+    let linked_iteration_id =
+        resolve_linked_iteration_id(&state, request.linked_iteration_id.as_deref())?;
 
-    if request.source_engine != "gyre" {
-        return Err("source_engine must be 'gyre' to preserve GYRE as sole verdict source".to_string());
-    }
-    if !request.gyre_is_sole_verdict_source {
-        return Err("gyre_is_sole_verdict_source must be true".to_string());
-    }
-    if state.iterations.is_empty() {
-        return Err("Cannot finalize session before at least one iteration exists".to_string());
-    }
+    let gyre_snapshot = resolve_gyre_snapshot_for_finalization_at_root(
+        &snapshot_root(&app)?,
+        &state,
+        &request.gyre_snapshot_id,
+    )?;
 
-    let linked_iteration_id = request
-        .linked_iteration_id
-        .unwrap_or_else(|| state.iterations.last().unwrap().iteration_id.clone());
+    state.gyre_build_id = gyre_snapshot.gyre_build_id.clone();
+    state.gyre_schema_version = gyre_snapshot.gyre_schema_version.clone();
 
-    if !state
-        .iterations
-        .iter()
-        .any(|it| it.iteration_id == linked_iteration_id)
-    {
-        return Err("linked_iteration_id does not exist in this session".to_string());
-    }
-
-    let verdict_snapshot_id = request
-        .verdict_snapshot_id
-        .unwrap_or_else(|| format!("gyresnap_{}", state.ulid));
-
-    let final_verdict = NestFinalVerdictSnapshot {
-        schema_name: "nest.final_verdict_snapshot".to_string(),
-        schema_version: LIFECYCLE_SCHEMA_VERSION.to_string(),
-        bundle_id: state.bundle_id.clone(),
-        session_id: state.session_id.clone(),
-        binary_id: state.binary_id.clone(),
-        binary_sha256: state.binary_sha256.clone(),
-        verdict_snapshot_id,
-        source_engine: "gyre".to_string(),
-        gyre_build_id: state.gyre_build_id.clone(),
-        gyre_schema_version: state.gyre_schema_version.clone(),
-        classification: request.classification,
-        confidence: request.confidence,
-        threat_score: request.threat_score,
-        summary: request.summary,
-        signal_count: request.signal_count,
-        contradiction_count: request.contradiction_count,
-        reasoning_chain_hash: request.reasoning_chain_hash,
-        linked_iteration_id: linked_iteration_id.clone(),
-        nest_linkage: NestFinalVerdictNestLinkage {
-            session_id: state.session_id.clone(),
-            final_iteration_id: linked_iteration_id,
-            nest_enrichment_applied: true,
-            gyre_is_sole_verdict_source: true,
-            nest_summary: request.nest_summary,
-        },
-    };
+    let final_verdict =
+        build_final_verdict_snapshot(&state, &request, &gyre_snapshot, linked_iteration_id);
 
     if let Some(mut runtime) = request.runtime_proof {
         runtime.schema_name = "nest.runtime_proof".to_string();
@@ -900,10 +1063,16 @@ pub fn nest_finalize_session(
         runtime.binary_id = state.binary_id.clone();
         runtime.binary_sha256 = state.binary_sha256.clone();
         if runtime.proof_status == RuntimeProofStatus::Proven && !runtime.has_tauri_runtime {
-            return Err("runtime proof cannot be marked proven when has_tauri_runtime=false".to_string());
+            return Err(
+                "runtime proof cannot be marked proven when has_tauri_runtime=false".to_string(),
+            );
         }
-        if runtime.runtime_mode == RuntimeMode::BrowserRuntime && runtime.proof_status == RuntimeProofStatus::Proven {
-            return Err("browser runtime cannot be marked as proven local runtime proof".to_string());
+        if runtime.runtime_mode == RuntimeMode::BrowserRuntime
+            && runtime.proof_status == RuntimeProofStatus::Proven
+        {
+            return Err(
+                "browser runtime cannot be marked as proven local runtime proof".to_string(),
+            );
         }
         state.runtime_proof = Some(runtime);
     }
@@ -950,11 +1119,16 @@ pub fn nest_export_session_bundle(
 
     let mut bundle = build_evidence_bundle(&state)?;
     let issues = validate_bundle(&bundle);
-    if issues
-        .iter()
-        .any(|i| matches!(i.code, crate::commands::nest_evidence::NestValidationCode::ReplayCriticalError))
-    {
-        return Err(format!("Replay-critical bundle validation failed: {} issue(s)", issues.len()));
+    if issues.iter().any(|i| {
+        matches!(
+            i.code,
+            crate::commands::nest_evidence::NestValidationCode::ReplayCriticalError
+        )
+    }) {
+        return Err(format!(
+            "Replay-critical bundle validation failed: {} issue(s)",
+            issues.len()
+        ));
     }
 
     let output_dir = if let Some(custom) = request.output_dir {
@@ -1078,7 +1252,8 @@ mod tests {
         let ulid = "ABCDE12345FGHJKMNPQRST0123".to_string();
         let session_id = format!("nestsession_{ulid}");
         let bundle_id = format!("nestbundle_{ulid}");
-        let binary_sha256 = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string();
+        let binary_sha256 =
+            "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string();
         NestSessionLifecycleState {
             schema_version: LIFECYCLE_SCHEMA_VERSION.to_string(),
             session_id: session_id.clone(),
@@ -1104,6 +1279,7 @@ mod tests {
             status: SessionStatus::Pending,
             notes: Vec::new(),
             iterations: Vec::new(),
+            iteration_append_records: HashMap::new(),
             deltas: Vec::new(),
             final_verdict_snapshot: None,
             runtime_proof: None,
@@ -1125,11 +1301,15 @@ mod tests {
             iteration_id: format!("nestiter_ABCDE12345FGHJKMNPQRST0123_{index:04}"),
             iteration_index: index,
             session_id: "nestsession_ABCDE12345FGHJKMNPQRST0123".to_string(),
-            binary_sha256: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
+            binary_sha256: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+                .to_string(),
             started_at: "2026-04-29T10:00:00Z".to_string(),
             completed_at: Some("2026-04-29T10:00:01Z".to_string()),
             duration_ms: Some(1000),
-            input_window: Some(NestInputWindow { offset: 0, length: 4096 }),
+            input_window: Some(NestInputWindow {
+                offset: 0,
+                length: 4096,
+            }),
             executed_actions: None,
             verdict_snapshot: NestIterationVerdictSnapshot {
                 classification: "suspicious".to_string(),
@@ -1137,7 +1317,8 @@ mod tests {
                 threat_score: confidence,
                 signal_count: 4,
                 contradiction_count: 0,
-                reasoning_chain_hash: "b1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
+                reasoning_chain_hash:
+                    "b1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
             },
             convergence_snapshot: NestConvergenceSnapshot {
                 has_converged: false,
@@ -1149,6 +1330,272 @@ mod tests {
             },
             file_identity_locked: true,
         }
+    }
+
+    fn finalize_request() -> NestSessionFinalizeRequest {
+        NestSessionFinalizeRequest {
+            session_id: "nestsession_ABCDE12345FGHJKMNPQRST0123".to_string(),
+            gyre_snapshot_id: "gyresnap_ABCDE12345FGHJKMNPQRST0123".to_string(),
+            verdict_snapshot_id: Some("gyresnap_ABCDE12345FGHJKMNPQRST0123".to_string()),
+            source_engine: Some("gyre".to_string()),
+            gyre_is_sole_verdict_source: Some(true),
+            classification: Some("suspicious".to_string()),
+            confidence: Some(84),
+            threat_score: Some(91),
+            summary: Some("ordinary final verdict".to_string()),
+            signal_count: Some(6),
+            contradiction_count: Some(1),
+            reasoning_chain_hash: Some("ordinary-reasoning-hash".to_string()),
+            linked_iteration_id: Some("nestiter_ABCDE12345FGHJKMNPQRST0123_0001".to_string()),
+            nest_summary: Some("ordinary nest summary".to_string()),
+            runtime_proof: None,
+            notes: None,
+        }
+    }
+
+    fn recorded_snapshot(state: &NestSessionLifecycleState) -> GyreRecordedVerdictSnapshot {
+        GyreRecordedVerdictSnapshot {
+            schema_name: "gyre.recorded_verdict_snapshot".to_string(),
+            schema_version: GYRE_SNAPSHOT_SCHEMA_VERSION.to_string(),
+            snapshot_id: "gyresnap_ABCDE12345FGHJKMNPQRST0123".to_string(),
+            provenance: GYRE_SNAPSHOT_PROVENANCE.to_string(),
+            binary_sha256: state.binary_sha256.clone(),
+            classification: "suspicious".to_string(),
+            base_confidence: 84,
+            threat_score: 91,
+            summary: "ordinary final verdict".to_string(),
+            signal_count: 6,
+            contradiction_count: 1,
+            reasoning_chain_hash: "recorded-reasoning-hash".to_string(),
+            gyre_build_id: SUPPORTED_GYRE_BUILD_ID.to_string(),
+            gyre_schema_version: SUPPORTED_GYRE_SCHEMA_VERSION.to_string(),
+            created_at: "2026-07-11T00:00:00Z".to_string(),
+        }
+    }
+
+    fn record_request(
+        client_record_key: &str,
+        binary_sha256: String,
+        gyre_build_id: &str,
+        gyre_schema_version: &str,
+    ) -> crate::commands::gyre_snapshot::GyreRecordVerdictSnapshotRequest {
+        crate::commands::gyre_snapshot::GyreRecordVerdictSnapshotRequest {
+            client_record_key: client_record_key.to_string(),
+            binary_sha256,
+            classification: "suspicious".to_string(),
+            base_confidence: 84,
+            threat_score: 91,
+            summary: "recorded production-path verdict".to_string(),
+            signal_count: 6,
+            contradiction_count: 1,
+            reasoning_chain_hash: "e".repeat(64),
+            gyre_build_id: gyre_build_id.to_string(),
+            gyre_schema_version: gyre_schema_version.to_string(),
+        }
+    }
+
+    #[test]
+    fn production_store_resolution_enforces_lifecycle_hash_build_and_schema() {
+        let state = base_state();
+        let root = std::env::temp_dir().join(format!(
+            "hexhawk-nest-finalization-{}",
+            OffsetDateTime::now_utc().unix_timestamp_nanos()
+        ));
+
+        let valid = crate::commands::gyre_snapshot::record_verdict_snapshot_at_root(
+            &root,
+            record_request(
+                "gyrerecord_nest_valid",
+                state.binary_sha256.clone(),
+                SUPPORTED_GYRE_BUILD_ID,
+                SUPPORTED_GYRE_SCHEMA_VERSION,
+            ),
+        )
+        .unwrap();
+        let resolved =
+            resolve_gyre_snapshot_for_finalization_at_root(&root, &state, &valid.snapshot_id)
+                .unwrap();
+        assert_eq!(resolved, valid);
+
+        let mismatch = crate::commands::gyre_snapshot::record_verdict_snapshot_at_root(
+            &root,
+            record_request(
+                "gyrerecord_nest_hash_mismatch",
+                "f".repeat(64),
+                SUPPORTED_GYRE_BUILD_ID,
+                SUPPORTED_GYRE_SCHEMA_VERSION,
+            ),
+        )
+        .unwrap();
+        assert!(resolve_gyre_snapshot_for_finalization_at_root(
+            &root,
+            &state,
+            &mismatch.snapshot_id,
+        )
+        .unwrap_err()
+        .contains("does not match"));
+
+        let unsupported = crate::commands::gyre_snapshot::record_verdict_snapshot_at_root(
+            &root,
+            record_request(
+                "gyrerecord_nest_unsupported",
+                state.binary_sha256.clone(),
+                "unsupported-build",
+                "2.0.0",
+            ),
+        )
+        .unwrap();
+        assert!(resolve_gyre_snapshot_for_finalization_at_root(
+            &root,
+            &state,
+            &unsupported.snapshot_id,
+        )
+        .unwrap_err()
+        .contains("unsupported"));
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn final_verdict_helper_preserves_existing_field_provenance() {
+        let mut state = base_state();
+        state.iterations.push(iter(1, 84));
+        let request = finalize_request();
+        let gyre_snapshot = recorded_snapshot(&state);
+        let linked_iteration_id = request.linked_iteration_id.clone().unwrap();
+
+        let snapshot = build_final_verdict_snapshot(
+            &state,
+            &request,
+            &gyre_snapshot,
+            linked_iteration_id.clone(),
+        );
+
+        assert_eq!(snapshot.bundle_id, state.bundle_id);
+        assert_eq!(snapshot.session_id, state.session_id);
+        assert_eq!(snapshot.binary_id, state.binary_id);
+        assert_eq!(snapshot.binary_sha256, state.binary_sha256);
+        assert_eq!(snapshot.gyre_build_id, gyre_snapshot.gyre_build_id);
+        assert_eq!(
+            snapshot.gyre_schema_version,
+            gyre_snapshot.gyre_schema_version
+        );
+        assert_eq!(snapshot.verdict_snapshot_id, gyre_snapshot.snapshot_id);
+        assert_eq!(snapshot.linked_iteration_id, linked_iteration_id);
+        assert_eq!(snapshot.classification, gyre_snapshot.classification);
+        assert_eq!(snapshot.confidence, gyre_snapshot.base_confidence);
+        assert_eq!(snapshot.threat_score, gyre_snapshot.threat_score);
+        assert_eq!(snapshot.summary, gyre_snapshot.summary);
+        assert_eq!(snapshot.signal_count, gyre_snapshot.signal_count);
+        assert_eq!(
+            snapshot.contradiction_count,
+            gyre_snapshot.contradiction_count
+        );
+        assert_eq!(
+            snapshot.reasoning_chain_hash,
+            gyre_snapshot.reasoning_chain_hash
+        );
+        assert_eq!(snapshot.nest_linkage.nest_summary, request.nest_summary);
+        assert_eq!(snapshot.source_engine, "gyre");
+        assert!(snapshot.nest_linkage.gyre_is_sole_verdict_source);
+    }
+
+    #[test]
+    fn nest_finalization_must_not_attribute_request_verdict_content_to_gyre() {
+        let mut state = base_state();
+        state.iterations.push(iter(1, 37));
+        let mut request = finalize_request();
+        request.verdict_snapshot_id = Some("request-supplied-snapshot-id".to_string());
+        request.classification = Some("request-supplied-test-value".to_string());
+        request.confidence = Some(37);
+        request.threat_score = Some(73);
+        request.summary = Some("request-supplied-summary".to_string());
+        request.signal_count = Some(17);
+        request.contradiction_count = Some(3);
+        request.reasoning_chain_hash = Some("request-supplied-reasoning-hash".to_string());
+        let gyre_snapshot = recorded_snapshot(&state);
+        let linked_iteration_id = request.linked_iteration_id.clone().unwrap();
+
+        let snapshot =
+            build_final_verdict_snapshot(&state, &request, &gyre_snapshot, linked_iteration_id);
+
+        assert_eq!(snapshot.source_engine, "gyre");
+        assert_ne!(
+            snapshot.classification,
+            request.classification.unwrap(),
+            "GYRE-attributed finalization mirrored request-supplied classification"
+        );
+    }
+
+    #[test]
+    fn finalization_rejects_hash_mismatch_and_unsupported_metadata() {
+        let state = base_state();
+        let mut hash_mismatch = recorded_snapshot(&state);
+        hash_mismatch.binary_sha256 = "f".repeat(64);
+        assert!(
+            validate_gyre_snapshot_for_finalization(&state, &hash_mismatch)
+                .unwrap_err()
+                .contains("does not match")
+        );
+
+        let mut unsupported_build = recorded_snapshot(&state);
+        unsupported_build.gyre_build_id = "unsupported-build".to_string();
+        assert!(
+            validate_gyre_snapshot_for_finalization(&state, &unsupported_build)
+                .unwrap_err()
+                .contains("unsupported")
+        );
+
+        let mut unsupported_schema = recorded_snapshot(&state);
+        unsupported_schema.gyre_schema_version = "2.0.0".to_string();
+        assert!(
+            validate_gyre_snapshot_for_finalization(&state, &unsupported_schema)
+                .unwrap_err()
+                .contains("unsupported")
+        );
+    }
+
+    #[test]
+    fn finalization_uses_all_recorded_verdict_fields_and_ignores_legacy_request_fields() {
+        let mut state = base_state();
+        state.iterations.push(iter(1, 37));
+        let mut request = finalize_request();
+        request.verdict_snapshot_id = Some("request-supplied-snapshot-id".to_string());
+        request.source_engine = Some("request-engine".to_string());
+        request.gyre_is_sole_verdict_source = Some(false);
+        request.classification = Some("request-classification".to_string());
+        request.confidence = Some(1);
+        request.threat_score = Some(2);
+        request.summary = Some("request-summary".to_string());
+        request.signal_count = Some(3);
+        request.contradiction_count = Some(4);
+        request.reasoning_chain_hash = Some("request-reasoning".to_string());
+        let gyre_snapshot = recorded_snapshot(&state);
+
+        validate_gyre_snapshot_for_finalization(&state, &gyre_snapshot).unwrap();
+        let snapshot = build_final_verdict_snapshot(
+            &state,
+            &request,
+            &gyre_snapshot,
+            request.linked_iteration_id.clone().unwrap(),
+        );
+
+        assert_eq!(snapshot.verdict_snapshot_id, gyre_snapshot.snapshot_id);
+        assert_eq!(snapshot.source_engine, "gyre");
+        assert_eq!(snapshot.classification, gyre_snapshot.classification);
+        assert_eq!(snapshot.confidence, gyre_snapshot.base_confidence);
+        assert_eq!(snapshot.threat_score, gyre_snapshot.threat_score);
+        assert_eq!(snapshot.summary, gyre_snapshot.summary);
+        assert_eq!(snapshot.signal_count, gyre_snapshot.signal_count);
+        assert_eq!(
+            snapshot.contradiction_count,
+            gyre_snapshot.contradiction_count
+        );
+        assert_eq!(
+            snapshot.reasoning_chain_hash,
+            gyre_snapshot.reasoning_chain_hash
+        );
+        assert!(snapshot.nest_linkage.gyre_is_sole_verdict_source);
     }
 
     #[test]
@@ -1206,7 +1653,8 @@ mod tests {
             summary: "final".to_string(),
             signal_count: 6,
             contradiction_count: 0,
-            reasoning_chain_hash: "c1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
+            reasoning_chain_hash:
+                "c1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
             linked_iteration_id: "nestiter_ABCDE12345FGHJKMNPQRST0123_0002".to_string(),
             nest_linkage: NestFinalVerdictNestLinkage {
                 session_id: state.session_id.clone(),
@@ -1222,6 +1670,145 @@ mod tests {
         assert!(issues.is_empty(), "issues: {issues:?}");
         assert_eq!(bundle.session.session_id, state.session_id);
         assert_eq!(bundle.final_verdict_snapshot.source_engine, "gyre");
+    }
+
+    fn append_request(client_iteration_key: &str) -> NestSessionAppendIterationRequest {
+        NestSessionAppendIterationRequest {
+            session_id: "nestsession_ABCDE12345FGHJKMNPQRST0123".to_string(),
+            client_iteration_key: client_iteration_key.to_string(),
+            started_at: Some("2026-04-29T10:00:00Z".to_string()),
+            completed_at: Some("2026-04-29T10:00:01Z".to_string()),
+            duration_ms: Some(1000),
+            input_offset: Some(0),
+            input_length: Some(4096),
+            classification: "suspicious".to_string(),
+            confidence: 65,
+            threat_score: 42,
+            signal_count: 4,
+            contradiction_count: 1,
+            reasoning_chain_hash: "b".repeat(64),
+            convergence_reason: "continue".to_string(),
+            has_converged: false,
+            stability_score: 0.7,
+            classification_stable: false,
+            signal_delta: 1,
+            contradiction_burden: 0,
+            executed_action_types: Some(vec!["deep-echo".to_string()]),
+            primary_action_type: Some("deep-echo".to_string()),
+            file_identity_locked: Some(true),
+        }
+    }
+
+    #[test]
+    fn append_is_idempotent_and_returns_backend_canonical_iteration_id() {
+        let mut state = base_state();
+        let request = append_request("client_iter_0001");
+
+        let first = append_iteration_to_state(&mut state, request.clone()).unwrap();
+        assert!(!first.replayed);
+        assert_eq!(first.iteration_count, 1);
+        assert_eq!(first.iteration_id, state.iterations[0].iteration_id);
+
+        let replay = append_iteration_to_state(&mut state, request).unwrap();
+        assert!(replay.replayed);
+        assert_eq!(replay.iteration_id, first.iteration_id);
+        assert_eq!(replay.iteration_count, 1);
+        assert_eq!(state.iterations.len(), 1);
+    }
+
+    #[test]
+    fn conflicting_key_is_rejected_and_different_key_appends() {
+        let mut state = base_state();
+        let first =
+            append_iteration_to_state(&mut state, append_request("client_iter_0001")).unwrap();
+
+        let mut conflict = append_request("client_iter_0001");
+        conflict.threat_score = 99;
+        let error = append_iteration_to_state(&mut state, conflict).unwrap_err();
+        assert!(error.contains("conflicts"));
+        assert_eq!(state.iterations.len(), 1);
+
+        let second =
+            append_iteration_to_state(&mut state, append_request("client_iter_0002")).unwrap();
+        assert!(!second.replayed);
+        assert_ne!(second.iteration_id, first.iteration_id);
+        assert_eq!(second.iteration_count, 2);
+    }
+
+    #[test]
+    fn client_key_scope_and_validation_are_enforced() {
+        let mut first_session = base_state();
+        let mut second_session = base_state();
+        second_session.ulid = "BCDEF23456GHJKMNPQRST01234".to_string();
+        second_session.session_id = format!("nestsession_{}", second_session.ulid);
+
+        append_iteration_to_state(&mut first_session, append_request("shared_key")).unwrap();
+        let mut second_request = append_request("shared_key");
+        second_request.session_id = second_session.session_id.clone();
+        append_iteration_to_state(&mut second_session, second_request).unwrap();
+        assert_eq!(first_session.iterations.len(), 1);
+        assert_eq!(second_session.iterations.len(), 1);
+
+        for invalid in ["", "has space", "slash/key", "dot.key", "percent%key"] {
+            let error =
+                append_iteration_to_state(&mut base_state(), append_request(invalid)).unwrap_err();
+            assert!(error.contains("client_iteration_key"));
+        }
+        let too_long = "a".repeat(MAX_CLIENT_ITERATION_KEY_BYTES + 1);
+        assert!(
+            append_iteration_to_state(&mut base_state(), append_request(&too_long))
+                .unwrap_err()
+                .contains("client_iteration_key")
+        );
+    }
+
+    #[test]
+    fn persisted_reload_preserves_append_idempotency() {
+        let root = std::env::temp_dir().join(format!(
+            "hh-nest-idempotency-test-{}",
+            OffsetDateTime::now_utc().unix_timestamp_nanos()
+        ));
+        let mut state = base_state();
+        let request = append_request("persisted_key");
+        let first = append_iteration_to_state(&mut state, request.clone()).unwrap();
+        persist_state(&root, &state).unwrap();
+
+        let mut reloaded = load_state_from_disk(&root, &state.session_id).unwrap();
+        let replay = append_iteration_to_state(&mut reloaded, request).unwrap();
+        assert!(replay.replayed);
+        assert_eq!(replay.iteration_id, first.iteration_id);
+        assert_eq!(reloaded.iterations.len(), 1);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn returned_canonical_iteration_id_is_accepted_for_finalization_linkage() {
+        let mut state = base_state();
+        let appended =
+            append_iteration_to_state(&mut state, append_request("terminal_key")).unwrap();
+        let snapshot = recorded_snapshot(&state);
+        let mut request = finalize_request();
+        request.linked_iteration_id = Some(appended.iteration_id.clone());
+
+        let final_verdict = build_final_verdict_snapshot(
+            &state,
+            &request,
+            &snapshot,
+            appended.iteration_id.clone(),
+        );
+        assert_eq!(final_verdict.linked_iteration_id, appended.iteration_id);
+
+        assert_eq!(
+            resolve_linked_iteration_id(&state, request.linked_iteration_id.as_deref()).unwrap(),
+            appended.iteration_id
+        );
+
+        request.linked_iteration_id = Some("nestiter_unknown_9999".to_string());
+        assert!(
+            resolve_linked_iteration_id(&state, request.linked_iteration_id.as_deref())
+                .unwrap_err()
+                .contains("does not exist")
+        );
     }
 
     #[test]
@@ -1247,7 +1834,8 @@ mod tests {
             summary: "final".to_string(),
             signal_count: 4,
             contradiction_count: 0,
-            reasoning_chain_hash: "d1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
+            reasoning_chain_hash:
+                "d1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
             linked_iteration_id: "nestiter_ABCDE12345FGHJKMNPQRST0123_0001".to_string(),
             nest_linkage: NestFinalVerdictNestLinkage {
                 session_id: state.session_id.clone(),

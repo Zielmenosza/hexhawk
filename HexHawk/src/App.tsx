@@ -47,6 +47,7 @@ import ThreatAssessment from './components/ThreatAssessment';
 import BinaryVerdict from './components/BinaryVerdict';
 import { computeVerdict } from './utils/correlationEngine';
 import type { BinaryVerdictResult, BinaryClassification } from './utils/correlationEngine';
+import { useGyreSnapshotRecording } from './utils/useGyreSnapshotRecording';
 import PatternIntelligencePanel from './components/PatternIntelligencePanel';
 import PatternCategoryBrowser from './components/PatternCategoryBrowser';
 import WorkflowGuidance from './components/WorkflowGuidance';
@@ -2106,6 +2107,49 @@ export default function App() {
     });
   }, [metadata, strings, disassemblyAnalysis.suspiciousPatterns]);
 
+  // Record the first ordinary renderer GYRE result once per selected path/hash.
+  // Rust records this trusted-renderer result; it does not independently compute
+  // the verdict or verify the renderer-supplied binary identity.
+  const {
+    binding: activeGyreSnapshotBinding,
+    error: gyreSnapshotRecordingError,
+    retry: retryGyreSnapshotRecording,
+  } = useGyreSnapshotRecording({
+    browserMode,
+    binaryPath,
+    binarySha256: metadata?.sha256 ?? null,
+    verdict,
+  });
+
+  const gyreSnapshotLoggedIdRef = useRef<string | null>(null);
+  const gyreSnapshotLoggedErrorRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!activeGyreSnapshotBinding) return;
+    if (gyreSnapshotLoggedIdRef.current === activeGyreSnapshotBinding.snapshotId) return;
+
+    gyreSnapshotLoggedIdRef.current = activeGyreSnapshotBinding.snapshotId;
+    addLog(
+      `Recorded immutable GYRE snapshot ${activeGyreSnapshotBinding.snapshotId}.`,
+      'info',
+    );
+  }, [activeGyreSnapshotBinding]);
+
+  useEffect(() => {
+    if (!gyreSnapshotRecordingError) {
+      gyreSnapshotLoggedErrorRef.current = null;
+      return;
+    }
+    if (gyreSnapshotLoggedErrorRef.current === gyreSnapshotRecordingError) return;
+
+    gyreSnapshotLoggedErrorRef.current = gyreSnapshotRecordingError;
+    setMessage(`GYRE snapshot recording failed: ${gyreSnapshotRecordingError}`);
+    addLog(
+      `GYRE snapshot recording failed: ${gyreSnapshotRecordingError}`,
+      'error',
+    );
+  }, [gyreSnapshotRecordingError]);
+
 
   // --- Patch Intelligence suggestions ---
   const patchSuggestions = useMemo(() =>
@@ -2135,7 +2179,7 @@ export default function App() {
     hasCfg: !!(cfg && cfg.nodes.length > 0),
     hasStrike: false, // extended when STRIKE session is active
     hasNest: !!nestEnrichedVerdict,
-    verdict: nestEnrichedVerdict ?? verdict,
+    verdict: verdict,
   }), [metadata, disassembly, strings, cfg, nestEnrichedVerdict, verdict]);
 
   function navigateView(view: NavView) {
@@ -5157,7 +5201,7 @@ export default function App() {
                         borderRadius: '0.4rem', fontSize: '0.82rem', color: '#4ade80',
                       }}>
                         <span>?</span>
-                        <span>NEST-enriched verdict - {nestEnrichedVerdict.signals.length} signals, {nestEnrichedVerdict.confidence ?? nestEnrichedVerdict.threatScore}% confidence</span>
+                        <span>NEST advisory: {nestEnrichedVerdict.signals.length} signals, {nestEnrichedVerdict.confidence ?? nestEnrichedVerdict.threatScore}% advisory confidence. GYRE base confidence remains {verdict.confidence}%.</span>
                         <button
                           onClick={() => setNestEnrichedVerdict(null)}
                           style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#4ade80', cursor: 'pointer', fontSize: '0.8rem' }}
@@ -5172,14 +5216,14 @@ export default function App() {
                         onDismiss={() => setHealDismissed(true)}
                       />
                     )}
-                    <BinaryVerdict verdict={nestEnrichedVerdict ?? verdict} onNavigateTab={(tab) => setAndPersistTab(tab as AppTab)} onJumpToAddress={jumpToDisassembly} />
+                    <BinaryVerdict verdict={verdict} onNavigateTab={(tab) => setAndPersistTab(tab as AppTab)} onJumpToAddress={jumpToDisassembly} />
                     <div style={{ marginTop: '1.5rem' }}>
                       <AnalysisGraph
                         imports={metadata?.imports ?? []}
                         strings={strings.map(s => ({ offset: s.offset, text: s.text }))}
                         disassembly={disassembly.map(i => ({ address: i.address, mnemonic: i.mnemonic, operands: i.operands }))}
                         patterns={disassemblyAnalysis.suspiciousPatterns}
-                        verdict={nestEnrichedVerdict ?? verdict}
+                        verdict={verdict}
                         onNavigate={(tab) => setAndPersistTab(tab as AppTab)}
                         onSelectStringOffset={() => navigateView('strings')}
                         onSelectAddress={(address) => { selectAddress(address); navigateView('disassembly'); }}
@@ -5277,8 +5321,36 @@ export default function App() {
                 </div>
               ) : (
                 <div className="workspace-view-shell workspace-view-scroll" data-testid="panel-nest">
+                  {gyreSnapshotRecordingError && (
+                    <div
+                      role="alert"
+                      data-testid="gyre-snapshot-recording-error"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        marginBottom: '0.75rem',
+                        padding: '0.6rem 0.75rem',
+                        border: '1px solid #dc2626',
+                        borderRadius: '0.4rem',
+                        background: '#2a1010',
+                        color: '#fecaca',
+                        fontSize: '0.82rem',
+                      }}
+                    >
+                      <span>GYRE snapshot recording failed: {gyreSnapshotRecordingError}</span>
+                      <button
+                        type="button"
+                        onClick={retryGyreSnapshotRecording}
+                        style={{ marginLeft: 'auto' }}
+                      >
+                        Retry snapshot recording
+                      </button>
+                    </div>
+                  )}
                   <NestView
                     binaryPath={binaryPath} metadata={metadata} disassembly={disassembly}
+                    gyreSnapshotId={activeGyreSnapshotBinding?.snapshotId ?? null}
                     strings={strings} disassemblyAnalysis={disassemblyAnalysis}
                     disasmOffset={disasmOffset} disasmLength={disasmLength}
                     onAddressSelect={(addr) => { selectAddress(addr); navigateView('disassembly'); }}
@@ -5303,7 +5375,7 @@ export default function App() {
             {activeView === 'report' && (
               <div className="panel" style={{ overflowY: 'auto', flex: 1 }} data-testid="panel-report">
                 <IntelligenceReport
-                  verdict={nestEnrichedVerdict ?? verdict}
+                  verdict={verdict}
                   binaryPath={binaryPath}
                   binarySize={metadata?.file_size}
                   architecture={metadata?.architecture}
@@ -5481,7 +5553,7 @@ export default function App() {
                     baseStrings={strings}
                     baseDisassembly={disassembly}
                     baseCfg={cfg}
-                    baseVerdict={nestEnrichedVerdict ?? verdict}
+                    baseVerdict={verdict}
                     onJumpToAddress={jumpToDisassembly}
                   />
                 </div>

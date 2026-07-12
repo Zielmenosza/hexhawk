@@ -8,6 +8,7 @@ pub mod debugger;
 pub mod disassemble;
 pub mod document;
 pub mod graph;
+pub mod gyre_snapshot;
 pub mod file_dialog;
 pub mod sandbox;
 pub mod hex;

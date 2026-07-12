@@ -29,6 +29,7 @@ use commands::debugger::{
 };
 use commands::disassemble::disassemble_file_range;
 use commands::graph::build_cfg;
+use commands::gyre_snapshot::gyre_record_verdict_snapshot;
 use commands::file_dialog::open_file_picker;
 use commands::hex::{find_strings, get_file_size, read_hex_range};
 use commands::inspect::{inspect_file_metadata, inspect_pe_extras, inspect_macho_load_commands};
@@ -87,6 +88,7 @@ fn main() {
             get_file_size,
             disassemble_file_range,
             build_cfg,
+            gyre_record_verdict_snapshot,
             open_file_picker,
             start_debug_session,
             debug_step,

@@ -72,6 +72,10 @@ import type {
 } from '../App';
 import { WorkSavedPanel } from './WorkSavedPanel';
 import type { BinaryVerdictResult } from '../utils/correlationEngine';
+import {
+  NestLifecycleCoordinator,
+  type NestLifecycleWork,
+} from '../utils/gyreSnapshotClient';
 import type { StrikeCorrelationSignal } from '../utils/strikeEngine';
 import {
   CURATED_TRAINING_BINARIES,
@@ -714,6 +718,7 @@ function TrainingHistoryPanel({ records, stats, onClose }: {
 
 interface NestViewProps {
   binaryPath:           string;
+  gyreSnapshotId:       string | null;
   metadata:             FileMetadata | null;
   disassembly:          DisassembledInstruction[];
   strings:              StringMatch[];
@@ -2083,6 +2088,7 @@ const NestView: React.FC<NestViewProps> = ({
   onLoadTrainingBinary,
   onNestComplete,
   binaryPath,
+  gyreSnapshotId,
   metadata,
   disassembly: initialDisassembly,
   strings,
@@ -2126,6 +2132,7 @@ const NestView: React.FC<NestViewProps> = ({
   // M13: Backend NEST lifecycle session tracking
   const [lifecycleSummary, setLifecycleSummary] = useState<{ sessionId: string; binarySha256: string; iterationCount: number } | null>(null);
   const lifecycleSessionIdRef = useRef<string | null>(null);
+  const lifecycleCoordinatorRef = useRef(new NestLifecycleCoordinator<NestStepResult>());
 
   // ── Multi-binary batch state ───────────────────────────────────────────────
   const [showBatchPanel,  setShowBatchPanel]  = useState(false);
@@ -2175,72 +2182,94 @@ const NestView: React.FC<NestViewProps> = ({
     const runner = runnerRef.current;
     if (!runner || !binaryPath) return false;
 
-    // M13 fidelity gate: verify binary identity before each iteration
     const lcSessionId = lifecycleSessionIdRef.current;
-    if (lcSessionId) {
-      try {
-        const identityCheck = await invoke<{ verified: boolean; mismatch: boolean; message: string }>('nest_verify_binary_identity', {
-          sessionId: lcSessionId,
-          binaryPath,
-        });
-        if (identityCheck.mismatch) {
-          setError(`NEST fidelity gate: ${identityCheck.message}`);
-          return false;
+    const createWork = async (): Promise<NestLifecycleWork<NestStepResult>> => {
+      // M13 fidelity gate: verify binary identity before creating each logical iteration.
+      if (lcSessionId) {
+        try {
+          const identityCheck = await invoke<{ verified: boolean; mismatch: boolean; message: string }>('nest_verify_binary_identity', {
+            sessionId: lcSessionId,
+            binaryPath,
+          });
+          if (identityCheck.mismatch) {
+            throw new Error(`NEST fidelity gate: ${identityCheck.message}`);
+          }
+        } catch (identityError) {
+          if (String(identityError).includes('NEST fidelity gate:')) throw identityError;
+          // Fidelity command availability remains non-fatal, matching prior behavior.
         }
-      } catch {
-        // Fidelity gate failure is non-fatal — log but continue
       }
+
+      const step: NestStepResult = await runner.step();
+
+      // Sync mutable refs once for this stable logical iteration.
+      sessRef.current   = step.session;
+      disasmRef.current = runner.disassembly;
+      offsetRef.current = runner.currentOffset;
+      lengthRef.current = runner.currentLength;
+
+      // Until persistence/finalization succeeds, do not present a terminal backend state.
+      setSession({ ...step.session, status: 'running' });
+      setSelectedIter(step.snapshot.iteration);
+      learningSessionRef.current = step.learningSession;
+      setLearningSession({ ...step.learningSession });
+      setIterDecisions(runner.decisions);
+      setCurrentStrategyPlan(step.analysisPlan);
+      if (step.boosts) setLastBoosts(step.boosts);
+
+      const snap = step.snapshot;
+      return {
+        step,
+        terminal: !step.shouldContinue,
+        appendRequest: {
+          startedAt: null,
+          completedAt: null,
+          durationMs: snap.durationMs ? BigInt(snap.durationMs) : null,
+          inputOffset: null,
+          inputLength: null,
+          classification: snap.verdict?.classification ?? 'unknown',
+          confidence: Math.round((snap.confidence ?? 0) * 100),
+          threatScore: snap.verdict?.threatScore ?? 0,
+          signalCount: BigInt(snap.verdict?.signals?.length ?? 0),
+          contradictionCount: BigInt(snap.verdict?.contradictions?.length ?? 0),
+          reasoningChainHash: '',
+          convergenceReason: '',
+          hasConverged: !step.shouldContinue,
+          stabilityScore: 0.0,
+          classificationStable: !step.shouldContinue,
+          signalDelta: BigInt(0),
+          contradictionBurden: BigInt(0),
+          executedActionTypes: null,
+          primaryActionType: null,
+          fileIdentityLocked: true,
+        },
+      };
+    };
+
+    let step: NestStepResult;
+    if (lcSessionId) {
+      const lifecycleResult = await lifecycleCoordinatorRef.current.processNext(
+        lcSessionId,
+        gyreSnapshotId ?? null,
+        createWork,
+      );
+      step = lifecycleResult.step;
+      setLifecycleSummary(prev => prev
+        ? { ...prev, iterationCount: lifecycleResult.append.iterationCount }
+        : null);
+    } else {
+      // Preserve the existing non-lifecycle fallback when session creation is unavailable.
+      const work = await createWork();
+      step = work.step;
     }
 
-    const step: NestStepResult = await runner.step();
-
-    // Sync mutable refs
-    sessRef.current   = step.session;
-    disasmRef.current = runner.disassembly;
-    offsetRef.current = runner.currentOffset;
-    lengthRef.current = runner.currentLength;
-
-    // Stream iteration state into React UI
-    // Keep status='running' while the loop continues (the runner's internal
-    // session starts as 'idle' and is only finalized when shouldContinue=false)
-    setSession(step.shouldContinue ? { ...step.session, status: 'running' } : { ...step.session });
-    setSelectedIter(step.snapshot.iteration);
-    learningSessionRef.current = step.learningSession;
-    setLearningSession({ ...step.learningSession });
-    setIterDecisions(runner.decisions);
-    setCurrentStrategyPlan(step.analysisPlan);
-    if (step.boosts) setLastBoosts(step.boosts);
-
     if (!step.shouldContinue) {
+      // The terminal iteration is now persisted and, when lifecycle tracking is
+      // active, finalized against the exact canonical backend iteration ID.
+      setSession({ ...step.session });
       setSummary(summarizeSession(step.session));
       learningSessionRef.current = step.learningSession;
       setLearningSession({ ...step.learningSession });
-
-      // M13: Finalize backend lifecycle session
-      if (lcSessionId) {
-        try {
-          const finalSnap = step.session.finalVerdict;
-          await invoke('nest_finalize_session', {
-            request: {
-              sessionId: lcSessionId,
-              verdictSnapshotId: null,
-              sourceEngine: 'GYRE',
-              gyreIsSoleVerdictSource: true,
-              classification: finalSnap?.classification ?? 'unknown',
-              confidence: Math.round((finalSnap?.confidence ?? 0) * 100),
-              threatScore: finalSnap?.threatScore ?? 0,
-              summary: finalSnap?.summary ?? '',
-              signalCount: BigInt(finalSnap?.signals?.length ?? 0),
-              contradictionCount: BigInt(finalSnap?.contradictions?.length ?? 0),
-              reasoningChainHash: '',
-              linkedIterationId: null,
-              nestSummary: null,
-              runtimeProof: null,
-              notes: null,
-            },
-          });
-        } catch { /* non-fatal */ }
-      }
 
       const pp = step.postProcessing;
       if (pp) {
@@ -2257,49 +2286,16 @@ const NestView: React.FC<NestViewProps> = ({
         setTrainingStats(pp.trainingStats);
       }
 
-      // Propagate NEST-enriched verdict to the parent (Verdict panel)
+      // NEST remains advisory; the backend final verdict uses the recorded GYRE snapshot.
       if (step.session.finalVerdict) {
         onNestComplete?.(step.session.finalVerdict);
       }
 
-      return false; // stop
+      return false;
     }
 
-    // M13: Append iteration to backend lifecycle ledger
-    if (lcSessionId) {
-      const snap = step.snapshot;
-      try {
-        const lcResult = await invoke<{ sessionId: string; iterationCount: number }>('nest_append_iteration', {
-          request: {
-            sessionId: lcSessionId,
-            startedAt: null,
-            completedAt: null,
-            durationMs: snap.durationMs ? BigInt(snap.durationMs) : null,
-            inputOffset: null,
-            inputLength: null,
-            classification: snap.verdict?.classification ?? 'unknown',
-            confidence: Math.round((snap.confidence ?? 0) * 100),
-            threatScore: snap.verdict?.threatScore ?? 0,
-            signalCount: BigInt(snap.verdict?.signals?.length ?? 0),
-            contradictionCount: BigInt(snap.verdict?.contradictions?.length ?? 0),
-            reasoningChainHash: '',
-            convergenceReason: '',
-            hasConverged: !step.shouldContinue,
-            stabilityScore: 0.0,
-            classificationStable: !step.shouldContinue,
-            signalDelta: BigInt(0),
-            contradictionBurden: BigInt(0),
-            executedActionTypes: null,
-            primaryActionType: null,
-            fileIdentityLocked: true,
-          },
-        });
-        setLifecycleSummary(prev => prev ? { ...prev, iterationCount: lcResult.iterationCount } : null);
-      } catch { /* non-fatal */ }
-    }
-
-    return true; // keep going
-  }, [binaryPath]);
+    return true;
+  }, [binaryPath, gyreSnapshotId, onNestComplete]);
 
   // ── Start a new session ─────────────────────────────────────────────────
 
@@ -2312,6 +2308,7 @@ const NestView: React.FC<NestViewProps> = ({
     setIterDecisions([]);
 
     // M13: Create backend lifecycle session (fire-and-forget — don't block the UI)
+    lifecycleCoordinatorRef.current.reset();
     lifecycleSessionIdRef.current = null;
     setLifecycleSummary(null);
     if (metadata?.sha256) {
@@ -2442,6 +2439,7 @@ const NestView: React.FC<NestViewProps> = ({
     setIterDecisions([]);
     setDominance(null);
     // M13: reset lifecycle tracking
+    lifecycleCoordinatorRef.current.reset();
     lifecycleSessionIdRef.current = null;
     setLifecycleSummary(null);
   }, [initialDisassembly, initialOffset, initialLength]);
