@@ -156,6 +156,14 @@ pub struct NestSessionExportResult {
     pub issues: Vec<NestValidationIssue>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NestProjectLinkage {
+    pub session_id: String,
+    pub final_iteration_id: String,
+    pub final_verdict_snapshot_id: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct NestSessionLifecycleState {
     schema_version: String,
@@ -284,6 +292,56 @@ fn load_state_from_disk(
     let text = std::fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read lifecycle state at {}: {e}", path.display()))?;
     serde_json::from_str(&text).map_err(|e| format!("Failed to parse lifecycle state JSON: {e}"))
+}
+
+fn validate_project_session_id(session_id: &str) -> Result<(), String> {
+    let suffix = session_id
+        .strip_prefix("nestsession_")
+        .ok_or_else(|| "Invalid NEST session ID".to_string())?;
+    if suffix.len() != 26
+        || !suffix
+            .bytes()
+            .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
+    {
+        return Err("Invalid NEST session ID".to_string());
+    }
+    Ok(())
+}
+
+pub(crate) fn resolve_project_nest_linkage_at_root(
+    root: &Path,
+    requested: &NestProjectLinkage,
+    binary_sha256: &str,
+    gyre_snapshot_id: &str,
+) -> Result<NestProjectLinkage, String> {
+    validate_project_session_id(&requested.session_id)?; // before state_path uses the ID
+    let state = load_state_from_disk(root, &requested.session_id)?;
+    if state.session_id != requested.session_id || state.binary_sha256 != binary_sha256 {
+        return Err("NEST project session or binary linkage mismatch".to_string());
+    }
+    if state.status != SessionStatus::Completed {
+        return Err("NEST project session is not finalized".to_string());
+    }
+    let final_iteration = state
+        .iterations
+        .last()
+        .ok_or_else(|| "NEST project session has no final iteration".to_string())?;
+    let verdict = state
+        .final_verdict_snapshot
+        .as_ref()
+        .ok_or_else(|| "NEST project session has no final verdict".to_string())?;
+    if final_iteration.iteration_id != requested.final_iteration_id
+        || verdict.linked_iteration_id != requested.final_iteration_id
+        || verdict.nest_linkage.final_iteration_id != requested.final_iteration_id
+        || verdict.verdict_snapshot_id != requested.final_verdict_snapshot_id
+        || verdict.verdict_snapshot_id != gyre_snapshot_id
+        || verdict.binary_sha256 != binary_sha256
+        || verdict.source_engine != "gyre"
+        || !verdict.nest_linkage.gyre_is_sole_verdict_source
+    {
+        return Err("NEST final iteration/final verdict project linkage mismatch".to_string());
+    }
+    Ok(requested.clone())
 }
 
 fn get_or_load_state(

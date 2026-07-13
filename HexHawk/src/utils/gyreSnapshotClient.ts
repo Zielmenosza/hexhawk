@@ -58,6 +58,12 @@ export interface NestAppendIterationResponse {
   replayed: boolean;
 }
 
+export interface NestProjectLinkage {
+  sessionId: string;
+  finalIterationId: string;
+  finalVerdictSnapshotId: string;
+}
+
 export interface NestLifecycleWork<TStep> {
   step: TStep;
   terminal: boolean;
@@ -70,6 +76,7 @@ export interface NestLifecycleResult<TStep> {
   terminal: boolean;
   append: NestAppendIterationResponse;
   finalized: boolean;
+  projectLinkage: NestProjectLinkage | null;
 }
 
 type NativeInvoke = (command: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -208,6 +215,7 @@ export class NestLifecycleCoordinator<TStep> {
         terminal: false,
         append: pending.appendResponse,
         finalized: false,
+        projectLinkage: null,
       };
       this.pending = null;
       return result;
@@ -247,6 +255,11 @@ export class NestLifecycleCoordinator<TStep> {
       terminal: true,
       append: pending.appendResponse,
       finalized: true,
+      projectLinkage: {
+        sessionId,
+        finalIterationId: pending.appendResponse.iterationId,
+        finalVerdictSnapshotId: pending.gyreSnapshotId,
+      },
     };
     this.pending = null;
     return result;

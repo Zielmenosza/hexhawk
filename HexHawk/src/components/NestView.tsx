@@ -75,6 +75,7 @@ import type { BinaryVerdictResult } from '../utils/correlationEngine';
 import {
   NestLifecycleCoordinator,
   type NestLifecycleWork,
+  type NestProjectLinkage,
 } from '../utils/gyreSnapshotClient';
 import type { StrikeCorrelationSignal } from '../utils/strikeEngine';
 import {
@@ -734,6 +735,8 @@ interface NestViewProps {
   onLoadTrainingBinary?: (path: string) => void;
   /** Called when a NEST session completes — provides the final enriched verdict */
   onNestComplete?: (verdict: BinaryVerdictResult) => void;
+  /** Emitted only after native finalization returns canonical project linkage. */
+  onProjectLinkageReady?: (linkage: NestProjectLinkage) => void;
 }
 
 // ── Helper: format ms ─────────────────────────────────────────────────────────
@@ -2087,6 +2090,7 @@ function LearningSessionPanel({ session }: { session: LearningSession }) {
 const NestView: React.FC<NestViewProps> = ({
   onLoadTrainingBinary,
   onNestComplete,
+  onProjectLinkageReady,
   binaryPath,
   gyreSnapshotId,
   metadata,
@@ -2247,6 +2251,7 @@ const NestView: React.FC<NestViewProps> = ({
     };
 
     let step: NestStepResult;
+    let projectLinkage: NestProjectLinkage | null = null;
     if (lcSessionId) {
       const lifecycleResult = await lifecycleCoordinatorRef.current.processNext(
         lcSessionId,
@@ -2254,6 +2259,7 @@ const NestView: React.FC<NestViewProps> = ({
         createWork,
       );
       step = lifecycleResult.step;
+      projectLinkage = lifecycleResult.projectLinkage;
       setLifecycleSummary(prev => prev
         ? { ...prev, iterationCount: lifecycleResult.append.iterationCount }
         : null);
@@ -2286,6 +2292,10 @@ const NestView: React.FC<NestViewProps> = ({
         setTrainingStats(pp.trainingStats);
       }
 
+      if (projectLinkage) {
+        onProjectLinkageReady?.(projectLinkage);
+      }
+
       // NEST remains advisory; the backend final verdict uses the recorded GYRE snapshot.
       if (step.session.finalVerdict) {
         onNestComplete?.(step.session.finalVerdict);
@@ -2295,7 +2305,7 @@ const NestView: React.FC<NestViewProps> = ({
     }
 
     return true;
-  }, [binaryPath, gyreSnapshotId, onNestComplete]);
+  }, [binaryPath, gyreSnapshotId, onNestComplete, onProjectLinkageReady]);
 
   // ── Start a new session ─────────────────────────────────────────────────
 

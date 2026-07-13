@@ -21,6 +21,7 @@
 mod commands;
 mod plugins;
 
+use commands::constraint::solve_z3_constraint;
 use commands::corpus::log_analysis_result;
 use commands::debugger::{
     debug_attach, debug_continue, debug_detach, debug_get_state, debug_read_memory,
@@ -28,43 +29,34 @@ use commands::debugger::{
     debug_stop, start_debug_session,
 };
 use commands::disassemble::disassemble_file_range;
+use commands::document::{analyze_office, analyze_pdf};
+use commands::file_dialog::open_file_picker;
+use commands::flirt::{inspect_sig_file, match_flirt_signatures};
 use commands::graph::build_cfg;
 use commands::gyre_snapshot::gyre_record_verdict_snapshot;
-use commands::file_dialog::open_file_picker;
 use commands::hex::{find_strings, get_file_size, read_hex_range};
-use commands::inspect::{inspect_file_metadata, inspect_pe_extras, inspect_macho_load_commands};
+use commands::inspect::{inspect_file_metadata, inspect_macho_load_commands, inspect_pe_extras};
+use commands::license::{get_build_info, verify_license};
+use commands::llm::{
+    clear_llm_api_key, clear_llm_provider_key, has_llm_api_key, has_llm_provider_key, llm_query,
+    store_llm_api_key, store_llm_provider_key,
+};
+use commands::nest_session_lifecycle::{
+    nest_append_iteration, nest_create_session, nest_export_session_bundle, nest_finalize_session,
+    nest_get_session_summary, nest_verify_binary_identity,
+};
+use commands::patch::{export_patched, get_jump_inversion};
+use commands::plugin_browser::get_plugin_manifest;
 use commands::plugin_browser::{
     get_plugin_directory, install_plugin, list_available_plugins, list_user_plugins,
     open_plugin_directory, reload_plugin, uninstall_plugin,
 };
-use commands::run_plugins::run_plugins_on_file;
-use commands::document::{analyze_pdf, analyze_office};
-use commands::sandbox::run_script_sandbox;
-use commands::constraint::solve_z3_constraint;
-use commands::llm::{
-    llm_query,
-    store_llm_api_key,
-    clear_llm_api_key,
-    has_llm_api_key,
-    store_llm_provider_key,
-    clear_llm_provider_key,
-    has_llm_provider_key,
-};
-use commands::license::{verify_license, get_build_info};
-use commands::nest_session_lifecycle::{
-    nest_append_iteration,
-    nest_create_session,
-    nest_export_session_bundle,
-    nest_finalize_session,
-    nest_get_session_summary,
-    nest_verify_binary_identity,
-};
-use commands::patch::{export_patched, get_jump_inversion};
-use commands::flirt::{inspect_sig_file, match_flirt_signatures};
-use commands::structs::infer_structs;
+use commands::project_persistence::{open_project, save_project};
 use commands::repl::{close_repl_session, create_repl_session, get_repl_session, repl_eval};
+use commands::run_plugins::run_plugins_on_file;
+use commands::sandbox::run_script_sandbox;
 use commands::script::run_script;
-use commands::plugin_browser::get_plugin_manifest;
+use commands::structs::infer_structs;
 
 fn main() {
     tauri::Builder::default()
@@ -89,6 +81,8 @@ fn main() {
             disassemble_file_range,
             build_cfg,
             gyre_record_verdict_snapshot,
+            save_project,
+            open_project,
             open_file_picker,
             start_debug_session,
             debug_step,

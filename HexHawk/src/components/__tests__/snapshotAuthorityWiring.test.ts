@@ -19,16 +19,25 @@ describe('snapshot authority production wiring', () => {
     );
     expect(appSource).not.toContain('recordGyreVerdictSnapshot(');
     expect(appSource).toContain(
-      'gyreSnapshotId={activeGyreSnapshotBinding?.snapshotId ?? null}',
+      'gyreSnapshotId={authorityGyreSnapshotId}',
     );
   });
 
-  it('keeps authority-bearing App consumers on the ordinary GYRE verdict', () => {
-    expect(appSource).toMatch(/<BinaryVerdict\s+verdict=\{verdict\}/);
-    expect(appSource).toMatch(/<AnalysisGraph[\s\S]*?verdict=\{verdict\}/);
-    expect(appSource).toMatch(/<IntelligenceReport[\s\S]*?verdict=\{verdict\}/);
-    expect(appSource).toContain('baseVerdict={verdict}');
-    expect(appSource).toContain('verdict: verdict');
+  it('hydrates persisted GYRE authority without recording a replacement snapshot', () => {
+    expect(appSource).toContain('const persistedAuthorityProject =');
+    expect(appSource).toContain(
+      'verdictFromResolvedProject(persistedAuthorityProject)',
+    );
+    expect(appSource).toContain(
+      'browserMode: browserMode || persistedAuthorityProject !== null',
+    );
+    expect(appSource).toContain('const authorityGyreSnapshotId =');
+    expect(appSource).toMatch(/<BinaryVerdict\s+verdict=\{authorityVerdict\}/);
+    expect(appSource).toMatch(/<AnalysisGraph[\s\S]*?verdict=\{authorityVerdict\}/);
+    expect(appSource).toMatch(/<IntelligenceReport[\s\S]*?verdict=\{authorityVerdict\}/);
+    expect(appSource).toContain('baseVerdict={authorityVerdict}');
+    expect(appSource).toContain('verdict: authorityVerdict');
+    expect(appSource).toContain('gyreSnapshotId={authorityGyreSnapshotId}');
     expect(appSource).not.toContain('nestEnrichedVerdict ?? verdict');
     expect(appSource).toContain('NEST advisory:');
     expect(appSource).toContain('GYRE base confidence remains');
@@ -47,5 +56,24 @@ describe('snapshot authority production wiring', () => {
     expect(nestViewSource).not.toContain(
       "invoke('nest_finalize_session'",
     );
+  });
+
+  it('passes only canonical finalized NEST linkage into project persistence', () => {
+    expect(nestViewSource).toContain(
+      'onProjectLinkageReady?: (linkage: NestProjectLinkage) => void;',
+    );
+    expect(nestViewSource).toContain(
+      'projectLinkage = lifecycleResult.projectLinkage;',
+    );
+    expect(nestViewSource).toContain(
+      'onProjectLinkageReady?.(projectLinkage);',
+    );
+    expect(appSource).toContain(
+      'onProjectLinkageReady={setNestProjectLinkage}',
+    );
+    expect(appSource).toContain(
+      'nestProjectLinkage?.finalVerdictSnapshotId === authorityGyreSnapshotId',
+    );
+    expect(appSource).toContain('setNestProjectLinkage(resolved.nest);');
   });
 });

@@ -87,6 +87,11 @@ type SnapshotCacheKey = (PathBuf, String);
 static GYRE_SNAPSHOTS: Lazy<Mutex<HashMap<SnapshotCacheKey, GyreRecordedVerdictSnapshot>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+#[cfg(test)]
+pub(crate) fn clear_snapshot_cache_for_tests() {
+    GYRE_SNAPSHOTS.lock().unwrap().clear();
+}
+
 fn snapshot_cache_key(root: &Path, snapshot_id: &str) -> SnapshotCacheKey {
     (root.to_path_buf(), snapshot_id.to_string())
 }

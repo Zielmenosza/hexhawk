@@ -17,6 +17,8 @@ import {
   describeHexHawkReportRefinement,
   refineHexHawkReportMarkdown,
 } from '../utils/aetherframeReportRefinementAdapter';
+import type { GyreRecordedVerdictSnapshot } from '../utils/gyreSnapshotClient';
+import { buildFinalVerdictSnapshotExport } from '../utils/reportAuthorityProvenance';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +29,7 @@ interface Props {
   architecture?: string;
   fileType?: string;
   aiContributions?: AiContributions;
+  gyreSnapshot?: GyreRecordedVerdictSnapshot | null;
 }
 
 export interface ReportSnapshot {
@@ -264,6 +267,7 @@ export function formatMarkdown(
   options: IntelligenceReportMarkdownOptions = {},
 ): string {
   const ts = new Date().toISOString();
+  const authorityProvenance = buildFinalVerdictSnapshotExport(verdict, meta.gyreSnapshot ?? null);
   const lines: string[] = [
     `# HexHawk Intelligence Report`,
     ``,
@@ -272,6 +276,19 @@ export function formatMarkdown(
     `**Architecture:** ${meta.architecture ?? 'Unknown'}`,
     `**File Type:** ${meta.fileType ?? 'Unknown'}`,
     `**Size:** ${meta.binarySize ? `${meta.binarySize.toLocaleString()} bytes` : 'Unknown'}`,
+    ``,
+    `## GYRE Authority Provenance`,
+    ``,
+    `| Field | Value |`,
+    `|-------|-------|`,
+    `| Snapshot identity | ${authorityProvenance.snapshot_identity_status} |`,
+    `| Snapshot ID | ${authorityProvenance.verdict_snapshot_id ?? 'Unavailable'} |`,
+    `| Detail availability | ${authorityProvenance.detail_availability} |`,
+    `| GYRE build | ${authorityProvenance.gyre_build_id ?? 'Unavailable'} |`,
+    `| GYRE schema | ${authorityProvenance.gyre_schema_version ?? 'Unavailable'} |`,
+    `| Reasoning chain hash | ${authorityProvenance.reasoning_chain_hash ?? 'Unavailable'} |`,
+    ``,
+    `> ${authorityProvenance.detail_note}`,
     ``,
     `---`,
     ``,
@@ -621,7 +638,7 @@ function AlternativesList({ alternatives }: { alternatives: AlternativeHypothesi
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function IntelligenceReport({ verdict, binaryPath, binarySize, architecture, fileType, aiContributions }: Props) {
+export function IntelligenceReport({ verdict, binaryPath, binarySize, architecture, fileType, aiContributions, gyreSnapshot }: Props) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [aetherframeMarkdownEnabled, setAetherframeMarkdownEnabled] = useState(true);
@@ -641,6 +658,10 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
   }
 
   const reportAiContributions = normalizeAiContributions(aiContributions);
+  const finalVerdictSnapshot = useMemo(
+    () => buildFinalVerdictSnapshotExport(verdict, gyreSnapshot ?? null),
+    [verdict, gyreSnapshot],
+  );
   const verdictColor = THREAT_COLORS[verdict.classification] ?? '#888';
   const scoreColor = threatScoreColor(verdict.threatScore);
   const currentSnapshot = useMemo(
@@ -672,7 +693,6 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
 
   const handleDownloadJSON = () => {
     const generatedAt = new Date().toISOString();
-    const verdictSnapshotId = `gyre-${generatedAt}-${verdict.classification}-${verdict.threatScore}`;
     const aetherframeReportLineage = describeHexHawkReportRefinement(markdownExportOptions.aetherframe);
     const report = {
       generatedAt,
@@ -691,15 +711,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
         nextSteps: verdict.nextSteps,
       },
       final_verdict_snapshot: {
-        verdict_snapshot_id: verdictSnapshotId,
-        source_engine: 'gyre',
-        gyre_is_sole_verdict_source: true,
-        gyre_schema_version: '1.0.0',
-        classification: verdict.classification,
-        confidence: verdict.confidence,
-        threat_score: verdict.threatScore,
-        summary: verdict.summary,
-        signal_count: verdict.signalCount,
+        ...finalVerdictSnapshot,
         nest_linkage: {
           nest_enrichment_applied: false,
           gyre_is_sole_verdict_source: true,
@@ -750,7 +762,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
   };
 
   const handleDownloadMarkdown = () => {
-    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType }, markdownExportOptions);
+    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType, gyreSnapshot }, markdownExportOptions);
     downloadText(md, 'hexhawk-report.md', 'text/markdown');
   };
 
@@ -766,7 +778,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
   };
 
   const handleCopy = async () => {
-    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType }, markdownExportOptions);
+    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType, gyreSnapshot }, markdownExportOptions);
     await navigator.clipboard.writeText(md);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -852,6 +864,22 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
         </div>
       </div>
       <div className="report-summary">{verdict.summary}</div>
+
+      <div className="report-section" data-testid="report-authority-provenance">
+        <div className="report-section-title">GYRE Authority Provenance</div>
+        <p>
+          <strong>
+            {finalVerdictSnapshot.snapshot_identity_status === 'persisted-immutable'
+              ? 'Immutable persisted snapshot'
+              : 'Live verdict without supplied immutable snapshot'}
+          </strong>
+        </p>
+        {finalVerdictSnapshot.verdict_snapshot_id && (
+          <p>Snapshot ID: <code>{finalVerdictSnapshot.verdict_snapshot_id}</code></p>
+        )}
+        <p>Detail availability: <code>{finalVerdictSnapshot.detail_availability}</code></p>
+        <p>{finalVerdictSnapshot.detail_note}</p>
+      </div>
 
       <details className="report-section report-ai-contributions" open>
         <summary className="report-section-title">How AI contributed</summary>

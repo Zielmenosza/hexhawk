@@ -5,6 +5,8 @@ import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
 import './styles.css';
 import { flags } from './config/featureFlags';
 import AuthorityBanner from './components/AuthorityBanner';
+import { ProjectPersistenceCoordinator, verdictFromResolvedProject, type NestProjectLinkage, type ResolvedProject } from './utils/projectPersistenceClient';
+import { buildFinalVerdictSnapshotExport } from './utils/reportAuthorityProvenance';
 
 // Tier system
 import TierGate from './components/TierGate';
@@ -1878,6 +1880,11 @@ export default function App() {
     () => (localStorage.getItem('hexhawk.disassemblyWorkspaceTab') as DisassemblyWorkspaceTab) ?? 'overview'
   );
   const [message, setMessage] = useState('Ready for analysis');
+  const projectCoordinatorRef = useRef(new ProjectPersistenceCoordinator());
+  const [activeProject, setActiveProject] = useState<ResolvedProject | null>(null);
+  const [nestProjectLinkage, setNestProjectLinkage] = useState<NestProjectLinkage | null>(null);
+  const [projectId, setProjectId] = useState('hhproj_default1');
+  const [projectBusy, setProjectBusy] = useState(false);
 
   // ─── Tier system ────────────────────────────────────────────────────────────
   const [tier, setTierState] = useState<Tier>(() => loadTier());
@@ -2107,6 +2114,17 @@ export default function App() {
     });
   }, [metadata, strings, disassemblyAnalysis.suspiciousPatterns]);
 
+  const persistedAuthorityProject = activeProject?.resolvedBinaryPath === binaryPath
+    ? activeProject
+    : null;
+
+  const authorityVerdict = useMemo<BinaryVerdictResult>(
+    () => persistedAuthorityProject
+      ? verdictFromResolvedProject(persistedAuthorityProject)
+      : verdict,
+    [persistedAuthorityProject, verdict],
+  );
+
   // Record the first ordinary renderer GYRE result once per selected path/hash.
   // Rust records this trusted-renderer result; it does not independently compute
   // the verdict or verify the renderer-supplied binary identity.
@@ -2115,11 +2133,51 @@ export default function App() {
     error: gyreSnapshotRecordingError,
     retry: retryGyreSnapshotRecording,
   } = useGyreSnapshotRecording({
-    browserMode,
+    browserMode: browserMode || persistedAuthorityProject !== null,
     binaryPath,
     binarySha256: metadata?.sha256 ?? null,
     verdict,
   });
+
+  const authorityGyreSnapshotId =
+    persistedAuthorityProject?.gyreSnapshot.snapshotId
+    ?? activeGyreSnapshotBinding?.snapshotId
+    ?? null;
+
+  const saveCurrentProject = useCallback(async () => {
+    if (!authorityGyreSnapshotId) {
+      setMessage('Record or reopen a GYRE snapshot before saving a project.');
+      return;
+    }
+    setProjectBusy(true);
+    try {
+      const nest = nestProjectLinkage?.finalVerdictSnapshotId === authorityGyreSnapshotId
+        ? nestProjectLinkage
+        : null;
+      const manifest = await projectCoordinatorRef.current.save({
+        projectId,
+        name: binaryPath.split(/[\\/]/).pop() ?? 'HexHawk project',
+        binaryPath,
+        gyreSnapshotId: authorityGyreSnapshotId,
+        nest,
+      });
+      setMessage(`Saved project ${manifest.name}; GYRE remains verdict authority.`);
+    } catch (error) { setMessage(`Project save failed: ${String(error).slice(0, 500)}`); }
+    finally { setProjectBusy(false); }
+  }, [authorityGyreSnapshotId, binaryPath, nestProjectLinkage, projectId]);
+
+  const openSavedProject = useCallback(async () => {
+    setProjectBusy(true);
+    try {
+      const resolved = await projectCoordinatorRef.current.open(projectId, binaryPath === 'sample.bin' ? null : binaryPath);
+      if (!resolved) return;
+      setActiveProject(resolved);
+      setNestProjectLinkage(resolved.nest);
+      setBinaryPath(resolved.resolvedBinaryPath);
+      setMessage(`Opened ${resolved.manifest.name} from persisted GYRE snapshot ${resolved.gyreSnapshot.snapshotId}.`);
+    } catch (error) { setMessage(`Project open failed: ${String(error).slice(0, 500)}`); }
+    finally { setProjectBusy(false); }
+  }, [binaryPath, projectId]);
 
   const gyreSnapshotLoggedIdRef = useRef<string | null>(null);
   const gyreSnapshotLoggedErrorRef = useRef<string | null>(null);
@@ -2179,8 +2237,8 @@ export default function App() {
     hasCfg: !!(cfg && cfg.nodes.length > 0),
     hasStrike: false, // extended when STRIKE session is active
     hasNest: !!nestEnrichedVerdict,
-    verdict: verdict,
-  }), [metadata, disassembly, strings, cfg, nestEnrichedVerdict, verdict]);
+    verdict: authorityVerdict,
+  }), [metadata, disassembly, strings, cfg, nestEnrichedVerdict, authorityVerdict]);
 
   function navigateView(view: NavView) {
     setActiveView(view);
@@ -3114,6 +3172,16 @@ export default function App() {
 
   /** Export a JSON snapshot of the current analysis session */
   function exportAnalysis() {
+    const finalVerdictSnapshot = metadata
+      ? buildFinalVerdictSnapshotExport(
+          authorityVerdict,
+          persistedAuthorityProject?.gyreSnapshot ?? null,
+        )
+      : null;
+
+    const summaryOnlyVerdictDetail =
+      finalVerdictSnapshot?.detail_availability === 'summary-only';
+
     const exportData = {
       timestamp: new Date().toISOString(),
       binaryPath,
@@ -3125,34 +3193,78 @@ export default function App() {
             file_size: metadata.file_size,
             sha256: metadata.sha256,
             md5: metadata.md5,
-            sections: metadata.sections.map(s => ({ name: s.name, entropy: s.entropy.toFixed(2), size: s.file_size })),
+            sections: metadata.sections.map(s => ({
+              name: s.name,
+              entropy: s.entropy.toFixed(2),
+              size: s.file_size,
+            })),
             imports: metadata.imports.map(i => `${i.library}!${i.name}`),
-            exports: metadata.exports.map(e => ({ name: e.name, address: formatHex(e.address) })),
+            exports: metadata.exports.map(e => ({
+              name: e.name,
+              address: formatHex(e.address),
+            })),
           }
         : null,
-      verdict: metadata
+      final_verdict_snapshot: finalVerdictSnapshot,
+      verdict: finalVerdictSnapshot
         ? {
-            classification: verdict.classification,
-            threatScore: verdict.threatScore,
-            confidence: verdict.confidence,
-            summary: verdict.summary,
-            signals: verdict.signals.map(s => ({ source: s.source, finding: s.finding, weight: s.weight })),
-            negativeSignals: verdict.negativeSignals.map(s => ({ finding: s.finding, reduction: s.reduction })),
-            amplifiers: verdict.amplifiers,
-            dismissals: verdict.dismissals,
+            classification: finalVerdictSnapshot.classification,
+            threatScore: finalVerdictSnapshot.threat_score,
+            confidence: finalVerdictSnapshot.confidence,
+            summary: finalVerdictSnapshot.summary,
+            signalCount: finalVerdictSnapshot.signal_count,
+            detailAvailability: finalVerdictSnapshot.detail_availability,
+            detailNote: finalVerdictSnapshot.detail_note,
+            signals: summaryOnlyVerdictDetail
+              ? null
+              : authorityVerdict.signals.map(s => ({
+                  source: s.source,
+                  finding: s.finding,
+                  weight: s.weight,
+                })),
+            negativeSignals: summaryOnlyVerdictDetail
+              ? null
+              : authorityVerdict.negativeSignals.map(s => ({
+                  finding: s.finding,
+                  reduction: s.reduction,
+                })),
+            amplifiers: summaryOnlyVerdictDetail
+              ? null
+              : authorityVerdict.amplifiers,
+            dismissals: summaryOnlyVerdictDetail
+              ? null
+              : authorityVerdict.dismissals,
           }
         : null,
-      strings: strings.slice(0, 500).map(s => ({ offset: formatHex(s.offset), text: s.text })),
-      disassembly: disassembly.slice(0, 500).map(i => ({ address: formatHex(i.address), mnemonic: i.mnemonic, operands: i.operands })),
-      bookmarks: bookmarks.map(b => ({ address: formatHex(b.address), note: b.note, tags: b.tags })),
-      annotations: [...annotations.entries()].map(([addr, note]) => ({ address: formatHex(addr), note })),
+      strings: strings.slice(0, 500).map(s => ({
+        offset: formatHex(s.offset),
+        text: s.text,
+      })),
+      disassembly: disassembly.slice(0, 500).map(i => ({
+        address: formatHex(i.address),
+        mnemonic: i.mnemonic,
+        operands: i.operands,
+      })),
+      bookmarks: bookmarks.map(b => ({
+        address: formatHex(b.address),
+        note: b.note,
+        tags: b.tags,
+      })),
+      annotations: [...annotations.entries()].map(([addr, note]) => ({
+        address: formatHex(addr),
+        note,
+      })),
     };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const blob = new Blob(
+      [JSON.stringify(exportData, null, 2)],
+      { type: 'application/json' },
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    const fileName = binaryPath.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, '') ?? 'binary';
+    const fileName =
+      binaryPath.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, '') ?? 'binary';
     a.download = `hexhawk-analysis-${fileName}-${Date.now()}.json`;
     a.click();
     scheduleUiTimeout(() => URL.revokeObjectURL(url), 1000);
@@ -4558,6 +4670,15 @@ export default function App() {
             </div>
           </div>
 
+          <section className="panel" data-testid="project-persistence" aria-label="Project persistence" style={{ marginBottom: '0.75rem' }}>
+            <strong>Project</strong>{' '}
+            <input aria-label="Project ID" value={projectId} onChange={event => setProjectId(event.target.value)} />{' '}
+            <button disabled={projectBusy || !authorityGyreSnapshotId} onClick={() => void saveCurrentProject()}>Save project</button>{' '}
+            <button disabled={projectBusy} onClick={() => void openSavedProject()}>Open project</button>
+            <span style={{ marginLeft: '0.75rem' }}>Verdict authority: <strong>GYRE</strong>; NEST: advisory.</span>
+            {activeProject && <div data-testid="resolved-project-report">{activeProject.manifest.name} — {activeProject.gyreSnapshot.classification} ({activeProject.gyreSnapshot.baseConfidence}%) — {activeProject.gyreSnapshot.summary}</div>}
+          </section>
+
           {/* Action Bar */}
           <ActionBar
             workflowState={workflowState}
@@ -5216,14 +5337,14 @@ export default function App() {
                         onDismiss={() => setHealDismissed(true)}
                       />
                     )}
-                    <BinaryVerdict verdict={verdict} onNavigateTab={(tab) => setAndPersistTab(tab as AppTab)} onJumpToAddress={jumpToDisassembly} />
+                    <BinaryVerdict verdict={authorityVerdict} onNavigateTab={(tab) => setAndPersistTab(tab as AppTab)} onJumpToAddress={jumpToDisassembly} />
                     <div style={{ marginTop: '1.5rem' }}>
                       <AnalysisGraph
                         imports={metadata?.imports ?? []}
                         strings={strings.map(s => ({ offset: s.offset, text: s.text }))}
                         disassembly={disassembly.map(i => ({ address: i.address, mnemonic: i.mnemonic, operands: i.operands }))}
                         patterns={disassemblyAnalysis.suspiciousPatterns}
-                        verdict={verdict}
+                        verdict={authorityVerdict}
                         onNavigate={(tab) => setAndPersistTab(tab as AppTab)}
                         onSelectStringOffset={() => navigateView('strings')}
                         onSelectAddress={(address) => { selectAddress(address); navigateView('disassembly'); }}
@@ -5350,11 +5471,12 @@ export default function App() {
                   )}
                   <NestView
                     binaryPath={binaryPath} metadata={metadata} disassembly={disassembly}
-                    gyreSnapshotId={activeGyreSnapshotBinding?.snapshotId ?? null}
+                    gyreSnapshotId={authorityGyreSnapshotId}
                     strings={strings} disassemblyAnalysis={disassemblyAnalysis}
                     disasmOffset={disasmOffset} disasmLength={disasmLength}
                     onAddressSelect={(addr) => { selectAddress(addr); navigateView('disassembly'); }}
                     onNestComplete={(v) => setNestEnrichedVerdict(v)}
+                    onProjectLinkageReady={setNestProjectLinkage}
                     onLoadTrainingBinary={(path) => {
                       setBinaryPath(path);
                       setRecentFiles(prev => {
@@ -5375,11 +5497,12 @@ export default function App() {
             {activeView === 'report' && (
               <div className="panel" style={{ overflowY: 'auto', flex: 1 }} data-testid="panel-report">
                 <IntelligenceReport
-                  verdict={verdict}
+                  verdict={authorityVerdict}
                   binaryPath={binaryPath}
                   binarySize={metadata?.file_size}
                   architecture={metadata?.architecture}
                   fileType={metadata?.file_type}
+                  gyreSnapshot={persistedAuthorityProject?.gyreSnapshot ?? null}
                   aiContributions={aiContributions}
                 />
               </div>
@@ -5553,7 +5676,7 @@ export default function App() {
                     baseStrings={strings}
                     baseDisassembly={disassembly}
                     baseCfg={cfg}
-                    baseVerdict={verdict}
+                    baseVerdict={authorityVerdict}
                     onJumpToAddress={jumpToDisassembly}
                   />
                 </div>
