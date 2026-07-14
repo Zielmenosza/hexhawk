@@ -1,103 +1,74 @@
 # HexHawk Investor Diligence Brief
 
-Date: 2026-07-09
+Last updated: 2026-07-14
 
-## Executive Summary
+## Executive summary
 
-HexHawk has reached a stronger source milestone: the v1.30 Function Intelligence layer turns recent reverse-engineering foundations into one advisory selected-function workflow, and the v1.31 byte_counter clippy blocker is fixed. Current source validation passed Rust tests, Rust clippy with `-D warnings`, TypeScript, full frontend Vitest, and production frontend build.
+HexHawk 1.0.0 is beyond concept stage: it implements persistent versioned projects, reliable reopen, immutable recorded-verdict authority, cross-binary identity isolation, restart/cache-clear recovery, and report/export provenance. A Windows MSVC release build produced verified MSI and NSIS candidates.
 
-This is appropriate for engineering, investor, and board demonstration as a source candidate. It is not yet a newly packaged unsigned deployment candidate from this source state, and it is not a signed public release.
+This is product-risk reduction and technical evidence, not commercial readiness. Both installers are unsigned and no controlled installation acceptance has passed for the exact current artifacts. HexHawk is not production ready, procurement ready, enterprise ready, updater ready, or public-release ready.
 
-## Architecture
+Canonical status: [CURRENT_STATUS.md](CURRENT_STATUS.md).
 
-- Frontend: React + TypeScript.
-- Desktop/runtime: Tauri v2.
-- Backend/commands: Rust.
-- CLI: `nest_cli` for headless/runtime evidence operations.
-- Packaging: Windows MSI and NSIS artifacts.
+## Architecture and trust model
 
+- React/TypeScript frontend, Tauri v2 desktop runtime, Rust backend, and `nest_cli` headless operations.
+- GYRE is sole classification and recorded base-verdict authority.
+- NEST supplies evidence and lifecycle context; it does not independently classify or override GYRE.
+- AETHERFRAME/Forge is optional, bounded, replayable, auditable, disableable, and non-authoritative.
+- NEXUS assists/consumes and cannot mutate authoritative verdict state.
+- Reports and exports bind authority provenance to the immutable recorded GYRE snapshot.
 
-## Product-Friendly Buyer Narrative
+## Product milestone
 
-The simplest buyer narrative is: “HexHawk turns a local binary into a reviewable evidence package.” A buyer should not need to decode internal engine names first. The public/product explanation should lead with:
+- Versioned project save/reopen.
+- Persistent binary, NEST-session, and recorded GYRE-snapshot linkage.
+- Binary mismatch and cross-binary crossover rejection.
+- Cache-clear/process-restart hydration.
+- Missing, malformed, unsupported, stale, and mismatched authority rejection.
+- Honest summary-only reporting when authoritative evidence is unavailable.
 
-- what file or artifact the user opens;
-- what evidence HexHawk extracts or organizes;
-- which module is responsible for verdict authority;
-- which helper outputs are advisory;
-- what report/export the buyer can hand to a reviewer;
-- what release/trust gates are still not satisfied.
+## Validation and packaging evidence
 
-This keeps the product friendlier than traditional RE jargon while preserving the high-assurance boundary that AI or helper layers do not own security truth.
+- 124 backend tests and 29 `nest_cli` tests passed; 153 total Rust tests.
+- 22 focused frontend persistence/provenance tests passed across 7 files.
+- TypeScript `--noEmit`, Vite production build, and `cargo check --release` passed.
+- MSI SHA-256: `A6A298CCFD39F8C53346D23A1BC7EC7795E3251E34031678735BE9C116E09BDB`.
+- NSIS SHA-256: `9FCC206AA60774F9CFD43E44994967517F8209B842FF266EE047346B5CE3AD61`.
+- Package metadata identifies HexHawk 1.0.0.
+- MSI and NSIS Authenticode status: `NotSigned`; no signer certificate or trusted timestamp.
 
-## Trust Model
+The validation is local and does not establish hosted-CI status. Historical test counts and installer smokes apply only to their recorded source/artifact hashes.
 
-HexHawk’s trust hierarchy is explicit:
+## Commercial diligence posture
 
-- GYRE: sole verdict authority.
-- NEST: evidence orchestration and convergence; not verdict authority.
-- AETHERFRAME/Forge: optional bounded confidence uplift/refinement/lineage; cannot change classification.
-- TALON/STRIKE/ECHO: evidence and analyst surfaces.
-- CREST: report packaging.
-- NEXUS: assistant/consumer layer.
+Ready for:
 
-This prevents AI/assistant features from silently becoming security truth.
+- internal demonstration;
+- technical diligence;
+- controlled source evaluation; and
+- controlled local installation testing under an approved acceptance plan.
 
-## Current Validation Evidence
+Not yet ready for:
 
-Commands run in the latest source-validation pass:
+- external signed tester distribution;
+- public download;
+- procurement or enterprise rollout;
+- automatic updater distribution; or
+- claims that the installer is fully validated.
 
-```bash
-cargo test --workspace
-cargo clippy --workspace -- -D warnings
-cd HexHawk
-npx tsc --noEmit
-TEST_FILES=$(find src \( -name '*.test.ts' -o -name '*.test.tsx' \) | grep -v node_modules | sort | tr '\n' ' ')
-npx vitest run --reporter=dot $TEST_FILES
-yarn build
-```
+## Remaining gates
 
-Observed results:
+1. Controlled install and installed launch.
+2. Installed two-binary persistence and identity isolation.
+3. Installed restart/cache-clear and report/export provenance.
+4. Uninstall/reinstall and user-data retention policy.
+5. Organization-trusted code signing.
+6. Updater validation against exact signed artifacts.
+7. Hosted CI/release publication evidence.
+8. Support, security, privacy, and procurement operations.
+9. Continued decompiler, debugger, architecture, and plugin depth.
 
-- Function Intelligence model/export/UI/wiring/regression work completed through `v1.30.0-function-intelligence-regression`.
-- byte_counter C string metadata clippy blocker fixed in `v1.31.0-byte-counter-clippy-fix`.
-- Rust tests: passed, 85 backend tests + 20 `nest_cli` tests.
-- Rust clippy: passed with `-D warnings`.
-- Typecheck: passed.
-- Full frontend tests: passed, 59 files / 832 tests.
-- Frontend build: passed with existing Vite warnings.
-- Fresh Tauri build, artifact hashes, signing-status checks, installer smoke, and Function Notebook export smoke remain pending for this source state.
+## Bridge boundary
 
-## Function Intelligence Milestone
-
-The current source adds an advisory function evidence notebook over PE imports, xrefs, recovered function boundaries, Win32 constants, TALON pseudocode, debugger call stacks, conditional breakpoint hits, and calling-convention inference. Exports preserve GYRE authority markers and are not verdict outputs.
-
-## Commercial Readiness
-
-Ready:
-
-- Internal demonstration.
-- Technical diligence walkthrough.
-- Controlled local source evaluation.
-- Pilot packaging discussion with explicit unsigned/updater caveats.
-
-Not ready until resolved:
-
-- Signed public installer.
-- Signed updater artifacts or explicitly disabled updater policy.
-- Fresh exact-artifact native GUI and Function Notebook export parity revalidation on the artifact intended for testers.
-- External support, privacy, procurement, and issue-intake process.
-
-## Risks and Mitigations
-
-| Risk | Status | Mitigation |
-| --- | --- | --- |
-| Windows SmartScreen warnings | Open | Code-sign executable/installers with organization-trusted certificate. |
-| Updater distribution | Open | Publish and validate metadata only for exact official artifacts. |
-| GUI parity after package extraction | Launch/render smoke current for June 20 candidate; full export parity historical | Rerun full export parity on the exact MSI/NSIS intended for release. |
-| AI/verdict overclaiming | Controlled | Maintain GYRE/NEST/AETHERFRAME boundary tests/copy. |
-| Enterprise procurement | Open | Prepare signing, SBOM/provenance, support docs. |
-
-## Diligence Bottom Line
-
-HexHawk is beyond concept stage: it builds, packages, performs file-bound workflows, and has a trust model designed to prevent AI/verdict overreach. The remaining work is release trust: real code signing, updater metadata/signing, exact-artifact native GUI proof, procurement readiness, and commercial operations.
+The Bridge improved engineering continuity, exact context handoff, repository custody, timeout recovery, evidence preservation, and controlled packaging. It is not an analysis engine, does not alter GYRE or classification accuracy, does not produce verdicts, and is not required to run HexHawk.

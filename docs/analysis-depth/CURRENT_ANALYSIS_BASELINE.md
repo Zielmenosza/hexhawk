@@ -3,6 +3,8 @@
 Date: 2026-06-15
 Scope: slow foundation slice for deeper disassembly, CFG, xrefs, decompiler maturity, and later debugger/trace work.
 
+> **Historical snapshot.** This file preserves the 2026-06-15 analysis-depth baseline and its evidence limits. It does not describe the current HexHawk 1.0.0 persistence or packaging milestone. See [`../CURRENT_STATUS.md`](../CURRENT_STATUS.md). Broader decompiler/debugger maturity and Exploitability Mode remain roadmap work unless fresh native source and tests prove otherwise; manual or external-tool challenge success is not native HexHawk capability.
+
 ## Purpose
 
 This baseline records the current source-level posture before adding a typed disassembly/program model. It is not a release-readiness update, native GUI proof, or decompiler correctness proof.

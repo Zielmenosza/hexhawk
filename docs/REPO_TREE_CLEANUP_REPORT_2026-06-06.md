@@ -1,5 +1,7 @@
 # Repository Tree Cleanup Report — 2026-06-06
 
+> **Historical snapshot.** This document preserves the 2026-06-06 cleanup record. It does not describe current HexHawk 1.0.0 persistence, packaging, or Bridge-era cleanup status. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Status: inventory/report pass before destructive cleanup. Generated from a clean working tree checkpoint branch `backup/pre-repo-cleanup-clean-baseline-20260606`.
 
 ## Current git state at report creation

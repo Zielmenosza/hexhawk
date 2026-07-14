@@ -1,18 +1,19 @@
 # HexHawk for Dummies Capability Inventory
 
-Date: 2026-07-09
-Scope: repository-grounded capability inventory for `docs/HEXHAWK_FOR_DUMMIES.md`, refreshed with the 2026-07-09 buyer/product explanation pass.
+Last updated: 2026-07-14
+Scope: repository-grounded capability inventory for `docs/HEXHAWK_FOR_DUMMIES.md`, refreshed for the HexHawk 1.0.0 project-persistence and Windows packaging milestone.
 
 This inventory was prepared from the current source tree, repository docs, command registration, package manifests, and a small `nest_cli` smoke command. It does not treat historical validation claims as newly rerun tests unless explicitly stated.
 
 ## Status summary
 
-HexHawk is documented as an internal-tester Windows build candidate. It is not yet a public-trusted signed release. Current docs disagree slightly on packaged native GUI parity: `README.md` and `ROADMAP.md` say installed-artifact GUI export parity has not been rerun after the installer rebuild, while `docs/TESTER_RELEASE_STATUS.md` and investor docs say packaged native GUI parity passed on an internal tester artifact and must be rerun on the exact artifact being released. The publication handles this conservatively: packaged/native parity should be considered artifact-specific and should be rerun for each release artifact.
+HexHawk 1.0.0 is a Windows release candidate with versioned project save/reopen, immutable recorded GYRE authority, advisory NEST lifecycle linkage, binary-identity isolation, cache-clear/process-restart recovery, and report/export provenance. MSI and NSIS artifacts were built and hash/metadata verified; both are unsigned. No controlled installation or installed-artifact functional acceptance has passed for these exact artifacts. Historical packaged GUI or smoke evidence remains artifact-specific and cannot satisfy the current gate.
 
 ## Capability inventory
 
 | Capability | Workflow name | Surface | Evidence/source files | User action or command | Inputs | Outputs | Platform | Limitations | Test/validation evidence | Maturity | Trust-boundary notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Project persistence | Save/reopen an investigation project | GUI/backend/storage | `HexHawk/src/utils/projectPersistenceClient.ts`, `src-tauri/src/commands/project_persistence.rs`, persistence/provenance tests | Save Project / Open Project | Binary identity, recorded GYRE snapshot, optional NEST linkage | Versioned manifest and resolved project | Desktop/Tauri | Current installers still require controlled acceptance | Focused frontend persistence/provenance: 22 passed across 7 files; Rust milestone totals 153 | Implemented source milestone | GYRE snapshot remains authority; stale, malformed, missing, unsupported, mismatched, and cross-binary state is rejected |
 | Native desktop app | Launch HexHawk UI | GUI/developer | `src-tauri/tauri.conf.json`, `src-tauri/src/main.rs`, `HexHawk/src/App.tsx` | `yarn tauri:dev`, `yarn tauri:build`, launch built app | Local build/install | Tauri/WebView2 window | Windows primary; config has macOS/Linux bundle sections | Current release artifacts are unsigned; updater endpoint validation remains a gate | README/ROADMAP claim build and packaging passed historically | Internal tester | Native proof requires `hasTauriRuntime: true` and `browserMode: false`; browser dev UI is not native proof |
 | File picker and path loading | Open a binary | GUI | `App.tsx`, `src-tauri/src/commands/file_dialog.rs` | Open/Browse/Apply path | Local file path | Selected file state | Desktop/Tauri; fallback mock path in browser mode | Browser mode can simulate rather than prove runtime-backed analysis | GUI tests and selectors present; native proof artifact-specific | Supported internal workflow | Opening a file does not imply verdict truth |
 | File metadata inspection | Inspect metadata, sections, imports, exports, hashes | GUI/CLI/engine | `src-tauri/src/commands/inspect.rs`, `App.tsx`, `nest_cli.rs` | GUI Inspect; `nest_cli inspect <path>` | File path | JSON metadata: type, architecture, entry, file size, sections, imports, exports, SHA256/SHA1/MD5 | PE/ELF/Mach-O and fallback magic handling; object crate limits apply | Very large file hashing comments indicate partial/limited behavior; unsupported files fall back | Rust unit tests for entropy; `nest_cli inspect` smoke sampled | Supported | Metadata is evidence, not classification |

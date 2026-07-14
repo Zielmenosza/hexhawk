@@ -1,5 +1,9 @@
 # AetherFrame Lessons
 
+Last updated: 2026-07-14
+
+Bridge boundary: durable context handoff, worktree separation, bounded commands, evidence preservation, and timeout recovery improved the engineering process. They did not change HexHawk's GYRE verdict logic, malware-classification accuracy, or runtime requirements. HexHawk product improvements—persistent projects, immutable recorded authority, binary isolation, restart recovery, provenance, focused tests, and Windows packaging—are separate product engineering outcomes. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Status: active AetherFrame-native lessons ledger
 Migrated from: docs/AETHERFRAME_FACTORY_LESSONS.md
 

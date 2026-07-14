@@ -1,5 +1,7 @@
 # HexHawk Workspace Cleanup Chapter Closed
 
+> **Historical snapshot.** This file records the prior cleanup chapter as it stood on its original date. It is not proof of the separate 2026-07-14 Bridge-era consolidation task. The workflow improvement concerns engineering custody and recoverability, not HexHawk analysis or verdict accuracy. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Generated: 2026-07-02 23:22:05 +0200
 
 Status: closure note for the large workspace cleanup cycle. This document records final state only. It does not approve deletion and does not perform cleanup.

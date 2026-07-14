@@ -2,6 +2,8 @@
 
 Generated: 2026-07-02 23:22:05 +0200
 
+> **Historical snapshot.** This posture records the 2026-07-02 operations state and retains its original local-path and commercial evidence. It is not the current HexHawk 1.0.0 release-candidate status. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md). The Bridge/AetherFrame workflow described here concerns engineering continuity and bounded operations; it is not part of HexHawk's analysis engine or verdict authority.
+
 Status: HexHawk cleanup mode is closed; active focus is now **Paid Early Access Operations**.
 
 Authority note: GYRE remains the sole HexHawk verdict/classification authority. AETHERFRAME is advisory advancement/operations process support only. Hermes/AI is an assistant/proposal/workflow helper only.

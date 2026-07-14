@@ -1,5 +1,7 @@
 # AetherFrame Status Dashboard
 
+> **Historical snapshot.** This dashboard preserves the 2026-07-03 workflow state. It is not current HexHawk 1.0.0 product or release evidence. The Bridge/AetherFrame workflow improved engineering continuity and custody; it did not change GYRE classification logic or become part of the HexHawk runtime. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Updated: 2026-07-03 19:17:09 +0200
 
 Status: one-page operating console for current HexHawk/AetherFrame posture. This dashboard is advisory and does not deploy, publish, delete, sign, charge money, use credentials, deliver packages, or approve release readiness.

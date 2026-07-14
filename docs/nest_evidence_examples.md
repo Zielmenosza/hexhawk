@@ -1,5 +1,11 @@
 # NEST Evidence Examples
 
+Last updated: 2026-07-14
+
+These remain evidence-contract examples. A NEST bundle or lifecycle record is advisory context; it does not independently create classification authority. Current projects persist and verify NEST linkage against binary identity and the immutable recorded GYRE snapshot. Missing, stale, malformed, or cross-binary linkage must be rejected rather than silently reused. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
+The JSON and fixture identifiers below are illustrative test data. A fixture containing `source_engine: "gyre"`, `gyre_is_sole_verdict_source: true`, or a `gyresnap_*` value does not prove GYRE authorship in a runtime export. Production provenance requires the backend-recorded snapshot path, validated cross-record linkage, and matching binary identity. Renderer/schema presence alone is insufficient; report/export provenance must resolve to the immutable recorded snapshot or state the limitation.
+
 Practical JSON examples derived from the golden fixtures in
 `HexHawk/src/test/fixtures/nestEvidenceFixtures.ts`.
 

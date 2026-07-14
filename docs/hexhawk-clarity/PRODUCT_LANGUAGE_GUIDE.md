@@ -1,8 +1,25 @@
 # HexHawk Product Language Guide
 
+Last updated: 2026-07-14
+
+Current product language should lead with persistent local projects, reliable reopen, verified binary identity, immutable recorded GYRE authority, advisory NEST lifecycle context, bounded non-authoritative AI, and auditable report/export provenance. Describe the Windows package as an unsigned release candidate ready for controlled local installation testing—not as signed, accepted, production ready, procurement ready, enterprise ready, updater ready, or public release ready. See [`../CURRENT_STATUS.md`](../CURRENT_STATUS.md).
+
 Status: planning foundation only
 Scope: product language, UI labels, reports, and docs direction for HexHawk clarity work
 Authority: this guide does not change engine behavior, verdict authority, release posture, or validation claims
+
+## Ten-step user story
+
+1. Open or import a binary.
+2. Establish the binary's byte identity.
+3. Collect evidence and label its source and limits.
+4. GYRE records authoritative classification/base-verdict state.
+5. Save a versioned project linking binary, session, and recorded snapshot.
+6. Reopen by verifying identity and resolving the backend-recorded snapshot; reject invalid or cross-binary linkage.
+7. Let NEST add advisory lifecycle/evidence context.
+8. Keep optional AI/AETHERFRAME/NEXUS bounded, reviewable, and non-authoritative.
+9. Export a report that preserves binary/project/session/snapshot provenance.
+10. If recorded authority is unavailable, say so and provide only the supported limited result—never a stale fallback.
 
 ## Purpose
 

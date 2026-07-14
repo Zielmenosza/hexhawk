@@ -1,89 +1,57 @@
-# HexHawk Early Access Install README
+# HexHawk 1.0.0 Controlled Installation README
 
-Channel: HexHawk Early Access — Unsigned Founder Build
-Audience: technical testers comfortable evaluating unsigned Windows software
+Last updated: 2026-07-14
 
-## Package contents
+Audience: authorized technical testers performing controlled local acceptance of the unsigned Windows release candidate. Do not install either artifact outside the approved test procedure.
 
-A package created by `scripts/release/build_unsigned_early_access_package.ps1` should include:
+## Candidate identity
 
-- Windows MSI installer.
-- Windows NSIS setup executable.
-- `nest_cli.exe` when included by the package parameters.
-- `WebView2Loader.dll` when included by the package parameters or relevant artifact collection.
-- `SHA256SUMS.txt`.
-- `EVIDENCE_MANIFEST.json`.
-- `PACKAGE_CONTENTS.txt`.
-- `EARLY_ACCESS_RELEASE_NOTES.md`.
-- `UNSIGNED_EARLY_ACCESS_POLICY.md`.
-- `EARLY_ACCESS_INSTALL_README.md`.
-- `EARLY_ACCESS_BUYER_NOTE.md`.
+- MSI: `HexHawk_1.0.0_x64_en-US.msi`
+  - SHA-256: `A6A298CCFD39F8C53346D23A1BC7EC7795E3251E34031678735BE9C116E09BDB`
+- NSIS: `HexHawk_1.0.0_x64-setup.exe`
+  - SHA-256: `9FCC206AA60774F9CFD43E44994967517F8209B842FF266EE047346B5CE3AD61`
 
-## Verify SHA256 before installing
+Both installers are Authenticode `NotSigned`; no signer certificate or trusted timestamp is present. Hash equality confirms artifact identity, not publisher trust or safety.
 
-From PowerShell in the extracted package folder:
+## Before installation
 
-```powershell
-Get-FileHash -Algorithm SHA256 .\HexHawk_1.0.0_x64_en-US.msi
-Get-FileHash -Algorithm SHA256 .\HexHawk_1.0.0_x64-setup.exe
-```
+1. Use an approved Windows test environment and benign test binaries.
+2. Recalculate the installer SHA-256 and compare it with the value above and the artifact manifest.
+3. Verify Authenticode still reports `NotSigned`.
+4. Record Windows version, tester, date, candidate hash, and chosen installer.
+5. Do not disable endpoint security globally. Stop and report unexpected warnings.
 
-Compare the hash values with `SHA256SUMS.txt` and `EVIDENCE_MANIFEST.json`.
+## Controlled acceptance sequence
 
-Hash verification confirms that the file matches the package manifest. It does not mean the artifact is signed, Microsoft verified, or public-ready.
+Use one installer path per test cycle.
 
-## Install options
+- [ ] Install the NSIS candidate under the approved procedure.
+- [ ] Launch the installed application.
+- [ ] Import two distinct benign binaries.
+- [ ] Save and reopen separate projects without identity crossover.
+- [ ] Confirm changed/cross-binary input is rejected.
+- [ ] Restart the process and reopen.
+- [ ] Exercise the approved cache-clear seam and reopen.
+- [ ] Verify report provenance identifies the immutable recorded GYRE snapshot.
+- [ ] Verify export provenance identifies the same recorded snapshot.
+- [ ] Verify missing/malformed/unsupported/stale authority rejects or degrades honestly.
+- [ ] Uninstall.
+- [ ] Reinstall.
+- [ ] Verify user-data retention behavior against the approved policy.
 
-Use one installer path, not both at the same time:
+Leave every item unpassed until directly observed on the exact installer hash. Do not use stale smoke folders as evidence.
 
-1. MSI path: run the `.msi` installer and follow the prompts.
-2. NSIS path: run the `*-setup.exe` installer and follow the prompts.
+## Product authority reminder
 
-The package is unsigned. Windows may show warnings because the publisher trust chain is not established yet.
+GYRE is the sole classification and recorded base-verdict authority. NEST supplies advisory lifecycle/evidence context. AETHERFRAME/Forge and NEXUS are non-authoritative. No stale or cross-binary verdict may be silently reused.
 
-## Uninstall
+## Known warnings and limitations
 
-Use Windows Apps & features / Installed apps to remove HexHawk, or use the uninstaller created by the NSIS installer when present.
+- Windows may show unknown-publisher or SmartScreen warnings because the artifacts are unsigned.
+- Current package evidence does not establish production, procurement, enterprise, updater, or public-release readiness.
+- Hosted CI status is not claimed.
+- Known non-blocking build warnings include Vite mixed import/chunk warnings and libsodium LNK4099 missing-PDB warnings.
 
-If you installed both MSI and NSIS variants during testing, uninstall both variants separately and report that test condition in feedback.
+## Issue report fields
 
-## Known warnings
-
-- Windows may warn that the app is from an unknown publisher.
-- SmartScreen or enterprise endpoint tools may block or quarantine unsigned software.
-- These warnings are expected for unsigned builds.
-- Do not disable system security globally. If blocked, report the exact warning and wait for guidance or a signed build.
-
-## Known limitations
-
-- This is an unsigned early-access build.
-- No auto-update is included yet.
-- Updates are manual until signing and updater trust are complete.
-- The package is for technical testers, not broad consumer deployment.
-- A successful install does not prove enterprise/procurement readiness.
-- Existing native workflow probes and release evidence may be historical unless the package manifest ties evidence to the exact current artifacts.
-
-## Safe use notes
-
-HexHawk is a local-first analysis workbench. It is intended to help inspect binary metadata, strings, disassembly, evidence, advisory function notes, reports, and related analysis surfaces on your machine.
-
-Do not use on production malware samples unless you understand the risk and have an appropriate isolated analysis environment. HexHawk early access is not a promise that unsafe samples become safe to handle.
-
-## Support / contact placeholder
-
-Support channel: TBD before private distribution.
-
-When reporting issues, include:
-
-- package filename;
-- package version/date;
-- SHA256 hash of the installer used;
-- Windows version;
-- which installer path you used: MSI or NSIS;
-- warning/error screenshots or exact text;
-- steps to reproduce;
-- whether you were analyzing a benign test file or a risky sample.
-
-## Authority boundary reminder
-
-GYRE remains the sole verdict/classification authority. Function Intelligence, AETHERFRAME, AI/NEXUS, decompiler notes, runtime notes, and report packaging are advisory/evidence surfaces only.
+Record installer filename/hash, Windows version, exact step, expected/observed behavior, screenshots or exact text, project/binary identities without sensitive content, report/export provenance result, uninstall/reinstall result, and whether user data was retained.

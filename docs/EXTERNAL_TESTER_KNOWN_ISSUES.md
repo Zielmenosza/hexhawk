@@ -1,63 +1,53 @@
 # HexHawk External Tester Known Issues
 
-Date: 2026-06-21
-Current audience: internal testers and controlled pilot candidates only
+Last updated: 2026-07-14
 
-## Release blockers
+Audience: internal evaluators preparing controlled acceptance of the HexHawk 1.0.0 Windows release candidate.
 
-1. Current Windows artifacts are unsigned.
-   - The June 21 deployment-candidate source tag is `v1.9.0-unsigned-deployment-candidate-20260621` at `ad2e752`.
-   - Public-trusted Authenticode signing has not been completed for the current local artifacts.
-   - Expected effect: SmartScreen or enterprise endpoint controls may warn or block.
-   - Status: unresolved for public distribution.
+## Current blockers
 
-2. Previous internal self-signed or native GUI evidence is historical only.
-   - Prior evidence files apply only to their recorded artifact hashes.
-   - Current June 21 local artifact hashes are recorded in `docs/TESTER_RELEASE_STATUS.md`; the last installer-smoke evidence file remains `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`.
-   - Exact-artifact launch/render smoke passed for the June 20 MSI extraction and NSIS install; full Open -> Inspect -> NEST -> Export parity remains a separate signed/public gate.
+1. **The current MSI and NSIS installers are unsigned.**
+   - Both Authenticode results are `NotSigned`.
+   - No signer certificate or trusted timestamp is present.
+   - SmartScreen or enterprise endpoint controls may warn or block.
 
-3. Updater metadata is reachable but not release-ready for the current candidate.
-   - `bundle.createUpdaterArtifacts` is currently false for local unsigned builds.
-   - Configured endpoint `https://hexhawk.ke/releases/latest.json` has been historically reachable.
-   - This pass did not publish or validate hosted release/trust metadata against the June 21 unsigned candidate NSIS hash.
+2. **No controlled installation acceptance has passed for the exact current artifacts.**
+   - Installation, installed launch, two-binary persistence, restart/cache-clear recovery, report/export provenance, uninstall, and reinstall remain open.
+   - Historical smoke results apply only to their recorded hashes and are not proof for this candidate.
 
-4. Full enterprise procurement package is not complete.
-   - Support intake exists.
-   - SLA, DPA/security questionnaire, procurement vendor packet, and signed release provenance remain pending.
+3. **Updater readiness is not proven.**
+   - Updater metadata has not been validated against exact signed versions of these artifacts.
+   - Packaging success does not imply updater readiness.
 
-## Non-blocking warnings observed
+4. **Hosted CI status is not claimed.**
+   - Current validation evidence is local and is not equivalent to hosted CI.
 
-- Tauri warns that identifier `com.hexhawk.app` ends with `.app`; this is not recommended for macOS bundle naming. Current pilot target is Windows.
-- Vite warns that the main JavaScript chunk is larger than 500 kB.
-- Vite warns that `talonLLMPass` is both dynamically and statically imported.
-- Rust build emits existing unused/dead-code warnings. Current build gates pass, but cleanup should be scheduled.
+5. **Commercial operations remain incomplete.**
+   - Support, rollback, security/privacy, procurement, and public release custody remain open.
 
-## Recently proven in current pass
+## Known non-blocking build warnings
 
-- Source candidate tag `v1.9.0-unsigned-deployment-candidate-20260621` points at `ad2e752`.
-- TALON/NEST/STRIKE capability sprint through v1.8.0 was tested and pushed before the June 21 source candidate tag.
-- All discovered frontend tests passed at the v1.9.0 source candidate: 49 files, 758 passed.
-- `npx tsc --noEmit` passed.
-- `cargo test` passed: 85 tests.
-- June 21 local artifact hashes were recorded in `docs/TESTER_RELEASE_STATUS.md`.
-- MSI extraction and NSIS silent-install launch smokes remain proven for the June 20 installer hashes; they were not rerun as a new June 21 installer gate.
+- Vite mixed dynamic/static import warning involving `talonLLMPass.ts`.
+- Vite large-chunk warning.
+- libsodium LNK4099 missing-PDB warnings during Windows linking.
 
-## Tester copy limits
+## Current milestone evidence
 
-Do not claim:
+- 153 total Rust tests passed: 124 backend and 29 `nest_cli`.
+- 22 focused frontend persistence/provenance tests passed across 7 files.
+- TypeScript `--noEmit`, Vite production build, and `cargo check --release` passed.
+- MSI SHA-256: `A6A298CCFD39F8C53346D23A1BC7EC7795E3251E34031678735BE9C116E09BDB`.
+- NSIS SHA-256: `9FCC206AA60774F9CFD43E44994967517F8209B842FF266EE047346B5CE3AD61`.
 
-- publicly trusted signed release
-- signed current artifacts
-- broad public distribution readiness
-- production distribution readiness
-- updater readiness for public distribution
-- enterprise/procurement distribution readiness
-- full native GUI export parity for the June 21 artifacts
-- fresh June 21 installer deployment gate; only the source candidate and local hashes were updated
+## Authority and persistence limits
 
-Acceptable wording:
+GYRE is sole classification and recorded base-verdict authority. NEST lifecycle linkage is advisory. AETHERFRAME/Forge and NEXUS are non-authoritative. Projects must reject stale, malformed, missing, unsupported, mismatched, and cross-binary authority data; unavailable authority must not silently fall back to stale output.
 
-- internal-tester Windows source candidate
-- unsigned deployment candidate tagged `v1.9.0-unsigned-deployment-candidate-20260621`
-- controlled external pilot candidate only after pilot sponsor accepts unsigned/updater constraints or organization-trusted signing and hosted updater validation are completed
-- market readiness: controlled only
+## Allowed wording
+
+- Windows 1.0.0 release candidate.
+- Ready for controlled local installation testing.
+- Unsigned MSI and NSIS with verified hashes and metadata.
+- Persistent projects and provenance are implemented and locally validated.
+
+Do not claim signed, public release ready, production ready, procurement ready, updater ready, hosted CI green, or fully validated installer.

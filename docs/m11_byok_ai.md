@@ -1,5 +1,7 @@
 # Milestone 11 BYOK AI Layer
 
+> **Historical milestone with current authority boundary (2026-07-14).** BYOK/NEXUS assistance is non-authoritative and must not mutate project manifests, immutable recorded GYRE verdict state, or report/export provenance. HexHawk's deterministic save/reopen/recovery path must work without AI. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 ## Scope
 Milestone 11 adds customer-facing Bring Your Own Key (BYOK) controls on top of the Milestone 10 backbone.
 

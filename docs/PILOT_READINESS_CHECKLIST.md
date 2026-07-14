@@ -1,33 +1,56 @@
 # HexHawk Pilot Readiness Checklist
 
-Date: 2026-06-20
-Status: controlled external signing gate blocked; unsigned deployment candidate tagged; public-trusted Authenticode custody is absent; hosted updater endpoint was not refreshed for the candidate hash
-Current classification: unsigned deployment candidate for controlled internal testing
-Market readiness: controlled only; not broad public release
+Last updated: 2026-07-14
 
-## Stage definitions
+Current classification: Windows 1.0.0 release candidate ready for controlled local installation testing.
+Market readiness: controlled evaluation only; not signed, production ready, procurement ready, enterprise ready, or public-release ready.
 
-| Stage | Meaning | Current status |
-|---|---|---|
-| Internal tester candidate | Source validates, artifacts build, caveats documented. | PASS with unsigned/updater/full-export-parity caveats |
-| Controlled external pilot candidate | Native workflow proven and support intake ready; signing/updater constraints accepted or fixed. | NO for the stronger signed external-tester gate |
-| Signed public release | Windows executable, MSI, NSIS, and updater artifacts are signed and verified with publicly trusted chain. | FAIL / not proven |
-| Enterprise/procurement-ready release | Signed artifacts, update policy, support SLA, procurement docs, security questionnaire, and rollback plan complete. | NOT READY |
+## Candidate identity
 
-## Release-hardening gate status
+- Branch: `feature/project-persistence-e2e`
+- Commit: `ebbd068bd8d30f68bedc2940ed9b0c5bfc80b586`
+- MSI SHA-256: `A6A298CCFD39F8C53346D23A1BC7EC7795E3251E34031678735BE9C116E09BDB`
+- NSIS SHA-256: `9FCC206AA60774F9CFD43E44994967517F8209B842FF266EE047346B5CE3AD61`
+- Authenticode: MSI `NotSigned`; NSIS `NotSigned`
 
-| Gate | Status | Evidence | Next action |
-|---|---|---|---|
-| TypeScript typecheck | PASS | `npx tsc --noEmit` passed in June 20 gate. | Keep required. |
-| Production frontend build | PASS | `yarn build` passed with warnings. | Keep required. |
-| Rust/Tauri package build | PASS | `yarn tauri:build` rebuilt MSI and NSIS from post-fix HEAD. | Keep required. |
-| Artifact hashes | PASS | See `docs/release-evidence/unsigned_deployment_candidate_2026-06-20_215102.json`. | Publish only after signed release artifacts and matching hosted metadata are generated. |
-| Authenticode signing | FAIL | Current artifacts are `NotSigned`. | Configure real signing. |
-| Updater metadata | NOT READY | Endpoint was not refreshed/validated against the June 20 unsigned candidate NSIS hash. | Publish only after signed release artifacts and website-release-payload are generated. |
-| Packaged native GUI runtime | PASS FOR LAUNCH/RENDER | MSI extraction and NSIS install launch/render smoke passed for June 20 candidate. | Repeat full export parity for every signed/external artifact. |
-| Report authority export | HISTORICAL PROOF ONLY | Prior JSON exports preserved GYRE authority markers; June 20 gate did not rerun export parity. | Rerun on exact current artifact before external tester release. |
-| External support intake | DOC READY | See `docs/PILOT_SUPPORT_AND_INTAKE.md`. | Assign owner and response windows. |
+## Proven before installation
 
-## Current decision
+- [x] Versioned project persistence implemented.
+- [x] Immutable recorded GYRE authority and advisory NEST linkage implemented.
+- [x] Binary identity/cross-binary isolation implemented.
+- [x] Restart/cache-clear hydration and report/export provenance implemented.
+- [x] 153 Rust tests passed.
+- [x] 22 focused frontend persistence/provenance tests passed across 7 files.
+- [x] TypeScript `--noEmit`, Vite production build, and `cargo check --release` passed.
+- [x] MSI and NSIS built; hashes, metadata, and unsigned status verified.
 
-HexHawk is suitable as an unsigned deployment candidate for controlled internal testing with explicit caveats. It is not suitable for the stronger controlled external signed-tester gate until real public-trusted Authenticode custody is configured, a release produces signed artifacts, hosted updater metadata matches the exact release hashes, and full native export parity is rerun on the exact signed MSI/NSIS. It is not a public release candidate.
+These are local source/package checks, not hosted CI or installer acceptance.
+
+## Controlled acceptance gate — all open
+
+- [ ] Controlled NSIS installation.
+- [ ] Installed application launch.
+- [ ] Installed two-binary project save/reopen without identity crossover.
+- [ ] Installed rejection of changed or cross-binary input.
+- [ ] Installed process-restart recovery.
+- [ ] Installed cache-clear recovery.
+- [ ] Installed report provenance tied to recorded GYRE snapshot.
+- [ ] Installed export provenance tied to recorded GYRE snapshot.
+- [ ] Honest rejection/degradation for missing or invalid authority data.
+- [ ] Uninstall.
+- [ ] Reinstall.
+- [ ] User-data retention-policy validation.
+
+Do not use stale smoke folders or historical installer evidence as proof for these exact artifacts.
+
+## Trusted distribution gate — open
+
+- [ ] Organization-trusted Authenticode signing.
+- [ ] Signer certificate and trusted timestamp verified.
+- [ ] Updater metadata validated against exact signed artifacts.
+- [ ] Hosted CI verified for intended release commit.
+- [ ] Hosted publication, rollback, support, and issue intake ready.
+
+## Decision
+
+The candidate may enter a controlled local installation test. It must not be described as accepted, signed, procurement ready, production ready, updater ready, or public release ready until the corresponding exact-artifact gates pass.

@@ -1,6 +1,10 @@
 # HexHawk for Dummies Engineering Review
 
-Date: 2026-07-09
+Last updated: 2026-07-14
+
+## 1.0.0 milestone addendum
+
+The product-validation gap is now narrower but remains artifact-specific. Source now implements versioned project save/reopen, immutable recorded GYRE snapshot resolution, advisory NEST lifecycle linkage, binary-identity/cross-binary rejection, restart/cache-clear hydration, and report/export provenance. The Windows MSI and NSIS candidates build and have verified hashes/metadata, but both are unsigned and no controlled installation or installed-artifact acceptance test has passed for these exact files. The 2026-07-09 browser/dev screenshots below remain orientation evidence, not acceptance proof. Current status: [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
 
 ## Bottom line
 

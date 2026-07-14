@@ -1,93 +1,74 @@
 # HexHawk Enterprise and Commercial Roadmap
 
-Last updated: 2026-06-20
+Last updated: 2026-07-14
 
-## Board-Level Status
+## Board-level status
 
-HexHawk is a working native desktop binary-intelligence product with a repeatable Windows installer build and smoke-tested unsigned deployment-candidate path. It is suitable for controlled demos and internal tester distribution, but not yet a signed public enterprise release.
+HexHawk 1.0.0 is a working local-first desktop binary-intelligence product with persistent projects, immutable recorded-verdict provenance, cross-binary identity isolation, and reproducible report/export lineage. Windows MSI and NSIS release-candidate installers now build; their hashes and package metadata were verified, and both are unsigned.
 
-Current proof points:
+This reduces product risk but does not establish commercial readiness. HexHawk is not production ready, procurement ready, enterprise ready, publicly trusted, or fully installer validated. Controlled installation and functional acceptance testing remains the next gate.
 
-- STRIKE benchmark provenance path fix committed and pushed in `e625403`.
-- All discovered frontend tests passed in a fresh release worktree: 47 files, 736 passed, 1 skipped.
-- TypeScript typecheck passing.
-- Production frontend build passing with existing chunk/import warnings.
-- Windows Tauri MSI and NSIS artifacts build from post-fix HEAD.
-- Current rebuilt artifacts are Authenticode `NotSigned`.
-- MSI extraction and NSIS install launch/render smoke passed; NSIS includes the real `WebView2Loader.dll` and uninstalls cleanly.
-- Deployment candidate tag: `v1.2.0-unsigned-deployment-candidate-20260620`.
-- Live public site was not redeployed in this pass.
+See [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md) for the canonical evidence statement.
 
-Current blockers to enterprise/public distribution:
+## Current proof
 
-- Public-trusted code signing is not configured; current artifacts are unsigned.
-- Updater artifacts are disabled for local unsigned builds; hosted metadata must be refreshed and revalidated against exact official artifacts before endpoint-readiness claims.
-- Full packaged GUI export parity must be rerun on the exact artifact intended for external testers, especially after signing; June 20 launch/render smoke is current for installer health.
-- External release provenance, support, and procurement materials need finalization.
+- Branch `feature/project-persistence-e2e`, milestone commit `ebbd068bd8d30f68bedc2940ed9b0c5bfc80b586`.
+- Versioned project save/reopen with persisted binary, NEST lifecycle, and immutable recorded GYRE snapshot linkage.
+- Binary mismatch and cross-binary crossover rejection.
+- Restart/cache-clear recovery and persisted verdict hydration.
+- Recorded-snapshot provenance for reports and exports, with honest degraded output when authority is unavailable.
+- 153 total Rust tests passed: 124 backend and 29 `nest_cli`.
+- 22 focused frontend persistence/provenance tests passed across 7 files.
+- TypeScript `--noEmit`, Vite production build, and `cargo check --release` passed.
+- MSI `A6A298CCFD39F8C53346D23A1BC7EC7795E3251E34031678735BE9C116E09BDB`.
+- NSIS `9FCC206AA60774F9CFD43E44994967517F8209B842FF266EE047346B5CE3AD61`.
+- Both installers: Authenticode `NotSigned`; no signer certificate or trusted timestamp.
 
-## Market Position
+Local validation is not hosted-CI proof. No controlled installation or installed-artifact acceptance test has passed for these exact artifacts.
 
-HexHawk targets malware analysts, incident response teams, SOC teams, reverse engineers, and security researchers who need a local-first desktop workflow with evidence-grade reporting.
+## Product-risk reduction
 
-The near-term commercial wedge is paid pilot access for teams that need:
+- Persistent projects reduce loss of investigation state and enable reliable reopen.
+- Immutable recorded GYRE snapshots preserve classification authority across restart and cache loss.
+- Binary identity and cross-binary rejection reduce evidence-crossover risk.
+- Persisted NEST linkage preserves lifecycle context without turning NEST into verdict authority.
+- Report/export provenance makes authority and lineage auditable.
+- Honest summary-only degradation prevents unavailable authority from being presented as proven.
 
-- local binary triage;
-- repeatable evidence reports;
-- analyst-friendly disassembly/decompiler views;
-- explicit confidence and lineage metadata;
-- local/offline operation with optional BYOK AI;
-- controlled validation rather than opaque cloud detonation claims.
+## Market position
 
-## Product Differentiators
+HexHawk's near-term wedge is local-first evidence custody, persistent case/project state, explicit authority boundaries, bounded AI, and reproducible report/export handoff. Mature tools remain ahead in decompiler, debugger, architecture, automation, and plugin-ecosystem depth.
 
-- Evidence-first workflow: findings are tied to observable metadata, strings, disassembly, signatures, and NEST evidence bundles.
-- Trust-safe AI positioning: AETHERFRAME/Forge can refine confidence and lineage but cannot change GYRE classification.
-- Local-first architecture: core analysis runs on the analyst workstation.
-- Native desktop UX: Tauri/Rust backend with React/TypeScript frontend.
-- Controlled extensibility: plugins and report/export surfaces can be expanded without changing verdict authority.
+## Commercial gates
 
-## Pricing Direction
+### Gate 1 — Controlled candidate acceptance
 
-Suggested pilot packaging:
+- Install and launch the exact NSIS candidate.
+- Exercise installed two-binary persistence and identity isolation.
+- Exercise restart/cache-clear recovery.
+- Verify installed report/export provenance.
+- Verify uninstall/reinstall and user-data retention behavior.
 
-| Tier | Audience | Positioning |
-| --- | --- | --- |
-| Internal / Board Demo | Founders, board, investors | Unsigned local tester build, proof-of-product only |
-| Paid Pilot | Small analyst teams | Planned signed Windows build, guided onboarding, limited support after release gates |
-| Professional | Individual analysts | Local-first desktop license with report export |
-| Team | SOC / IR team | Shared process, support, onboarding, policy templates |
-| Enterprise | Regulated teams | Procurement support, SSO/activation roadmap, audit/export requirements |
+### Gate 2 — Trusted distribution
 
-## Next Commercial Milestones
+- Code-sign exact executable and installer artifacts.
+- Verify signer, timestamp, and trust chain.
+- Validate updater metadata against exact signed artifacts.
+- Verify hosted CI and publish evidence without equating local checks to hosted checks.
 
-### M1 — Signed Controlled Tester Build
+### Gate 3 — Pilot and support readiness
 
-- Configure signing keys.
-- Keep updater artifacts disabled until official signing custody is present.
-- Rebuild MSI/NSIS.
-- Publish checksums and signing state.
-- Rerun installed-artifact GUI export parity on signed artifacts.
+- Define onboarding, issue intake, support boundaries, rollback, and release custody.
+- Run controlled pilots only after technical acceptance and signing gates pass.
+- Produce evidence-scoped case studies.
 
-### M2 — Investor / Board Package
+### Gate 4 — Procurement maturity
 
-- Maintain one-pager, diligence brief, board update, competitive landscape, and website copy.
-- Keep claims evidence-scoped and current.
-- Avoid claiming public-release readiness until signing and updater trust-chain proof pass.
+- Security, privacy, licensing, support, update, vulnerability-response, and audit materials.
+- Procurement claims only after the underlying controls and evidence exist.
 
-### M3 — Paid Pilot Readiness
+## Authority and Bridge boundaries
 
-- Define pilot onboarding steps.
-- Define support and issue intake.
-- Define license activation operations.
-- Produce signed installer and checksums.
-- Capture 2-3 real-world case-study demos without exposing sensitive samples.
+GYRE remains sole classification and recorded base-verdict authority. NEST is evidence/lifecycle context. AETHERFRAME/Forge is optional and non-authoritative. NEXUS cannot mutate authoritative state.
 
-## Risk Register
-
-| Risk | Current status | Mitigation |
-| --- | --- | --- |
-| Unsigned installer | Open | Configure code signing before external release |
-| Updater signing/metadata | Open | Use official release custody, refresh hosted metadata, and validate exact artifact/signature fields before readiness claims |
-| GUI installed parity | Launch/render smoke current for June 20 unsigned candidate; full export parity still historical | Rerun native installed-artifact export parity on the exact rebuilt/signed artifact |
-| Overclaiming AI/verdict authority | Controlled | Preserve GYRE/NEST/AETHERFRAME boundaries in docs/UI/export |
-| Support burden | Open | Pilot-only release until support path is defined |
+The Bridge improved engineering continuity, repository custody, evidence preservation, timeout recovery, and packaging discipline. It is not part of HexHawk's engine, did not change classification logic, and is not required to run the product.

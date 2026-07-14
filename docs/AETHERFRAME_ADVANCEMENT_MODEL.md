@@ -1,5 +1,9 @@
 # AetherFrame Advancement Model
 
+Last updated: 2026-07-14
+
+HexHawk persistence boundary: advancement may annotate bounded advisory lineage but must not mutate the immutable recorded GYRE snapshot linked by a project. Missing, stale, malformed, unsupported, mismatched, or cross-binary authority data is rejected; it is never repaired by silent uplift. High-assurance operation remains valid with AetherFrame disabled. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Status: preferred model
 Date: 2026-07-01
 
@@ -41,6 +45,8 @@ AetherFrame cycles may propose a `NEXT PROMPT CANDIDATE` for the next logical us
 - Function Intelligence remains an advisory evidence notebook only.
 - AETHERFRAME remains advancement/refinement/orchestration only.
 - Hermes/AI/NEXUS remain assistant/proposal/workflow helpers only.
+
+For persisted HexHawk authority, schema/renderer fields and fixture-shaped values are not proof of backend provenance. The snapshot identifier must resolve through the backend-recorded GYRE path, match verified binary/project linkage, and remain immutable through NEST, NEXUS, AETHERFRAME, report, and export consumers. Missing or mismatched authority must produce an explicit stop/limitation, never a stale or cross-binary fallback.
 
 ## Evidence use
 

@@ -1,5 +1,7 @@
 # HexHawk Release Validation (rolling status, updated 2026-06-20)
 
+> **Historical snapshot.** This document preserves evidence from 2026-06-01 through its 2026-06-20 rolling update and applies only to the recorded source and artifact hashes. It is not current HexHawk 1.0.0 project-persistence or Windows release-candidate proof. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 ## Canonical Status
 
 HexHawk is an unsigned deployment candidate for controlled internal testing.

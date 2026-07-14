@@ -1,5 +1,9 @@
 # HexHawk Early Access Release Notes
 
+Last updated: 2026-07-14
+
+For the HexHawk 1.0.0 candidate, release notes must identify versioned project save/reopen, immutable recorded GYRE authority, advisory NEST lifecycle linkage, binary isolation, restart/cache-clear recovery, and report/export provenance. They must also record exact installer hashes, `NotSigned` status, and every unpassed installation/functional acceptance check. Do not imply hosted CI, signing, updater, production, procurement, or public-release readiness without exact evidence.
+
 Channel: HexHawk Early Access — Unsigned Founder Build
 Package: HexHawk_Early_Access_UNSIGNED_v{{VERSION}}_{{DATE}}.zip
 

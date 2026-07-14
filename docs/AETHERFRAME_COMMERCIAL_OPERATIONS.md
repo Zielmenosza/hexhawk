@@ -1,5 +1,7 @@
 # AetherFrame Commercial Operations Lane
 
+> **Historical operations snapshot with current boundary (2026-07-14).** The current HexHawk package is an unsigned Windows 1.0.0 release candidate awaiting controlled installation acceptance, not production, procurement, enterprise, updater, or public-release readiness. The Bridge/AetherFrame process supports continuity and bounded operations only; it is not an analysis engine or verdict source. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Status: advisory lane for paid early-access operations. This document does not create payment links, use credentials, deploy, publish, deliver packages, or approve release readiness.
 
 ## Purpose

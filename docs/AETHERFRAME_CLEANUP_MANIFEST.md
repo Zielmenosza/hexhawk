@@ -1,5 +1,7 @@
 # AetherFrame Cleanup Manifest
 
+> **Historical snapshot.** This manifest preserves its dated cleanup evidence and does not describe the 2026-07-14 repository cleanup or current HexHawk release candidate. Bridge/AetherFrame cleanup improved engineering custody and continuity, not HexHawk classification capability. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Status: cleanup manifest — records approved worktree cleanup executions and remaining candidates
 Generated: 2026-07-01 19:29:31
 

@@ -74,13 +74,12 @@ HexHawk now includes comprehensive keyboard shortcuts for efficient binary analy
 
 **Browser Compatibility:**
 - Works with all modern browsers (Chrome, Firefox, Safari, Edge)
-- Tauri desktop app fully supported
+- The source includes a Tauri desktop path; the unsigned 1.0.0 installers have not passed installed shortcut acceptance
 - No conflicts with browser default shortcuts (prevented with `e.preventDefault()`)
 
 **Performance:**
 - Keyboard events use event delegation on window object
-- Minimal overhead: ~1ms per keypress
-- No impact on rendering or analysis performance
+- No fixed per-key timing or zero-impact claim is made; performance depends on the active view, host, and packaged runtime
 
 ## Implementation Details
 
@@ -129,5 +128,5 @@ Potential keyboard shortcuts for future versions:
 
 ---
 
-**Last Updated**: Phase 4 Integration  
-**Build Status**: ✅ Production-ready (943ms build time, 0 errors)
+**Last Updated**: 2026-07-14 documentation follow-up
+**Build Status**: Source shortcut implementation documented; build duration varies by machine/cache/toolchain, and unsigned installer acceptance remains outstanding.

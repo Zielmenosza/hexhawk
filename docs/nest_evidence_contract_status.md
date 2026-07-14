@@ -1,7 +1,11 @@
 # NEST Evidence Contract Status
 
-**Last updated:** 2026-04-29
+**Last updated:** 2026-07-14
 **Schema major version:** 1 (`NEST_EVIDENCE_SCHEMA_MAJOR = 1`)
+
+**Current milestone note:** The original TypeScript/Rust evidence-contract status below is preserved. HexHawk 1.0.0 additionally persists NEST session/final-iteration linkage in projects and revalidates it against binary identity and the immutable recorded GYRE snapshot. NEST lifecycle data remains advisory and cannot independently establish or override classification. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
+**Provenance rule:** TypeScript/Rust schema acceptance, renderer markers, and golden fixture values prove contract behavior only. They do not prove that a runtime snapshot identifier was issued by GYRE. Current authority requires backend-recorded snapshot resolution, validated binary/snapshot/NEST cross-linkage, and honest failure or limitation for missing, stale, mismatched, malformed, unsupported, or cross-binary data. NEXUS and AETHERFRAME cannot mutate or repair that authority.
 
 ---
 

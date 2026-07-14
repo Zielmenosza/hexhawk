@@ -2,8 +2,16 @@
 
 A Practical Buyer and Operator Guide to Binary Intelligence, Reverse Engineering, Evidence Workflows, Configuration, Plugins, Reports, and Advanced Jobs
 
-Date: 2026-07-09
+Last updated: 2026-07-14
 Audience: first-time technical buyers, internal testers, security operators, malware analysts, incident responders, and analysts learning HexHawk.
+
+## HexHawk 1.0.0 milestone update
+
+HexHawk now saves versioned projects and reliably reopens them after process restart or cache clearing. A project verifies the imported binary's identity and persistently links optional advisory NEST lifecycle context to the immutable recorded GYRE verdict snapshot. Missing, malformed, unsupported, stale, mismatched, and cross-binary authority data are rejected. Reports and exports carry recorded-snapshot provenance and fall back honestly to summary-only output when authoritative evidence is unavailable.
+
+GYRE is the sole classification and recorded base-verdict authority. NEST does not independently classify or override GYRE. AETHERFRAME/Forge is optional, bounded, replayable, auditable, disableable, and non-authoritative; NEXUS is an assistant and cannot mutate authoritative state.
+
+The Windows 1.0.0 MSI and NSIS release-candidate installers were built and hash/metadata verified. Both are Authenticode `NotSigned`. Controlled installation, installed launch, installed persistence/restart/provenance, uninstall, and reinstall acceptance remain unpassed. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) and [`TESTER_RELEASE_STATUS.md`](TESTER_RELEASE_STATUS.md) before testing.
 
 
 ## Is this guide comprehensive?
@@ -189,18 +197,11 @@ HexHawk does not claim to:
 
 ## Current release posture
 
-Repository docs now describe HexHawk as a validated Function Intelligence source candidate and controlled early-access workbench until a fresh deployment gate proves exact packaged artifacts. It is still not a broadly trusted public release. Public-trusted signing, updater readiness, packaged native GUI proof, and Function Notebook export proof must be checked for the exact build you intend to share.
+At milestone commit `ebbd068bd8d30f68bedc2940ed9b0c5bfc80b586`, source validation passed 124 Rust backend tests, 29 `nest_cli` tests (153 Rust total), 22 focused frontend persistence/provenance tests across seven files, `tsc --noEmit`, the Vite production build, and `cargo check --release`. This does not claim every historical frontend suite was rerun or that hosted CI is green.
 
-Current source validation has passed Rust tests, Rust clippy, TypeScript, full frontend tests, and production frontend build. That is source proof, not installer proof.
+The exact Windows 1.0.0 MSI and NSIS candidates were built and hash/metadata verified, but both are Authenticode `NotSigned` and neither was installed. Controlled installation, installed launch, installed persistence/reopen, two-binary identity isolation, restart/cache-clear recovery, report/export provenance, uninstall/reinstall, and user-data-retention acceptance remain outstanding. The current posture is an unsigned release candidate ready for controlled local acceptance testing—not production ready, procurement ready, enterprise ready, signed, updater ready, public-trusted, or public-release ready.
 
-Updater path status remains release-gated:
-
-- updater artifacts are disabled for local unsigned builds (`createUpdaterArtifacts: false`)
-- updater pubkey is configured
-- updater endpoint is configured
-- endpoint health/metadata validation still needs to be treated as a per-release gate
-
-Rerun native GUI and Function Notebook export parity for every build you intend to trust, especially before any external signed-tester or public-release claim.
+Updater readiness is not claimed. It requires a future signed exact artifact, signed updater metadata/artifacts, endpoint validation, install/update proof, and explicit release approval.
 
 ## The HexHawk mental model
 
@@ -227,14 +228,14 @@ Known repository-backed requirements:
 - Node/Yarn workspace tooling is required for frontend builds.
 - Rust/Cargo is required for backend, CLI, and Tauri builds.
 
-## Windows trust-chain warnings (internal-signed builds)
+## Windows trust warnings for the unsigned 1.0.0 candidates
 
-Current artifacts are signed, but the certificate chain is not publicly trusted in this release posture. You can still see SmartScreen, unknown-publisher, or enterprise endpoint trust warnings depending on host policy. Do not treat this build as procurement-ready until trust-chain policy is satisfied.
+The current MSI and NSIS candidates are Authenticode `NotSigned`: there is no signer certificate and no trusted timestamp. SmartScreen, unknown-publisher, or endpoint-control warnings may appear. Hash verification establishes byte identity; it does not make an unsigned file signed or trusted. Do not treat either candidate as production, procurement, enterprise, updater, or public-release ready.
 
 
 ![Windows trust-chain warning evidence from real artifact signature checks](assets/hexhawk-for-dummies/00-unsigned-windows-warning-not-captured.png)
 
-Caption: Rendered from real `Get-AuthenticodeSignature` output for the current tester MSI/NSIS artifacts. It documents a signing/procurement trust-chain warning (`UnknownError` with untrusted root), not a HexHawk analysis verdict.
+Caption: Signature-status evidence for Windows tester artifacts. For the current exact 1.0.0 candidates, the authoritative status is Authenticode `NotSigned`, with no signer certificate or trusted timestamp; this is not a HexHawk analysis verdict.
 
 ## Build locally
 
@@ -281,6 +282,12 @@ Repository docs describe MSI and NSIS artifacts under:
 - `target/release/bundle/msi/HexHawk_1.0.0_x64_en-US.msi`
 - `target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe`
 
+The verified local release-candidate copies are under `D:/Project/HexHawk/.local/releases/HexHawk-1.0.0-ebbd068-20260714-001856`:
+
+- MSI SHA-256: `A6A298CCFD39F8C53346D23A1BC7EC7795E3251E34031678735BE9C116E09BDB`
+- NSIS SHA-256: `9FCC206AA60774F9CFD43E44994967517F8209B842FF266EE047346B5CE3AD61`
+- Both: Authenticode `NotSigned`; not installed or acceptance-tested
+
 ## Verify native Tauri runtime
 
 A native GUI validation must prove more than “the web page loaded.” Look for runtime proof such as:
@@ -296,9 +303,17 @@ What this means: a Vite/browser simulation can exercise UI components, but it is
 
 Caption: Captured from browser/dev mode. The diagnostic shows native Tauri/WebView2 was not proven in this screenshot pass; use it as a reminder to separate browser UI orientation from packaged-app proof.
 
-## Trust verification workflow (new)
+## Trust verification workflow
 
-HexHawk now ships public trust automation endpoints on the companion website:
+For the current unsigned 1.0.0 candidates:
+
+1. Record the exact installer filename.
+2. Compute SHA-256 locally and compare it with the exact value above.
+3. Record Authenticode status as `NotSigned`, with no signer certificate and no trusted timestamp.
+4. Use only a controlled non-production test machine under an approved security-exception process.
+5. Do not interpret a matching hash as signature, publisher trust, or installed-workflow acceptance.
+
+The following companion-site endpoints describe a future signed-artifact trust channel; their presence does not sign, timestamp, publish, or validate the current candidates:
 
 - `https://hexhawk.ke/trust/keys.json`
 - `https://hexhawk.ke/trust/revocations.json`
@@ -307,13 +322,7 @@ HexHawk now ships public trust automation endpoints on the companion website:
 - `https://hexhawk.ke/trust/key-rotations.json`
 - `https://hexhawk.ke/.well-known/hexhawk-trust.json`
 
-Beginner-safe verification sequence:
-
-1. Download installer + checksum (`/downloads/checksums.txt`).
-2. Verify SHA-256 locally.
-3. Verify detached signature against active key from `/trust/keys.json`.
-4. Confirm key is not revoked in `/trust/revocations.json`.
-5. Confirm signature timestamp/record appears in `/trust/signed-timestamps.json`.
+For a future signed release, detached-signature, revocation, timestamp, discovery, and key-rotation checks must be performed against the exact published artifact and separately validated release metadata. Updater readiness must not be inferred from configuration or endpoint presence.
 
 ---
 
@@ -538,7 +547,7 @@ AETHERFRAME can help explain or refine confidence metadata under policy. It is n
 
 ## Base vs promoted confidence
 
-- Base confidence: GYRE/NEST-linked confidence before uplift.
+- Base confidence: the confidence recorded by the authoritative GYRE snapshot before any optional advisory metadata.
 - Promoted confidence: optional policy-gated confidence metadata after uplift.
 - Confidence delta: the difference.
 - Uplift applied: whether the optional path was used.
@@ -1002,7 +1011,7 @@ High assurance means deterministic evidence, explicit policy gates, replayable e
 
 ## Before external high-assurance testers
 
-Current docs say the build is not yet an external high-assurance release. Required gates include signing, updater decision/signing, installed native GUI export parity, and report authority validation.
+The build is not yet an external high-assurance release. Required gates include controlled installation and launch, installed two-binary persistence/reopen, restart/cache-clear recovery, installed report/export provenance, uninstall/reinstall and user-data-retention acceptance, signing, and exact signed-artifact updater validation.
 
 ---
 
@@ -1293,22 +1302,21 @@ Operator: ______________________________
 
 ### Signature
 
-- [ ] Detached signature file located (`/trust/signatures/latest/` or versioned path).
-- [ ] Public key fetched from `/trust/keys.json`.
-- [ ] Signature verification result recorded: PASS / FAIL.
-- [ ] Signature algorithm/key ID recorded.
+- [ ] Authenticode status recorded for the exact artifact.
+- [ ] For the current 1.0.0 candidate, result recorded as `NotSigned` with no signer certificate and no trusted timestamp.
+- [ ] No matching-hash result is described as a signature or publisher-trust result.
+- [ ] For a future signed release only, signer identity, certificate chain, signature algorithm, and exact-artifact signature result are recorded.
 
 ### Revocation and timestamp
 
-- [ ] Key ID checked in `/trust/revocations.json`.
-- [ ] Key is not revoked for this artifact/timestamp.
-- [ ] Signed timestamp record found in `/trust/signed-timestamps.json`.
+- [ ] Current unsigned candidate recorded as having no signer key and no trusted timestamp.
+- [ ] For a future signed release only, signer/key revocation status is checked against release evidence.
+- [ ] For a future signed release only, trusted timestamp validation is recorded for the exact artifact.
 
 ### Discovery and rotation
 
-- [ ] Discovery document fetched: `/.well-known/hexhawk-trust.json`.
-- [ ] Endpoint set is consistent (keys/revocations/signatures/timestamps).
-- [ ] Key rotation history reviewed (`/trust/key-rotations.json`) when applicable.
+- [ ] Endpoint/configuration presence is not treated as updater or signing readiness.
+- [ ] For a future signed release only, discovery and key-rotation evidence is checked against the exact published release.
 
 ### Runtime and workflow proof
 
@@ -1319,7 +1327,7 @@ Operator: ______________________________
 ### Final release decision
 
 - [ ] Trust verdict: ACCEPT / CONDITIONAL / REJECT.
-- [ ] Exceptions documented (for example: untrusted-root internal signing).
+- [ ] Exceptions documented (for example: controlled testing of an Authenticode `NotSigned` candidate).
 - [ ] Reviewer sign-off captured.
 
 ---

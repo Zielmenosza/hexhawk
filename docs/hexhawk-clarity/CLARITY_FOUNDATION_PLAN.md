@@ -1,8 +1,25 @@
 # HexHawk Clarity Foundation Plan
 
+Last updated: 2026-07-14
+
+Current milestone boundary: product explanation must now include versioned project save/reopen, verified binary identity, immutable recorded GYRE authority, advisory NEST lifecycle linkage, restart/cache-clear recovery, and report/export provenance. Windows MSI and NSIS candidates exist with verified hashes/metadata but are unsigned and have not passed controlled installation acceptance. See [`../CURRENT_STATUS.md`](../CURRENT_STATUS.md).
+
 Status: planning foundation only
 Scope: repo-grounded design direction for making HexHawk easier to understand and more uniquely HexHawk
 No code changes are authorized by this document
+
+## Complete current workflow in plain language
+
+1. Open or import a binary on an authorized system.
+2. Establish byte identity; path and filename are location hints, not identity.
+3. Collect static, runtime, analyst, and tool evidence within their stated limits.
+4. GYRE records the authoritative classification and base-verdict snapshot.
+5. Save a versioned project that links the binary, analysis session, and recorded snapshot without duplicating editable verdict truth.
+6. On reopen, verify binary identity and resolve the backend-recorded snapshot; reject missing, stale, malformed, unsupported, mismatched, or cross-binary authority.
+7. Use NEST for advisory evidence/lifecycle context linked to that snapshot, never as a second verdict source.
+8. Keep optional AI/AETHERFRAME/NEXUS bounded and non-authoritative; they cannot mutate the recorded state.
+9. Generate reports/exports that preserve binary, project, session, and immutable snapshot provenance.
+10. If authority cannot be resolved, show the limitation or summary-only result honestly—never reuse stale or cross-binary verdict data.
 
 ## Executive principle
 

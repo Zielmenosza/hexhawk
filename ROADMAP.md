@@ -1,123 +1,91 @@
 # HexHawk Roadmap
 
-Last updated: 2026-06-26
+Last updated: 2026-07-14
 
-This roadmap reflects the current HexHawk source state after the v1.30 Function Intelligence integration and v1.31 byte_counter clippy fix. It does not claim a fresh packaged deployment candidate until the release worktree, artifact, signing-status, installer-smoke, and Function Notebook export gates pass.
+This roadmap separates shipped source capability from unpassed release gates. Current evidence and caveats are summarized in [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md).
 
-## Current Proven Baseline
+## Completed in the 1.0.0 project-persistence milestone
 
-HexHawk is a validated source candidate on `feature/re-workbench-core-next`. The current branch adds a coherent Function Intelligence layer over recent reverse-engineering foundations.
+- Versioned project manifests.
+- Project save and reliable reopen.
+- Persistent linkage among project, imported binary, NEST session, and immutable recorded GYRE verdict snapshot.
+- GYRE as sole authoritative source of classification and recorded base-verdict state.
+- Advisory NEST lifecycle linkage without independent classification authority.
+- Binary-identity verification and cross-binary evidence-isolation rejection.
+- Cache-clear and process-restart recovery.
+- Persisted verdict hydration.
+- Report and export provenance tied to the recorded snapshot.
+- Honest summary-only reporting when authoritative evidence is unavailable.
+- Rejection of missing, malformed, unsupported, stale, mismatched, and cross-binary persisted authority data.
+- Two-binary persistence coverage without identity crossover.
+- Windows MSVC release build producing MSI and NSIS HexHawk 1.0.0 candidates.
+- Installer hashes, package metadata, and unsigned status verified.
 
-Validated in this session before docs:
+## Current validated baseline
 
-- Rust workspace tests: passed, 85 backend tests + 20 `nest_cli` tests.
-- `cargo clippy --workspace -- -D warnings`: passed after the byte_counter C string metadata fix.
-- TypeScript `npx tsc --noEmit`: passed.
-- Full frontend Vitest: passed, 59 files / 832 tests.
-- Production frontend build: passed with existing Vite chunk/import warnings.
+Milestone branch: `feature/project-persistence-e2e`
+Milestone commit: `ebbd068bd8d30f68bedc2940ed9b0c5bfc80b586`
 
-Completed source capabilities through v1.30/v1.31:
+- 124 Rust backend tests passed.
+- 29 `nest_cli` tests passed.
+- 153 total Rust tests passed.
+- 22 focused frontend persistence/provenance tests passed across 7 files.
+- TypeScript `--noEmit`, Vite production build, and `cargo check --release` passed.
+- MSI and NSIS were produced and remain Authenticode `NotSigned`.
 
-- v1.17.0 PE import table parsing.
-- v1.18.0 queryable xref index.
-- v1.19.0 function-boundary recovery heuristics.
-- v1.20.0 Win32 constant semantic annotation.
-- v1.21.0 TALON pseudocode IR artefact cleanup.
-- v1.22.0 debugger call-stack reconstruction.
-- v1.23.0 conditional breakpoint expressions.
-- v1.24.0 calling-convention inference per function.
-- v1.25.0 canonical Function Intelligence model and builder.
-- v1.26.0 static/runtime debugger correlation.
-- v1.27.0 Function Intelligence JSON and Markdown export.
-- v1.28.0 Function Notebook UI.
-- v1.29.0 Function Notebook workflow wiring.
-- v1.30.0 Function Intelligence regression corpus.
-- v1.31.0 byte_counter clippy metadata fix.
+This baseline does not claim all historical frontend suites were rerun or hosted CI is green.
 
-Current limitations:
+## Trust hierarchy that must not drift
 
-- No public-trusted signature is proven on current artifacts.
-- No updater-ready claim is made for this source state.
-- Fresh packaged native GUI/export parity for Function Notebook still requires the deployment-candidate gate.
-- Function Intelligence is advisory evidence only; it does not classify files or replace GYRE.
+1. GYRE owns classification and recorded base-verdict authority.
+2. NEST organizes evidence and lifecycle context; it does not issue or override classification.
+3. AETHERFRAME/Forge is optional, bounded, replayable, auditable, disableable, and non-authoritative.
+4. NEXUS assists and consumes; it must not mutate authoritative verdict state.
+5. Reports and exports distinguish recorded authority from advisory, incomplete, or unavailable evidence.
+6. Stale and cross-binary verdict data are rejected rather than silently reused.
 
-## Trust Hierarchy That Must Not Drift
+## P0 — Controlled installation and functional acceptance
 
-1. GYRE owns final classification and base confidence.
-2. NEST orchestrates and converges evidence; it does not become verdict authority.
-3. AETHERFRAME/Forge may add bounded uplift/lineage/refinement metadata, but must not change GYRE classification.
-4. CREST packages evidence and reports.
-5. NEXUS consumes/assists and must not compute verdict truth.
+- Controlled NSIS installation test.
+- Installed application launch test.
+- Installed two-binary persistence and identity-isolation test.
+- Installed restart/cache-clear recovery test.
+- Installed report-provenance and export-provenance test.
+- Uninstall and reinstall validation.
+- User-data retention-policy validation.
 
-## Near-Term Priorities
+Exit criterion: every check passes against the exact candidate artifacts, with hashes and failure evidence recorded. Packaging success alone is not acceptance.
 
-### P0 — Fresh v1.30/v1.31 unsigned deployment gate
-
-Goal: prove the exact packaged artifacts from the current source state before any deployment-candidate tag.
-
-- Build from a fresh release worktree.
-- Rerun Rust, TypeScript, Vitest, production build, and Tauri build.
-- Hash backend, CLI, MSI, NSIS, and WebView2Loader artifacts.
-- Verify Authenticode status.
-- Run MSI/NSIS smoke and Function Notebook JSON/Markdown export smoke.
-
-Exit criteria:
-
-- All gate steps pass on exact artifacts, or the candidate is reported failed without tagging.
-
-### P0 — Real signing path
-
-Goal: move from unsigned local/internal artifacts to a controlled signed internal tester candidate.
+## P0 — Signing and exact-artifact updater validation
 
 - Configure organization-trusted Windows code signing.
-- Wire signing through `scripts/release/sign-windows-artifact.ps1` or a CI signing step.
-- Rebuild MSI/NSIS artifacts from a clean tree.
-- Verify Authenticode status on executable and installers.
-- Record hashes, signer, timestamp, and trust-chain status in a new evidence JSON.
+- Rebuild and verify signed executable, MSI, and NSIS artifacts.
+- Record hashes, signer identity, trusted timestamp, and trust-chain result.
+- Validate updater metadata and signatures against those exact signed artifacts.
+- Keep unsigned local artifacts out of public-trusted release positioning.
 
-Exit criteria:
+## P0 — Hosted release and support readiness
 
-- Signed executable and installers.
-- Hashes published.
-- Signed-artifact native GUI export parity regenerated and passing or honestly documented.
+- Verify hosted CI for the intended release commit; do not infer it from local validation.
+- Publish only after exact-artifact acceptance, signing, updater, and custody gates pass.
+- Finalize support, issue intake, release provenance, and rollback operations.
 
-### P0 — Updater metadata and signing
+## P1 — Analysis depth
 
-Goal: avoid updater overclaims until endpoint and signing are real.
+- Broader decompiler maturity and architecture coverage.
+- Broader debugger maturity and reproducible runtime evidence.
+- Plugin ecosystem maturity and compatibility policy.
+- Additional external challenge and regression corpora.
+- Exploitability Mode remains planned/backlog unless source and tests independently prove shipment.
+- Do not present manual or external-tool exploit success as native HexHawk capability.
 
-- Keep updater artifacts disabled for local unsigned builds.
-- Use the official release custody script only when updater signing key custody is present.
-- Keep the configured metadata endpoint at `https://hexhawk.ke/releases/latest.json`, but replace stale hosted metadata and rerun expected artifact/signature validation before making endpoint-readiness claims.
-- Continue validating platform URL/signature fields before upload or release claims.
+## P1 — Commercial maturity
 
-### P0 — Investor / Board Demonstration Package
-
-Goal: make the board/investor story match current proof without overclaiming.
-
-- Maintain `docs/INVESTOR_ONE_PAGER.md`.
-- Maintain `docs/INVESTOR_DILIGENCE_BRIEF.md`.
-- Maintain `docs/BOARD_UPDATE_2026-05-31.md` or supersede it with a dated board update.
-- Keep website copy aligned with current build, validation, licensing, signing, and updater status.
-
-Exit criteria:
-
-- Docs and website present HexHawk as internal-tester ready, not broadly public-release ready.
-- Validation counts and artifact caveats match current command output.
-
-### P1 — Native GUI artifact proof discipline
-
-Goal: prove the exact packaged desktop GUI artifact intended for testers.
-
-- Hash the MSI first.
-- Run native GUI parity against that exact MSI.
-- Prove `hasTauriRuntime: true`, `browserMode: false`, and native internals present.
-- Run Open -> Inspect -> Analysis -> NEST -> Export.
-- Compare exported report against authority-envelope expectations.
-
-## Deferred / Backlog
-
-- Full procurement-ready enterprise controls.
-- Hosted team collaboration and server-side audit store.
-- Full updater infrastructure.
-- Additional external challenge/regression corpora.
+- Controlled pilot onboarding and support operations.
+- Procurement and policy documentation after technical release gates pass.
+- Case studies with evidence-scoped claims and no sensitive samples.
 - Broader platform packaging beyond Windows.
+
+## Historical baseline note
+
+Earlier Function Intelligence, June installer, benchmark, and release-candidate documents remain useful dated evidence. Their test counts, hashes, smoke results, and tags describe those historical source states only and do not supersede the 2026-07-14 milestone status.

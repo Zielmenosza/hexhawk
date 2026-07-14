@@ -1,8 +1,25 @@
 # HexHawk Clarity Implementation Roadmap
 
+Last updated: 2026-07-14
+
+Project persistence, reliable reopen, recorded-snapshot provenance, binary isolation, restart/cache-clear recovery, and Windows MSI/NSIS packaging are completed source/package milestones. Remaining release work is controlled installed-artifact acceptance, signing, exact signed-artifact updater validation, hosted publication, support readiness, and broader decompiler/debugger/plugin maturity. Exploitability Mode remains backlog unless repository code and tests independently prove shipment. See [`../CURRENT_STATUS.md`](../CURRENT_STATUS.md) and [`../../ROADMAP.md`](../../ROADMAP.md).
+
 Status: staged roadmap only
 Scope: small, reviewable slices for clarity, usability, and ProgramAnalysis convergence
 No code is implemented by this document
+
+## Complete current workflow in plain language
+
+1. Open or import the binary.
+2. Establish its byte identity rather than trusting path/name.
+3. Collect evidence with source and proof limits.
+4. Let GYRE record the authoritative classification/base-verdict snapshot.
+5. Save binary, session, and snapshot linkage in the versioned project.
+6. Reopen by verifying identity and resolving the backend-recorded snapshot; reject stale, malformed, unsupported, mismatched, or cross-binary authority.
+7. Attach NEST's advisory lifecycle/evidence context without giving NEST verdict authority.
+8. Keep AI, AETHERFRAME, and NEXUS optional, bounded, and unable to mutate authority.
+9. Preserve recorded-snapshot provenance in report/export output.
+10. Produce an explicit limitation or summary-only result when authority is missing; never silently fall back.
 
 ## Roadmap rules
 

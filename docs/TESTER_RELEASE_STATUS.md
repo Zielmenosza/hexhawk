@@ -1,74 +1,67 @@
 # HexHawk Tester Release Status
 
-Date: 2026-07-09
+Last updated: 2026-07-14
 
 ## Recommendation
 
-Source candidate: YES, for engineering/internal review after v1.30 Function Intelligence and v1.31 byte_counter validation.
+- Source milestone: implemented and locally validated at `ebbd068bd8d30f68bedc2940ed9b0c5bfc80b586` on `feature/project-persistence-e2e`.
+- Windows release candidate: produced and ready for controlled local installation testing.
+- Controlled installation acceptance: **not passed**.
+- Controlled external signed-tester gate: **not passed**.
+- Public release: **not ready**.
 
-Unsigned deployment candidate from the current source state: PENDING. A fresh release worktree build, artifact hashes, signing-status check, installer smoke, and Function Notebook/export smoke still need to pass before tagging a new unsigned deployment candidate.
+See [CURRENT_STATUS.md](CURRENT_STATUS.md) for the canonical current evidence.
 
-Controlled external signed-tester gate: NO. Public-trusted Authenticode custody is not proven, updater metadata has not been validated against current exact artifacts, and signed-artifact native GUI/export parity has not been run.
+## Candidate artifacts
 
-Public release: NO.
+| Artifact | SHA-256 | Authenticode |
+| --- | --- | --- |
+| `HexHawk_1.0.0_x64_en-US.msi` | `A6A298CCFD39F8C53346D23A1BC7EC7795E3251E34031678735BE9C116E09BDB` | NotSigned |
+| `HexHawk_1.0.0_x64-setup.exe` | `9FCC206AA60774F9CFD43E44994967517F8209B842FF266EE047346B5CE3AD61` | NotSigned |
 
+The package metadata identifies HexHawk 1.0.0. Neither installer has a signer certificate or trusted timestamp. Do not install outside a controlled test plan and do not interpret packaging as acceptance.
 
-## Documentation and Website Status
+## Product capability under test
 
-Consumer/product documentation has been refreshed to make the product stranger-readable: what HexHawk does, what goes in, what comes out, when to use each module, when not to use it, and how HexHawk compares by job-to-be-done against mature reversing tools. This is copy/readiness work only; it does not by itself satisfy the unsigned deployment, signing, updater, installer-smoke, or external-tester gates below.
+- Versioned project save and reliable reopen.
+- Persisted binary, NEST lifecycle, and immutable recorded GYRE snapshot linkage.
+- Binary-identity verification and cross-binary mismatch rejection.
+- Cache-clear and process-restart recovery.
+- Persisted verdict hydration.
+- Report and export provenance tied to the recorded snapshot.
+- Honest summary-only output and rejection behavior when authority is unavailable or invalid.
 
-## Current Source State
+GYRE remains sole classification and recorded base-verdict authority. NEST is advisory lifecycle/evidence context. AETHERFRAME/Forge and NEXUS are non-authoritative.
 
-- Branch: `feature/re-workbench-core-next`.
-- Function Intelligence source tag: `v1.30.0-function-intelligence-regression`.
-- byte_counter clippy fix tag: `v1.31.0-byte-counter-clippy-fix`.
-- Main has not yet been fast-forwarded in this docs update unless a later release-gate step reports it.
-- Older June 20/21 installer evidence remains historical and must not be used as proof for current v1.30/v1.31 artifacts unless hashes match exactly.
+## Local source validation
 
-## Current Validation Summary
+- Rust backend: 124 passed.
+- `nest_cli`: 29 passed.
+- Total Rust: 153 passed.
+- Focused frontend persistence/provenance: 22 passed across 7 files.
+- TypeScript `--noEmit`: passed.
+- Vite production build: passed.
+- `cargo check --release`: passed.
 
-Validated in this session before this docs update:
+Known non-blocking warnings: Vite mixed dynamic/static import involving `talonLLMPass.ts`, Vite large chunk, and libsodium LNK4099 missing-PDB warnings.
 
-- `cargo test --workspace`: passed. Backend 85 tests passed; `nest_cli` 20 tests passed.
-- `cargo clippy --workspace -- -D warnings`: passed after the byte_counter C string metadata fix.
-- `npx tsc --noEmit`: passed.
-- Full Vitest: passed, 59 files / 832 tests.
-- `yarn build`: passed with existing Vite chunk-size/dynamic-import warnings.
+No hosted-CI-green claim is made, and all historical frontend suites are not claimed rerun.
 
-## Function Intelligence Status
+## Required controlled acceptance checklist
 
-The current source unifies recent reverse-engineering slices into an advisory Function Intelligence workflow:
+Leave every item open until observed against the exact candidate hashes:
 
-- PE import table parsing.
-- Queryable xref index.
-- Function-boundary recovery heuristics.
-- Win32 constant semantic annotation.
-- TALON pseudocode IR artefact cleanup.
-- Debugger call-stack reconstruction.
-- Conditional breakpoint expressions.
-- Calling-convention inference.
-- Canonical Function Intelligence model.
-- Static/runtime debugger correlation.
-- Function Intelligence JSON/Markdown export.
-- Function Notebook UI and workflow wiring.
-- Regression coverage for imports, calls, constants, debugger mapping, export authority fields, and forbidden verdict-field names.
+- [ ] NSIS installation completes under the approved controlled procedure.
+- [ ] Installed HexHawk launches successfully.
+- [ ] Two distinct binaries save and reopen without identity crossover.
+- [ ] Changed and cross-binary inputs are rejected.
+- [ ] Restart and cache-clear recovery preserve the exact recorded authority linkage.
+- [ ] Reports and exports identify the immutable recorded GYRE snapshot.
+- [ ] Missing/malformed/unsupported/stale authority degrades or rejects honestly.
+- [ ] Uninstall completes.
+- [ ] Reinstall completes.
+- [ ] User-data retention behavior matches the approved policy.
+- [ ] Exact artifacts are code-signed and trust-verified before any signed claim.
+- [ ] Updater metadata is validated against exact signed artifacts.
 
-Function Intelligence is advisory evidence only. It does not classify files, assign GYRE verdicts, or replace analyst review.
-
-## Authority Boundaries
-
-- GYRE remains the sole verdict/classification authority.
-- NEST organizes and converges evidence; it does not replace GYRE.
-- TALON/decompiler output is advisory reconstruction only.
-- STRIKE/debugger output is runtime evidence only.
-- Function Notebook exports must preserve `gyre_is_sole_verdict_authority: true`, `advisory_analysis_only: true`, and `source_evidence_per_claim: true`.
-
-## Next Gate Before External Testers
-
-- Fast-forward main only after docs and validation are clean.
-- Build from a fresh release worktree.
-- Verify exact artifact hashes and Authenticode status.
-- Run MSI/NSIS installer smoke.
-- Run Function Notebook / Function Intelligence export smoke.
-- Configure real organization-trusted code signing before any signed/public tester claim.
-- Publish updater/trust metadata only for exact validated artifacts.
+Do not use stale smoke folders or prior installer hashes as proof for this candidate.

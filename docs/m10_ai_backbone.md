@@ -1,5 +1,7 @@
 # Milestone 10: AI Analyst Assist Backbone
 
+> **Historical milestone with current authority boundary (2026-07-14).** AI analyst assistance remains advisory and must not mutate project manifests, immutable recorded GYRE verdict state, or report/export authority provenance. It must not fill missing authority with stale or cross-binary verdict data. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Date: 2026-04-29
 
 ## Implementation Status

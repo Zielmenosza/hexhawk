@@ -1,5 +1,9 @@
 # HexHawk Unsigned Early Access Policy
 
+Last updated: 2026-07-14
+
+The current HexHawk 1.0.0 MSI and NSIS candidates are Authenticode `NotSigned` with verified hashes and metadata. They are ready only for approved controlled local installation testing. No installation or installed-artifact acceptance check has passed for the exact candidates; packaging does not establish production, procurement, updater, or public-release readiness. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) and [`EARLY_ACCESS_INSTALL_README.md`](EARLY_ACCESS_INSTALL_README.md).
+
 Status: Active policy for controlled paid early-access technical preview
 Channel name: HexHawk Early Access — Unsigned Founder Build
 

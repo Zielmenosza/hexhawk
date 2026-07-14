@@ -2,6 +2,8 @@
 
 Date: 2026-07-09
 
+> **Historical snapshot.** This report records the 2026-07-09 documentation/screenshot validation and retains its original evidence and counts. It is not the current HexHawk 1.0.0 project-persistence or Windows release-candidate validation statement. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) for the 2026-07-14 milestone evidence and open installer-acceptance gates.
+
 This report documents validation performed for:
 
 - `docs/HEXHAWK_FOR_DUMMIES_CAPABILITY_INVENTORY.md`

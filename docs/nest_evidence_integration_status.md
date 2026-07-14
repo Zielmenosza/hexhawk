@@ -1,6 +1,12 @@
 # NEST Evidence Integration Status
 
-Last updated: 2026-04-29
+Last updated: 2026-07-14
+
+## Current milestone addendum
+
+HexHawk 1.0.0 now carries advisory NEST lifecycle linkage in versioned project persistence and revalidates session, final iteration, final verdict, binary identity, and immutable recorded GYRE snapshot linkage during reopen and recovery. NEST remains an evidence/lifecycle layer and does not issue or override authoritative classifications. The April integration details below remain historical implementation provenance. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
+Current provenance acceptance is backend-rooted: snapshot identifiers must be issued/resolved through the recorded GYRE path. Renderer/schema markers and golden fixtures are supporting test evidence, not proof of runtime authorship. NEXUS and AETHERFRAME cannot mutate the recorded state. Missing or mismatched authority must fail or degrade explicitly, with no stale or cross-binary fallback, and reports/exports must preserve resolved-snapshot provenance.
 
 ## Scope completed in this pass
 

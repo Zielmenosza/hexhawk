@@ -1,5 +1,9 @@
 # HexHawk Unsigned Early Access Gate
 
+Last updated: 2026-07-14
+
+Current candidate boundary: HexHawk 1.0.0 MSI and NSIS artifacts were built and hash/metadata verified, and both remain Authenticode `NotSigned`. This permits only controlled local installation testing—not a passed installer, external signed-tester, production, procurement, updater, or public-release gate. The test plan must cover installed launch, two-binary persistence, restart/cache-clear recovery, report/export provenance, uninstall, reinstall, and user-data retention. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Status: gate definition for controlled paid early-access technical preview
 Channel: HexHawk Early Access — Unsigned Founder Build
 

@@ -1,6 +1,6 @@
 # HexHawk for Dummies Source Map
 
-Date: 2026-07-09
+Last updated: 2026-07-14
 
 This map ties the main claims in `HEXHAWK_FOR_DUMMIES.md`, the consumer/product refresh, and `HEXHAWK_FOR_DUMMIES_CAPABILITY_INVENTORY.md` to repository evidence inspected for this publication.
 
@@ -9,13 +9,19 @@ This map ties the main claims in `HEXHAWK_FOR_DUMMIES.md`, the consumer/product 
 | Claim | Source references |
 | --- | --- |
 | HexHawk is a Rust/Tauri/React/TypeScript native desktop reverse-engineering and binary-intelligence platform | `README.md`, `src-tauri/tauri.conf.json`, `HexHawk/package.json`, `src-tauri/Cargo.toml` |
-| Internal-tester Windows build candidate, not broad public release | `README.md`, `ROADMAP.md`, `docs/TESTER_RELEASE_STATUS.md`, `docs/HIGH_ASSURANCE_GUIDE.md` |
+| HexHawk 1.0.0 unsigned Windows release candidate for controlled local acceptance, not production/procurement/enterprise/updater/public release | `docs/CURRENT_STATUS.md`, `README.md`, `ROADMAP.md`, `docs/TESTER_RELEASE_STATUS.md`, `docs/HIGH_ASSURANCE_GUIDE.md` |
 | GYRE is sole verdict authority | `docs/ENGINE_BOUNDARY_DOCTRINE.md`, `docs/HIGH_ASSURANCE_GUIDE.md`, `README.md` |
 | NEST orchestrates evidence and does not replace GYRE | `docs/ENGINE_BOUNDARY_DOCTRINE.md`, `docs/nest_evidence_schema_spec.md`, `docs/nest_evidence_examples.md` |
 | AETHERFRAME/Forge is optional bounded uplift/refinement/lineage and cannot mutate classification | `docs/ENGINE_BOUNDARY_DOCTRINE.md`, `docs/HIGH_ASSURANCE_GUIDE.md`, `HexHawk/src/components/IntelligenceReport.tsx` |
 | TALON/STRIKE/ECHO are evidence or analyst surfaces | `README.md`, `docs/ENGINE_BOUNDARY_DOCTRINE.md`, `HexHawk/src/components/TalonView.tsx`, `StrikeView.tsx`, `EchoView.tsx` |
 | CREST packages reports | `README.md`, `docs/ENGINE_BOUNDARY_DOCTRINE.md`, `HexHawk/src/components/IntelligenceReport.tsx` |
 | NEXUS/AI/assistant layers are not security truth | `docs/ENGINE_BOUNDARY_DOCTRINE.md`, `docs/m10_ai_backbone.md`, `docs/m11_byok_ai.md` |
+| Versioned projects save/reopen with persisted binary and immutable recorded GYRE linkage | `src-tauri/src/commands/project_persistence.rs`, `HexHawk/src/utils/projectPersistenceClient.ts`, `README.md`, `docs/CURRENT_STATUS.md` |
+| NEST project linkage is advisory and bound to the recorded snapshot | `src-tauri/src/commands/nest_session_lifecycle.rs`, persistence/linkage tests, `docs/ENGINE_BOUNDARY_DOCTRINE.md` |
+| Restart/cache-clear hydration rejects stale, malformed, missing, unsupported, mismatched, and cross-binary authority | project-persistence and persisted-verdict hydration tests; `docs/CURRENT_STATUS.md` |
+| Reports and exports bind provenance to the immutable recorded snapshot | `HexHawk/src/utils/reportAuthorityProvenance.ts`, report/export authority tests, `docs/CURRENT_STATUS.md` |
+| Current milestone branch/commit | `feature/project-persistence-e2e` at `ebbd068bd8d30f68bedc2940ed9b0c5bfc80b586`; `docs/CURRENT_STATUS.md` |
+| Backend-recorded snapshot IDs are the authority root; renderer/schema markers and fixture values are not provenance proof | `src-tauri/src/commands/project_persistence.rs`, persisted-verdict hydration/linkage tests, `docs/ENGINE_BOUNDARY_DOCTRINE.md` |
 
 ## Build, launch, and packaging claims
 
@@ -23,10 +29,11 @@ This map ties the main claims in `HEXHAWK_FOR_DUMMIES.md`, the consumer/product 
 | --- | --- |
 | Root scripts include dev, build, test, typecheck, Rust lint/test, Tauri build | `package.json` |
 | UI package scripts include Vite dev/build/preview, package, NEST/STRIKE benchmark scripts, Vitest | `HexHawk/package.json` |
-| Tauri product config, WebView2 bootstrapper, installer targets, updater artifacts enabled, signing command configured, updater pubkey and endpoint configured | `src-tauri/tauri.conf.json` |
+| Tauri product config includes WebView2/bootstrap and bundle targets; configuration presence does not prove signing or updater readiness | `src-tauri/tauri.conf.json`, `docs/RELEASE_SIGNING_AND_UPDATER_PLAN.md` |
 | Rust workspace members are `plugin-api`, `plugins/byte_counter`, and `src-tauri` | `Cargo.toml` |
 | Backend package is `hexhawk-backend` v1.0.0 with `nest_cli` binary and trial feature | `src-tauri/Cargo.toml` |
-| Historical validation counts and artifacts | `README.md`, `ROADMAP.md`, `docs/TESTER_RELEASE_STATUS.md`, `docs/INVESTOR_DILIGENCE_BRIEF.md` |
+| Current milestone validation: 124 Rust backend + 29 `nest_cli` = 153 Rust; 22 focused frontend persistence/provenance tests across seven files; `tsc --noEmit`, Vite production build, and `cargo check --release` passed; no claim that every historical frontend suite reran or hosted CI is green | `docs/CURRENT_STATUS.md`, `docs/TESTER_RELEASE_STATUS.md` |
+| Verified MSI `HexHawk_1.0.0_x64_en-US.msi` SHA-256 `A6A298CCFD39F8C53346D23A1BC7EC7795E3251E34031678735BE9C116E09BDB` and NSIS `HexHawk_1.0.0_x64-setup.exe` SHA-256 `9FCC206AA60774F9CFD43E44994967517F8209B842FF266EE047346B5CE3AD61`; both `NotSigned` and uninstalled | `docs/CURRENT_STATUS.md`, `docs/TESTER_RELEASE_STATUS.md`, canonical local release evidence under `D:/Project/HexHawk/.local/releases/HexHawk-1.0.0-ebbd068-20260714-001856` |
 
 ## CLI claims
 
@@ -67,7 +74,7 @@ This map ties the main claims in `HEXHAWK_FOR_DUMMIES.md`, the consumer/product 
 | BYOK provider support for OpenAI, Anthropic, Ollama | `docs/m11_byok_ai.md`, `src-tauri/src/commands/llm.rs` |
 | LLM approval, remote endpoint, context/token/timeout guardrails | `docs/m10_ai_backbone.md`, `src-tauri/src/commands/llm.rs` |
 | Stronghold-backed provider key storage | `docs/m10_ai_backbone.md`, `docs/m11_byok_ai.md`, `src-tauri/src/commands/llm.rs` |
-| Updater pubkey/endpoint configured, but local unsigned builds use `createUpdaterArtifacts: false`; endpoint/metadata validation failed in the current release-truth pass | `src-tauri/tauri.conf.json`, `docs/RELEASE_SIGNING_AND_UPDATER_PLAN.md`, `docs/RELEASE_VALIDATION_2026-06-01.md` |
+| Updater readiness is not claimed; configuration fields cannot substitute for exact signed-artifact updater metadata, endpoint, installation/update, and rollback validation | `src-tauri/tauri.conf.json`, `docs/RELEASE_SIGNING_AND_UPDATER_PLAN.md`, `docs/CURRENT_STATUS.md` |
 
 ## Plugin and extension claims
 

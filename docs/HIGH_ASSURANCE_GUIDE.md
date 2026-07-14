@@ -1,42 +1,48 @@
 # HexHawk High-Assurance Guide
 
-Date: 2026-07-09
+Last updated: 2026-07-14
 
 ## Goal
 
-High-assurance HexHawk workflows prioritize deterministic evidence, explicit policy gates, and replayable exports over convenience or AI-driven shortcuts.
+High-assurance HexHawk workflows prioritize verified binary identity, immutable recorded authority, deterministic evidence, explicit policy gates, restart-safe persistence, and replayable exports over convenience or AI-driven shortcuts.
 
+## Required behavior
 
-## Consumer-safe explanation
+- GYRE remains the sole classification and recorded base-verdict authority.
+- Projects resolve immutable recorded GYRE snapshots rather than trusting mutable renderer state.
+- NEST bundles and lifecycle records preserve binary identity, session/iteration linkage, and the exact recorded snapshot reference; NEST remains advisory.
+- AETHERFRAME/Forge is optional, bounded, replayable, auditable, disableable, and non-authoritative.
+- NEXUS cannot mutate authoritative verdict state.
+- High-assurance operation must retain deterministic/replayable paths with AETHERFRAME disabled.
+- Save/reopen must verify binary identity and reject stale, malformed, unsupported, missing, mismatched, or cross-binary authority data.
+- Cache-clear and process-restart recovery must reconstruct authority from persisted records.
+- Reports and exports must identify the resolved recorded snapshot and distinguish authoritative, advisory, incomplete, and unavailable evidence.
+- Missing authority must produce honest summary-only output, never silent fallback to stale or cross-binary verdict data.
 
-High-assurance mode is the “show your work” version of HexHawk. It should make clear what file was reviewed, what evidence was collected, which engine produced each statement, what GYRE decided, what NEST grouped, whether AETHERFRAME/Forge or NEXUS helped with wording/context, and what remains unproven.
+The authoritative snapshot identifier must originate from the backend-recorded GYRE path. Renderer/schema markers can support consistency checks but do not prove backend provenance, and fixture values prove only the fixture's scenario. Reports/exports must resolve to that same immutable recorded snapshot or state that authoritative provenance is unavailable.
 
-For buyers and testers, the promise is not “trust the AI.” The promise is “trust the chain of custody enough to review it”: input identity, deterministic evidence, labelled helper output, replayable exports, and visible stop conditions.
+## Current 1.0.0 evidence
 
-## Required Behavior
+Milestone commit `ebbd068bd8d30f68bedc2940ed9b0c5bfc80b586` implements versioned projects, save/reopen, immutable recorded-verdict linkage, binary isolation, restart/cache-clear hydration, NEST lifecycle-to-project linkage, and report/export provenance.
 
-- GYRE remains final verdict authority.
-- NEST evidence bundles must preserve file identity and GYRE linkage.
-- AETHERFRAME/Forge uplift must be explicitly policy-gated.
-- Standalone AetherFrame core must remain product-agnostic and adapter-driven; AetherFrameGuard is a separate application, not the core implementation container.
-- High-assurance mode must be able to disable uplift and present base GYRE/NEST outputs directly.
-- Reports must disclose whether uplift/lineage metadata was applied.
-- AETHERFRAME report Markdown packaging must be disabled or left package-only in high-assurance contexts; disabled policy must leave the report body unchanged and record disabled lineage only in adapter metadata/tests, not in exported verdict truth. The report panel exposes this as an analyst-controlled Markdown/copy export toggle.
+Local milestone validation recorded 124 backend tests, 29 `nest_cli` tests, 153 total Rust tests, and 22 focused frontend persistence/provenance tests across 7 files. TypeScript `--noEmit`, the Vite production build, and `cargo check --release` passed. This does not establish hosted-CI status or prove every historical frontend suite was rerun.
 
-## Release Guidance
+## Release guidance
 
-For external high-assurance testers, do not ship until:
+Current HexHawk 1.0.0 MSI and NSIS candidates were built and hash/metadata checked. Both are Authenticode `NotSigned`; no signer certificate or trusted timestamp is present.
 
-- Windows artifacts are signed.
-- Updater artifacts are signed or explicitly disabled and documented.
-- Installed native GUI export parity is rerun.
-- Exported reports preserve `source_engine: gyre` and `gyre_is_sole_verdict_source: true`.
-- Evidence bundle validation does not silently default to success.
+Do not call the candidate high-assurance externally validated until the exact installed artifacts pass:
 
-## Current Status
+1. controlled installation and application launch;
+2. two-binary persistence and identity isolation;
+3. restart/cache-clear recovery;
+4. report/export provenance;
+5. uninstall/reinstall and user-data retention checks;
+6. trusted code signing; and
+7. updater validation against exact signed artifacts.
 
-The current source state is a v1.30/v1.31 Function Intelligence source candidate on `feature/re-workbench-core-next`. Source validation in this session passed Rust tests, Rust clippy with `-D warnings`, TypeScript noEmit, full Vitest (59 files / 832 tests), and production frontend build.
+Packaging success is not installer acceptance. Local validation is not hosted-CI proof.
 
-Function Intelligence and Function Notebook provide advisory selected-function evidence: imports, xrefs, function boundaries, constants, pseudocode, calling conventions, debugger observations, limits, and JSON/Markdown export. They do not become verdict authority.
+## Bridge boundary
 
-A fresh exact-artifact deployment gate is still required before calling this source state an unsigned deployment candidate. Public-trusted signing, updater readiness, and high-assurance external release status remain unproven until exact artifacts pass signing/status, installer smoke, and export authority-envelope checks.
+The Bridge improved continuity, repository custody, evidence preservation, and recovery discipline. It is not an analysis engine, verdict source, or runtime dependency of HexHawk.

@@ -1,5 +1,7 @@
 # HexHawk Repo Custody Reconciliation (2026-06-04)
 
+> **Historical snapshot.** This document preserves the 2026-06-04 custody record. It is not current product, validation, packaging, or release-readiness evidence. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 ## Scope
 
 - Repository: `D:/Project/HexHawk`.

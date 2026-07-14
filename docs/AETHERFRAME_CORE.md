@@ -1,5 +1,11 @@
 # AetherFrame Core
 
+Last updated: 2026-07-14
+
+HexHawk adapter boundary: HexHawk 1.0.0 persists binary identity, advisory NEST lifecycle linkage, and immutable recorded GYRE snapshot authority in versioned projects. AetherFrame remains optional, bounded, replayable, auditable, disableable, and non-authoritative for classification; high-assurance save/reopen/report paths must work without uplift. AetherFrame must never silently replace missing, stale, or cross-binary recorded authority. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
+For the HexHawk adapter, AetherFrame may consume only authority already resolved through the backend-recorded GYRE snapshot path. Renderer/schema markers and fixture values are not provenance. AetherFrame and NEXUS cannot issue, repair, or mutate the snapshot; report lineage must point to the validated immutable record or disclose missing authority.
+
 Date: 2026-06-03
 
 ## What AetherFrame Is

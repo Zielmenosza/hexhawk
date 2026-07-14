@@ -1,5 +1,9 @@
 # AetherFrame Advancement Runbook
 
+Last updated: 2026-07-14
+
+For HexHawk 1.0.0, preserve the project-persistence boundary: GYRE's immutable recorded snapshot remains sole classification/base-verdict authority; NEST lifecycle context is advisory; AetherFrame actions are bounded, replayable, auditable, disableable, and non-authoritative. Do not silently substitute stale, missing, malformed, or cross-binary authority. Reports and exports must retain recorded-snapshot provenance. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 Status: preferred runbook replacing temporary Factory framing
 
 Every AetherFrame Advancement Cycle follows the same outer shape:
@@ -236,11 +240,15 @@ Forbidden actions:
 - fabricating NEST evidence bundles;
 - letting AetherFrame/AI mutate GYRE classification;
 - claiming native proof from browser-only simulation.
+- treating renderer/schema markers or fixture values as proof that a runtime snapshot was issued by GYRE;
+- reusing stale or cross-binary authority when backend-recorded snapshot resolution fails.
 
 Validation gates:
 - parse exported JSON/Markdown;
 - assert authority fields;
 - compare exact runtime/probe evidence.
+- resolve report/export provenance to the immutable backend-recorded GYRE snapshot and matching binary/project linkage;
+- confirm NEST is advisory and NEXUS/AETHERFRAME did not mutate authoritative state.
 
 Evidence requirements:
 - export path;

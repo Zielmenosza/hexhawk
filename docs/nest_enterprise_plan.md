@@ -4,9 +4,11 @@ Date: 2026-04-29
 Project: HexHawk
 Scope: design plan for turning NEST from a strong local analyst feature into an enterprise-trustworthy system
 
+> **Historical plan with a 2026-07-14 status boundary.** HexHawk 1.0.0 now persists advisory NEST lifecycle linkage in project manifests and resolves it against the immutable recorded GYRE verdict snapshot through restart/cache-clear recovery. NEST still does not issue, rewrite, replace, or override authoritative classification. Enterprise, hosted, procurement, and support maturity remain open. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
 ## 1. What NEST Does Today
 
-NEST today is an iterative analysis loop implemented primarily in [HexHawk/src/utils/nestEngine.ts](d:\Project\HexHawk\HexHawk\src\utils\nestEngine.ts), orchestrated in [HexHawk/src/components/NestView.tsx](d:\Project\HexHawk\HexHawk\src\components\NestView.tsx), and runnable headlessly through [HexHawk/scripts/run-nest.ts](d:\Project\HexHawk\HexHawk\scripts\run-nest.ts) and [src-tauri/src/bin/nest_cli.rs](d:\Project\HexHawk\src-tauri\src\bin\nest_cli.rs).
+NEST today is an iterative analysis loop implemented primarily in [`HexHawk/src/utils/nestEngine.ts`](../HexHawk/src/utils/nestEngine.ts), orchestrated in [`HexHawk/src/components/NestView.tsx`](../HexHawk/src/components/NestView.tsx), and runnable headlessly through [`HexHawk/scripts/run-nest.ts`](../HexHawk/scripts/run-nest.ts) and [`src-tauri/src/bin/nest_cli.rs`](../src-tauri/src/bin/nest_cli.rs).
 
 Today NEST does five useful things well:
 
@@ -43,9 +45,7 @@ There are two classes of blockers: one recently cleared, and several still unres
 
 This was the hard blocker for making any enterprise trust claim. It has now been cleared for the tested crossfile workflow.
 
-Evidence:
-- [docs/final_filebound_validation.md](d:\Project\HexHawk\docs\final_filebound_validation.md)
-- [docs/final_runtime_testing_and_vscode_status.md](d:\Project\HexHawk\docs\final_runtime_testing_and_vscode_status.md)
+Historical evidence references named by the original plan were `docs/final_filebound_validation.md` and `docs/final_runtime_testing_and_vscode_status.md`. Those files are not present in the current worktree, so they are retained as historical names rather than live links. Current project-persistence and binary-isolation evidence is summarized in [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
 
 What was wrong before:
 - The second binary could inherit stale metadata and plugin state.

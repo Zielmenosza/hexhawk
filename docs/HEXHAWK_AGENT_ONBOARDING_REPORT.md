@@ -1,5 +1,7 @@
 # HexHawk Agent Onboarding Report
 
+> **2026-07-14 current milestone addendum.** Agents must treat versioned project manifests as links to persisted binary/NEST/immutable recorded GYRE records, not as editable verdict truth. GYRE is sole classification/base-verdict authority; NEST lifecycle linkage is advisory; AETHERFRAME/Forge and NEXUS are non-authoritative. Save/reopen must reject stale, malformed, missing, unsupported, mismatched, and cross-binary authority, and reports/exports must preserve recorded-snapshot provenance. The Bridge is engineering continuity only, not an engine or runtime dependency. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md) and [`ENGINE_BOUNDARY_DOCTRINE.md`](ENGINE_BOUNDARY_DOCTRINE.md).
+
 Date: 2026-06-01
 Scope: orientation-only pass for safe future engineering, documentation, validation, release-hardening, and UX work.
 

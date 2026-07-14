@@ -1,5 +1,9 @@
 # HexHawk Early Access Package Custody
 
+Last updated: 2026-07-14
+
+Current release-candidate custody must identify milestone commit `ebbd068bd8d30f68bedc2940ed9b0c5bfc80b586`, MSI hash `A6A298CCFD39F8C53346D23A1BC7EC7795E3251E34031678735BE9C116E09BDB`, NSIS hash `9FCC206AA60774F9CFD43E44994967517F8209B842FF266EE047346B5CE3AD61`, and Authenticode `NotSigned` status. Historical package folders or smoke evidence cannot prove the exact current artifacts. No installation acceptance is recorded by packaging alone.
+
 Generated: 2026-07-02 23:22:05 +0200
 
 Status: custody plan for local unsigned early-access package handling. This document does not publish, upload, sign, deploy, or deliver a package.

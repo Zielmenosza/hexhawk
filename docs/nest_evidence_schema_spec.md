@@ -1,9 +1,14 @@
 # NEST Evidence Schema Specification
 
-Date: 2026-04-29
+Original specification date: 2026-04-29
+Last updated: 2026-07-14
 Project: HexHawk
 Scope: evidence contract for NEST session exports in local Tauri mode and future enterprise API mode
-Status: design specification only, no implementation yet
+Status: historical schema specification with implemented local contract and current project-linkage addendum
+
+Current addendum: HexHawk 1.0.0 project manifests persist advisory NEST lifecycle linkage and resolve it against the verified binary identity and immutable recorded GYRE verdict snapshot. NEST does not independently issue, rewrite, replace, or override classification. Missing, malformed, unsupported, stale, mismatched, or cross-binary persisted authority/linkage must be rejected. Reports and exports must identify recorded GYRE provenance. See [`CURRENT_STATUS.md`](CURRENT_STATUS.md).
+
+Interpretation rule: this schema specifies shape and consistency; schema conformance alone does not prove backend provenance or GYRE authorship. `verdict_snapshot_id` is authoritative only when issued and resolved by the backend-recorded GYRE snapshot path and validated against the same binary and project linkage. Renderer state and fixture values are non-authoritative. NEXUS/AETHERFRAME cannot mutate this state, and consumers must not fall back to stale or cross-binary data when resolution fails.
 
 ## Purpose
 
@@ -109,6 +114,7 @@ These IDs are stable within a bundle and must not be regenerated once exported.
 - Format: `gyresnap_<ulid>`
 - Stability: immutable once exported
 - Purpose: identifies the linked GYRE snapshot included in the bundle
+- Provenance: must be obtained from the backend-recorded GYRE snapshot path; matching this format or appearing in renderer/schema/fixture data does not establish authorship
 
 #### `actor_id`
 - Required
