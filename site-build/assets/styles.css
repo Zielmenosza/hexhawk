@@ -42,10 +42,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .container { width: min(1120px, 92vw); margin: 0 auto; }
 .topbar { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); background: rgba(7,17,26,.86); border-bottom: 1px solid var(--line); }
 .nav { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 0; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .08em; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: .08em; flex: 0 0 auto; }
 .brand img { width: 26px; height: 26px; }
-.links { display: flex; flex-wrap: wrap; gap: 14px; font-size: 14px; color: var(--muted); align-items: center; }
-.links a { padding: 8px 0; border-bottom: 2px solid transparent; }
+.links { display: flex; flex-wrap: nowrap; gap: clamp(8px, 1.2vw, 14px); font-size: 14px; color: var(--muted); align-items: center; justify-content: flex-end; margin-left: auto; white-space: nowrap; }
+.links a { display: inline-flex; padding: 8px 0; border-bottom: 2px solid transparent; }
 .links a.active { color: var(--text); border-color: var(--accent); }
 .nav-toggle { display: none; background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; }
 .hero { padding: 88px 0 32px; }
@@ -115,7 +115,7 @@ textarea { min-height: 120px; }
 .footer a { display: block; color: var(--muted); margin: 8px 0; }
 .footer p { margin: 8px 0 0; }
 @media (max-width: 960px) { .grid.three, .grid.four, .pricing-grid, .flow, .trust-flow, .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split { grid-template-columns: 1fr; } .trust-flow span:not(:last-child)::after, .flow span:not(:last-child)::after { display: none; } }
-@media (max-width: 720px) {
+@media (max-width: 1060px) {
   .nav { align-items: flex-start; flex-wrap: wrap; }
   .nav-toggle { display: inline-flex; }
   .links { display: none; width: 100%; flex-direction: column; align-items: flex-start; padding-top: 12px; }
