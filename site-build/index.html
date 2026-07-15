@@ -28,24 +28,26 @@
     <a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a>
     <button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-controls="primary-navigation" aria-expanded="false">Menu</button>
     <nav class="links" id="primary-navigation" aria-label="Primary navigation">
-      <a data-path="/" href="/?v=20260710-nav3">Home</a>
-      <a data-path="/features" href="/features?v=20260710-nav3">Features</a>
-      <a data-path="/pricing" href="/pricing?v=20260710-nav3">Pricing</a>
-      <a data-path="/trust" href="/trust?v=20260710-nav3">Trust &amp; Assurance</a>
-      <a data-path="/downloads" href="/downloads?v=20260710-nav3">Downloads</a>
-      <a data-path="/docs" href="/docs?v=20260710-nav3">Docs</a>
-      <a data-path="/pricing" href="/pricing?v=20260710-nav3#founder">Early Access</a>
+      <a data-path="/" href="/">Home</a>
+      <a data-path="/features" href="/features">Features</a>
+      <a data-path="/downloads" href="/downloads">Downloads</a>
+      <a data-path="/docs" href="/docs">Docs</a>
+      <a data-path="/apply" href="/apply/">Apply to Test</a>
+      <a data-path="/known-issues" href="/known-issues/">Known Issues</a>
+      <a data-path="/privacy" href="/privacy/">Privacy</a>
+      <a data-path="/contact" href="/contact/">Contact</a>
     </nav>
   </div>
 </header>
 <main id="main-content" class="container">
 <section class="hero">
-  <span class="kicker">Local binary evidence workbench</span>
-  <h1>Turn an unknown program into evidence a reviewer can follow.</h1>
-  <p class="lead">HexHawk is a local-first reverse-engineering workbench for technical testers and security teams. Open a binary, inspect facts and code evidence, keep helper/AI output labelled, and export a report that separates what was observed from what remains uncertain.</p>
+  <span class="kicker">Technical Preview · Local binary evidence workbench</span>
+  <h1>Test an early HexHawk build and help harden the evidence workflow.</h1>
+  <p class="lead">HexHawk is an early technical preview for a small tester group. It remains local-first: open a binary, inspect facts and code evidence, keep helper/AI output labelled, and export a report that separates what was observed from what remains uncertain.</p>
 </section>
-<div class="cta hero-cta"><a class="btn primary" href="/pricing#founder">See Early Access Pricing</a><a class="btn ghost" href="/features">Understand the workflow</a><a class="btn ghost" href="/docs">Read the beginner guide</a><a class="btn ghost" href="mailto:sales@hexhawk.ke?subject=HexHawk%20Founder%20Build%20request">Request private package</a></div>
-<section class="status-strip"><strong>Current release status:</strong> unsigned early-access local package; private manual delivery for technical testers. Windows may warn. Verify SHA256 hashes before installing. Automatic updater proof and signing gates remain future work.</section>
+<div class="cta hero-cta"><a class="btn primary" href="/apply/">Apply to Test HexHawk</a><a class="btn ghost" href="/known-issues/">Read preview limitations</a><a class="btn ghost" href="/privacy/">Privacy and file handling</a><a class="btn ghost" href="/features">Understand the workflow</a></div>
+<section class="status-strip"><strong>Technical Preview status:</strong> unsigned early-access local package; private manual delivery for technical testers. Windows may display SmartScreen or endpoint-security warnings. Verify SHA256 hashes before installing and use non-critical files and systems.</section>
+<section class="section preview-panel"><div class="section-heading"><span class="kicker">PREVIEW EXPECTATIONS</span><h2>Built for careful testers, not production trust.</h2><p>Use HexHawk on controlled Windows test machines and samples you can safely inspect. The preview is meant to expose install friction, confusing workflow steps, report gaps, and usability problems before a broader release.</p></div><div class="grid three"><article class="card"><span class="badge planned">Unsigned builds</span><h3>Windows may warn</h3><p>Preview packages may be unsigned or manually delivered. Do not disable security globally; capture exact warnings and report them with the package hash.</p></article><article class="card"><span class="badge">Local handling</span><h3>Files stay local unless stated</h3><p>Analysis is performed locally where applicable. Files are not uploaded unless a feature explicitly says otherwise, and any such feature should identify what it sends before use.</p></article><article class="card"><span class="badge">Tester duty</span><h3>Report what breaks</h3><p>Testers are expected to report bugs, unclear labels, install warnings, confusing evidence paths, and usability problems with enough context to reproduce them.</p></article></div></section>
 <section class="section"><div class="section-heading"><span class="kicker">BUYER-FRIENDLY WORKFLOW</span><h2>Input, process, output — without hiding the limits.</h2><p>HexHawk is easiest to evaluate when every feature answers six questions: what it is, what input it needs, what it does, what output it creates, when to use it, and what it does not prove.</p></div><div class="grid three"><article class="card"><span class="badge">Input</span><h3>Bring a local binary</h3><p>Use an EXE, DLL, SYS, BIN, or supported sample on a controlled test machine. HexHawk starts with identity: hashes, size, format, imports, strings, sections, and architecture clues.</p></article><article class="card"><span class="badge">Process</span><h3>Follow labelled evidence</h3><p>GYRE owns classification, NEST groups evidence, TALON/STRIKE/ECHO add reviewable signals, AETHERFRAME and NEXUS remain advisory. Labels keep helper output from becoming hidden truth.</p></article><article class="card"><span class="badge">Output</span><h3>Export a review package</h3><p>CREST reports carry source labels, confidence, uncertainty, and limits so another analyst or buyer can review the same path instead of trusting a black-box answer.</p></article></div></section>
 <section class="section"><div class="section-heading"><span class="kicker">WHAT HEXHAWK DOES</span><h2>From file input to reviewable output.</h2><p>Comparable reversing tools explain the path from input to evidence: load a sample, inspect code and metadata, collect supporting observations, then export a report. HexHawk follows that pattern and adds visible source labels so GYRE, NEST, STRIKE, TALON, ECHO, AETHERFRAME, and NEXUS are not confused with each other.</p></div><div class="grid three">
   <article class="card"><span class="badge">Input</span><h3>Open a file locally</h3><p>Use a controlled test machine. Input is an EXE, DLL, SYS, BIN, or supported binary path. HexHawk records hashes, type, size, sections, imports, strings, and architecture hints.</p></article>
@@ -53,7 +55,7 @@
   <article class="card"><span class="badge">Output</span><h3>Export a handoff report</h3><p>CREST packages facts, labels, source markers, uncertainty, and limits so another person can review the same evidence path.</p></article>
 </div></section>
 <section class="section split"><div><span class="kicker">WHO DECIDES?</span><h2>Helpers can support the case, but GYRE owns the verdict.</h2><p>GYRE is the final classification and base-confidence source. NEST organizes evidence around that answer. STRIKE, TALON, ECHO, Function Intelligence, AETHERFRAME, and NEXUS are supporting surfaces; they must remain labelled and reviewable.</p></div><div class="authority-card"><div><strong>Use HexHawk for</strong><span>local inspection, evidence organization, report handoff, and repeatable analyst review.</span></div><div><strong>Do not use it as</strong><span>a claim that an unknown file is safe, a replacement for analyst judgment, or an unlabelled AI answer.</span></div><div><strong>Good next click</strong><span><a href="/features">Read each module in plain English.</a></span></div></div></section>
-<section class="section final-cta"><h2>Ready to test the founder build?</h2><p>Start with the feature guide, then request private access if the current unsigned, tester-only limits fit your use case.</p><div class="cta"><a class="btn primary" href="/features">View features</a><a class="btn ghost" href="mailto:sales@hexhawk.ke?subject=HexHawk%20Founder%20Build%20request">Request access</a></div></section>
+<section class="section final-cta"><h2>Ready to join the technical preview?</h2><p>Apply if you can test unsigned Windows software on non-critical systems, keep file-handling limits in mind, and send actionable bug and usability feedback.</p><div class="cta"><a class="btn primary" href="/apply/">Apply to Test HexHawk</a><a class="btn ghost" href="/known-issues/">Review known limitations</a><a class="btn ghost" href="/contact/">Contact HexHawk</a></div></section>
 </main>
 <footer class="footer">
   <div class="container footer-grid">
@@ -65,9 +67,9 @@
     <div>
       <h4>Product</h4>
       <a href="/features">Features</a>
-      <a href="/pricing">Pricing</a>
       <a href="/downloads">Downloads</a>
       <a href="/docs">Docs</a>
+      <a href="/apply/">Apply to Test</a>
     </div>
     <div>
       <h4>Trust operations</h4>
@@ -78,10 +80,11 @@
       <a href="/release-notes">Release Notes</a>
     </div>
     <div>
-      <h4>Contact</h4>
-      <a href="mailto:contact@hexhawk.ke?subject=HexHawk%20early%20access">Request Early Access</a>
-      <a href="mailto:sales@hexhawk.ke?subject=HexHawk%20team%20demo">Schedule a Demo</a>
-      <a href="/payments">Payment status</a>
+      <h4>Preview</h4>
+      <a href="/apply/">Apply to Test HexHawk</a>
+      <a href="/known-issues/">Known Issues</a>
+      <a href="/privacy/">Privacy</a>
+      <a href="/contact/">Contact</a>
     </div>
   </div>
 </footer>
