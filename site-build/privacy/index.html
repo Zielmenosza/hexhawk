@@ -22,7 +22,15 @@
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
-<header class="topbar"><div class="container nav"><a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a><button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-controls="primary-navigation" aria-expanded="false">Menu</button><nav class="links" id="primary-navigation" aria-label="Primary navigation"><a data-path="/" href="/">Home</a><a data-path="/features" href="/features">Features</a><a data-path="/downloads" href="/downloads">Downloads</a><a data-path="/docs" href="/docs">Docs</a><a data-path="/apply" href="/apply/">Apply to Test</a><a data-path="/known-issues" href="/known-issues/">Known Issues</a><a data-path="/privacy" href="/privacy/">Privacy</a><a data-path="/contact" href="/contact/">Contact</a></nav></div></header>
+<header class="topbar"><div class="container nav"><a class="brand" href="/"><img src="/assets/logo.svg" alt="HexHawk"> HEXHAWK</a><button class="nav-toggle" type="button" aria-label="Toggle navigation" aria-controls="primary-navigation" aria-expanded="false">Menu</button><nav class="links" id="primary-navigation" aria-label="Primary navigation">
+      <a data-path="/" href="/">Home</a>
+      <a data-path="/features" href="/features">Features</a>
+      <a data-path="/downloads" href="/downloads">Downloads</a>
+      <a data-path="/docs" href="/docs">Docs</a>
+      <a data-path="/pricing" href="/pricing">Pricing</a>
+      <a data-path="/trust" href="/trust">Trust</a>
+      <a data-path="/apply" href="/apply/">Apply to Test</a>
+    </nav></div></header>
 <main id="main-content" class="container">
 <section class="hero"><span class="kicker">Technical Preview Privacy</span><h1>Preview privacy starts with local file handling and clear tester communication.</h1><p class="lead">HexHawk is a local-first binary evidence workbench. During the technical preview, tester contact details and feedback are used to operate the small preview group, while file analysis remains local where applicable unless a feature explicitly says otherwise.</p></section>
 <section class="status-strip"><strong>Local-first rule:</strong> Files are not uploaded unless a feature explicitly says otherwise. If a future feature sends data outside the machine, it should identify that behavior before use.</section>
@@ -30,7 +38,38 @@
 <section class="section split"><div><span class="kicker">LOCAL FILE HANDLING</span><h2>Use non-critical files and systems.</h2><p>HexHawk is intended to analyze files on your local test machine where applicable. You should still treat preview software cautiously and avoid critical machines, irreplaceable files, or sensitive production data.</p></div><div class="authority-card"><div><strong>Local analysis</strong><span>Analysis is performed locally where applicable, and files are not uploaded unless a feature explicitly says otherwise.</span></div><div><strong>Tester choice</strong><span>Do not email samples, logs, screenshots, or paths that you are not comfortable sharing.</span></div><div><strong>Preview risk</strong><span>Unsigned or early builds may trigger Windows or endpoint-security warnings and may have rough edges.</span></div></div></section>
 <section class="section"><div class="section-heading"><span class="kicker">HOW INFORMATION IS USED</span><h2>Operating the technical preview.</h2><p>Submitted information may be used to contact applicants, decide whether the preview is a good fit, provide package-access instructions, debug reports, improve documentation, and prioritize product fixes. HexHawk should not be used for production-sensitive samples during this phase.</p></div><div class="cta"><a class="btn primary" href="/apply/">Apply to Test HexHawk</a><a class="btn ghost" href="/contact/">Contact HexHawk</a><a class="btn ghost" href="/known-issues/">Known Issues</a></div></section>
 </main>
-<footer class="footer"><div class="container footer-grid"><div><strong>HexHawk</strong><p>Local-first binary analysis with clear facts, source labels, and human review.</p><p class="mono">Unsigned technical preview · manual updates only</p></div><div><h4>Product</h4><a href="/features">Features</a><a href="/downloads">Downloads</a><a href="/docs">Docs</a><a href="/">Home</a></div><div><h4>Preview</h4><a href="/apply/">Apply to Test</a><a href="/known-issues/">Known Issues</a><a href="/privacy/">Privacy</a><a href="/contact/">Contact</a></div><div><h4>Contact</h4><a href="mailto:contact@hexhawk.ke?subject=HexHawk%20privacy%20question">contact@hexhawk.ke</a><a href="mailto:sales@hexhawk.ke?subject=HexHawk%20Technical%20Preview">sales@hexhawk.ke</a></div></div></footer>
+<footer class="footer">
+  <div class="container footer-grid">
+    <div>
+      <strong>HexHawk</strong>
+      <p>Local-first binary analysis with clear facts, source labels, and human review.</p>
+      <p class="mono">Unsigned technical preview · manual updates only</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <a href="/">Home</a>
+      <a href="/features">Features</a>
+      <a href="/downloads">Downloads</a>
+      <a href="/docs">Docs</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/apply/">Apply to Test</a>
+    </div>
+    <div>
+      <h4>Trust</h4>
+      <a href="/trust">Trust</a>
+      <a href="/trust-center">Verification Center</a>
+      <a href="/verify-file">Verify a File</a>
+      <a href="/keys-revocations">Keys &amp; Revocations</a>
+    </div>
+    <div>
+      <h4>Preview</h4>
+      <a href="/known-issues/">Known Issues</a>
+      <a href="/privacy/">Privacy</a>
+      <a href="/contact/">Contact</a>
+      <a href="/release-notes">Release Notes</a>
+    </div>
+  </div>
+</footer>
 <script src="/assets/app.js"></script>
 </body>
 </html>
