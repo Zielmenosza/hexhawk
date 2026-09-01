@@ -1,6 +1,6 @@
 # HexHawk GitHub Security Remediation
 
-**Prepared:** 2026-08-31
+**Prepared:** 2026-08-31; hosted follow-up 2026-09-01
 **Branch:** `security/github-dependency-remediation`
 **Clean baseline:** `origin/main` at `91c4912cc56c6b64aef27cff7ea8f0e0aedd1121`
 **Remote:** `https://github.com/Zielmenosza/hexhawk.git`
@@ -17,8 +17,8 @@ The dirty HEAD and current remote default branch diverge from merge base `2fca87
 - **User-visible GitHub alert count:** 53 individual alerts.
 - **Locally reproducible Yarn findings at the clean baseline:** the configured root workspaces produced 45 vulnerability advisories plus 2 deprecation notices; the separately tracked, out-of-workspace AetherframeGuard project produced 4 additional vulnerability findings. Combined: 49 vulnerability findings and 2 deprecations.
 - **Underlying locally reproduced vulnerable package families:** 12 (`@babel/core`, `brace-expansion`, `esbuild`, `fast-uri`, `ip-address`, `nanoid`, `postcss`, `tar`, `undici`, `vite`, `vitest`, `ws`).
-- **GitHub alert numbers:** unavailable without authenticated Dependabot API access. The numeric values below are Yarn/npm advisory IDs, not GitHub repository alert numbers.
-- The four-alert difference between the user-visible GitHub count and the 49 locally reproduced vulnerability findings may represent additional manifest records, Dependabot snapshot lag, withdrawn/new findings, or non-Yarn ecosystems. It cannot be assigned honestly until authenticated readback.
+- **GitHub alert inventory:** authenticated readback is now available. GitHub reports 45 `yarn.lock` records plus eight direct-manifest records (four `HexHawk/package.json`, three `AetherframeGuard/package.json`, one `packages/aetherframe-core/package.json`). The numeric values in the family table below remain Yarn/npm advisory IDs, not GitHub repository alert numbers.
+- The four-record difference between GitHub's 53 records and the 49 locally reproduced vulnerability findings is a counting-dimension difference across lockfile and direct-manifest records; it is not an unmapped vulnerability family.
 
 Thus, “53 alerts” must not be treated as 53 independent defects. The clean graph has zero Yarn advisories after remediation, but GitHub must rescan the pushed branch before closure counts are asserted.
 
@@ -74,11 +74,19 @@ Warnings remain separate from vulnerabilities: final audit has 20 unmaintained p
 | Rust vulnerabilities after clean lock generation | 1 (`lopdf`) | 0 |
 | Rust warnings | 19 unmaintained + 1 unsound before lopdf update | 20 unmaintained + 1 unsound after (`ttf-parser` added through lopdf 0.42) |
 
+## Hosted follow-up and residual risk
+
+PR #3 is open at `https://github.com/Zielmenosza/hexhawk/pull/3`. CI run `33534749634` and CodeQL run `33534749690` completed successfully at historical branch commit `6bfbbd5e1dea73978962686b305a098ed82d4d84`; all four configured CodeQL language jobs passed, and authenticated readback reported zero open code-scanning alerts and zero open secret-scanning alerts. Those runs do not validate the current PR head.
+
+Authenticated Dependabot readback still reports the original **53 open default-branch alerts** (4 critical, 24 high, 21 medium, 4 low), all npm. This is expected while PR #3 remains unmerged because Dependabot alerts are evaluated against the default branch; a clean PR graph does not close default-branch alerts. The prior four-record difference from the 49 locally reproduced audit findings is now attributable to counting semantics rather than an unknown family: GitHub reports 45 `yarn.lock` records plus eight duplicate direct-manifest records (four `HexHawk/package.json`, three `AetherframeGuard/package.json`, one `packages/aetherframe-core/package.json`). All records map to the already identified vulnerable families.
+
+A fresh local audit on 2026-09-01 found two newer high-severity Browserslist advisories (`GHSA-c83g-rgw3-j3cx` and `GHSA-73wf-gq98-2v4g`) against `browserslist 4.28.2`. The narrow `4.28.8` follow-up was independently accepted, committed as `611c5c9b03707848e432e34622b148708e3be2bd`, pushed, and verified as the exact PR head. Immutable install, recursive audit (zero findings), dependency-path inspection, and the 927-pass/1-skip frontend suite all pass. Current-head CI run `33560620534` and CodeQL run `33560620530` are still in progress, so merge readiness is not yet established.
+
 ## GitHub prediction and uncertainty
 
-The clean branch is expected to close all **49 locally reproduced individual Yarn vulnerability findings across 12 package families and two independently locked projects**. If the user-visible 53 alerts include additional records for these same graph nodes, all 53 may close. Authenticated GitHub confirmation is mandatory: the defensible prediction is **49 individually reproduced alerts expected closed, with 4 additional visible alerts currently unmapped**.
+The clean branch is expected to close all **53 authenticated default-branch alert records** after merge and dependency-graph refresh: 45 lockfile records plus eight duplicate direct-manifest records. This remains a prediction until merge because PR branches do not close default-branch Dependabot alerts.
 
-Predicted remaining dependency vulnerabilities locally: **zero**. Predicted GitHub residual count: **unknown until branch push and Dependabot rescan**. Any remaining Critical/High alert must be mapped and explained before release use.
+Predicted remaining dependency vulnerabilities locally after the Browserslist follow-up: **zero**. Current GitHub residual count: **53 open on `main`** until merge/rescan. Any remaining Critical/High alert after that refresh must be mapped and explained before release use.
 
 ## Commands used for verification
 
@@ -126,6 +134,6 @@ Logical commits:
 
 Important lock hashes:
 
-- `yarn.lock`: `8191b3ebf148f94e73ebfde77e767b76202a213c9edc320da9f99a85369a8500`
+- `yarn.lock`: `42e81ebb3bf678b43bc9fe499901a932eed076d7aa05938657f75236dc23c5a4` (after Browserslist follow-up)
 - `Cargo.lock`: `2b1273f86b8cc81db88157d61777a187b5172afe7cdb14905c63f79c6c8c59fa`
 - `AetherframeGuard/yarn.lock`: `6a5909d1ecb13d6e7af0e0f293c44aae47ec768794ce33a4cac0acd86cc9f622`

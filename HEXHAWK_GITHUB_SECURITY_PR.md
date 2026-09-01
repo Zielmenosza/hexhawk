@@ -50,28 +50,26 @@ Completed locally on the clean branch:
 - AetherframeGuard independent immutable install, zero-advisory audit and Vite 6.4.3 production build passed.
 - Locked Cargo metadata and cargo-audit: zero vulnerabilities.
 - Full backend tests: 94 passed; strict Clippy and release backend build passed.
-- `git diff --check` and exact 13-path inventory passed. Lock hashes: `yarn.lock` `8191b3ebf148f94e73ebfde77e767b76202a213c9edc320da9f99a85369a8500`; `AetherframeGuard/yarn.lock` `6a5909d1ecb13d6e7af0e0f293c44aae47ec768794ce33a4cac0acd86cc9f622`; `Cargo.lock` `2b1273f86b8cc81db88157d61777a187b5172afe7cdb14905c63f79c6c8c59fa`.
+- `git diff --check` and exact 13-path inventory passed before the narrow follow-up. Current lock hashes: `yarn.lock` `42e81ebb3bf678b43bc9fe499901a932eed076d7aa05938657f75236dc23c5a4`; `AetherframeGuard/yarn.lock` `6a5909d1ecb13d6e7af0e0f293c44aae47ec768794ce33a4cac0acd86cc9f622`; `Cargo.lock` `2b1273f86b8cc81db88157d61777a187b5172afe7cdb14905c63f79c6c8c59fa`.
 
-### Expected Dependabot result
+### Hosted follow-up
 
-All 49 locally reproduced Yarn vulnerability findings across 12 families should close. The GitHub UI reportedly shows 53 alerts; four visible records are not independently mappable without authenticated Dependabot access and may be additional manifest records or snapshot differences. Do not promise zero hosted alerts until Dependabot rescans this pushed branch and authenticated inventory is compared against the matrix.
+PR #3 is open. Historical CI run `33534749634` and CodeQL run `33534749690` passed at commit `6bfbbd5e1dea73978962686b305a098ed82d4d84`; authenticated readback reports zero open code-scanning alerts and zero open secret-scanning alerts. Those runs do not validate the current PR head. Dependabot still reports 53 open alerts on the default branch because this PR is not merged. GitHub's 53 records comprise 45 `yarn.lock` records plus eight duplicate direct-manifest records; all map to the locally identified vulnerable families.
+
+A fresh local audit subsequently disclosed two new high-severity Browserslist advisories affecting `4.28.2`. The narrow `4.28.8` follow-up was independently accepted and pushed as current PR head `611c5c9b03707848e432e34622b148708e3be2bd`. Current-head CI run `33560620534` and CodeQL run `33560620530` are still in progress; both must pass before merge readiness can be assessed.
 
 ### Remaining warnings and blockers
 
-Rust informational warnings remain explicitly open and are not dismissed or represented as vulnerabilities. CodeQL run `33145594202` previously failed before runner startup because the GitHub account was billing-locked. Hosted code-scanning, Dependabot and secret-scanning inventories require authenticated read access after the account issue is resolved.
+Rust informational warnings remain explicitly open and are not dismissed or represented as vulnerabilities. The previous billing lock is no longer blocking Actions, as demonstrated by the successful CI and CodeQL runs above. PR #3 remains unmerged and is not a release-readiness claim.
 
 ### Rollback
 
 Each logical commit can be reverted independently: JavaScript dependency graph, Rust lock/parser dependency, and release reproducibility/docs. Reverting the lockfile/security commits reintroduces locally demonstrated advisories and must not be used for a release without a replacement remediation.
 
-## Post-account-recovery sequence — not executed
+## Remaining sequence
 
-1. Resolve the GitHub billing/account lock in GitHub account or organization billing settings.
-2. Authenticate locally with normal web login: `gh auth login --hostname github.com --git-protocol https --web`.
-3. Refresh the read-only security scope if required: `gh auth refresh -h github.com -s security_events`.
-4. With explicit push approval, push `security/github-dependency-remediation`.
-5. Open or update this PR.
-6. Wait for Dependabot dependency-graph rescan.
-7. Rerun CodeQL and verify jobs actually acquire runners and upload databases.
-8. Export authenticated Dependabot, code-scanning and secret-scanning inventories without dismissing alerts.
-9. Compare residual alerts, one by one, to `HEXHAWK_GITHUB_SECURITY_REMEDIATION.md`.
+1. Verify current-head CI run `33560620534` and CodeQL run `33560620530` complete successfully.
+2. Independently accept, commit, and push only the hosted-evidence documentation updates.
+3. Verify the documentation push and resulting checks at the exact remote head.
+4. Do not merge without separate approval.
+5. After an approved merge, wait for the default-branch dependency graph to refresh and reconcile all residual Dependabot alerts.
