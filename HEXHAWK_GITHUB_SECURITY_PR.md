@@ -12,7 +12,7 @@ This branch is reconstructed from clean `origin/main` commit `91c4912cc56c6b64ae
 
 ### Vulnerability families addressed
 
-The clean baseline reproduced 45 Yarn vulnerability advisories across 12 package families, plus two non-vulnerability deprecation notices. Families include Vitest, Vite, node-tar, undici, ws, nanoid, PostCSS, esbuild, brace-expansion, ip-address, fast-uri and `@babel/core`.
+The clean baseline reproduced 49 Yarn vulnerability findings across 12 package families when the configured root workspaces and separately tracked AetherframeGuard project are both audited, plus two non-vulnerability root deprecation notices. Families include Vitest, Vite, node-tar, undici, ws, nanoid, PostCSS, esbuild, brace-expansion, ip-address, fast-uri and `@babel/core`.
 
 The Rust clean-lock baseline reproduced `RUSTSEC-2026-0187` in `lopdf 0.33.0`; `lopdf 0.42.0` removes it. The regenerated graph also resolves `tauri-plugin-log 2.9.1` and removes the previously observed `rkyv 0.7.x` chain.
 
@@ -22,6 +22,7 @@ Full family mapping and GitHub-count uncertainty are in `HEXHAWK_GITHUB_SECURITY
 
 - Vitest and companion packages: 3.2.6 in both test workspaces.
 - Vite: 6.4.3 for the HexHawk UI.
+- AetherframeGuard: independent `yarn.lock` with Vite 6.4.3; its separate audit/build now participates in the security gate.
 - jsdom: 30.0.1; happy-dom resolves 20.12.0.
 - Compatible root Yarn resolutions for Babel 7.29.7, esbuild 0.28.2 where the vulnerable 0.27 range applies, brace-expansion, fast-uri, glob, ip-address, minimatch and node-tar.
 - Root `Cargo.lock` is now committed for the Rust application workspace.
@@ -32,10 +33,10 @@ Full family mapping and GitHub-count uncertainty are in `HEXHAWK_GITHUB_SECURITY
 
 | Measure | Before | After |
 |---|---:|---:|
-| Yarn vulnerability advisories | 45 | 0 |
+| Yarn vulnerability findings across root + AetherframeGuard | 49 | 0 |
 | Yarn deprecation notices | 2 | 0 |
 | Rust vulnerabilities | 1 after clean lock generation | 0 |
-| Rust informational warnings | 20 unmaintained + 1 unsound | 20 unmaintained + 1 unsound |
+| Rust informational warnings | 19 unmaintained + 1 unsound | 20 unmaintained + 1 unsound (`ttf-parser` added via lopdf 0.42) |
 
 ### Verification
 
@@ -46,13 +47,14 @@ Completed locally on the clean branch:
 - Dependency-path checks for all mapped families.
 - TypeScript typecheck; full frontend tests: 72 files, 927 passed, 1 skipped; production build passed.
 - AetherFrame Core: 27 tests passed and build passed because its test dependency changed.
+- AetherframeGuard independent immutable install, zero-advisory audit and Vite 6.4.3 production build passed.
 - Locked Cargo metadata and cargo-audit: zero vulnerabilities.
 - Full backend tests: 94 passed; strict Clippy and release backend build passed.
-- `git diff --check` and exact 11-path inventory passed. Lock hashes: `yarn.lock` `8191b3ebf148f94e73ebfde77e767b76202a213c9edc320da9f99a85369a8500`; `Cargo.lock` `2b1273f86b8cc81db88157d61777a187b5172afe7cdb14905c63f79c6c8c59fa`.
+- `git diff --check` and exact 13-path inventory passed. Lock hashes: `yarn.lock` `8191b3ebf148f94e73ebfde77e767b76202a213c9edc320da9f99a85369a8500`; `AetherframeGuard/yarn.lock` `6a5909d1ecb13d6e7af0e0f293c44aae47ec768794ce33a4cac0acd86cc9f622`; `Cargo.lock` `2b1273f86b8cc81db88157d61777a187b5172afe7cdb14905c63f79c6c8c59fa`.
 
 ### Expected Dependabot result
 
-All 45 locally reproduced Yarn vulnerability advisories across 12 families should close. The GitHub UI reportedly shows 53 alerts; eight visible records are not independently mappable without authenticated Dependabot access and may be duplicate manifest records or snapshot differences. Do not promise zero hosted alerts until Dependabot rescans this pushed branch and authenticated inventory is compared against the matrix.
+All 49 locally reproduced Yarn vulnerability findings across 12 families should close. The GitHub UI reportedly shows 53 alerts; four visible records are not independently mappable without authenticated Dependabot access and may be additional manifest records or snapshot differences. Do not promise zero hosted alerts until Dependabot rescans this pushed branch and authenticated inventory is compared against the matrix.
 
 ### Remaining warnings and blockers
 
