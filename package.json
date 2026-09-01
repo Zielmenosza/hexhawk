@@ -34,7 +34,8 @@
     "ip-address@npm:^10.0.0": "npm:10.3.1",
     "ip-address@npm:^10.0.1": "npm:10.3.1",
     "minimatch@npm:^9.0.4": "npm:10.2.6",
-    "tar@npm:^7.5.4": "npm:7.5.22"
+    "tar@npm:^7.5.4": "npm:7.5.22",
+    "undici@npm:^7.25.0": "npm:7.29.0"
   },
   "description": "HexHawk is a native desktop reverse-engineering and binary-intelligence platform built with Rust, Tauri, React, and TypeScript.",
   "main": "index.js",
