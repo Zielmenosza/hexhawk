@@ -8,7 +8,8 @@ pnpm-lock.yaml
 # Rust
 /target/
 **/target/
-Cargo.lock
+# HexHawk is an application workspace: commit the root Cargo.lock so release
+# dependency remediation and reproducible builds survive a clean checkout.
 
 # Tauri / frontend
 dist/

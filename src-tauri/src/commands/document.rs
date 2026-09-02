@@ -310,7 +310,7 @@ fn extract_js_from_action(dict: &lopdf::Dictionary, doc: &lopdf::Document) -> Re
 }
 
 fn decode_pdf_stream_content_bounded(stream: &lopdf::Stream) -> Result<Option<Vec<u8>>, String> {
-    if stream.dict.get(b"Subtype").and_then(lopdf::Object::as_name_str).ok() == Some("Image") {
+    if stream.dict.get(b"Subtype").and_then(lopdf::Object::as_name).ok() == Some(b"Image") {
         return Ok(None);
     }
     if stream.dict.get(b"Filter").is_err() {
@@ -327,7 +327,7 @@ fn decode_pdf_stream_content_bounded(stream: &lopdf::Stream) -> Result<Option<Ve
         Ok(filters) => filters,
         Err(_) => return Ok(None),
     };
-    if filters.len() != 1 || filters[0] != "FlateDecode" {
+    if filters.len() != 1 || filters[0] != b"FlateDecode" {
         return Ok(None);
     }
 

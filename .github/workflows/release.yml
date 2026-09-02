@@ -28,8 +28,11 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Configure Windows Authenticode signing identity
         shell: pwsh
@@ -92,8 +95,11 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Build Tauri app (universal binary)
         run: yarn tauri:build --target universal-apple-darwin
@@ -158,8 +164,11 @@ jobs:
           node-version: '20'
           cache: 'yarn'
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --immutable
 
       - name: Build Tauri app
         run: yarn tauri:build
