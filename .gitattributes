@@ -1,3 +1,0 @@
-# Preserve the verified crates.io source bytes and do not reinterpret
-# upstream whitespace inside the vendored security patch.
-vendor/glib-0.18.5-patched/** text eol=lf -whitespace

@@ -123,7 +123,7 @@ jobs:
         run: cargo test --workspace
 
       - name: Verify patched glib VariantStrIter in release mode
-        run: cargo test --manifest-path vendor/glib-0.18.5-patched/Cargo.toml --release --lib variant_iter
+        run: cargo test -p hexhawk-backend --release --test glib_variant_iter
 
   # ── Tauri Build (Windows installer) ────────────────────────────────────────
   build-windows:

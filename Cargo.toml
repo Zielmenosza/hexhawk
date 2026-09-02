@@ -5,10 +5,9 @@ members = [
     "plugins/byte_counter",
     "src-tauri"
 ]
-exclude = ["vendor/glib-0.18.5-patched"]
 
 # Tauri 2's Linux GTK3 stack requires glib 0.18, whose final crates.io
-# release contains RUSTSEC-2024-0429. This vendored crate is the verified
-# crates.io source with upstream fix ea720152 applied verbatim.
+# release contains RUSTSEC-2024-0429. Pin HexHawk's checksum-verified copy
+# with upstream fix ea720152 applied verbatim; e81fb5b is immutable custody.
 [patch.crates-io]
-glib = { path = "vendor/glib-0.18.5-patched" }
+glib = { git = "https://github.com/Zielmenosza/hexhawk", rev = "e81fb5b067d2e5236ca7bdf374ef96977e039050" }
