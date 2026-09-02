@@ -51,6 +51,9 @@ trial = []
 [target.'cfg(target_os = "linux")'.dependencies]
 nix = { version = "0.29", features = ["ptrace", "process", "signal"] }
 
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+glib = "0.18.5"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
 

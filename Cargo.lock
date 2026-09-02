@@ -1964,8 +1964,7 @@ dependencies = [
 [[package]]
 name = "glib"
 version = "0.18.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "233daaf6e83ae6a12a52055f568f9d7cf4671dabb78ff9560ab6da230ce00ee5"
+source = "git+https://github.com/Zielmenosza/hexhawk?rev=e81fb5b067d2e5236ca7bdf374ef96977e039050#e81fb5b067d2e5236ca7bdf374ef96977e039050"
 dependencies = [
  "bitflags 2.13.1",
  "futures-channel",
@@ -2143,6 +2142,7 @@ dependencies = [
  "capstone",
  "cfb 0.10.0",
  "flate2",
+ "glib",
  "hmac",
  "iota_stronghold",
  "keyring",

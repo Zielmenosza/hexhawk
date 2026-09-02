@@ -122,6 +122,9 @@ jobs:
       - name: Run Rust tests
         run: cargo test --workspace
 
+      - name: Verify patched glib VariantStrIter in release mode
+        run: cargo test -p hexhawk-backend --release --test glib_variant_iter
+
   # ── Tauri Build (Windows installer) ────────────────────────────────────────
   build-windows:
     name: Build Windows Installer
