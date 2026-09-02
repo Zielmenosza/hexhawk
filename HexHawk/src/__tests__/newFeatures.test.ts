@@ -295,7 +295,7 @@ describe('mapBehaviorToMitre', () => {
 
   it('returns techniques with valid MITRE URLs', () => {
     const techs = mapBehaviorToMitre(['code-decryption', 'code-injection']);
-    expect(techs.every(t => t.url.includes('attack.mitre.org'))).toBe(true);
+    expect(techs.every(t => new URL(t.url).hostname === 'attack.mitre.org')).toBe(true);
   });
 
   it('deduplicates when multiple tags produce the same technique', () => {
@@ -316,7 +316,7 @@ describe('extractIOCs', () => {
   it('extracts HTTP URLs', () => {
     const iocs = extractIOCs(['http://malware.example.com/c2/callback?id=1']);
     expect(iocs.some(i => i.kind === 'url')).toBe(true);
-    expect(iocs.some(i => i.value.includes('malware.example.com'))).toBe(true);
+    expect(iocs.some(i => i.kind === 'url' && new URL(i.value).hostname === 'malware.example.com')).toBe(true);
   });
 
   it('extracts Windows registry paths', () => {

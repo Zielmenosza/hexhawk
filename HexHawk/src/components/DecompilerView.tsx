@@ -52,6 +52,24 @@ function getIndentStyle(n: number): React.CSSProperties {
   return { paddingLeft: `${n * 18}px` };
 }
 
+export function formatVarDictionaryKey(key: string): string {
+  if (key.startsWith('mem:')) {
+    const location = key.slice('mem:'.length);
+    const separator = location.lastIndexOf(':');
+    if (separator >= 0) {
+      const base = location.slice(0, separator);
+      const offset = Number(location.slice(separator + 1));
+      if (base && Number.isFinite(offset)) {
+        if (offset === 0) return `← [${base}]`;
+        return `← [${base} ${offset < 0 ? '-' : '+'} ${Math.abs(offset)}]`;
+      }
+    }
+    return `← ${location}`;
+  }
+
+  return `← ${key.startsWith('reg:') ? key.slice('reg:'.length) : key}`;
+}
+
 function lineClass(line: PseudoLine): string {
   if (line.isUncertain) return 'dc-line dc-line--uncertain';
   switch (line.kind) {
@@ -189,7 +207,7 @@ function VarDictionary({ varMap }: { varMap: VarMap }) {
       <div className="dc-vardict-section">
         <div className="dc-vardict-title">{title}</div>
         {items.map(([key, name]) => {
-          const desc = key.startsWith('mem:') ? `← ${key.replace('mem:', '').replace(/:/g, '][').replace(']', ' + ').replace('[', '[')}` : `← ${key.replace('reg:', '')}`;
+          const desc = formatVarDictionaryKey(key);
           return (
             <div key={key} className="dc-vardict-row">
               <span className="dc-vardict-name">{name}</span>
