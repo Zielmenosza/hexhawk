@@ -18,20 +18,43 @@ export default defineConfig({
     },
   },
   test: {
-    globals: true,
-    // Use jsdom for React component and hook tests; node for pure engine tests
-    environmentMatchGlobs: [
-      ['src/components/**/*.test.tsx', 'jsdom'],
-      ['src/components/__tests__/**/*.test.tsx', 'jsdom'],
-      ['src/utils/__tests__/useVirtualList.test.ts', 'jsdom'],
-      ['src/utils/__tests__/corpusManager.test.ts', 'jsdom'],
-      ['src/utils/__tests__/benchmarkHarness.test.ts', 'jsdom'],
-    ],
-    environment: 'node',
-    setupFiles: ['src/test/setup.ts'],
-    include: [
-      'src/**/__tests__/**/*.{test,spec}.{ts,tsx}',
-      'src/**/*.{test,spec}.{ts,tsx}',
+    // Vitest 4 removed environmentMatchGlobs. Keep DOM-dependent tests in a
+    // jsdom project and pure engine tests in the Node project.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'node',
+          globals: true,
+          environment: 'node',
+          setupFiles: ['src/test/setup.ts'],
+          include: [
+            'src/**/__tests__/**/*.{test,spec}.{ts,tsx}',
+            'src/**/*.{test,spec}.{ts,tsx}',
+          ],
+          exclude: [
+            'src/components/**/*.test.tsx',
+            'src/utils/__tests__/useVirtualList.test.ts',
+            'src/utils/__tests__/corpusManager.test.ts',
+            'src/utils/__tests__/benchmarkHarness.test.ts',
+          ],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'jsdom',
+          globals: true,
+          environment: 'jsdom',
+          setupFiles: ['src/test/setup.ts'],
+          include: [
+            'src/components/**/*.test.tsx',
+            'src/utils/__tests__/useVirtualList.test.ts',
+            'src/utils/__tests__/corpusManager.test.ts',
+            'src/utils/__tests__/benchmarkHarness.test.ts',
+          ],
+        },
+      },
     ],
     coverage: {
       provider: 'v8',
