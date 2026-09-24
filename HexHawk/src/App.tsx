@@ -108,6 +108,7 @@ import AiInsightPanel from './components/AiInsightPanel';
 import type { AiObservation } from './types/aiObservation';
 import AgentGatePanel from './components/AgentGatePanel';
 import type { AgentGateProposal } from './components/AgentGatePanel';
+import { evaluateMissionGateProposal } from './utils/missionGate';
 import AnalystPromptCard from './components/AnalystPromptCard';
 import { getAnalystPrompt, selectAnalystPromptTrigger, type AnalystPromptTrigger } from './utils/analystPrompts';
 import HelpAiFeaturesSection from './components/HelpAiFeaturesSection';
@@ -2372,7 +2373,15 @@ export default function App() {
     setAcceptedAiObservations(prev => prev.some(observation => observation.id === updated.id) ? prev : [...prev, updated]);
   }, []);
 
-  const handleApproveAgentProposal = React.useCallback((proposal: AgentGateProposal) => {
+  const handleApproveAgentProposal = React.useCallback(async (proposal: AgentGateProposal) => {
+    // MISSION GATE: Evaluate the external-agent proposal before accepting it into the log
+    const isAllowed = await evaluateMissionGateProposal(proposal);
+    if (!isAllowed) {
+      console.warn(`Mission Gate denied analyst approval for proposal ${proposal.id}`);
+      alert("Mission Gate denied this approval.");
+      return;
+    }
+
     const approved = { ...proposal, does_not_affect_verdict: true as const, advisory_only: true as const, gyre_is_sole_verdict_authority: true as const };
     setApprovedAgentGateProposals(prev => prev.some(item => item.id === approved.id) ? prev : [...prev, approved]);
     setAgentGateProposals(prev => prev.filter(item => item.id !== approved.id));
