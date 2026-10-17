@@ -9,6 +9,21 @@ if (![exeArg, sampleArg, evidenceArg, scratchArg].every(Boolean)) throw new Erro
 const exe = resolve(exeArg), sample = resolve(sampleArg), evidence = resolve(evidenceArg), scratch = resolve(scratchArg);
 mkdirSync(evidence, { recursive: true }); mkdirSync(scratch, { recursive: true });
 const sha = path => createHash('sha256').update(readFileSync(path)).digest('hex');
+const jsUnsafeCharMap = {
+  '<': '\\u003C',
+  '>': '\\u003E',
+  '/': '\\u002F',
+  '\\': '\\\\',
+  '\b': '\\b',
+  '\f': '\\f',
+  '\n': '\\n',
+  '\r': '\\r',
+  '\t': '\\t',
+  '\0': '\\0',
+  '\u2028': '\\u2028',
+  '\u2029': '\\u2029'
+};
+const safeJsonForEval = value => JSON.stringify(value).replace(/[<>\/\\\b\f\n\r\t\0\u2028\u2029]/g, ch => jsUnsafeCharMap[ch]);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const freePort = () => new Promise((resolvePort, reject) => { const s = createServer(); s.once('error', reject); s.listen(0, '127.0.0.1', () => { const port = s.address().port; s.close(e => e ? reject(e) : resolvePort(port)); }); });
 class Cdp {
@@ -45,11 +60,11 @@ for(let attempt=0;attempt<3;attempt++) {
       await cdp.eval(`(()=>{const skip=Array.from(document.querySelectorAll('button')).find(b=>b.textContent.trim()==='Skip intro');if(skip)skip.click();return !!skip;})()`);await sleep(200);
       const click=async(testid)=>{const result=await cdp.eval(`(()=>{const b=document.querySelector('[data-testid="${testid}"]');if(!b)return 'missing';if(b.disabled)return 'disabled';b.click();return 'clicked';})()`);check('click-'+testid,result==='clicked',result);return result;};
       await click('nav-load');await sleep(200);
-      const applied=await cdp.eval(`(()=>{const e=document.querySelector('[data-testid="load-path-input"]');if(!e)return false;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,${JSON.stringify(sample)});e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));return true;})()`);check('draft-path-entry',applied,{});await sleep(100);await click('load-apply-path');await sleep(200);
+      const applied=await cdp.eval(`(()=>{const e=document.querySelector('[data-testid="load-path-input"]');if(!e)return false;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(e,${safeJsonForEval(sample)});e.dispatchEvent(new Event('input',{bubbles:true}));e.dispatchEvent(new Event('change',{bubbles:true}));return true;})()`);check('draft-path-entry',applied,{});await sleep(100);await click('load-apply-path');await sleep(200);
       await click('nav-inspect');
       let inspected=false;for(let i=0;i<150;i++){const text=await cdp.eval('document.body.innerText');if(text.includes(report.sample.sha256)&&text.includes('File inspection completed')){inspected=true;break;}await sleep(200);}
       check('native-GUI-input-sha',inspected,{expected:report.sample.sha256});
-      const nativeIdentity=await cdp.eval(`window.__TAURI_INTERNALS__.invoke('inspect_file_metadata',{path:${JSON.stringify(sample)}})`);check('backend-independent-sha',nativeIdentity.sha256===report.sample.sha256,{sha256:nativeIdentity.sha256,file_type:nativeIdentity.file_type,architecture:nativeIdentity.architecture,file_size:nativeIdentity.file_size});
+      const nativeIdentity=await cdp.eval(`window.__TAURI_INTERNALS__.invoke('inspect_file_metadata',{path:${safeJsonForEval(sample)}})`);check('backend-independent-sha',nativeIdentity.sha256===report.sample.sha256,{sha256:nativeIdentity.sha256,file_type:nativeIdentity.file_type,architecture:nativeIdentity.architecture,file_size:nativeIdentity.file_size});
       await click('nav-strings');await sleep(800);await click('nav-disassembly');await sleep(1200);await click('nav-verdict');await sleep(300);await click('nav-report');await sleep(400);
       const text=await cdp.eval('document.body.innerText');writeFileSync(join(evidence,'journey-dom.txt'),text);
       const hasGate=/upgrade|requires pro|pro tier|unlock.*pro/i.test(text)&&!(await cdp.eval(`Array.from(document.querySelectorAll('.report-actions button')).some(b=>/JSON/.test(b.textContent)&&!b.disabled)`));
