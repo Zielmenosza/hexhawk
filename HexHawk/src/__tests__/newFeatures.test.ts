@@ -295,7 +295,12 @@ describe('mapBehaviorToMitre', () => {
 
   it('returns techniques with valid MITRE URLs', () => {
     const techs = mapBehaviorToMitre(['code-decryption', 'code-injection']);
-    expect(techs.every(t => t.url.includes('attack.mitre.org'))).toBe(true);
+    expect(
+      techs.every(t => {
+        const parsed = new URL(t.url);
+        return parsed.hostname === 'attack.mitre.org';
+      })
+    ).toBe(true);
   });
 
   it('deduplicates when multiple tags produce the same technique', () => {
