@@ -30,8 +30,6 @@
 // Reuse the command implementations from the Tauri backend crate.
 // #[path] at the file level resolves relative to src/bin/, so ../commands/
 // correctly points to src/commands/.
-#[path = "../commands/pe_imports.rs"]
-mod pe_imports;
 #[path = "../commands/disassemble.rs"]
 mod cmd_disassemble;
 #[path = "../commands/graph.rs"]
@@ -42,6 +40,19 @@ mod cmd_hex;
 mod cmd_inspect;
 #[path = "../commands/strings.rs"]
 mod cmd_strings;
+#[path = "../commands/pe_imports.rs"]
+mod pe_imports;
+
+// Exercise the same release contracts against both real command-module layouts.
+use cmd_disassemble as disassemble;
+use cmd_graph as graph;
+use cmd_hex as hex;
+use cmd_inspect as inspect;
+#[path = "../commands/analysis_bound.rs"]
+mod analysis_bound;
+#[cfg(test)]
+#[path = "../commands/pe_release_tests.rs"]
+mod pe_release_tests;
 
 // plugins mod is required transitively by the commands (for tauri command macros);
 // provide a minimal stub so it compiles as a standalone binary.
@@ -202,7 +213,10 @@ fn write_usage(mut output: impl Write) -> std::io::Result<()> {
     writeln!(output, "  nest_cli inspect     <path>")?;
     writeln!(output, "  nest_cli strings     <path>")?;
     writeln!(output, "  nest_cli identify    <path>")?;
-    writeln!(output, "  nest_cli strike --headless <path> --out <report.json>")?;
+    writeln!(
+        output,
+        "  nest_cli strike --headless <path> --out <report.json>"
+    )?;
     writeln!(output, "  nest_cli serve --mcp")?;
     Ok(())
 }
@@ -405,7 +419,12 @@ fn operational_context_corpus(
                 .unwrap_or_default(),
         ]
     }));
-    corpus.extend(metadata.exports.iter().map(|export| export.name.to_ascii_lowercase()));
+    corpus.extend(
+        metadata
+            .exports
+            .iter()
+            .map(|export| export.name.to_ascii_lowercase()),
+    );
     corpus.retain(|entry| !entry.is_empty());
     corpus
 }
@@ -974,11 +993,34 @@ mod tests {
     fn strike_headless_report_json_matches_expected_schema_for_fixture() {
         let fixture_path = temp_path("fixture.bin");
         let out_path = temp_path("report.json");
-        fs::write(
-            &fixture_path,
-            b"MZ\x00\x00This fixture has http://example.test and CreateFileW text",
-        )
-        .unwrap();
+        // Inert, authored PE32+ fixture. A magic-only MZ blob is malformed,
+        // not a valid positive input for the production inspection contract.
+        let mut fixture = vec![0u8; 0x400];
+        fixture[..2].copy_from_slice(b"MZ");
+        fixture[0x3c..0x40].copy_from_slice(&0x80u32.to_le_bytes());
+        fixture[0x80..0x84].copy_from_slice(b"PE\0\0");
+        fixture[0x84..0x86].copy_from_slice(&0x8664u16.to_le_bytes());
+        fixture[0x86..0x88].copy_from_slice(&1u16.to_le_bytes());
+        fixture[0x94..0x96].copy_from_slice(&0xf0u16.to_le_bytes());
+        fixture[0x96..0x98].copy_from_slice(&0x22u16.to_le_bytes());
+        fixture[0x98..0x9a].copy_from_slice(&0x20bu16.to_le_bytes());
+        fixture[0xa8..0xac].copy_from_slice(&0x1000u32.to_le_bytes());
+        fixture[0xb0..0xb8].copy_from_slice(&0x140000000u64.to_le_bytes());
+        fixture[0xb8..0xbc].copy_from_slice(&0x1000u32.to_le_bytes());
+        fixture[0xbc..0xc0].copy_from_slice(&0x200u32.to_le_bytes());
+        fixture[0xd0..0xd4].copy_from_slice(&0x2000u32.to_le_bytes());
+        fixture[0xd4..0xd8].copy_from_slice(&0x200u32.to_le_bytes());
+        fixture[0x104..0x108].copy_from_slice(&16u32.to_le_bytes());
+        fixture[0x188..0x190].copy_from_slice(b".text\0\0\0");
+        fixture[0x190..0x194].copy_from_slice(&0x200u32.to_le_bytes());
+        fixture[0x194..0x198].copy_from_slice(&0x1000u32.to_le_bytes());
+        fixture[0x198..0x19c].copy_from_slice(&0x200u32.to_le_bytes());
+        fixture[0x19c..0x1a0].copy_from_slice(&0x200u32.to_le_bytes());
+        fixture[0x1ac..0x1b0].copy_from_slice(&0x60000020u32.to_le_bytes());
+        let text = b"This fixture has http://example.test and CreateFileW text";
+        fixture[0x200] = 0xc3;
+        fixture[0x201..0x201 + text.len()].copy_from_slice(text);
+        fs::write(&fixture_path, fixture).unwrap();
 
         let args = HeadlessArgs {
             binary_path: fixture_path.clone(),

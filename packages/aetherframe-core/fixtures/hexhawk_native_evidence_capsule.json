@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "aetherframe.improvement_capsule.v1",
+  "capsuleId": "hexhawk.native-evidence-contract.v1",
+  "title": "HexHawk native evidence contract and simulation firewall",
+  "product": "HexHawk",
+  "objective": "Make native, simulated, imported, and advisory analysis provenance explicit and non-interchangeable.",
+  "hypothesis": "Typed provenance plus fail-closed simulation handling will reduce false native-evidence claims and improve tester trust.",
+  "status": "verified",
+  "authorityBoundary": {
+    "protectedFields": [
+      "classification",
+      "base_confidence",
+      "source_engine",
+      "gyre_is_sole_verdict_source",
+      "nest_evidence_selection"
+    ],
+    "forbiddenActions": [
+      "mutate GYRE verdict fields",
+      "replace NEST evidence selection",
+      "treat AetherFrame or AI output as native evidence",
+      "stage, commit, push, deploy, publish, sign, or release"
+    ],
+    "requiredApprovals": [
+      "human approval before staging, committing, pushing, deployment, publishing, signing, or release"
+    ]
+  },
+  "scope": {
+    "targetPaths": [
+      "HexHawk/src/utils/analysisProvenance.ts",
+      "HexHawk/src/utils/__tests__/analysisProvenance.test.ts"
+    ],
+    "maxFilesChanged": 2,
+    "maxChangedLines": 240,
+    "allowedChangeKinds": ["code", "tests"]
+  },
+  "budget": {
+    "maxDurationMinutes": 120,
+    "maxIterations": 4,
+    "maxTestCommands": 3
+  },
+  "evidence": [
+    {
+      "id": "repo-provenance-module",
+      "kind": "repo_state",
+      "reference": "HexHawk/src/utils/analysisProvenance.ts",
+      "claim": "The current worktree contains an untracked provenance utility that distinguishes browser simulation from the real backend.",
+      "capturedAt": "2026-07-23T20:00:00.000Z",
+      "reproducible": true
+    },
+    {
+      "id": "baseline-af-tests",
+      "kind": "test_result",
+      "reference": "yarn workspace @hexhawk/aetherframe-core test: 27 passed",
+      "claim": "AetherFrame core baseline passed before improvement-capsule implementation.",
+      "capturedAt": "2026-07-23T20:01:00.000Z",
+      "reproducible": true
+    },
+    {
+      "id": "hexhawk-provenance-tests",
+      "kind": "test_result",
+      "reference": "yarn workspace hexhawk-ui exec vitest run src/utils/__tests__/analysisProvenance.test.ts: 2 passed",
+      "claim": "The bounded HexHawk provenance utility tests distinguish native backend provenance from browser simulation and preserve CFG truncation warnings.",
+      "capturedAt": "2026-07-23T23:08:25+02:00",
+      "reproducible": true
+    },
+    {
+      "id": "external-strategy",
+      "kind": "external_context",
+      "reference": "ChatGPT HexHawk product-development response",
+      "claim": "External strategy ranked a native evidence contract as the highest-value near-term improvement.",
+      "capturedAt": "2026-07-23T19:00:00.000Z",
+      "reproducible": false
+    }
+  ],
+  "uncertainty": {
+    "level": "medium",
+    "unresolvedQuestions": [
+      "The current provenance utility is untracked and may belong to concurrent work, so this capsule must stop before editing those paths."
+    ],
+    "proofLimits": [
+      "This capsule proves bounded readiness and custody awareness; it does not prove GUI/native parity.",
+      "External strategy is context only and is not execution evidence.",
+      "AetherFrame remains advisory and cannot change GYRE or NEST authority."
+    ]
+  },
+  "verification": {
+    "requiredCommands": [
+      "yarn workspace @hexhawk/aetherframe-core test",
+      "yarn workspace @hexhawk/aetherframe-core build",
+      "yarn workspace hexhawk-ui exec vitest run src/utils/__tests__/analysisProvenance.test.ts"
+    ],
+    "successCriteria": [
+      "The capsule validates against its versioned schema.",
+      "Execution scoring requires reproducible repo-local evidence and explicit approval.",
+      "External-only evidence cannot make a capsule execution-eligible.",
+      "Verified status requires reproducible verification evidence."
+    ],
+    "failureSignals": [
+      "External advice alone becomes execution-eligible.",
+      "A verified capsule has no verification evidence.",
+      "Declared target paths exceed the file budget.",
+      "A capsule claims authority over GYRE or NEST fields."
+    ],
+    "evidenceRefs": ["baseline-af-tests", "hexhawk-provenance-tests"]
+  },
+  "reviewCheckpoints": [
+    "before editing",
+    "after the failing test",
+    "after the passing test",
+    "before any external side effect"
+  ],
+  "stopConditions": [
+    "scope collision with concurrent work",
+    "unexpected tracked-file dirt",
+    "authority-boundary violation",
+    "test or build failure outside the capsule allowlist"
+  ],
+  "rollbackPlan": "Restore only the capsule allowlist to its pre-capsule content and preserve all unrelated worktree state.",
+  "approval": {
+    "grantedBy": "user",
+    "scope": "Begin bounded HexHawk and AetherFrame upgrades without staging, committing, pushing, or deploying.",
+    "grantedAt": "2026-07-23T20:00:00.000Z"
+  }
+}

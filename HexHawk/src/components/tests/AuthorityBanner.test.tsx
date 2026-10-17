@@ -9,8 +9,8 @@ describe('AuthorityBanner', () => {
 
     expect(screen.getByTestId('authority-banner')).toBeTruthy();
     expect(screen.getByText(copy.advisory)).toBeTruthy();
-    expect(screen.getByText(/Verdict \(GYRE\) remains the authority/)).toBeTruthy();
-    expect(screen.getByText(/Runtime evidence \(STRIKE\) is supporting context/)).toBeTruthy();
+    expect(screen.getByText(/File assessment is based only on HexHawk’s verified analysis signals/)).toBeTruthy();
+    expect(screen.getByText(/Runtime evidence adds context when available/)).toBeTruthy();
   });
 
   it('hides when flag false', () => {

@@ -17,6 +17,19 @@ import {
   describeHexHawkReportRefinement,
   refineHexHawkReportMarkdown,
 } from '../utils/aetherframeReportRefinementAdapter';
+import type { AnalysisSessionProvenance } from '../utils/analysisProvenance';
+import EvidenceIdentityCard from './EvidenceIdentityCard';
+import EvidenceResourceBrowser from './EvidenceResourceBrowser';
+import CfgBudgetCard from './CfgBudgetCard';
+import { buildReplayManifestFromProvenance } from '../utils/evidenceJournal';
+import { buildCrestEvidenceBundle, validateCrestEvidenceBundle, type CrestEvidenceBundle } from '../utils/crestEvidenceBundle';
+import { assessEvidenceExportReadiness } from '../utils/evidenceExportReadiness';
+import { classifyEvidenceSource } from '../utils/nativeEvidenceContract';
+import { buildInvestigationGuidance, type InvestigationGuidance, type InvestigationTarget } from '../utils/investigationGuidance';
+
+import { buildCapabilityMatrix, buildEvidenceRecordsFromProvenance, buildSelectedAnalysisProvider } from '../utils/evidenceRecord';
+import { formatReferenceGraphMarkdown, type ReferenceGraph } from '../utils/referenceGraph';
+import type { LegacyRecordMetadata } from '../utils/legacyRecordMetadata';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +40,171 @@ interface Props {
   architecture?: string;
   fileType?: string;
   aiContributions?: AiContributions;
+  provenance?: AnalysisSessionProvenance;
+  cfgBudget?: {
+    nodes: number;
+    edges: number;
+    nodeBudget?: number;
+    edgeBudget?: number;
+    omittedNodes?: number;
+    omittedEdges?: number;
+    truncated?: boolean;
+  } | null;
+  legacyRecordMetadata?: LegacyRecordMetadata | null;
+  referenceGraph?: ReferenceGraph | null;
+  onNavigate?: (target: InvestigationTarget) => void;
+}
+
+type ReportExportGate = {
+  ok: boolean;
+  reason?: string;
+  bundle: CrestEvidenceBundle | null;
+  replayManifest: ReturnType<typeof buildReplayManifestFromProvenance> | null;
+};
+
+const isValidSha256 = (sha: string | null | undefined): sha is string => typeof sha === 'string' && /^[a-f0-9]{64}$/i.test(sha);
+const sameSha256 = (left: string | null | undefined, right: string | null | undefined): boolean =>
+  isValidSha256(left) && isValidSha256(right) && left.toLowerCase() === right.toLowerCase();
+
+/** One fail-closed boundary for every report download, clipboard copy, and saved snapshot. */
+function assessReportExportGate(meta: Props, generatedAt = new Date().toISOString()): ReportExportGate {
+  const provenance = meta.provenance;
+  const nativeRuntime = typeof window !== 'undefined' && typeof (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
+  const runtime = nativeRuntime ? 'tauri-native' : provenance?.runtime ?? 'browser-simulation';
+  const blocked = (reason: string): ReportExportGate => ({ ok: false, reason, bundle: null, replayManifest: null });
+  const readiness = assessEvidenceExportReadiness({ runtime, binaryPath: meta.binaryPath ?? '', sourceSha256: provenance?.binaryIdentity.sha256 });
+  if (!readiness.ok) return blocked(readiness.reason ?? 'Native file identity is unavailable. Run Inspect File again.');
+  if (runtime === 'browser-simulation') {
+    return { ok: true, bundle: null, replayManifest: null };
+  }
+  if (!provenance || provenance.runtime !== runtime) return blocked('Native provenance is missing or inconsistent with this session. Run Inspect File again.');
+  const identity = provenance.binaryIdentity;
+  if (provenance.binaryPath !== meta.binaryPath || identity.path !== meta.binaryPath) {
+    return blocked('Report path does not match the inspected file identity. Run Inspect File again.');
+  }
+  if (!sameSha256(identity.sha256, provenance.binarySha256)) return blocked('SHA-256 mismatch or missing identity across this native session. Run Inspect File again.');
+  if (identity.artifactOrigin !== 'tauri.inspect_file_metadata' || identity.tauriCommand !== 'inspect_file_metadata'
+    || identity.source !== provenance.dataSource || classifyEvidenceSource({ runtime, source: identity.source, artifactOrigin: identity.artifactOrigin }) !== 'native') {
+    return blocked('Native provenance source is inconsistent. Run Inspect File again.');
+  }
+  const inspected = provenance.artifacts.some(artifact => artifact.kind === 'metadata'
+    && artifact.artifactOrigin === 'tauri.inspect_file_metadata'
+    && artifact.tauriCommand === 'inspect_file_metadata'
+    && artifact.source === 'real-backend'
+    && sameSha256(artifact.binarySha256, identity.sha256));
+  if (!inspected) return blocked('No matching Inspect File evidence exists for this native session. Run Inspect File again.');
+  if (provenance.artifacts.some(artifact => !artifact.artifactOrigin
+    || classifyEvidenceSource({ runtime, source: artifact.source, artifactOrigin: artifact.artifactOrigin }) !== 'native'
+    || !sameSha256(artifact.binarySha256, identity.sha256))) {
+    return blocked('Artifact source or SHA-256 does not match the inspected file identity. Rerun the affected analysis.');
+  }
+  const replayManifest = buildReplayManifestFromProvenance(provenance, generatedAt);
+  if (!replayManifest.entries.some(entry => entry.action === 'inspect' && entry.artifactSource === 'tauri.inspect_file_metadata'
+    && entry.binaryPath === meta.binaryPath && sameSha256(entry.binarySha256, identity.sha256))) {
+    return blocked('No matching Inspect File receipt exists for this native session. Run Inspect File again.');
+  }
+  if (replayManifest.entries.some(entry => entry.binaryPath !== meta.binaryPath || !sameSha256(entry.binarySha256, identity.sha256))) {
+    return blocked('Replay receipt path or SHA-256 does not match the inspected file identity. Rerun the affected analysis.');
+  }
+  const bundle = buildCrestEvidenceBundle({
+    exportedAt: generatedAt,
+    fileIdentity: { path: meta.binaryPath!, sha256: identity.sha256, size: meta.binarySize, fileType: meta.fileType, architecture: meta.architecture },
+    provenance, replayManifest, cfgBudget: meta.cfgBudget ?? null,
+    legacyRecordMetadata: meta.legacyRecordMetadata ?? undefined,
+    referenceGraph: meta.referenceGraph ?? undefined,
+  });
+
+  const validation = validateCrestEvidenceBundle(bundle);
+  if (!validation.ok) return blocked(validation.errors.join(' '));
+  return { ok: true, bundle, replayManifest };
+}
+
+function getReportGuidance(meta: Props, gate = assessReportExportGate(meta)): InvestigationGuidance {
+  return buildInvestigationGuidance({
+    binaryPath: meta.binaryPath, provenance: meta.provenance,
+    nativeRuntime: typeof window !== 'undefined' && typeof (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined',
+    exportGate: gate, hasVerdict: meta.verdict !== null,
+  });
+}
+
+function InvestigationChecklist({ guidance, onNavigate, blockedReason }: {
+  guidance: InvestigationGuidance;
+  onNavigate?: () => void;
+  blockedReason?: string;
+}) {
+  return (
+    <section className="report-section" aria-label="Evidence checklist" data-testid="investigation-guide">
+      <h3 className="report-section-title">{guidance.title}</h3>
+      {blockedReason && <p>{blockedReason}</p>}
+      <ul>
+        {guidance.steps.map(step => <li key={step.action} data-testid={`guide-step-${step.action}`}><strong>{step.label}:</strong> {step.detail}</li>)}
+      </ul>
+      <p className="report-policy-note">{guidance.proofLimit}</p>
+      {guidance.exportReady && <p>Report identity checks passed. Available evidence can be saved; missing checks remain disclosed.</p>}
+      {guidance.next && onNavigate && <button className="report-btn" onClick={onNavigate}>{guidance.next.label}</button>}
+    </section>
+  );
+}
+
+function appendLegacyRecordMetadataMarkdown(lines: string[], metadata?: LegacyRecordMetadata | null): void {
+  if (!metadata) return;
+  lines.push('');
+  lines.push('Legacy record metadata:');
+  lines.push('');
+  lines.push(`- Format: ${metadata.format}`);
+  lines.push(`- Records: ${metadata.recordCount} total / ${metadata.dataRecordCount} data`);
+  lines.push(`- Decoded bytes: ${metadata.byteCount}`);
+  lines.push(`- Address ranges: ${metadata.ranges.length}`);
+  if (typeof metadata.entryAddress === 'number') lines.push(`- Entry address: 0x${metadata.entryAddress.toString(16)}`);
+  lines.push(`- No execution: ${metadata.noExecution ? 'yes — text records only' : 'no'}`);
+  lines.push(`- Authority: ${metadata.authorityBoundary}`);
+  if (metadata.strings.length > 0) {
+    lines.push('- Strings:');
+    for (const item of metadata.strings.slice(0, 8)) lines.push(`  - 0x${item.address.toString(16)} ${item.value}`);
+  }
+  if (metadata.warnings.length > 0) {
+    lines.push('- Warnings:');
+    for (const warning of metadata.warnings) lines.push(`  - ${warning}`);
+  }
+  if (metadata.errors.length > 0) {
+    lines.push('- Errors:');
+    for (const error of metadata.errors) lines.push(`  - ${error}`);
+  }
+}
+
+function appendCrestEvidenceMarkdown(lines: string[], meta: Props): void {
+  if (!meta.provenance) return;
+  const gate = assessReportExportGate(meta);
+  if (!gate.ok) throw new Error(`Report export blocked: ${gate.reason}`);
+  const bundle = gate.bundle;
+  if (!bundle) {
+    lines.push('Browser simulation only — not native file-backed evidence.');
+    return;
+  }
+
+  lines.push('---');
+  lines.push('');
+  lines.push('## CREST Evidence Bundle');
+  lines.push('');
+  lines.push(`| Bundle ID | ${bundle.bundle_id} |`);
+  lines.push('|-----------|-------|');
+  lines.push(`| File SHA-256 | ${bundle.file_identity.sha256 ?? 'unknown'} |`);
+  lines.push(`| Native evidence | ${bundle.native_evidence_contract.label} |`);
+  lines.push(`| Replay entries | ${bundle.replay_manifest.entries.length} |`);
+  lines.push(`| CFG status | ${!bundle.cfg_budget ? 'Not recorded' : bundle.cfg_budget.truncated ? 'CFG truncated' : 'CFG complete within budget; not whole-program coverage'} |`);
+  lines.push(`| Legacy record metadata | ${bundle.legacy_record_metadata ? `${bundle.legacy_record_metadata.format} (${bundle.legacy_record_metadata.byteCount} decoded bytes)` : 'not exported'} |`);
+  lines.push(`| Reference graph | ${bundle.reference_graph ? `${bundle.reference_graph.summary.nodes} nodes / ${bundle.reference_graph.summary.edges} edges` : 'not exported'} |`);
+  lines.push('');
+  lines.push('Replay commands:');
+  lines.push('');
+  for (const entry of bundle.replay_manifest.entries) {
+    lines.push(`- \`${entry.command}\` — ${entry.artifactSource}`);
+  }
+  appendLegacyRecordMetadataMarkdown(lines, bundle.legacy_record_metadata);
+  lines.push('');
+  lines.push('Proof limits:');
+  for (const limit of bundle.proof_limits) lines.push(`- ${limit}`);
+  lines.push('');
 }
 
 export interface ReportSnapshot {
@@ -34,6 +212,8 @@ export interface ReportSnapshot {
   generatedAt: string;
   binaryPath?: string;
   binaryName: string;
+  /** Missing on legacy snapshots; path/name alone cannot prove same-file identity. */
+  sha256?: string | null;
   binarySize?: number;
   architecture?: string;
   fileType?: string;
@@ -256,6 +436,7 @@ export type IntelligenceReportMarkdownOptions = {
     reason?: string;
   };
   aiContributions?: AiContributions;
+  referenceGraph?: ReferenceGraph | null;
 };
 
 export function formatMarkdown(
@@ -379,7 +560,21 @@ export function formatMarkdown(
     }
   }
 
+  const referenceGraph = options.referenceGraph ?? meta.referenceGraph ?? null;
+  if (referenceGraph) {
+    lines.push(`---`);
+    lines.push(``);
+    lines.push(formatReferenceGraphMarkdown(referenceGraph).trimEnd());
+    lines.push(``);
+  }
+
   appendAiContributionsMarkdown(lines, normalizeAiContributions(options.aiContributions ?? meta.aiContributions));
+  const guidance = getReportGuidance({ ...meta, verdict });
+  lines.push('', '## Evidence checklist', '', guidance.title, '');
+  for (const step of guidance.steps) lines.push(`- ${step.label}: ${step.detail}`);
+  if (guidance.next) lines.push(`- Suggested next step: ${guidance.next.label}`);
+  lines.push('', guidance.proofLimit, '', `Authority: ${guidance.authority}`, '');
+  appendCrestEvidenceMarkdown(lines, meta);
 
   const baseMarkdown = lines.join('\n');
   return refineHexHawkReportMarkdown({
@@ -398,12 +593,26 @@ function binaryNameFromPath(binaryPath?: string): string {
   return binaryPath?.split(/[\\/]/).pop() ?? 'unknown';
 }
 
+function provenanceBinaryFields(provenance?: AnalysisSessionProvenance): Record<string, string | null | undefined> {
+  if (!provenance) return {};
+  return {
+    sha256: provenance.binaryIdentity.sha256,
+    artifact_origin: provenance.binaryIdentity.artifactOrigin,
+    tauri_command: provenance.binaryIdentity.tauriCommand,
+    cli_command: provenance.binaryIdentity.cliCommand,
+    evidence_source: provenance.binaryIdentity.source,
+  };
+}
+
 export function createReportSnapshot(verdict: BinaryVerdictResult, meta: Props): ReportSnapshot {
   return {
     id: `${Date.now()}-${verdict.classification}-${verdict.threatScore}-${verdict.signalCount}`,
     generatedAt: new Date().toISOString(),
     binaryPath: meta.binaryPath,
     binaryName: binaryNameFromPath(meta.binaryPath),
+    sha256: meta.provenance && meta.binaryPath === meta.provenance.binaryPath && meta.binaryPath === meta.provenance.binaryIdentity.path
+      && sameSha256(meta.provenance.binaryIdentity.sha256, meta.provenance.binarySha256)
+      ? meta.provenance.binaryIdentity.sha256!.toLowerCase() : null,
     binarySize: meta.binarySize,
     architecture: meta.architecture,
     fileType: meta.fileType,
@@ -621,42 +830,27 @@ function AlternativesList({ alternatives }: { alternatives: AlternativeHypothesi
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function IntelligenceReport({ verdict, binaryPath, binarySize, architecture, fileType, aiContributions }: Props) {
+export function IntelligenceReport({ verdict, binaryPath, binarySize, architecture, fileType, aiContributions, provenance, cfgBudget, legacyRecordMetadata, referenceGraph, onNavigate }: Props) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   const [aetherframeMarkdownEnabled, setAetherframeMarkdownEnabled] = useState(true);
   const [snapshots, setSnapshots] = useState<ReportSnapshot[]>(() => loadStoredSnapshots());
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string>('');
 
-  if (!verdict) {
-    return (
-      <div className="intelligence-report-empty">
-        <div className="report-empty-icon">📊</div>
-        <div className="report-empty-title">Intelligence Report</div>
-        <div className="report-empty-subtitle">
-          Load a binary and run the analysis pipeline (Inspect → Scan Strings → Disassemble) to generate a report.
-        </div>
-      </div>
-    );
-  }
-
-  const reportAiContributions = normalizeAiContributions(aiContributions);
-  const verdictColor = THREAT_COLORS[verdict.classification] ?? '#888';
-  const scoreColor = threatScoreColor(verdict.threatScore);
   const currentSnapshot = useMemo(
-    () => createReportSnapshot(verdict, { verdict, binaryPath, binarySize, architecture, fileType }),
-    [verdict, binaryPath, binarySize, architecture, fileType],
+    () => verdict ? createReportSnapshot(verdict, { verdict, binaryPath, binarySize, architecture, fileType, provenance, legacyRecordMetadata }) : null,
+    [verdict, binaryPath, binarySize, architecture, fileType, provenance, legacyRecordMetadata],
   );
   const relevantSnapshots = useMemo(
-    () => snapshots.filter(snapshot => snapshot.binaryPath === binaryPath || snapshot.binaryName === currentSnapshot.binaryName),
-    [snapshots, binaryPath, currentSnapshot.binaryName],
+    () => snapshots.filter(snapshot => sameSha256(snapshot.sha256, currentSnapshot?.sha256)),
+    [snapshots, currentSnapshot?.sha256],
   );
   const selectedSnapshot = useMemo(
     () => relevantSnapshots.find(snapshot => snapshot.id === selectedSnapshotId) ?? relevantSnapshots[0] ?? null,
     [relevantSnapshots, selectedSnapshotId],
   );
   const comparison = useMemo(
-    () => (selectedSnapshot ? compareReportSnapshots(currentSnapshot, selectedSnapshot) : null),
+    () => (currentSnapshot && selectedSnapshot ? compareReportSnapshots(currentSnapshot, selectedSnapshot) : null),
     [currentSnapshot, selectedSnapshot],
   );
 
@@ -670,13 +864,58 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
     persistSnapshots(snapshots);
   }, [snapshots]);
 
+  const reportMeta: Props = { verdict, binaryPath, binarySize, architecture, fileType, provenance, cfgBudget, legacyRecordMetadata, referenceGraph };
+  const exportGate = assessReportExportGate(reportMeta);
+  const guidance = getReportGuidance(reportMeta, exportGate);
+  const guidancePanel = <InvestigationChecklist guidance={guidance} blockedReason={guidance.title === 'Repair evidence identity' ? exportGate.reason : undefined}
+    onNavigate={onNavigate ? () => {
+      // Read current identity again; a stale rendered suggestion is not admission.
+      const next = getReportGuidance(reportMeta).next;
+      if (next) onNavigate(next.target);
+    } : undefined} />;
+
+  if (!verdict || !currentSnapshot) {
+    return (
+      <div className="intelligence-report-empty">
+        <div className="report-empty-icon">📊</div>
+        <div className="report-empty-title">Intelligence Report</div>
+        <div className="report-empty-subtitle">
+          Open an authorized PE file, inspect its identity, then collect the static evidence you need. Missing checks remain disclosed.
+        </div>
+        {guidancePanel}
+      </div>
+    );
+  }
+
+  const reportAiContributions = normalizeAiContributions(aiContributions);
+  const evidenceRecords = provenance ? buildEvidenceRecordsFromProvenance(provenance) : [];
+  const selectedAnalysisProvider = provenance ? buildSelectedAnalysisProvider(provenance) : null;
+  const capabilityMatrix = provenance ? buildCapabilityMatrix(provenance, evidenceRecords) : null;
+  const verdictColor = THREAT_COLORS[verdict.classification] ?? '#888';
+  const scoreColor = threatScoreColor(verdict.threatScore);
+
+
+  // Recheck on each action as well as disabling UI; a changed runtime cannot bypass the boundary.
+  const canExport = () => assessReportExportGate(reportMeta).ok;
+
   const handleDownloadJSON = () => {
     const generatedAt = new Date().toISOString();
     const verdictSnapshotId = `gyre-${generatedAt}-${verdict.classification}-${verdict.threatScore}`;
     const aetherframeReportLineage = describeHexHawkReportRefinement(markdownExportOptions.aetherframe);
+    const gate = assessReportExportGate(reportMeta, generatedAt);
+    if (!gate.ok) return;
+    const replayManifest = gate.replayManifest;
+    const crestEvidenceBundle = gate.bundle;
     const report = {
       generatedAt,
-      binary: { path: binaryPath, size: binarySize, architecture, fileType },
+      binary: { path: binaryPath, size: binarySize, architecture, fileType, ...provenanceBinaryFields(provenance) },
+      evidence_provenance: provenance ?? null,
+      evidence_replay_manifest: replayManifest,
+      investigation_guidance: getReportGuidance(reportMeta, gate),
+      crest_evidence_bundle: crestEvidenceBundle,
+      legacy_record_metadata: legacyRecordMetadata ?? null,
+      cfg_budget: cfgBudget ?? null,
+      reference_graph: referenceGraph ?? null,
       verdict: {
         classification: verdict.classification,
         threatScore: verdict.threatScore,
@@ -747,14 +986,17 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
       reason: aetherframeMarkdownEnabled ? 'report-panel-analyst-enabled' : 'high-assurance-report-panel-disabled',
     },
     aiContributions: reportAiContributions,
+    referenceGraph,
   };
 
   const handleDownloadMarkdown = () => {
-    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType }, markdownExportOptions);
+    if (!canExport()) return;
+    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType, provenance, cfgBudget, legacyRecordMetadata, referenceGraph }, markdownExportOptions);
     downloadText(md, 'hexhawk-report.md', 'text/markdown');
   };
 
   const handleExportIocs = () => {
+    if (!canExport()) return;
     const iocs = extractIocs(verdict);
     const payload = {
       generatedAt: new Date().toISOString(),
@@ -766,17 +1008,19 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
   };
 
   const handleCopy = async () => {
-    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType }, markdownExportOptions);
+    if (!canExport()) return;
+    const md = formatMarkdown(verdict, { verdict, binaryPath, binarySize, architecture, fileType, provenance, cfgBudget, legacyRecordMetadata, referenceGraph }, markdownExportOptions);
     await navigator.clipboard.writeText(md);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleSaveSnapshot = () => {
-    const snapshot = createReportSnapshot(verdict, { verdict, binaryPath, binarySize, architecture, fileType });
+    if (!canExport()) return;
+    const snapshot = createReportSnapshot(verdict, { verdict, binaryPath, binarySize, architecture, fileType, provenance });
     setSnapshots(prev => {
       const filtered = prev.filter(existing => !(
-        existing.binaryPath === snapshot.binaryPath
+        sameSha256(existing.sha256, snapshot.sha256)
         && existing.classification === snapshot.classification
         && existing.threatScore === snapshot.threatScore
         && existing.confidence === snapshot.confidence
@@ -796,14 +1040,14 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
   };
 
   const handleExportDiffMarkdown = () => {
-    if (!comparison || !selectedSnapshot) return;
+    if (!canExport() || !comparison || !selectedSnapshot || !sameSha256(currentSnapshot.sha256, selectedSnapshot.sha256)) return;
     const md = formatDiffMarkdown(comparison, currentSnapshot, selectedSnapshot);
     const safeName = currentSnapshot.binaryName.replace(/[^a-zA-Z0-9_-]/g, '_');
     downloadText(md, `hexhawk-diff-${safeName}.md`, 'text/markdown');
   };
 
   const handleExportDiffJson = () => {
-    if (!comparison || !selectedSnapshot) return;
+    if (!canExport() || !comparison || !selectedSnapshot || !sameSha256(currentSnapshot.sha256, selectedSnapshot.sha256)) return;
     const payload = {
       generatedAt: new Date().toISOString(),
       binaryName: currentSnapshot.binaryName,
@@ -821,17 +1065,23 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
       <div className="report-header">
         <div className="report-title">Intelligence Report</div>
         <div className="report-actions">
-          <button className="report-btn" onClick={handleDownloadJSON}>↓ JSON</button>
-          <button className="report-btn" onClick={handleDownloadMarkdown}>↓ Markdown</button>
-          <button className="report-btn" onClick={handleExportIocs}>↓ IOCs</button>
-          <button className="report-btn" onClick={handleSaveSnapshot}>
+          <button className="report-btn" disabled={!exportGate.ok} title={exportGate.reason} onClick={handleDownloadJSON}>↓ JSON</button>
+          <button className="report-btn" disabled={!exportGate.ok} title={exportGate.reason} onClick={handleDownloadMarkdown}>↓ Markdown</button>
+          <button className="report-btn" disabled={!exportGate.ok} title={exportGate.reason} onClick={handleExportIocs}>↓ IOCs</button>
+          <button className="report-btn" disabled={!exportGate.ok} title={exportGate.reason} onClick={handleSaveSnapshot}>
             {saved ? '✓ Saved' : '☆ Save Snapshot'}
           </button>
-          <button className="report-btn" onClick={handleCopy}>
+          <button className="report-btn" disabled={!exportGate.ok} title={exportGate.reason} onClick={handleCopy}>
             {copied ? '✓ Copied' : '⎘ Copy'}
           </button>
         </div>
       </div>
+
+      {!exportGate.ok && (
+        <div role="alert" data-testid="report-export-blocked">
+          Report export blocked: {exportGate.reason}
+        </div>
+      )}
 
       {/* ── Verdict summary ─────────────────────────────────────── */}
       <div className="report-verdict-banner" style={{ borderColor: verdictColor }}>
@@ -852,6 +1102,7 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
         </div>
       </div>
       <div className="report-summary">{verdict.summary}</div>
+      {guidancePanel}
 
       <details className="report-section report-ai-contributions" open>
         <summary className="report-section-title">How AI contributed</summary>
@@ -880,6 +1131,65 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
           {architecture && <span><span className="meta-label">Arch:</span> {architecture}</span>}
           {fileType && <span><span className="meta-label">Type:</span> {fileType}</span>}
           {binarySize && <span><span className="meta-label">Size:</span> {binarySize.toLocaleString()} bytes</span>}
+        </div>
+      )}
+
+      {provenance && (
+        <>
+          <EvidenceIdentityCard
+            provenance={provenance}
+            exportSha256={provenance.binaryIdentity.sha256}
+            exportArtifactOrigin={provenance.binaryIdentity.artifactOrigin}
+          />
+          <div className="report-section" data-testid="native-evidence-provenance">
+            <div className="report-section-title">Native evidence provenance</div>
+            <p>
+              {exportGate.ok && exportGate.bundle
+                ? 'GUI identity, backend command boundary, CLI equivalent, and export payload are tied to the same binary evidence identity.'
+                : 'File identity consistency is not established for native export. Review the export status before sharing this report.'}
+            </p>
+            <p className="report-policy-note">
+              This provenance is evidence identity only. It does not alter GYRE classification, base confidence, or NEST evidence selection.
+            </p>
+          </div>
+          {selectedAnalysisProvider && capabilityMatrix && (
+            <EvidenceResourceBrowser
+              provider={selectedAnalysisProvider}
+              records={evidenceRecords}
+              capabilityMatrix={capabilityMatrix}
+            />
+          )}
+        </>
+      )}
+
+      {cfgBudget && (
+        <CfgBudgetCard
+          nodes={cfgBudget.nodes}
+          edges={cfgBudget.edges}
+          nodeBudget={cfgBudget.nodeBudget}
+          edgeBudget={cfgBudget.edgeBudget}
+          omittedNodes={cfgBudget.omittedNodes}
+          omittedEdges={cfgBudget.omittedEdges}
+          truncated={cfgBudget.truncated}
+        />
+      )}
+
+      {referenceGraph && (
+        <div className="report-section" data-testid="reference-graph-summary">
+          <div className="report-section-title">Reference Graph</div>
+          <p>
+            Advisory static-analysis graph linking functions, imports, strings, basic blocks, data references, constants, and selected addresses.
+          </p>
+          <div className="report-meta-strip">
+            <span><span className="meta-label">Nodes:</span> {referenceGraph.summary.nodes}</span>
+            <span><span className="meta-label">Edges:</span> {referenceGraph.summary.edges}</span>
+            <span><span className="meta-label">Functions:</span> {referenceGraph.summary.functions}</span>
+            <span><span className="meta-label">Data refs:</span> {referenceGraph.summary.data_references}</span>
+            <span><span className="meta-label">Limits:</span> {referenceGraph.limits.truncated ? 'truncated' : 'within budget'}</span>
+          </div>
+          <p className="report-policy-note">
+            Reference graph evidence supports analyst navigation and exportable handoff only. GYRE remains sole verdict authority.
+          </p>
         </div>
       )}
 
@@ -946,8 +1256,8 @@ export function IntelligenceReport({ verdict, binaryPath, binarySize, architectu
               </div>
               <div className="report-compare-subtitle">{selectedSnapshot.binaryName}</div>
               <div className="report-compare-export-actions">
-                <button className="report-btn report-btn--sm" type="button" onClick={handleExportDiffMarkdown}>↓ Diff MD</button>
-                <button className="report-btn report-btn--sm" type="button" onClick={handleExportDiffJson}>↓ Diff JSON</button>
+                <button className="report-btn report-btn--sm" type="button" disabled={!exportGate.ok} title={exportGate.reason} onClick={handleExportDiffMarkdown}>↓ Diff MD</button>
+                <button className="report-btn report-btn--sm" type="button" disabled={!exportGate.ok} title={exportGate.reason} onClick={handleExportDiffJson}>↓ Diff JSON</button>
               </div>
             </div>
             <div className="report-compare-grid">

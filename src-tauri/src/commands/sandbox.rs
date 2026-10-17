@@ -73,26 +73,40 @@ pub struct SandboxSignal {
 fn detect_interpreter(path: &Path) -> Option<Vec<String>> {
     let ext = path.extension()?.to_string_lossy().to_lowercase();
     match ext.as_str() {
-        "py"  => Some(vec![
-            #[cfg(windows)]  "python".to_string(),
-            #[cfg(not(windows))] "python3".to_string(),
+        "py" => Some(vec![
+            #[cfg(windows)]
+            "python".to_string(),
+            #[cfg(not(windows))]
+            "python3".to_string(),
             path.to_string_lossy().into_owned(),
         ]),
         "ps1" => Some(vec![
             "powershell".to_string(),
-            "-ExecutionPolicy".to_string(), "Bypass".to_string(),
+            "-ExecutionPolicy".to_string(),
+            "Bypass".to_string(),
             "-NonInteractive".to_string(),
             "-File".to_string(),
             path.to_string_lossy().into_owned(),
         ]),
-        "js"  => Some(vec!["node".to_string(), path.to_string_lossy().into_owned()]),
-        "bat" | "cmd" => Some(vec![
-            "cmd".to_string(), "/c".to_string(), path.to_string_lossy().into_owned(),
+        "js" => Some(vec![
+            "node".to_string(),
+            path.to_string_lossy().into_owned(),
         ]),
-        "sh"  => Some(vec!["sh".to_string(), path.to_string_lossy().into_owned()]),
-        "rb"  => Some(vec!["ruby".to_string(), path.to_string_lossy().into_owned()]),
-        "pl"  => Some(vec!["perl".to_string(), path.to_string_lossy().into_owned()]),
-        _     => None,
+        "bat" | "cmd" => Some(vec![
+            "cmd".to_string(),
+            "/c".to_string(),
+            path.to_string_lossy().into_owned(),
+        ]),
+        "sh" => Some(vec!["sh".to_string(), path.to_string_lossy().into_owned()]),
+        "rb" => Some(vec![
+            "ruby".to_string(),
+            path.to_string_lossy().into_owned(),
+        ]),
+        "pl" => Some(vec![
+            "perl".to_string(),
+            path.to_string_lossy().into_owned(),
+        ]),
+        _ => None,
     }
 }
 
@@ -100,10 +114,9 @@ const MAX_SCRIPT_SIZE_BYTES: u64 = 64 * 1024 * 1024; // 64 MB
 const MAX_SNAPSHOT_FILES_PER_DIR: usize = 20_000;
 
 fn validate_script_path(path: &str) -> Result<PathBuf, String> {
-    let canonical = std::fs::canonicalize(path)
-        .map_err(|e| format!("Invalid script path: {e}"))?;
-    let meta = std::fs::metadata(&canonical)
-        .map_err(|e| format!("Failed to stat script path: {e}"))?;
+    let canonical = std::fs::canonicalize(path).map_err(|e| format!("Invalid script path: {e}"))?;
+    let meta =
+        std::fs::metadata(&canonical).map_err(|e| format!("Failed to stat script path: {e}"))?;
 
     if !meta.is_file() {
         return Err("Sandbox input must be a regular file.".to_string());
@@ -120,7 +133,10 @@ fn validate_script_path(path: &str) -> Result<PathBuf, String> {
     Ok(canonical)
 }
 
-fn wait_with_timeout(mut child: std::process::Child, timeout: Duration) -> Result<(std::process::Output, bool), String> {
+fn wait_with_timeout(
+    mut child: std::process::Child,
+    timeout: Duration,
+) -> Result<(std::process::Output, bool), String> {
     let start = Instant::now();
     loop {
         match child.try_wait() {
@@ -155,7 +171,9 @@ fn wait_with_timeout(mut child: std::process::Child, timeout: Duration) -> Resul
 /// Returns a map of path → last-modified timestamp (as secs since epoch).
 fn snapshot_dir(dir: &Path) -> HashMap<String, u64> {
     let mut map = HashMap::new();
-    if !dir.exists() { return map; }
+    if !dir.exists() {
+        return map;
+    }
     let walker = walkdir::WalkDir::new(dir)
         .max_depth(3)
         .follow_links(false)
@@ -168,7 +186,8 @@ fn snapshot_dir(dir: &Path) -> HashMap<String, u64> {
             break;
         }
         if let Ok(meta) = entry.metadata() {
-            let mtime = meta.modified()
+            let mtime = meta
+                .modified()
                 .ok()
                 .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs())
@@ -183,9 +202,18 @@ fn snapshot_dir(dir: &Path) -> HashMap<String, u64> {
 fn apply_sandbox_environment(cmd: &mut Command, script_path: &Path) {
     // Use a minimal allowlist to avoid leaking unrelated host environment state.
     const KEYS: &[&str] = &[
-        "PATH", "SystemRoot", "WINDIR", "COMSPEC", "PATHEXT",
-        "TMP", "TEMP", "HOME", "USERPROFILE",
-        "LANG", "LC_ALL", "TERM",
+        "PATH",
+        "SystemRoot",
+        "WINDIR",
+        "COMSPEC",
+        "PATHEXT",
+        "TMP",
+        "TEMP",
+        "HOME",
+        "USERPROFILE",
+        "LANG",
+        "LC_ALL",
+        "TERM",
     ];
 
     cmd.env_clear();
@@ -204,17 +232,20 @@ fn apply_sandbox_environment(cmd: &mut Command, script_path: &Path) {
 }
 
 /// Diff two snapshots, returning FileEvents.
-fn diff_snapshots(
-    before: &HashMap<String, u64>,
-    after: &HashMap<String, u64>,
-) -> Vec<FileEvent> {
+fn diff_snapshots(before: &HashMap<String, u64>, after: &HashMap<String, u64>) -> Vec<FileEvent> {
     let mut events = Vec::new();
     // Created or modified
     for (path, &after_ts) in after {
         match before.get(path) {
-            None => events.push(FileEvent { path: path.clone(), kind: "created".into() }),
+            None => events.push(FileEvent {
+                path: path.clone(),
+                kind: "created".into(),
+            }),
             Some(&before_ts) if before_ts != after_ts => {
-                events.push(FileEvent { path: path.clone(), kind: "modified".into() });
+                events.push(FileEvent {
+                    path: path.clone(),
+                    kind: "modified".into(),
+                });
             }
             _ => {}
         }
@@ -222,7 +253,10 @@ fn diff_snapshots(
     // Deleted
     for path in before.keys() {
         if !after.contains_key(path) {
-            events.push(FileEvent { path: path.clone(), kind: "deleted".into() });
+            events.push(FileEvent {
+                path: path.clone(),
+                kind: "deleted".into(),
+            });
         }
     }
     events
@@ -233,31 +267,91 @@ fn diff_snapshots(
 /// Patterns searched in combined stdout+stderr.
 const STDOUT_PATTERNS: &[(&str, &str, u8, &str)] = &[
     // (substring, label, confidence, category)
-    ("socket",         "Network socket operation in output",              80, "network"),
-    ("connect(",       "Network connect() call observed in output",       85, "network"),
-    ("urllib",         "urllib network library usage",                     82, "network"),
-    ("requests.",      "Python requests library usage",                    82, "network"),
-    ("http://",        "HTTP URL reference in output",                     75, "network"),
-    ("https://",       "HTTPS URL reference in output",                    75, "network"),
-    ("CreateProcess",  "CreateProcess call observed in output",            88, "exec"),
-    ("subprocess",     "Subprocess spawn observed in output",              85, "exec"),
-    ("os.system(",     "os.system() shell spawn observed in output",       88, "exec"),
-    ("shell=True",     "shell=True subprocess spawn",                      90, "exec"),
-    ("WriteFile",      "WriteFile API call in output",                     80, "dropper"),
-    ("open(",          "File open in output",                              60, "dropper"),
-    ("base64",         "Base64 encoding/decoding in output",               75, "obfuscation"),
-    ("marshal",        "Python marshal module (bytecode packing)",         78, "obfuscation"),
-    ("pickle",         "Python pickle (serialized code execution risk)",   80, "exec"),
-    ("winreg",         "Windows registry access (winreg)",                 85, "persistence"),
-    ("reg add",        "Registry write via reg.exe",                       90, "persistence"),
-    ("HKCU\\",         "HKCU registry key reference",                      82, "persistence"),
-    ("HKLM\\",         "HKLM registry key reference",                      82, "persistence"),
-    ("schtasks",       "Scheduled task creation (schtasks)",               90, "persistence"),
-    ("whoami",         "whoami — host reconnaissance",                     72, "recon"),
-    ("net user",       "net user — account enumeration",                   85, "recon"),
-    ("ipconfig",       "ipconfig — network reconnaissance",                70, "recon"),
-    ("traceback",      "Python exception traceback (execution confirmed)", 95, "info"),
-    ("Traceback",      "Python exception traceback (execution confirmed)", 95, "info"),
+    (
+        "socket",
+        "Network socket operation in output",
+        80,
+        "network",
+    ),
+    (
+        "connect(",
+        "Network connect() call observed in output",
+        85,
+        "network",
+    ),
+    ("urllib", "urllib network library usage", 82, "network"),
+    ("requests.", "Python requests library usage", 82, "network"),
+    ("http://", "HTTP URL reference in output", 75, "network"),
+    ("https://", "HTTPS URL reference in output", 75, "network"),
+    (
+        "CreateProcess",
+        "CreateProcess call observed in output",
+        88,
+        "exec",
+    ),
+    (
+        "subprocess",
+        "Subprocess spawn observed in output",
+        85,
+        "exec",
+    ),
+    (
+        "os.system(",
+        "os.system() shell spawn observed in output",
+        88,
+        "exec",
+    ),
+    ("shell=True", "shell=True subprocess spawn", 90, "exec"),
+    ("WriteFile", "WriteFile API call in output", 80, "dropper"),
+    ("open(", "File open in output", 60, "dropper"),
+    (
+        "base64",
+        "Base64 encoding/decoding in output",
+        75,
+        "obfuscation",
+    ),
+    (
+        "marshal",
+        "Python marshal module (bytecode packing)",
+        78,
+        "obfuscation",
+    ),
+    (
+        "pickle",
+        "Python pickle (serialized code execution risk)",
+        80,
+        "exec",
+    ),
+    (
+        "winreg",
+        "Windows registry access (winreg)",
+        85,
+        "persistence",
+    ),
+    ("reg add", "Registry write via reg.exe", 90, "persistence"),
+    ("HKCU\\", "HKCU registry key reference", 82, "persistence"),
+    ("HKLM\\", "HKLM registry key reference", 82, "persistence"),
+    (
+        "schtasks",
+        "Scheduled task creation (schtasks)",
+        90,
+        "persistence",
+    ),
+    ("whoami", "whoami — host reconnaissance", 72, "recon"),
+    ("net user", "net user — account enumeration", 85, "recon"),
+    ("ipconfig", "ipconfig — network reconnaissance", 70, "recon"),
+    (
+        "traceback",
+        "Python exception traceback (execution confirmed)",
+        95,
+        "info",
+    ),
+    (
+        "Traceback",
+        "Python exception traceback (execution confirmed)",
+        95,
+        "info",
+    ),
 ];
 
 fn scan_output_signals(combined: &str) -> Vec<SandboxSignal> {
@@ -285,14 +379,24 @@ fn signals_from_file_events(events: &[FileEvent]) -> Vec<SandboxSignal> {
 
     if !created.is_empty() {
         // Check if any created file looks like a dropper payload
-        let exe_drops: Vec<_> = created.iter().filter(|e| {
-            let p = e.path.to_lowercase();
-            p.ends_with(".exe") || p.ends_with(".dll") || p.ends_with(".bat") ||
-            p.ends_with(".ps1") || p.ends_with(".vbs") || p.ends_with(".cmd")
-        }).collect();
+        let exe_drops: Vec<_> = created
+            .iter()
+            .filter(|e| {
+                let p = e.path.to_lowercase();
+                p.ends_with(".exe")
+                    || p.ends_with(".dll")
+                    || p.ends_with(".bat")
+                    || p.ends_with(".ps1")
+                    || p.ends_with(".vbs")
+                    || p.ends_with(".cmd")
+            })
+            .collect();
         if !exe_drops.is_empty() {
             signals.push(SandboxSignal {
-                label: format!("{} executable file(s) dropped during execution", exe_drops.len()),
+                label: format!(
+                    "{} executable file(s) dropped during execution",
+                    exe_drops.len()
+                ),
                 confidence: 95,
                 category: "dropper".into(),
             });
@@ -327,9 +431,9 @@ fn signals_from_file_events(events: &[FileEvent]) -> Vec<SandboxSignal> {
 fn apply_memory_limit_windows(pid: u32) -> Result<(), String> {
     use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::System::JobObjects::{
-        AssignProcessToJobObject, CreateJobObjectW,
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
         SetInformationJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
-        JobObjectExtendedLimitInformation, JOB_OBJECT_LIMIT_PROCESS_MEMORY,
+        JOB_OBJECT_LIMIT_PROCESS_MEMORY,
     };
     use windows_sys::Win32::System::Threading::OpenProcess;
     use windows_sys::Win32::System::Threading::{
@@ -522,12 +626,20 @@ pub fn run_script_sandbox(path: String, timeout_secs: Option<u64>) -> SandboxRes
     // Truncate to 64 KB each
     const MAX_OUT: usize = 64 * 1024;
     let stdout = if raw_stdout.len() > MAX_OUT {
-        format!("{}\n... [truncated — {} bytes total]", &raw_stdout[..MAX_OUT], raw_stdout.len())
+        format!(
+            "{}\n... [truncated — {} bytes total]",
+            &raw_stdout[..MAX_OUT],
+            raw_stdout.len()
+        )
     } else {
         raw_stdout
     };
     let stderr = if raw_stderr.len() > MAX_OUT {
-        format!("{}\n... [truncated — {} bytes total]", &raw_stderr[..MAX_OUT], raw_stderr.len())
+        format!(
+            "{}\n... [truncated — {} bytes total]",
+            &raw_stderr[..MAX_OUT],
+            raw_stderr.len()
+        )
     } else {
         raw_stderr
     };

@@ -10,10 +10,10 @@ interface AiInsightPanelProps {
 }
 
 const SOURCE_LABELS: Record<AiObservationSource, string> = {
-  'aetherframe-static': 'AETHERFRAME static pattern',
-  'aetherframe-llm': 'AETHERFRAME LLM',
-  'nexus-llm': 'NEXUS LLM',
-  'talon-llm-pass': 'TALON LLM pass',
+  'aetherframe-static': 'Static analysis helper',
+  'aetherframe-llm': 'AI review helper',
+  'nexus-llm': 'AI review helper',
+  'talon-llm-pass': 'Code explanation helper',
   'user-accepted': 'Analyst accepted note',
 };
 
@@ -80,16 +80,16 @@ export function AiInsightPanel({
       <header className="ai-insight-header">
         <div>
           <h2 id="ai-insight-heading">AI Observations</h2>
-          <p className="ai-insight-subtitle">AETHERFRAME — advisory</p>
+          <p className="ai-insight-subtitle">Optional suggestions for your review</p>
         </div>
-        <span className="ai-insight-authority-badge">Not GYRE</span>
+        <span className="ai-insight-authority-badge">Review note only</span>
       </header>
 
       <div className="ai-insight-explainer" role="note">
         <strong>What this panel shows</strong>
         <p>
-          AI-generated interpretations of static analysis. These are suggestions, not facts.
-          GYRE remains the sole verdict authority.
+          AI-generated interpretations of static analysis. These are suggestions to check against the evidence, not automatic conclusions.
+          Accepting one saves it as a note and does not change the file assessment.
         </p>
       </div>
 
@@ -138,8 +138,8 @@ export function AiInsightPanel({
                   )}
                 </dl>
                 <p className="ai-observation-authority">
-                  Advisory only. GYRE remains the sole verdict authority.
-                  {needsNotVerdict ? ' Not a verdict. GYRE decides verdicts.' : ''}
+                  Review note only. Accepting this does not change the file assessment.
+                  {needsNotVerdict ? ' Treat it as a prompt to verify, not a final conclusion.' : ''}
                 </p>
                 <div className="ai-observation-actions">
                   <button type="button" onClick={() => accept(observation)}>Accept as note</button>

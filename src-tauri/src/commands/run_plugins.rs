@@ -1,5 +1,11 @@
 // src-tauri/src/commands/run_plugins.rs
 
+use crate::plugins::{get_all_plugins, get_user_plugin_dir, scan_plugin_dir};
+use plugin_api::{
+    Plugin, PluginKind, PluginResult, PLUGIN_EXECUTION_TIMEOUT_SECS, PLUGIN_RESULT_MAX_JSON_BYTES,
+};
+use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::{
     fs,
     sync::{
@@ -9,11 +15,7 @@ use std::{
     thread,
     time::Duration,
 };
-use crate::plugins::{get_all_plugins, get_user_plugin_dir, scan_plugin_dir};
-use plugin_api::{Plugin, PluginKind, PluginResult, PLUGIN_EXECUTION_TIMEOUT_SECS, PLUGIN_RESULT_MAX_JSON_BYTES};
-use serde::Serialize;
 use tauri::command;
-use sha2::{Sha256, Digest};
 
 #[derive(Debug, Serialize)]
 pub struct PluginResultResponse {
@@ -59,7 +61,11 @@ impl Drop for PluginWorkerGuard {
     }
 }
 
-fn execute_plugin_with_timeout(plugin: Box<dyn Plugin>, data: Arc<Vec<u8>>, timeout: Duration) -> Result<PluginResult, String> {
+fn execute_plugin_with_timeout(
+    plugin: Box<dyn Plugin>,
+    data: Arc<Vec<u8>>,
+    timeout: Duration,
+) -> Result<PluginResult, String> {
     let plugin_name = plugin.name().to_string();
     if !try_acquire_plugin_worker_slot() {
         return Err(format!(
@@ -97,11 +103,9 @@ fn compute_result_hash(json_str: &str) -> String {
 const MAX_FILE_SIZE_BYTES: usize = 512 * 1024 * 1024; // 512 MB
 
 fn validate_input_file(path: &str) -> Result<std::path::PathBuf, String> {
-    let canonical = fs::canonicalize(path)
-        .map_err(|e| format!("Invalid file path: {e}"))?;
+    let canonical = fs::canonicalize(path).map_err(|e| format!("Invalid file path: {e}"))?;
 
-    let meta = fs::metadata(&canonical)
-        .map_err(|e| format!("Failed to stat file: {e}"))?;
+    let meta = fs::metadata(&canonical).map_err(|e| format!("Failed to stat file: {e}"))?;
 
     if !meta.is_file() {
         return Err("Input path must be a regular file.".to_string());
@@ -119,9 +123,13 @@ fn validate_input_file(path: &str) -> Result<std::path::PathBuf, String> {
 }
 
 #[command]
-pub async fn run_plugins_on_file(app: tauri::AppHandle, path: String) -> Result<Vec<PluginResultResponse>, String> {
+pub async fn run_plugins_on_file(
+    app: tauri::AppHandle,
+    path: String,
+) -> Result<Vec<PluginResultResponse>, String> {
     let canonical_path = validate_input_file(&path)?;
-    let file_bytes = fs::read(&canonical_path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let file_bytes =
+        fs::read(&canonical_path).map_err(|e| format!("Failed to read file: {}", e))?;
     let data = Arc::new(file_bytes);
 
     // Collect built-in plugins and user plugins into one list.
@@ -272,8 +280,7 @@ mod tests {
         let _lock = lock_tests();
         let data = Arc::new(vec![0; 64]);
         let names = [
-            "sleep-0", "sleep-1", "sleep-2", "sleep-3",
-            "sleep-4", "sleep-5", "sleep-6", "sleep-7",
+            "sleep-0", "sleep-1", "sleep-2", "sleep-3", "sleep-4", "sleep-5", "sleep-6", "sleep-7",
         ];
 
         for name in names.iter().take(MAX_INFLIGHT_PLUGIN_WORKERS) {

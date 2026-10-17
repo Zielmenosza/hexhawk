@@ -12,7 +12,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type { FileMetadata, DisassembledInstruction } from '../App';
 import type { CfgGraph } from '../utils/cfgSignalExtractor';
 import type { NestBackend, DisassemblyResult } from '../utils/nestBackend';
-import { sanitizeBridgePath, sanitizeRange } from '../utils/tauriGuards';
+import { sanitizeBridgePath, sanitizeRange, requireInspectedSha256 } from '../utils/tauriGuards';
 
 // ── Extended interface (superset of NestBackend) ───────────────────────────────
 
@@ -28,10 +28,11 @@ export const tauriBackend: TauriBackend = {
     path:   string,
     offset: number,
     length: number,
+    expectedSha256?: string,
   ): Promise<DisassemblyResult> {
     const safePath = sanitizeBridgePath(path);
     const safeRange = sanitizeRange(offset, length);
-    return invoke('disassemble_file_range', { path: safePath, offset: safeRange.offset, length: safeRange.length });
+    return invoke('disassemble_file_range', { path: safePath, offset: safeRange.offset, length: safeRange.length, expectedSha256: requireInspectedSha256(expectedSha256) });
   },
 
   /** Build a control-flow graph for a byte range of a binary file. */
@@ -39,10 +40,11 @@ export const tauriBackend: TauriBackend = {
     path:   string,
     offset: number,
     length: number,
+    expectedSha256?: string,
   ): Promise<CfgGraph> {
     const safePath = sanitizeBridgePath(path);
     const safeRange = sanitizeRange(offset, length);
-    return invoke('build_cfg', { path: safePath, offset: safeRange.offset, length: safeRange.length });
+    return invoke('build_cfg', { path: safePath, offset: safeRange.offset, length: safeRange.length, expectedSha256: requireInspectedSha256(expectedSha256) });
   },
 
   /** Fetch file metadata (SHA256, sections, imports, strings, entry point, …). */

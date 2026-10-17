@@ -44,14 +44,25 @@ describe('BinaryVerdict', () => {
   it('renders clean classification correctly', () => {
     render(<BinaryVerdict verdict={makeVerdict()} />);
     expect(screen.getByText('Clean')).toBeTruthy();
-    expect(screen.getByText('8')).toBeTruthy();   // threat score
-    expect(screen.getByText('92%')).toBeTruthy(); // confidence
+    expect(screen.getAllByText('8').length).toBeGreaterThan(0);   // threat score
+    expect(screen.getAllByText('92%').length).toBeGreaterThan(0); // confidence
+  });
+
+  it('renders the neat overview cards so the verdict is readable before expanding details', () => {
+    render(<BinaryVerdict verdict={makeVerdict({ threatScore: 72, confidence: 83 })} />);
+
+    expect(screen.getByLabelText('Verdict summary')).toBeInTheDocument();
+    expect(screen.getByText('Threat score')).toBeInTheDocument();
+    expect(screen.getByText('Confidence')).toBeInTheDocument();
+    expect(screen.getByText('Signals')).toBeInTheDocument();
+    expect(screen.getByText('Boundary')).toBeInTheDocument();
+    expect(screen.getByText('GYRE')).toBeInTheDocument();
   });
 
   it('renders suspicious classification with correct label', () => {
     render(<BinaryVerdict verdict={makeVerdict({ classification: 'suspicious', threatScore: 55, confidence: 70 })} />);
     expect(screen.getByText('Suspicious')).toBeTruthy();
-    expect(screen.getByText('55')).toBeTruthy();
+    expect(screen.getAllByText('55').length).toBeGreaterThan(0);
   });
 
   it('renders all malware classifications without crash', () => {

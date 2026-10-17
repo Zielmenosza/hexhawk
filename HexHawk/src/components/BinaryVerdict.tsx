@@ -176,6 +176,25 @@ export default function BinaryVerdict({ verdict, onNavigateTab, onJumpToAddress 
         </div>
       )}
 
+      <div className="verdict-overview-grid" aria-label="Verdict summary">
+        <div className="verdict-overview-card verdict-overview-card--primary">
+          <span className="verdict-overview-label">Threat score</span>
+          <strong style={{ color: scoreColor(verdict.threatScore) }}>{verdict.threatScore}<span>/100</span></strong>
+        </div>
+        <div className="verdict-overview-card">
+          <span className="verdict-overview-label">Confidence</span>
+          <strong>{verdict.confidence}%</strong>
+        </div>
+        <div className="verdict-overview-card">
+          <span className="verdict-overview-label">Signals</span>
+          <strong>{signals.length}</strong>
+        </div>
+        <div className="verdict-overview-card">
+          <span className="verdict-overview-label">Boundary</span>
+          <strong>GYRE</strong>
+        </div>
+      </div>
+
       {/* Summary line */}
       <p className="verdict-summary">{verdict.summary}</p>
 

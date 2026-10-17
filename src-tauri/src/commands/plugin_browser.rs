@@ -1,13 +1,15 @@
-use crate::plugins::{evict_from_cache, get_all_plugins, get_user_plugin_dir, scan_plugin_dir, UserPluginInfo};
+use super::inspect::PluginMetadata;
+use crate::plugins::{
+    evict_from_cache, get_all_plugins, get_user_plugin_dir, scan_plugin_dir, UserPluginInfo,
+};
 use std::fs::OpenOptions;
 use std::io;
 use std::path::Path;
-use super::inspect::PluginMetadata;
 use tauri::command;
 
 fn copy_file_create_new(src: &Path, dest: &Path) -> Result<(), String> {
-    let mut src_file = std::fs::File::open(src)
-        .map_err(|e| format!("Failed to open source plugin: {e}"))?;
+    let mut src_file =
+        std::fs::File::open(src).map_err(|e| format!("Failed to open source plugin: {e}"))?;
     let mut dest_file = OpenOptions::new()
         .create_new(true)
         .write(true)
@@ -126,12 +128,12 @@ pub async fn install_plugin(
     app: tauri::AppHandle,
     src_path: String,
 ) -> Result<UserPluginInfo, String> {
-    let src_canonical = std::fs::canonicalize(&src_path)
-        .map_err(|e| format!("Invalid source path: {e}"))?;
+    let src_canonical =
+        std::fs::canonicalize(&src_path).map_err(|e| format!("Invalid source path: {e}"))?;
     let src = src_canonical.as_path();
 
-    let src_meta = std::fs::metadata(src)
-        .map_err(|e| format!("Failed to stat source path: {e}"))?;
+    let src_meta =
+        std::fs::metadata(src).map_err(|e| format!("Failed to stat source path: {e}"))?;
     if !src_meta.is_file() {
         return Err("Source plugin path must be a regular file".to_string());
     }
@@ -159,7 +161,10 @@ pub async fn install_plugin(
     let dest = dir.join(filename);
 
     if dest.exists() {
-        return Err("A plugin with the same filename already exists. Remove it first to replace.".to_string());
+        return Err(
+            "A plugin with the same filename already exists. Remove it first to replace."
+                .to_string(),
+        );
     }
 
     copy_file_create_new(src, &dest)?;
@@ -167,9 +172,8 @@ pub async fn install_plugin(
     // ── Validate the copied file actually loads as a HexHawk plugin ──────────
     match scan_plugin_dir(&dir)
         .into_iter()
-        .find(|(info, _)| {
-            info.filename == filename.to_string_lossy().as_ref()
-        }) {
+        .find(|(info, _)| info.filename == filename.to_string_lossy().as_ref())
+    {
         Some((info, Some(_))) => Ok(info),
         Some((info, None)) => {
             // Remove the invalid file so it doesn't permanently break the dir.
@@ -190,10 +194,7 @@ pub async fn install_plugin(
 /// `filename` must be a bare filename (no directory separators) to prevent
 /// path-traversal attacks.
 #[command]
-pub async fn uninstall_plugin(
-    app: tauri::AppHandle,
-    filename: String,
-) -> Result<(), String> {
+pub async fn uninstall_plugin(app: tauri::AppHandle, filename: String) -> Result<(), String> {
     // ── Path traversal + extension guard ─────────────────────────────────────
     let safe_name = validate_uninstall_filename(&filename)?;
 
@@ -204,8 +205,7 @@ pub async fn uninstall_plugin(
         return Err(format!("Plugin '{}' does not exist", filename));
     }
 
-    let meta = std::fs::metadata(&path)
-        .map_err(|e| format!("Failed to stat plugin path: {e}"))?;
+    let meta = std::fs::metadata(&path).map_err(|e| format!("Failed to stat plugin path: {e}"))?;
     if !meta.is_file() {
         return Err("Target plugin path is not a regular file".to_string());
     }
@@ -215,9 +215,7 @@ pub async fn uninstall_plugin(
         .canonicalize()
         .map_err(|e| format!("Cannot resolve plugin directory: {e}"))?;
     // path may not exist yet if we're cleaning up a failed load
-    let canonical_path = path
-        .canonicalize()
-        .unwrap_or_else(|_| path.clone());
+    let canonical_path = path.canonicalize().unwrap_or_else(|_| path.clone());
     if !canonical_path.starts_with(&canonical_dir) {
         return Err("Path traversal attempt detected".to_string());
     }
@@ -451,4 +449,3 @@ pub fn get_plugin_manifest() -> PluginManifest {
         ],
     }
 }
-

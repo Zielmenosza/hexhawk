@@ -2,7 +2,6 @@
 ///
 /// Writes patches to a *copy* of the target binary, never touching the original.
 /// Supports: arbitrary byte replacement, NOP sleds, conditional jump inversion (x86/x64).
-
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -83,10 +82,8 @@ const MAX_SINGLE_PATCH_BYTES: usize = 1024 * 1024; // 1 MB
 const MAX_TOTAL_PATCH_BYTES: usize = 16 * 1024 * 1024; // 16 MB
 
 fn validate_source_file(path: &str) -> Result<std::path::PathBuf, String> {
-    let canonical = fs::canonicalize(path)
-        .map_err(|e| format!("Invalid source path: {e}"))?;
-    let meta = fs::metadata(&canonical)
-        .map_err(|e| format!("Failed to stat source path: {e}"))?;
+    let canonical = fs::canonicalize(path).map_err(|e| format!("Invalid source path: {e}"))?;
+    let meta = fs::metadata(&canonical).map_err(|e| format!("Failed to stat source path: {e}"))?;
     if !meta.is_file() {
         return Err("Patch source must be a regular file.".to_string());
     }
@@ -129,13 +126,20 @@ fn next_patched_dest(src: &Path) -> std::path::PathBuf {
 /// Apply a list of byte patches to a **copy** of `path`.
 /// The original is never modified.  Returns the path of the new copy.
 #[tauri::command]
-pub fn export_patched(path: String, patches: Vec<PatchSpec>) -> Result<ExportPatchedResult, String> {
+pub fn export_patched(
+    path: String,
+    patches: Vec<PatchSpec>,
+) -> Result<ExportPatchedResult, String> {
     if patches.is_empty() {
         return Err("No patches to apply.".into());
     }
 
     if patches.len() > MAX_PATCH_COUNT {
-        return Err(format!("Too many patches ({}), max allowed is {}.", patches.len(), MAX_PATCH_COUNT));
+        return Err(format!(
+            "Too many patches ({}), max allowed is {}.",
+            patches.len(),
+            MAX_PATCH_COUNT
+        ));
     }
 
     let src = validate_source_file(&path)?;
@@ -146,19 +150,24 @@ pub fn export_patched(path: String, patches: Vec<PatchSpec>) -> Result<ExportPat
     let mut bytes_modified = 0usize;
     for patch in &patches {
         if patch.new_bytes.is_empty() {
-            return Err(format!("Patch at offset 0x{:X} has empty byte payload.", patch.offset));
+            return Err(format!(
+                "Patch at offset 0x{:X} has empty byte payload.",
+                patch.offset
+            ));
         }
         if patch.new_bytes.len() > MAX_SINGLE_PATCH_BYTES {
             return Err(format!(
                 "Patch at offset 0x{:X} exceeds max patch size ({} bytes).",
-                patch.offset,
-                MAX_SINGLE_PATCH_BYTES
+                patch.offset, MAX_SINGLE_PATCH_BYTES
             ));
         }
         let start = patch.offset as usize;
-        let end = start
-            .checked_add(patch.new_bytes.len())
-            .ok_or_else(|| format!("Patch at offset 0x{:X} overflows usize bounds", patch.offset))?;
+        let end = start.checked_add(patch.new_bytes.len()).ok_or_else(|| {
+            format!(
+                "Patch at offset 0x{:X} overflows usize bounds",
+                patch.offset
+            )
+        })?;
         if end > data.len() {
             return Err(format!(
                 "Patch at offset 0x{:X} + {} bytes exceeds file size {}",
@@ -214,7 +223,7 @@ pub fn get_jump_inversion(path: String, offset: u64) -> Result<JumpInversionResu
     for &(from, to) in JUMP_INVERSIONS_1B {
         if b0 == from {
             let from_name = short_jmp_name(from);
-            let to_name   = short_jmp_name(to);
+            let to_name = short_jmp_name(to);
             return Ok(JumpInversionResult {
                 is_invertible: true,
                 inverted_opcode: vec![to],
@@ -229,7 +238,7 @@ pub fn get_jump_inversion(path: String, offset: u64) -> Result<JumpInversionResu
         for &(from, to) in JUMP_INVERSIONS_2B {
             if b1 == from {
                 let from_name = long_jmp_name(from);
-                let to_name   = long_jmp_name(to);
+                let to_name = long_jmp_name(to);
                 return Ok(JumpInversionResult {
                     is_invertible: true,
                     inverted_opcode: vec![0x0F, to],
@@ -250,28 +259,44 @@ pub fn get_jump_inversion(path: String, offset: u64) -> Result<JumpInversionResu
 
 fn short_jmp_name(opcode: u8) -> &'static str {
     match opcode {
-        0x70 => "JO",  0x71 => "JNO",
-        0x72 => "JB",  0x73 => "JNB",
-        0x74 => "JZ",  0x75 => "JNZ",
-        0x76 => "JBE", 0x77 => "JA",
-        0x78 => "JS",  0x79 => "JNS",
-        0x7A => "JP",  0x7B => "JNP",
-        0x7C => "JL",  0x7D => "JGE",
-        0x7E => "JLE", 0x7F => "JG",
+        0x70 => "JO",
+        0x71 => "JNO",
+        0x72 => "JB",
+        0x73 => "JNB",
+        0x74 => "JZ",
+        0x75 => "JNZ",
+        0x76 => "JBE",
+        0x77 => "JA",
+        0x78 => "JS",
+        0x79 => "JNS",
+        0x7A => "JP",
+        0x7B => "JNP",
+        0x7C => "JL",
+        0x7D => "JGE",
+        0x7E => "JLE",
+        0x7F => "JG",
         _ => "?",
     }
 }
 
 fn long_jmp_name(second_byte: u8) -> &'static str {
     match second_byte {
-        0x80 => "JO",  0x81 => "JNO",
-        0x82 => "JB",  0x83 => "JNB",
-        0x84 => "JZ",  0x85 => "JNZ",
-        0x86 => "JBE", 0x87 => "JA",
-        0x88 => "JS",  0x89 => "JNS",
-        0x8A => "JP",  0x8B => "JNP",
-        0x8C => "JL",  0x8D => "JGE",
-        0x8E => "JLE", 0x8F => "JG",
+        0x80 => "JO",
+        0x81 => "JNO",
+        0x82 => "JB",
+        0x83 => "JNB",
+        0x84 => "JZ",
+        0x85 => "JNZ",
+        0x86 => "JBE",
+        0x87 => "JA",
+        0x88 => "JS",
+        0x89 => "JNS",
+        0x8A => "JP",
+        0x8B => "JNP",
+        0x8C => "JL",
+        0x8D => "JGE",
+        0x8E => "JLE",
+        0x8F => "JG",
         _ => "?",
     }
 }
@@ -311,7 +336,10 @@ mod tests {
 
         let result = export_patched(
             src.to_string_lossy().to_string(),
-            vec![PatchSpec { offset: 0, new_bytes: vec![] }],
+            vec![PatchSpec {
+                offset: 0,
+                new_bytes: vec![],
+            }],
         );
 
         assert!(result.is_err());
@@ -326,7 +354,10 @@ mod tests {
 
         let result = export_patched(
             src.to_string_lossy().to_string(),
-            vec![PatchSpec { offset: 10, new_bytes: vec![0xCC] }],
+            vec![PatchSpec {
+                offset: 10,
+                new_bytes: vec![0xCC],
+            }],
         );
 
         assert!(result.is_err());
@@ -342,8 +373,12 @@ mod tests {
 
         let res = export_patched(
             src.to_string_lossy().to_string(),
-            vec![PatchSpec { offset: 1, new_bytes: vec![0xCC] }],
-        ).expect("patch export should succeed");
+            vec![PatchSpec {
+                offset: 1,
+                new_bytes: vec![0xCC],
+            }],
+        )
+        .expect("patch export should succeed");
 
         let src_after = std::fs::read(&src).expect("read source after");
         assert_eq!(src_after, original);

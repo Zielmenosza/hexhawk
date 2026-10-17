@@ -8,6 +8,8 @@ import {
 } from '../utils/functionIntelligence';
 import { generateFunctionSummary, type FunctionSummary } from '../utils/functionSummary';
 import { runAetherframePatterns } from '../utils/aetherframePatterns';
+import { buildStructuredFunctionView, type StructuredFunctionClaim } from '../utils/structuredFunctionView';
+import { buildFunctionEvidenceDossier } from '../utils/functionDossier';
 
 interface FunctionNotebookProps {
   functionIntelligence: FunctionIntelligence | null;
@@ -62,6 +64,22 @@ function safeFilePart(value: string): string {
 
 function functionFilename(fi: FunctionIntelligence, extension: 'json' | 'md'): string {
   return `function_${safeFilePart(fi.name)}_${fi.address.toString(16)}.${extension}`;
+}
+
+function structuredFunctionFilename(fi: FunctionIntelligence): string {
+  return `structured_function_${safeFilePart(fi.name)}_${fi.address.toString(16)}.json`;
+}
+
+function claimLabelColor(label: StructuredFunctionClaim['label']): string {
+  if (label === 'observed') return '#4dff91';
+  if (label === 'inferred') return '#ffcc66';
+  if (label === 'unresolved') return '#ff6b6b';
+  return '#7aa2f7';
+}
+
+function ClaimLabel({ label }: { label: StructuredFunctionClaim['label'] }) {
+  const color = claimLabelColor(label);
+  return <span style={{ border: `1px solid ${color}66`, color, background: `${color}18`, borderRadius: 4, padding: '0.12rem 0.35rem', fontSize: '0.72rem' }}>{label}</span>;
 }
 
 function EdgeTable({ label, edges }: { label: string; edges: FunctionCallEdge[] }) {
@@ -123,6 +141,9 @@ export function FunctionNotebook({ functionIntelligence }: FunctionNotebookProps
   const fi = functionIntelligence;
   const shownPseudocode = mode === 'annotated' ? fi.pseudocodeAnnotated ?? fi.pseudocode : fi.pseudocode;
   const topBasis = fi.callees[0]?.evidenceBasis ?? 'no-correlation';
+  const structuredView = buildStructuredFunctionView(fi);
+  const functionDossier = buildFunctionEvidenceDossier(fi, structuredView);
+  const visibleClaims = structuredView.claims.slice(0, 8);
 
   async function refreshSummary() {
     setSummary(await generateFunctionSummary(fi, observations));
@@ -189,6 +210,52 @@ export function FunctionNotebook({ functionIntelligence }: FunctionNotebookProps
         <pre>{shownPseudocode ?? 'Run analysis first to see pseudocode'}</pre>
       </section>
 
+      <section aria-labelledby="structured-function-heading">
+        <h3 id="structured-function-heading">Structured Function View <span>(Phase 1 evidence claims)</span></h3>
+        <p>
+          Claims are labelled as observed, inferred, unresolved, or advisory. Each claim carries evidence basis metadata and remains advisory only.
+        </p>
+        <table aria-label="Structured function claims table">
+          <thead><tr><th>Label</th><th>Claim</th><th>Evidence</th><th>Address</th></tr></thead>
+          <tbody>
+            {visibleClaims.map((claim, index) => (
+              <tr key={`${claim.label}-${claim.address ?? 'none'}-${index}`}>
+                <td><ClaimLabel label={claim.label} /></td>
+                <td>{claim.text}</td>
+                <td>{claim.evidenceBasis.join(', ')}</td>
+                <td>{claim.address !== undefined ? hex(claim.address) : 'n/a'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {structuredView.claims.length > visibleClaims.length && <p>{structuredView.claims.length - visibleClaims.length} additional claim(s) included in export.</p>}
+        <p><strong>Authority boundary:</strong> structured claims cannot mutate GYRE verdict labels, verdict decisions, or base confidence.</p>
+      </section>
+
+      <section aria-labelledby="function-dossier-heading" data-testid="function-evidence-dossier">
+        <h3 id="function-dossier-heading">Function Evidence Dossier</h3>
+        <p>
+          Deterministic dossier for the selected function: identity, calls, imports, pseudocode availability, runtime observations, and limitations.
+          It is evidence packaging only, not recovered source and not verdict authority.
+        </p>
+        <div className="metadata-grid">
+          <div className="metadata-row"><span>Function ID</span><span>{functionDossier.functionId}</span></div>
+          <div className="metadata-row"><span>Range</span><span>{hex(functionDossier.addressRange.start)} → {hex(functionDossier.addressRange.end)}</span></div>
+          <div className="metadata-row"><span>Instructions</span><span>{functionDossier.instructionCount}</span></div>
+          <div className="metadata-row"><span>Callers / callees</span><span>{functionDossier.callers.length} / {functionDossier.callees.length}</span></div>
+          <div className="metadata-row"><span>Referenced imports</span><span>{functionDossier.referencedImports.length}</span></div>
+          <div className="metadata-row"><span>Structured claims</span><span>{functionDossier.structuredClaims.total} total · {functionDossier.structuredClaims.observed} observed · {functionDossier.structuredClaims.unresolved} unresolved</span></div>
+          <div className="metadata-row"><span>Pseudocode</span><span>{functionDossier.pseudocode.available ? `${functionDossier.pseudocode.lineCount} advisory line(s)` : 'unavailable'}</span></div>
+          <div className="metadata-row"><span>Runtime observations</span><span>{functionDossier.runtimeObservation.callStackObservations} stack(s), {functionDossier.runtimeObservation.conditionalBreakpointHits} breakpoint hit(s)</span></div>
+        </div>
+        {functionDossier.limitations.length > 0 && (
+          <>
+            <h4>Dossier limits</h4>
+            <ul>{functionDossier.limitations.slice(0, 6).map((limit) => <li key={limit}>{limit}</li>)}</ul>
+          </>
+        )}
+      </section>
+
       <section aria-labelledby="imports-heading">
         <h3 id="imports-heading">Import Calls</h3>
         <table aria-label="Import calls table">
@@ -218,6 +285,8 @@ export function FunctionNotebook({ functionIntelligence }: FunctionNotebookProps
 
       <footer>
         <button type="button" onClick={() => download(functionFilename(fi, 'json'), exportFunctionIntelligenceJSON(fi, { functionSummary: summary ?? undefined }), 'application/json')}>Export JSON</button>
+        <button type="button" onClick={() => download(structuredFunctionFilename(fi), JSON.stringify(structuredView, null, 2), 'application/json')}>Export Structured View JSON</button>
+        <button type="button" onClick={() => download(`function_dossier_${safeFilePart(fi.name)}_${fi.address.toString(16)}.json`, JSON.stringify(functionDossier, null, 2), 'application/json')}>Export Dossier JSON</button>
         <button type="button" onClick={() => download(functionFilename(fi, 'md'), exportFunctionIntelligenceMarkdown(fi, { functionSummary: summary ?? undefined }), 'text/markdown')}>Export Markdown</button>
       </footer>
     </section>

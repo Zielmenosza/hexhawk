@@ -5,6 +5,7 @@
   "identifier": "com.hexhawk.app",
   "build": {
     "beforeBuildCommand": "yarn workspace hexhawk-ui build",
+    "beforeBundleCommand": "node scripts/release/stage-webview2-loader.mjs",
     "beforeDevCommand": "yarn workspace hexhawk-ui dev",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../HexHawk/dist"
@@ -17,17 +18,19 @@
         "height": 860,
         "minWidth": 900,
         "minHeight": 600,
+        "visible": false,
         "resizable": true,
         "fullscreen": false
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: https://asset.localhost; connect-src 'self' ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: asset: https://asset.localhost; connect-src 'self' ipc: http://ipc.localhost"
     }
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis"],
+    "licenseFile": "../LICENSE",
     "icon": [
       "icons/16x16.png",
       "icons/24x24.png",
@@ -40,7 +43,7 @@
       "icons/icon.ico"
     ],
     "shortDescription": "Binary analysis and reverse engineering workbench",
-    "longDescription": "HexHawk is a desktop binary analysis tool with four intelligence engines: NEST convergence analysis, TALON decompilation, STRIKE behavioral analysis, and ECHO cross-binary correlation.",
+    "longDescription": "HexHawk is a bounded Windows static-analysis workbench for authorized PE32/x86 and PE32+/x64 EXE/DLL inputs: file identity, readable text, machine instructions, code paths, a GYRE-owned assessment, NEST evidence lifecycle and report handoff. This unsigned engineering candidate is not release approved or a safety certificate; advanced execution, scripting, plugins, online AI and other formats/platforms are excluded.",
     "copyright": "Copyright © 2026 HexHawk Team",
     "category": "DeveloperTool",
     "createUpdaterArtifacts": false,
@@ -91,16 +94,6 @@
     }
   },
   "plugins": {
-    "dialog": null,
-    "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhENjNBOUQ4MjVGMTJCRTIKUldUaUsvRWwyS2xqamZxWUpsRVRYSUJ6aStXNXVGcHdYVklrQUExRkxZQURIdGJjWGxJWE1qaDUK",
-      "endpoints": [
-        "https://hexhawk.ke/releases/latest.json"
-      ],
-      "dialog": true,
-      "windows": {
-        "installMode": "passive"
-      }
-    }
+    "dialog": null
   }
 }

@@ -96,6 +96,16 @@ describe('FunctionNotebook', () => {
     expect(screen.getByText(/CreateFileW\(path, GENERIC_READ\);/i)).toBeInTheDocument();
   });
 
+  it('renders structured function evidence claims with authority boundary', () => {
+    render(<FunctionNotebook functionIntelligence={makeFi()} />);
+
+    expect(screen.getByRole('heading', { name: /Structured Function View/i })).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: /Structured function claims table/i })).toBeInTheDocument();
+    expect(screen.getAllByText('observed').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/import-table/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/structured claims cannot mutate GYRE verdict/i)).toBeInTheDocument();
+  });
+
   it('Export JSON button triggers a download', () => {
     const { click } = mockDownloadCapture();
     const revokeObjectURL = vi.mocked(URL.revokeObjectURL);
@@ -118,6 +128,20 @@ describe('FunctionNotebook', () => {
     const exported = JSON.parse(await blobs[0].text());
     expect(exported.function_summary.oneLiner).toBe('File read operation');
     expect(exported.function_summary.advisory_only).toBe(true);
+  });
+
+  it('Export Structured View JSON includes evidence claims and no verdict fields', async () => {
+    const { blobs } = mockDownloadCapture();
+
+    render(<FunctionNotebook functionIntelligence={makeFi()} />);
+    fireEvent.click(screen.getByRole('button', { name: /Export Structured View JSON/i }));
+
+    const exported = JSON.parse(await blobs[0].text());
+    expect(exported.schema).toBe('hexhawk.structured_function_view.v1');
+    expect(exported.claims.length).toBeGreaterThan(0);
+    expect(exported.claims.every((claim: { evidenceBasis: string[] }) => claim.evidenceBasis.length > 0)).toBe(true);
+    expect(JSON.stringify(exported)).not.toContain('classification');
+    expect(JSON.stringify(exported)).not.toContain('threatScore');
   });
 
   it('Export Markdown includes summary with advisory label', async () => {

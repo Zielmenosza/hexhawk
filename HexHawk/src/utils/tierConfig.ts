@@ -149,21 +149,26 @@ export function incrementConsoleQueriesUsed(): number {
   return next;
 }
 
-// ─── License key storage ──────────────────────────────────────────────────────
+// ─── License key storage boundary ─────────────────────────────────────────────
 
 const LS_LICENSE_KEY = 'hexhawk.license_key';
 
-/** Persist a validated license key string so it survives app restarts. */
-export function saveLicenseKey(key: string): void {
-  localStorage.setItem(LS_LICENSE_KEY, key);
+/**
+ * License keys are deliberately not persisted in localStorage. Older builds did
+ * store HKHK keys here; clear that legacy slot whenever activation succeeds or
+ * the user deactivates so stale client-held secrets do not linger in the webview.
+ */
+export function saveLicenseKey(_key: string): void {
+  localStorage.removeItem(LS_LICENSE_KEY);
 }
 
-/** Load the stored license key string, or null if none. */
+/** License auto-restore is disabled until public-key entitlement storage lands. */
 export function loadLicenseKey(): string | null {
-  return localStorage.getItem(LS_LICENSE_KEY);
+  localStorage.removeItem(LS_LICENSE_KEY);
+  return null;
 }
 
-/** Remove the stored license key (deactivate). */
+/** Remove any legacy stored license key (deactivate). */
 export function clearLicenseKey(): void {
   localStorage.removeItem(LS_LICENSE_KEY);
 }

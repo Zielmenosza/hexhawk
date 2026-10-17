@@ -1,6 +1,15 @@
 export const MAX_BRIDGE_PATH_LEN = 4096;
 export const MAX_BRIDGE_LIST_ITEMS = 50000;
 
+/** Native evidence must name the inspection it is continuing, never re-hash a
+ * path in the renderer and silently adopt a replacement file's identity. */
+export function requireInspectedSha256(value?: string): string {
+  if (typeof value !== 'string' || !/^[a-f0-9]{64}$/i.test(value)) {
+    throw new Error('A complete inspected SHA-256 is required before native analysis.');
+  }
+  return value;
+}
+
 function assertFiniteInt(value: number, field: string): number {
   if (!Number.isFinite(value) || !Number.isInteger(value)) {
     throw new Error(`Invalid ${field}: expected an integer.`);

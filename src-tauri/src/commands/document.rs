@@ -16,7 +16,9 @@
 
 use serde::Serialize;
 use std::collections::HashSet;
-use std::io::Read;
+use std::io::{Read, Seek, Write};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 // ─── Output types ─────────────────────────────────────────────────────────────
 
@@ -79,17 +81,32 @@ pub struct DocSignal {
 fn scan_js_patterns(js_source: &str) -> Vec<String> {
     // (substring to match, human label)
     const PATTERNS: &[(&str, &str)] = &[
-        ("eval(",              "eval() call — dynamic code execution"),
-        ("unescape(",          "unescape() — often used to de-obfuscate payloads"),
-        ("String.fromCharCode","fromCharCode encoding — obfuscated strings"),
-        ("app.launchURL",      "app.launchURL — URL launch (phishing / drive-by)"),
-        ("this.exportDataObject","exportDataObject — file drop via PDF"),
-        ("util.printf",        "util.printf format-string exploit candidate"),
-        ("getAnnots(",         "getAnnots — heap-spray candidate"),
-        ("media.newPlayer",    "media.newPlayer — historical exploit target"),
-        ("/encode",            "encoding routine — possible obfuscation"),
-        ("\\x",                "hex escape sequences — obfuscated payload"),
-        ("%u",                 "Unicode escape sequences — shellcode candidate"),
+        ("eval(", "eval() call — dynamic code execution"),
+        (
+            "unescape(",
+            "unescape() — often used to de-obfuscate payloads",
+        ),
+        (
+            "String.fromCharCode",
+            "fromCharCode encoding — obfuscated strings",
+        ),
+        (
+            "app.launchURL",
+            "app.launchURL — URL launch (phishing / drive-by)",
+        ),
+        (
+            "this.exportDataObject",
+            "exportDataObject — file drop via PDF",
+        ),
+        ("util.printf", "util.printf format-string exploit candidate"),
+        ("getAnnots(", "getAnnots — heap-spray candidate"),
+        (
+            "media.newPlayer",
+            "media.newPlayer — historical exploit target",
+        ),
+        ("/encode", "encoding routine — possible obfuscation"),
+        ("\\x", "hex escape sequences — obfuscated payload"),
+        ("%u", "Unicode escape sequences — shellcode candidate"),
     ];
     let lower = js_source.to_lowercase();
     PATTERNS
@@ -103,21 +120,36 @@ fn scan_js_patterns(js_source: &str) -> Vec<String> {
 
 fn scan_vba_patterns(source: &str) -> Vec<String> {
     const PATTERNS: &[(&str, &str)] = &[
-        ("AutoOpen",           "AutoOpen — macro runs on document open"),
-        ("Document_Open",      "Document_Open — macro runs on document open"),
-        ("Workbook_Open",      "Workbook_Open — macro runs on workbook open"),
-        ("Auto_Open",          "Auto_Open — macro runs on spreadsheet open"),
-        ("Shell(",             "Shell() — OS command execution"),
-        ("CreateObject(",      "CreateObject — COM object instantiation (common in droppers)"),
-        ("WScript.Shell",      "WScript.Shell — Windows Script Host shell"),
-        ("PowerShell",         "PowerShell invocation from macro"),
-        ("cmd.exe",            "cmd.exe reference — command shell"),
-        ("URLDownloadToFile",  "URLDownloadToFile — file download from macro"),
-        ("Environ(",           "Environ() — environment variable read (host fingerprinting)"),
-        ("Chr(",               "Chr() encoding — obfuscated string construction"),
-        ("\\x",                "hex escape — possible shellcode"),
-        ("Base64",             "Base64 reference — encoded payload"),
-        ("certutil",           "certutil abuse — LOLBin download/decode"),
+        ("AutoOpen", "AutoOpen — macro runs on document open"),
+        (
+            "Document_Open",
+            "Document_Open — macro runs on document open",
+        ),
+        (
+            "Workbook_Open",
+            "Workbook_Open — macro runs on workbook open",
+        ),
+        ("Auto_Open", "Auto_Open — macro runs on spreadsheet open"),
+        ("Shell(", "Shell() — OS command execution"),
+        (
+            "CreateObject(",
+            "CreateObject — COM object instantiation (common in droppers)",
+        ),
+        ("WScript.Shell", "WScript.Shell — Windows Script Host shell"),
+        ("PowerShell", "PowerShell invocation from macro"),
+        ("cmd.exe", "cmd.exe reference — command shell"),
+        (
+            "URLDownloadToFile",
+            "URLDownloadToFile — file download from macro",
+        ),
+        (
+            "Environ(",
+            "Environ() — environment variable read (host fingerprinting)",
+        ),
+        ("Chr(", "Chr() encoding — obfuscated string construction"),
+        ("\\x", "hex escape — possible shellcode"),
+        ("Base64", "Base64 reference — encoded payload"),
+        ("certutil", "certutil abuse — LOLBin download/decode"),
     ];
     let lower = source.to_lowercase();
     PATTERNS
@@ -134,7 +166,10 @@ fn derive_pdf_signals(result: &PdfAnalysisResult) -> Vec<DocSignal> {
 
     if !result.javascript.is_empty() {
         signals.push(DocSignal {
-            label: format!("{} JavaScript block(s) embedded in PDF", result.javascript.len()),
+            label: format!(
+                "{} JavaScript block(s) embedded in PDF",
+                result.javascript.len()
+            ),
             confidence: 85,
             category: "security".into(),
         });
@@ -209,8 +244,7 @@ pub fn analyze_pdf(path: String) -> PdfAnalysisResult {
 }
 
 fn analyze_pdf_inner(path: &str) -> Result<PdfAnalysisResult, String> {
-    let doc = lopdf::Document::load(path)
-        .map_err(|e| format!("lopdf: {e}"))?;
+    let doc = lopdf::Document::load(path).map_err(|e| format!("lopdf: {e}"))?;
 
     let object_count = doc.objects.len();
     let mut javascript: Vec<PdfScript> = Vec::new();
@@ -220,17 +254,35 @@ fn analyze_pdf_inner(path: &str) -> Result<PdfAnalysisResult, String> {
     for (&(id, _gen), obj) in &doc.objects {
         match obj {
             lopdf::Object::Dictionary(dict) => {
-                inspect_pdf_dict(id, dict, &doc, &mut javascript, &mut embedded_files, &mut uri_actions)?;
+                inspect_pdf_dict(
+                    id,
+                    dict,
+                    &doc,
+                    &mut javascript,
+                    &mut embedded_files,
+                    &mut uri_actions,
+                )?;
             }
             lopdf::Object::Stream(stream) => {
-                inspect_pdf_dict(id, &stream.dict, &doc, &mut javascript, &mut embedded_files, &mut uri_actions)?;
+                inspect_pdf_dict(
+                    id,
+                    &stream.dict,
+                    &doc,
+                    &mut javascript,
+                    &mut embedded_files,
+                    &mut uri_actions,
+                )?;
                 // Also try to decode the stream itself if it looks like JS
                 if let Ok(lopdf::Object::Name(subtype)) = stream.dict.get(b"Subtype") {
                     if subtype == b"JavaScript" {
                         if let Some(content) = decode_pdf_stream_content_bounded(stream)? {
                             let source = lossy_utf8(&content);
                             let dangerous_patterns = scan_js_patterns(&source);
-                            javascript.push(PdfScript { object_id: id, source, dangerous_patterns });
+                            javascript.push(PdfScript {
+                                object_id: id,
+                                source,
+                                dangerous_patterns,
+                            });
                         }
                     }
                 }
@@ -275,7 +327,11 @@ fn inspect_pdf_dict(
             let source_opt = extract_js_from_action(dict, doc);
             if let Some(source) = source_opt? {
                 let dangerous_patterns = scan_js_patterns(&source);
-                javascript.push(PdfScript { object_id: id, source, dangerous_patterns });
+                javascript.push(PdfScript {
+                    object_id: id,
+                    source,
+                    dangerous_patterns,
+                });
             }
         }
         if subtype == b"URI" {
@@ -292,7 +348,10 @@ fn inspect_pdf_dict(
     Ok(())
 }
 
-fn extract_js_from_action(dict: &lopdf::Dictionary, doc: &lopdf::Document) -> Result<Option<String>, String> {
+fn extract_js_from_action(
+    dict: &lopdf::Dictionary,
+    doc: &lopdf::Document,
+) -> Result<Option<String>, String> {
     let Ok(js_obj) = dict.get(b"JS") else {
         return Ok(None);
     };
@@ -310,7 +369,13 @@ fn extract_js_from_action(dict: &lopdf::Dictionary, doc: &lopdf::Document) -> Re
 }
 
 fn decode_pdf_stream_content_bounded(stream: &lopdf::Stream) -> Result<Option<Vec<u8>>, String> {
-    if stream.dict.get(b"Subtype").and_then(lopdf::Object::as_name).ok() == Some(b"Image") {
+    if stream
+        .dict
+        .get(b"Subtype")
+        .and_then(lopdf::Object::as_name)
+        .ok()
+        == Some(b"Image".as_slice())
+    {
         return Ok(None);
     }
     if stream.dict.get(b"Filter").is_err() {
@@ -384,20 +449,24 @@ const MAX_OLE2_VBA_STREAM_BYTES: u64 = 16 * 1024 * 1024;
 fn analyze_ooxml(path: &str) -> OfficeAnalysisResult {
     let file = match std::fs::File::open(path) {
         Ok(f) => f,
-        Err(e) => return OfficeAnalysisResult {
-            modules: vec![],
-            signals: vec![],
-            parse_error: Some(format!("open: {e}")),
-        },
+        Err(e) => {
+            return OfficeAnalysisResult {
+                modules: vec![],
+                signals: vec![],
+                parse_error: Some(format!("open: {e}")),
+            }
+        }
     };
 
     let mut archive = match zip::ZipArchive::new(file) {
         Ok(a) => a,
-        Err(e) => return OfficeAnalysisResult {
-            modules: vec![],
-            signals: vec![],
-            parse_error: Some(format!("zip: {e}")),
-        },
+        Err(e) => {
+            return OfficeAnalysisResult {
+                modules: vec![],
+                signals: vec![],
+                parse_error: Some(format!("zip: {e}")),
+            }
+        }
     };
 
     // VBA project bin locations across Word / Excel / PowerPoint
@@ -461,39 +530,118 @@ fn analyze_ooxml(path: &str) -> OfficeAnalysisResult {
             parse_error: None,
         },
         Some(bytes) => {
-            // Write to a temp file and parse as OLE2
-            let tmp_path = std::env::temp_dir().join("hexhawk_vba_tmp.bin");
-            if let Err(e) = std::fs::write(&tmp_path, &bytes) {
+            // Use a unique owner-only temporary file. A fixed shared path allowed
+            // concurrent analyses to overwrite one another and created a local
+            // replacement/symlink boundary before the OLE parser reopened it.
+            let mut tmp = match create_private_temp_file() {
+                Ok(file) => file,
+                Err(e) => {
+                    return OfficeAnalysisResult {
+                        modules: vec![],
+                        signals: vec![],
+                        parse_error: Some(format!("temp create: {e}")),
+                    };
+                }
+            };
+            if let Err(e) = tmp.file_mut().write_all(&bytes) {
                 return OfficeAnalysisResult {
                     modules: vec![],
                     signals: vec![],
                     parse_error: Some(format!("temp write: {e}")),
                 };
             }
-            let tmp_str = tmp_path.to_string_lossy().into_owned();
-            analyze_ole2(&tmp_str)
+            analyze_ole2_file(tmp.file_mut())
         }
     }
 }
 
+static TEMP_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+struct PrivateTempFile {
+    file: Option<std::fs::File>,
+    path: std::path::PathBuf,
+}
+
+impl PrivateTempFile {
+    fn file_mut(&mut self) -> &mut std::fs::File {
+        self.file.as_mut().expect("temporary file remains open")
+    }
+}
+
+impl Drop for PrivateTempFile {
+    fn drop(&mut self) {
+        // Close before removal so cleanup also works on Windows.
+        drop(self.file.take());
+        let _ = std::fs::remove_file(&self.path);
+    }
+}
+
+fn create_private_temp_file() -> std::io::Result<PrivateTempFile> {
+    let root = std::env::temp_dir();
+    for _ in 0..32 {
+        let counter = TEMP_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        let path = root.join(format!(
+            "hexhawk-vba-{}-{nanos}-{counter}.bin",
+            std::process::id()
+        ));
+        match std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(&path)
+        {
+            Ok(file) => {
+                return Ok(PrivateTempFile {
+                    file: Some(file),
+                    path,
+                })
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error),
+        }
+    }
+    Err(std::io::Error::new(
+        std::io::ErrorKind::AlreadyExists,
+        "could not allocate unique VBA temporary file",
+    ))
+}
+
 /// OLE2: use cfb crate to open, walk streams, extract VBA source
 fn analyze_ole2(path: &str) -> OfficeAnalysisResult {
-    let file = match std::fs::File::open(path) {
+    let mut file = match std::fs::File::open(path) {
         Ok(f) => f,
-        Err(e) => return OfficeAnalysisResult {
+        Err(e) => {
+            return OfficeAnalysisResult {
+                modules: vec![],
+                signals: vec![],
+                parse_error: Some(format!("open: {e}")),
+            }
+        }
+    };
+    analyze_ole2_file(&mut file)
+}
+
+fn analyze_ole2_file(file: &mut std::fs::File) -> OfficeAnalysisResult {
+    if let Err(e) = file.rewind() {
+        return OfficeAnalysisResult {
             modules: vec![],
             signals: vec![],
-            parse_error: Some(format!("open: {e}")),
-        },
-    };
-
+            parse_error: Some(format!("rewind: {e}")),
+        };
+    }
     let mut comp = match cfb::CompoundFile::open(file) {
         Ok(c) => c,
-        Err(e) => return OfficeAnalysisResult {
-            modules: vec![],
-            signals: vec![],
-            parse_error: Some(format!("cfb: {e}")),
-        },
+        Err(e) => {
+            return OfficeAnalysisResult {
+                modules: vec![],
+                signals: vec![],
+                parse_error: Some(format!("cfb: {e}")),
+            }
+        }
     };
 
     let mut modules: Vec<VbaModule> = Vec::new();
@@ -562,22 +710,41 @@ fn analyze_ole2(path: &str) -> OfficeAnalysisResult {
         }
 
         let dangerous_patterns = scan_vba_patterns(&source);
-        modules.push(VbaModule { name, source, dangerous_patterns });
+        modules.push(VbaModule {
+            name,
+            source,
+            dangerous_patterns,
+        });
     }
 
     let signals = derive_office_signals(&modules);
-    OfficeAnalysisResult { modules, signals, parse_error: None }
+    OfficeAnalysisResult {
+        modules,
+        signals,
+        parse_error: None,
+    }
 }
 
 fn should_skip_stream(name: &str) -> bool {
     // Skip well-known binary/storage streams that are not VBA source
     matches!(
         name,
-        "__SRP_0" | "__SRP_1" | "__SRP_2" | "__SRP_3"
-        | "_VBA_PROJECT" | "dir" | "PROJECT" | "PROJECTwm"
-        | "SummaryInformation" | "DocumentSummaryInformation"
-        | "CompObj" | "WordDocument" | "Workbook" | "PowerPoint Document"
-        | "1Table" | "0Table"
+        "__SRP_0"
+            | "__SRP_1"
+            | "__SRP_2"
+            | "__SRP_3"
+            | "_VBA_PROJECT"
+            | "dir"
+            | "PROJECT"
+            | "PROJECTwm"
+            | "SummaryInformation"
+            | "DocumentSummaryInformation"
+            | "CompObj"
+            | "WordDocument"
+            | "Workbook"
+            | "PowerPoint Document"
+            | "1Table"
+            | "0Table"
     )
 }
 
@@ -621,7 +788,11 @@ mod tests {
     use std::fs::File;
     use std::io::Write;
 
-    fn write_pdf_with_javascript_stream(path: &std::path::Path, content: Vec<u8>, flate_decode: bool) {
+    fn write_pdf_with_javascript_stream(
+        path: &std::path::Path,
+        content: Vec<u8>,
+        flate_decode: bool,
+    ) {
         use lopdf::{dictionary, Document, Object, Stream};
 
         let mut doc = Document::with_version("1.5");
@@ -655,12 +826,20 @@ mod tests {
     #[test]
     fn analyze_pdf_extracts_small_uncompressed_javascript_stream_reference() {
         let path = std::env::temp_dir().join("hexhawk_small_uncompressed_pdf_js_stream.pdf");
-        write_pdf_with_javascript_stream(&path, b"app.launchURL('https://example.test')".to_vec(), false);
+        write_pdf_with_javascript_stream(
+            &path,
+            b"app.launchURL('https://example.test')".to_vec(),
+            false,
+        );
 
         let result = analyze_pdf(path.to_string_lossy().to_string());
         let _ = std::fs::remove_file(path);
 
-        assert!(result.parse_error.is_none(), "unexpected parse error: {:?}", result.parse_error);
+        assert!(
+            result.parse_error.is_none(),
+            "unexpected parse error: {:?}",
+            result.parse_error
+        );
         assert_eq!(result.javascript.len(), 1);
         assert!(result.javascript[0].source.contains("app.launchURL"));
     }
@@ -674,7 +853,11 @@ mod tests {
         let result = analyze_pdf(path.to_string_lossy().to_string());
         let _ = std::fs::remove_file(path);
 
-        assert!(result.parse_error.is_none(), "unexpected parse error: {:?}", result.parse_error);
+        assert!(
+            result.parse_error.is_none(),
+            "unexpected parse error: {:?}",
+            result.parse_error
+        );
         assert_eq!(result.javascript.len(), 1);
         assert!(result.javascript[0].source.contains("eval("));
     }
@@ -703,7 +886,8 @@ mod tests {
         let mut zip = zip::ZipWriter::new(file);
         let options = zip::write::SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Stored);
-        zip.start_file("word/vbaProject.bin", options).expect("start vba entry");
+        zip.start_file("word/vbaProject.bin", options)
+            .expect("start vba entry");
         let chunk = vec![b'A'; 64 * 1024];
         for _ in 0..257 {
             zip.write_all(&chunk).expect("write oversized vba entry");
@@ -724,10 +908,14 @@ mod tests {
         {
             let mut comp = cfb::create(&path).expect("create ole fixture");
             comp.create_storage_all("/VBA").expect("create vba storage");
-            let mut stream = comp.create_stream("/VBA/OversizedModule").expect("create vba stream");
+            let mut stream = comp
+                .create_stream("/VBA/OversizedModule")
+                .expect("create vba stream");
             let chunk = vec![b'A'; 64 * 1024];
             for _ in 0..257 {
-                stream.write_all(&chunk).expect("write oversized ole stream");
+                stream
+                    .write_all(&chunk)
+                    .expect("write oversized ole stream");
             }
         }
 
@@ -738,5 +926,14 @@ mod tests {
             "expected OLE2 stream size guard, got: {error:?}, modules={}",
             result.modules.len()
         );
+    }
+
+    #[test]
+    fn private_vba_temp_file_is_removed_on_drop() {
+        let tmp = create_private_temp_file().expect("create private temp file");
+        let path = tmp.path.clone();
+        assert!(path.exists());
+        drop(tmp);
+        assert!(!path.exists());
     }
 }

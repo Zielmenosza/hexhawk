@@ -27,6 +27,7 @@ export interface NestBackend {
     path:   string,
     offset: number,
     length: number,
+    expectedSha256?: string,
   ): Promise<DisassemblyResult>;
 
   /** Build a control-flow graph for a byte range. */
@@ -34,6 +35,7 @@ export interface NestBackend {
     path:   string,
     offset: number,
     length: number,
+    expectedSha256?: string,
   ): Promise<CfgGraph>;
 
   /** Read file metadata: PE headers, imports, sections, hashes. */

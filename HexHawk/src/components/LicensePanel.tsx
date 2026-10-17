@@ -1,5 +1,6 @@
 // HexHawk/src/components/LicensePanel.tsx
-// License activation modal — enter a HKHK-… key to unlock Pro/Enterprise tier.
+// License activation modal. Legacy HKHK keys are disabled until the verifier is
+// backed by public-key entitlements rather than client-held signing material.
 
 import React, { useState } from 'react';
 import type { LicenseInfo } from '../utils/tauriLicense';
@@ -93,7 +94,7 @@ const LicensePanel: React.FC<LicensePanelProps> = ({
           {isTrial && (
             <div className="license-trial-notice">
               This is a <strong>Trial Edition</strong> binary. License activation is disabled.
-              Download the full installer to activate a license.
+              Use an approved issuer-signed entitlement build when activation becomes available.
             </div>
           )}
 
@@ -120,6 +121,7 @@ const LicensePanel: React.FC<LicensePanelProps> = ({
           {!activeLicense && !isTrial && (
             <div className="license-none-notice">
               No license key activated. Running with manually-selected tier.
+              Activation remains unavailable until public-key entitlement verification is implemented.
             </div>
           )}
         </div>
@@ -135,7 +137,7 @@ const LicensePanel: React.FC<LicensePanelProps> = ({
                 id="license-key-input"
                 className="license-key-input"
                 type="text"
-                placeholder="HKHK-XXXXX-XXXXX-XXXXX-XXXXX"
+                placeholder="Issuer-signed entitlement"
                 value={keyInput}
                 onChange={(e) => {
                   setKeyInput(e.target.value.toUpperCase());
@@ -163,7 +165,8 @@ const LicensePanel: React.FC<LicensePanelProps> = ({
             )}
 
             <p className="license-help-text">
-              Keys are validated offline. Format: <code>HKHK-XXXXX-XXXXX-XXXXX-XXXXX</code>
+              Legacy offline HKHK keys are disabled because they depended on client-held signing
+              material. No universal owner or tester bypass key is embedded in this client.
             </p>
           </div>
         )}

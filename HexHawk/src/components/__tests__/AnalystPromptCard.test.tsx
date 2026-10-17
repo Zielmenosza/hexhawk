@@ -8,8 +8,10 @@ describe('AnalystPromptCard', () => {
     render(<AnalystPromptCard prompt={getAnalystPrompt('after-inspect')} onDismiss={vi.fn()} />);
 
     expect(screen.getByRole('complementary', { name: /What imports does this binary use/i })).toBeInTheDocument();
+    expect(screen.getByTestId('analyst-prompt-card')).toHaveClass('analyst-prompt-card');
     expect(screen.getByText(/Why it matters:/i)).toBeInTheDocument();
     expect(screen.getByText(/Suggested action:/i)).toBeInTheDocument();
+    expect(screen.getByTestId('analyst-prompt-card').querySelector('details')).not.toHaveAttribute('open');
   });
 
   it('dismiss removes the prompt through parent callback', () => {

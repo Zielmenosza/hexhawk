@@ -1,4 +1,5 @@
 import type { BinaryVerdictResult } from './correlationEngine';
+import { createHash } from 'node:crypto';
 import type { NestSession, NestSummary, NestIterationSnapshot } from './nestEngine';
 import {
   NEST_EVIDENCE_DEFAULT_SCHEMA_VERSION,
@@ -249,7 +250,7 @@ export function buildNestEvidenceBundleFromSession(input: NestEvidenceBuildInput
   const finalIterationId = `nestiter_${ulid}_${String(snapshots.length).padStart(4, '0')}`;
 
   const manifestFiles = [
-    { name: 'manifest.json', required: true },
+
     { name: 'binary_identity.json', required: true },
     { name: 'session.json', required: true },
     { name: 'iterations.json', required: true },
@@ -318,8 +319,8 @@ export function buildNestEvidenceBundleFromSession(input: NestEvidenceBuildInput
       binary_sha256: input.binarySha256,
       hashes: {
         sha256: input.binarySha256,
-        sha1: input.binarySha1 ?? pseudoHashHex(input.binarySha256 + 'sha1').slice(0, 40),
-        md5: input.binaryMd5 ?? pseudoHashHex(input.binarySha256 + 'md5').slice(0, 32),
+        sha1: input.binarySha1!,
+        md5: input.binaryMd5!,
       },
       file_size_bytes: input.fileSizeBytes,
       format: input.format,
@@ -488,6 +489,18 @@ export function buildNestEvidenceBundleFromSession(input: NestEvidenceBuildInput
       : undefined,
   };
 
+  if (!input.binarySha1 || !/^[a-f0-9]{40}$/.test(input.binarySha1)
+    || !input.binaryMd5 || !/^[a-f0-9]{32}$/.test(input.binaryMd5)) {
+    throw new Error('Observed SHA-1 and MD5 are required; supplementary binary hashes cannot be invented.');
+  }
+  const payloads = toNestEvidenceFileMap(bundle);
+  for (const file of bundle.manifest.files) {
+    const value = payloads[file.name as keyof NestEvidenceFileMap];
+    if (value === undefined) throw new Error(`Missing manifest payload: ${file.name}`);
+    const bytes = Buffer.from(JSON.stringify(value, null, 2), 'utf8');
+    file.bytes = bytes.byteLength;
+    file.sha256 = createHash('sha256').update(bytes).digest('hex');
+  }
   return bundle;
 }
 
@@ -510,6 +523,24 @@ export function toNestEvidenceFileMap(bundle: NestEvidenceBundle): NestEvidenceF
     'audit_refs.json': bundle.audit_refs,
     ...(bundle.runtime_proof ? { 'runtime_proof.json': bundle.runtime_proof } : {}),
   };
+}
+
+/** Exact UTF-8 disk bytes; the manifest's own digest is an external sidecar. */
+export function serializeNestEvidenceFileMap(bundle: NestEvidenceBundle): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const [name, value] of Object.entries(toNestEvidenceFileMap(bundle))) {
+    files[name] = JSON.stringify(value, null, 2);
+  }
+  for (const payload of bundle.manifest.files) {
+    if (payload.name === 'manifest.json') throw new Error('Manifest self-checksums are not supported.');
+    const content = files[payload.name];
+    if (content === undefined || Buffer.byteLength(content, 'utf8') !== payload.bytes
+      || createHash('sha256').update(content, 'utf8').digest('hex') !== payload.sha256) {
+      throw new Error(`Payload custody changed before export: ${payload.name}`);
+    }
+  }
+  files['manifest.sha256'] = `${createHash('sha256').update(files['manifest.json'], 'utf8').digest('hex')}  manifest.json\n`;
+  return files;
 }
 
 function collectIssues(result: NestValidationResult<unknown>, issues: NestValidationIssue[]): void {

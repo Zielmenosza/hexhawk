@@ -52,7 +52,10 @@ fn make_session_id() -> String {
     Alphanumeric.sample_string(&mut rand::thread_rng(), 24)
 }
 
-fn with_session<T>(session_id: &str, f: impl FnOnce(Arc<Mutex<ReplSessionState>>) -> Result<T, String>) -> Result<T, String> {
+fn with_session<T>(
+    session_id: &str,
+    f: impl FnOnce(Arc<Mutex<ReplSessionState>>) -> Result<T, String>,
+) -> Result<T, String> {
     let sessions = REPL_SESSIONS
         .lock()
         .map_err(|_| "REPL session registry is unavailable".to_string())?;
@@ -97,27 +100,29 @@ fn register_analysis_fns(engine: &mut Engine, session: Arc<Mutex<ReplSessionStat
     });
 
     let session_for_store = Arc::clone(&session);
-    engine.register_fn("store", move |key: String, value: Dynamic| -> Result<(), Box<EvalAltResult>> {
-        let json = dynamic_to_json(value)?;
-        let mut state = session_for_store
-            .lock()
-            .map_err(|_| runtime_error("REPL session is unavailable"))?;
-        state.stored.insert(key, json);
-        Ok(())
-    });
+    engine.register_fn(
+        "store",
+        move |key: String, value: Dynamic| -> Result<(), Box<EvalAltResult>> {
+            let json = dynamic_to_json(value)?;
+            let mut state = session_for_store
+                .lock()
+                .map_err(|_| runtime_error("REPL session is unavailable"))?;
+            state.stored.insert(key, json);
+            Ok(())
+        },
+    );
 
     let session_for_load = Arc::clone(&session);
-    engine.register_fn("load", move |key: String| -> Result<Dynamic, Box<EvalAltResult>> {
-        let state = session_for_load
-            .lock()
-            .map_err(|_| runtime_error("REPL session is unavailable"))?;
-        let value = state
-            .stored
-            .get(&key)
-            .cloned()
-            .unwrap_or(Value::Null);
-        json_to_dynamic(value)
-    });
+    engine.register_fn(
+        "load",
+        move |key: String| -> Result<Dynamic, Box<EvalAltResult>> {
+            let state = session_for_load
+                .lock()
+                .map_err(|_| runtime_error("REPL session is unavailable"))?;
+            let value = state.stored.get(&key).cloned().unwrap_or(Value::Null);
+            json_to_dynamic(value)
+        },
+    );
 
     let session_for_keys = Arc::clone(&session);
     engine.register_fn("keys", move || -> rhai::Array {
@@ -131,17 +136,19 @@ fn register_analysis_fns(engine: &mut Engine, session: Arc<Mutex<ReplSessionStat
     });
 
     let session_for_run = Arc::clone(&session);
-    engine.register_fn("run", move |op: String, params: Map| -> Result<Dynamic, Box<EvalAltResult>> {
-        let params_value = dynamic_to_json(Dynamic::from_map(params))?;
-        let path = session_for_run
-            .lock()
-            .map_err(|_| runtime_error("REPL session is unavailable"))?
-            .path
-            .clone();
-        let result = call_script_op(&path, &op, params_value)
-            .map_err(runtime_error)?;
-        json_to_dynamic(result)
-    });
+    engine.register_fn(
+        "run",
+        move |op: String, params: Map| -> Result<Dynamic, Box<EvalAltResult>> {
+            let params_value = dynamic_to_json(Dynamic::from_map(params))?;
+            let path = session_for_run
+                .lock()
+                .map_err(|_| runtime_error("REPL session is unavailable"))?
+                .path
+                .clone();
+            let result = call_script_op(&path, &op, params_value).map_err(runtime_error)?;
+            json_to_dynamic(result)
+        },
+    );
 
     let session_for_file_size = Arc::clone(&session);
     engine.register_fn("file_size", move || -> Result<i64, Box<EvalAltResult>> {
@@ -159,27 +166,30 @@ fn register_analysis_fns(engine: &mut Engine, session: Arc<Mutex<ReplSessionStat
     });
 
     let session_for_hex = Arc::clone(&session);
-    engine.register_fn("hex", move |offset: i64, length: i64| -> Result<String, Box<EvalAltResult>> {
-        let path = session_for_hex
-            .lock()
-            .map_err(|_| runtime_error("REPL session is unavailable"))?
-            .path
-            .clone();
-        let value = call_script_op(
-            &path,
-            "hex",
-            serde_json::json!({
-                "offset": offset.max(0) as u64,
-                "length": length.max(0) as u64,
-            }),
-        )
-        .map_err(runtime_error)?;
-        value
-            .get("hex")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .ok_or_else(|| runtime_error("hex result missing formatted bytes"))
-    });
+    engine.register_fn(
+        "hex",
+        move |offset: i64, length: i64| -> Result<String, Box<EvalAltResult>> {
+            let path = session_for_hex
+                .lock()
+                .map_err(|_| runtime_error("REPL session is unavailable"))?
+                .path
+                .clone();
+            let value = call_script_op(
+                &path,
+                "hex",
+                serde_json::json!({
+                    "offset": offset.max(0) as u64,
+                    "length": length.max(0) as u64,
+                }),
+            )
+            .map_err(runtime_error)?;
+            value
+                .get("hex")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .ok_or_else(|| runtime_error("hex result missing formatted bytes"))
+        },
+    );
 
     let session_for_strings = Arc::clone(&session);
     engine.register_fn("strings", move || -> Result<Dynamic, Box<EvalAltResult>> {
@@ -206,40 +216,49 @@ fn register_analysis_fns(engine: &mut Engine, session: Arc<Mutex<ReplSessionStat
     });
 
     let session_for_sections = Arc::clone(&session);
-    engine.register_fn("section_map", move || -> Result<Dynamic, Box<EvalAltResult>> {
-        let path = session_for_sections
-            .lock()
-            .map_err(|_| runtime_error("REPL session is unavailable"))?
-            .path
-            .clone();
-        let value = call_script_op(&path, "section_map", Value::Object(Default::default()))
-            .map_err(runtime_error)?;
-        json_to_dynamic(value)
-    });
+    engine.register_fn(
+        "section_map",
+        move || -> Result<Dynamic, Box<EvalAltResult>> {
+            let path = session_for_sections
+                .lock()
+                .map_err(|_| runtime_error("REPL session is unavailable"))?
+                .path
+                .clone();
+            let value = call_script_op(&path, "section_map", Value::Object(Default::default()))
+                .map_err(runtime_error)?;
+            json_to_dynamic(value)
+        },
+    );
 
     let session_for_disasm_2 = Arc::clone(&session);
-    engine.register_fn("disasm", move |offset: i64, length: i64| -> Result<Dynamic, Box<EvalAltResult>> {
-        let path = session_for_disasm_2
-            .lock()
-            .map_err(|_| runtime_error("REPL session is unavailable"))?
-            .path
-            .clone();
-        let value = call_script_op(
-            &path,
-            "disassemble",
-            serde_json::json!({
-                "offset": offset.max(0) as u64,
-                "length": length.max(0) as u64,
-            }),
-        )
-        .map_err(runtime_error)?;
-        json_to_dynamic(value)
-    });
+    engine.register_fn(
+        "disasm",
+        move |offset: i64, length: i64| -> Result<Dynamic, Box<EvalAltResult>> {
+            let path = session_for_disasm_2
+                .lock()
+                .map_err(|_| runtime_error("REPL session is unavailable"))?
+                .path
+                .clone();
+            let value = call_script_op(
+                &path,
+                "disassemble",
+                serde_json::json!({
+                    "offset": offset.max(0) as u64,
+                    "length": length.max(0) as u64,
+                }),
+            )
+            .map_err(runtime_error)?;
+            json_to_dynamic(value)
+        },
+    );
 
     let session_for_disasm_3 = Arc::clone(&session);
     engine.register_fn(
         "disasm",
-        move |offset: i64, length: i64, max_instructions: i64| -> Result<Dynamic, Box<EvalAltResult>> {
+        move |offset: i64,
+              length: i64,
+              max_instructions: i64|
+              -> Result<Dynamic, Box<EvalAltResult>> {
             let path = session_for_disasm_3
                 .lock()
                 .map_err(|_| runtime_error("REPL session is unavailable"))?
@@ -260,16 +279,23 @@ fn register_analysis_fns(engine: &mut Engine, session: Arc<Mutex<ReplSessionStat
     );
 
     let session_for_find = Arc::clone(&session);
-    engine.register_fn("find_bytes", move |pattern: String| -> Result<Dynamic, Box<EvalAltResult>> {
-        let path = session_for_find
-            .lock()
-            .map_err(|_| runtime_error("REPL session is unavailable"))?
-            .path
-            .clone();
-        let value = call_script_op(&path, "find_bytes", serde_json::json!({ "pattern": pattern }))
+    engine.register_fn(
+        "find_bytes",
+        move |pattern: String| -> Result<Dynamic, Box<EvalAltResult>> {
+            let path = session_for_find
+                .lock()
+                .map_err(|_| runtime_error("REPL session is unavailable"))?
+                .path
+                .clone();
+            let value = call_script_op(
+                &path,
+                "find_bytes",
+                serde_json::json!({ "pattern": pattern }),
+            )
             .map_err(runtime_error)?;
-        json_to_dynamic(value)
-    });
+            json_to_dynamic(value)
+        },
+    );
 
     let session_for_find_limit = Arc::clone(&session);
     engine.register_fn(
@@ -294,16 +320,23 @@ fn register_analysis_fns(engine: &mut Engine, session: Arc<Mutex<ReplSessionStat
     );
 
     let session_for_xref = Arc::clone(&session);
-    engine.register_fn("xref_to", move |address: i64| -> Result<Dynamic, Box<EvalAltResult>> {
-        let path = session_for_xref
-            .lock()
-            .map_err(|_| runtime_error("REPL session is unavailable"))?
-            .path
-            .clone();
-        let value = call_script_op(&path, "xref_to", serde_json::json!({ "address": address.max(0) as u64 }))
+    engine.register_fn(
+        "xref_to",
+        move |address: i64| -> Result<Dynamic, Box<EvalAltResult>> {
+            let path = session_for_xref
+                .lock()
+                .map_err(|_| runtime_error("REPL session is unavailable"))?
+                .path
+                .clone();
+            let value = call_script_op(
+                &path,
+                "xref_to",
+                serde_json::json!({ "address": address.max(0) as u64 }),
+            )
             .map_err(runtime_error)?;
-        json_to_dynamic(value)
-    });
+            json_to_dynamic(value)
+        },
+    );
 
     let session_for_xref_limit = Arc::clone(&session);
     engine.register_fn(
@@ -328,21 +361,28 @@ fn register_analysis_fns(engine: &mut Engine, session: Arc<Mutex<ReplSessionStat
     );
 
     let session_for_entropy = Arc::clone(&session);
-    engine.register_fn("entropy", move |offset: i64, length: i64| -> Result<Dynamic, Box<EvalAltResult>> {
-        let path = session_for_entropy
-            .lock()
-            .map_err(|_| runtime_error("REPL session is unavailable"))?
-            .path
-            .clone();
-        let bytes = crate::commands::hex::read_hex_range(path, offset.max(0) as u64, length.max(0) as usize)
+    engine.register_fn(
+        "entropy",
+        move |offset: i64, length: i64| -> Result<Dynamic, Box<EvalAltResult>> {
+            let path = session_for_entropy
+                .lock()
+                .map_err(|_| runtime_error("REPL session is unavailable"))?
+                .path
+                .clone();
+            let bytes = crate::commands::hex::read_hex_range(
+                path,
+                offset.max(0) as u64,
+                length.max(0) as usize,
+            )
             .map_err(runtime_error)?;
-        json_to_dynamic(serde_json::json!({
-            "offset": offset.max(0) as u64,
-            "bytes_sampled": bytes.len(),
-            "entropy": shannon_entropy(&bytes),
-            "interpretation": classify_entropy(shannon_entropy(&bytes)),
-        }))
-    });
+            json_to_dynamic(serde_json::json!({
+                "offset": offset.max(0) as u64,
+                "bytes_sampled": bytes.len(),
+                "entropy": shannon_entropy(&bytes),
+                "interpretation": classify_entropy(shannon_entropy(&bytes)),
+            }))
+        },
+    );
 }
 
 fn session_info(session_id: String, state: &ReplSessionState) -> ReplSessionInfo {
@@ -358,8 +398,7 @@ fn session_info(session_id: String, state: &ReplSessionState) -> ReplSessionInfo
 
 #[tauri::command]
 pub fn create_repl_session(request: CreateReplSessionRequest) -> Result<ReplSessionInfo, String> {
-    std::fs::metadata(&request.path)
-        .map_err(|_| format!("File not found: {}", request.path))?;
+    std::fs::metadata(&request.path).map_err(|_| format!("File not found: {}", request.path))?;
 
     let session_id = make_session_id();
     let session = Arc::new(Mutex::new(ReplSessionState {

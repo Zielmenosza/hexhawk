@@ -67,7 +67,7 @@ export default function ActionBar({
     actions = [
       { label: 'Disassemble', detail: 'Turn code bytes into instructions so you can follow calls, jumps, and references.', icon: '⊞', primary: !hasDisassembly, onClick: onDisassemble, disabled: disassemblyLoading },
       { label: 'Build CFG', detail: 'Draw the branch map: basic blocks, exits, loops, and decision points.', icon: '⬡', primary: !hasCfg, onClick: onBuildCfg },
-      { label: 'Scan Strings', detail: 'Extract readable text such as URLs, paths, registry keys, APIs, and domains.', icon: '𝕊', onClick: onScanStrings },
+      { label: 'Scan Strings', detail: 'Extract readable text such as URLs, paths, registry keys, APIs, and domains.', icon: 'S', onClick: onScanStrings },
       { label: 'Run Analysis', detail: 'Run the usual first-pass sequence and open the verdict when evidence is ready.', icon: '⚡', primary: !hasVerdict, onClick: onRunAnalysis },
     ];
   } else if (workflowState === 'analyzed') {

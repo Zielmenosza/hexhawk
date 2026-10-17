@@ -37,11 +37,11 @@ describe('AiInsightPanel', () => {
     expect(within(card).getByText('File read operation')).toBeInTheDocument();
     expect(within(card).getByText(/appears to open a file for reading/i)).toBeInTheDocument();
     expect(within(card).getByText('import prototype: CreateFileW + GENERIC_READ')).toBeInTheDocument();
-    expect(within(card).getByText('Source: AETHERFRAME static pattern')).toBeInTheDocument();
+    expect(within(card).getByText(/Static analysis helper/)).toBeInTheDocument();
     expect(within(card).getByText('high')).toBeInTheDocument();
     expect(within(card).getByText('function_401000')).toBeInTheDocument();
     expect(within(card).getByText('0x401000')).toBeInTheDocument();
-    expect(within(card).getByText(/GYRE remains the sole verdict authority/i)).toBeInTheDocument();
+    expect(within(card).getByText(/does not change the file assessment/i)).toBeInTheDocument();
   });
 
   it('accept button sets accepted true and removes from visible list after parent update', () => {
@@ -108,9 +108,9 @@ describe('AiInsightPanel', () => {
     expect(screen.getByTestId('ai-observation-obs-1')).toHaveClass('ai-observation-card--static');
   });
 
-  it('suspicious and technique cards show explicit not-verdict language', () => {
+  it('suspicious and technique cards show explicit verify-first language', () => {
     render(<AiInsightPanel observations={[obs({ kind: 'suspicious-pattern' })]} />);
 
-    expect(screen.getByText(/Not a verdict. GYRE decides verdicts./i)).toBeInTheDocument();
+    expect(screen.getByText(/Treat it as a prompt to verify, not a final conclusion./i)).toBeInTheDocument();
   });
 });

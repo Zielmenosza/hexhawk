@@ -13,6 +13,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import {
   summarizeSession,
+  assessConvergence,
   computeWorkSaved,
   DEFAULT_NEST_CONFIG,
   type NestConfig,
@@ -72,6 +73,10 @@ import type {
 } from '../App';
 import { WorkSavedPanel } from './WorkSavedPanel';
 import type { BinaryVerdictResult } from '../utils/correlationEngine';
+import {
+  NestLifecycleCoordinator,
+  type NestLifecycleWork,
+} from '../utils/gyreSnapshotClient';
 import type { StrikeCorrelationSignal } from '../utils/strikeEngine';
 import {
   CURATED_TRAINING_BINARIES,
@@ -714,6 +719,7 @@ function TrainingHistoryPanel({ records, stats, onClose }: {
 
 interface NestViewProps {
   binaryPath:           string;
+  gyreSnapshotId:       string | null;
   metadata:             FileMetadata | null;
   disassembly:          DisassembledInstruction[];
   strings:              StringMatch[];
@@ -943,6 +949,11 @@ function confidenceColor(c: number): string {
   return '#9e9e9e';
 }
 
+function clampPercent(value: number | null | undefined): number {
+  if (!Number.isFinite(value ?? NaN)) return 0;
+  return Math.max(0, Math.min(100, Math.round(value ?? 0)));
+}
+
 function verdictColor(v: string): string {
   const l = v.toLowerCase();
   if (l.includes('malicious')) return '#f44336';
@@ -981,23 +992,25 @@ const ActionBadge: React.FC<{ action: NestRefinementAction }> = ({ action }) => 
 const ConfidenceBar: React.FC<{ value: number; prev?: number; compact?: boolean }> = ({
   value, prev, compact,
 }) => {
-  const delta = prev != null ? value - prev : null;
+  const displayValue = clampPercent(value);
+  const displayPrev = prev != null ? clampPercent(prev) : null;
+  const delta = displayPrev != null ? displayValue - displayPrev : null;
   return (
     <div className={`nest-conf-bar-wrap${compact ? ' compact' : ''}`}>
       <div className="nest-conf-track">
         <div
           className="nest-conf-fill"
-          style={{ width: `${value}%`, background: confidenceColor(value) }}
+          style={{ width: `${displayValue}%`, background: confidenceColor(displayValue) }}
         />
-        {prev != null && (
+        {displayPrev != null && (
           <div
             className="nest-conf-prev-marker"
-            style={{ left: `${prev}%` }}
+            style={{ left: `${displayPrev}%` }}
           />
         )}
       </div>
-      <span className="nest-conf-label" style={{ color: confidenceColor(value) }}>
-        {value}%
+      <span className="nest-conf-label" style={{ color: confidenceColor(displayValue) }}>
+        {displayValue}%
       </span>
       {delta != null && delta !== 0 && (
         <span className={`nest-conf-delta ${delta > 0 ? 'positive' : 'negative'}`}>
@@ -1100,25 +1113,27 @@ const ConvergenceChart: React.FC<{
   width?:      number;
   height?:     number;
 }> = ({ progression, threshold, width = 360, height = 110 }) => {
+  const boundedProgression = progression.map(clampPercent);
+  const boundedThreshold = clampPercent(threshold);
   const w = width, h = height, padL = 28, padR = 36, padT = 10, padB = 22;
   const chartW = w - padL - padR;
   const chartH = h - padT - padB;
 
-  if (progression.length === 0) return null;
+  if (boundedProgression.length === 0) return null;
 
   // With a single point render a stub line
-  const pts = progression.length === 1
-    ? [{ x: padL, y: padT + chartH - progression[0] / 100 * chartH }]
-    : progression.map((c, i) => ({
-        x: padL + (i / (progression.length - 1)) * chartW,
+  const pts = boundedProgression.length === 1
+    ? [{ x: padL, y: padT + chartH - boundedProgression[0] / 100 * chartH }]
+    : boundedProgression.map((c, i) => ({
+        x: padL + (i / (boundedProgression.length - 1)) * chartW,
         y: padT + chartH - (c / 100) * chartH,
       }));
 
-  const thresholdY = padT + chartH - (threshold / 100) * chartH;
+  const thresholdY = padT + chartH - (boundedThreshold / 100) * chartH;
   const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
 
   // Area fill path
-  const areaD = progression.length >= 2
+  const areaD = boundedProgression.length >= 2
     ? `${pathD} L ${pts[pts.length - 1].x.toFixed(1)} ${(padT + chartH).toFixed(1)} L ${padL} ${(padT + chartH).toFixed(1)} Z`
     : '';
 
@@ -1148,13 +1163,13 @@ const ConvergenceChart: React.FC<{
       <line x1={padL} y1={thresholdY} x2={padL + chartW} y2={thresholdY}
         stroke="#4caf5066" strokeWidth="1" strokeDasharray="4 3" />
       <text x={padL + chartW + 3} y={thresholdY + 4}
-        fill="#4caf50" fontSize="9">{threshold}%</text>
+        fill="#4caf50" fontSize="9">{boundedThreshold}%</text>
 
       {/* Area fill */}
       {areaD && <path d={areaD} fill="url(#confGrad)" />}
 
       {/* Confidence line */}
-      {progression.length >= 2 && (
+      {boundedProgression.length >= 2 && (
         <path d={pathD} fill="none" stroke="#7c4dff" strokeWidth="2" strokeLinejoin="round" />
       )}
 
@@ -1162,7 +1177,7 @@ const ConvergenceChart: React.FC<{
       {pts.map((p, i) => (
         <g key={i}>
           <circle cx={p.x} cy={p.y} r={4}
-            fill={confidenceColor(progression[i])}
+            fill={confidenceColor(boundedProgression[i])}
             stroke="#10101c" strokeWidth="1.5" />
           <text x={p.x} y={padT + chartH + 13}
             fill="#556688" fontSize="8.5" textAnchor="middle">
@@ -1170,10 +1185,13 @@ const ConvergenceChart: React.FC<{
           </text>
           {/* Tooltip-style label on last point */}
           {i === pts.length - 1 && (
-            <text x={p.x} y={p.y - 7}
-              fill={confidenceColor(progression[i])} fontSize="9" textAnchor="middle"
+            <text
+              x={boundedProgression.length === 1 ? p.x + 12 : p.x}
+              y={boundedProgression.length === 1 ? Math.max(p.y - 2, padT + 8) : p.y - 7}
+              fill={confidenceColor(boundedProgression[i])} fontSize="9"
+              textAnchor={boundedProgression.length === 1 ? 'start' : 'middle'}
               fontWeight="700">
-              {progression[i]}%
+              {boundedProgression[i]}%
             </text>
           )}
         </g>
@@ -2083,6 +2101,7 @@ const NestView: React.FC<NestViewProps> = ({
   onLoadTrainingBinary,
   onNestComplete,
   binaryPath,
+  gyreSnapshotId,
   metadata,
   disassembly: initialDisassembly,
   strings,
@@ -2126,6 +2145,30 @@ const NestView: React.FC<NestViewProps> = ({
   // M13: Backend NEST lifecycle session tracking
   const [lifecycleSummary, setLifecycleSummary] = useState<{ sessionId: string; binarySha256: string; iterationCount: number } | null>(null);
   const lifecycleSessionIdRef = useRef<string | null>(null);
+  const lifecycleCoordinatorRef = useRef(new NestLifecycleCoordinator<NestStepResult>());
+
+  // Synchronously invalidate old callbacks on a selection change. The effect
+  // clears presentation; already-entered native work still owns its settlement.
+  const selectionOwner = useRef({ path: binaryPath, sha: metadata?.sha256, epoch: 0 });
+  if (selectionOwner.current.path !== binaryPath || selectionOwner.current.sha !== metadata?.sha256) {
+    selectionOwner.current = { path: binaryPath, sha: metadata?.sha256, epoch: selectionOwner.current.epoch + 1 };
+    stopRef.current = true;
+  }
+  useEffect(() => {
+    runnerRef.current = null;
+    sessRef.current = null;
+    lifecycleSessionIdRef.current = null;
+    lifecycleCoordinatorRef.current.reset();
+    setSession(null);
+    setSummary(null);
+    setSelectedIter(null);
+    setLifecycleSummary(null);
+    setIsRunning(false);
+    setError(null);
+    setIterDecisions([]);
+    setCurrentStrategyPlan(null);
+  }, [binaryPath, metadata?.sha256]);
+  useEffect(() => () => { selectionOwner.current.epoch += 1; stopRef.current = true; }, []);
 
   // ── Multi-binary batch state ───────────────────────────────────────────────
   const [showBatchPanel,  setShowBatchPanel]  = useState(false);
@@ -2172,77 +2215,127 @@ const NestView: React.FC<NestViewProps> = ({
   // ── Single iteration pass ───────────────────────────────────────────────
 
   const handleStep = useCallback(async (): Promise<boolean> => {
+    const epoch = selectionOwner.current.epoch;
+    const assertOwner = () => {
+      if (selectionOwner.current.epoch !== epoch) throw new Error('NEST selection changed while work was pending.');
+      if (stopRef.current) {
+        const error = new Error('NEST operation cancelled'); error.name = 'AbortError'; throw error;
+      }
+    };
+    assertOwner();
     const runner = runnerRef.current;
     if (!runner || !binaryPath) return false;
 
-    // M13 fidelity gate: verify binary identity before each iteration
     const lcSessionId = lifecycleSessionIdRef.current;
-    if (lcSessionId) {
-      try {
-        const identityCheck = await invoke<{ verified: boolean; mismatch: boolean; message: string }>('nest_verify_binary_identity', {
-          sessionId: lcSessionId,
-          binaryPath,
-        });
-        if (identityCheck.mismatch) {
-          setError(`NEST fidelity gate: ${identityCheck.message}`);
-          return false;
+    if (!lcSessionId) throw new Error('NEST fidelity gate: a native lifecycle session is required.');
+    const createWork = async (): Promise<NestLifecycleWork<NestStepResult>> => {
+      // M13 fidelity gate: verify binary identity before creating each logical iteration.
+      let fileIdentityLocked = false;
+      if (lcSessionId) {
+        try {
+          const identityCheck = await invoke<{ verified: boolean; mismatch: boolean; message: string } | null>('nest_verify_binary_identity', {
+            sessionId: lcSessionId,
+            binaryPath,
+          });
+          assertOwner();
+          if (identityCheck?.verified !== true || identityCheck.mismatch !== false) {
+            throw new Error(identityCheck?.message || 'Binary identity was not affirmatively verified.');
+          }
+          fileIdentityLocked = true;
+        } catch (identityError) {
+          if (identityError instanceof Error && identityError.name === 'AbortError') throw identityError;
+          // Transport/read failures and unverified results cannot earn a file lock.
+          // Block before runner.step (which also updates learning) or persistence.
+          throw new Error(`NEST fidelity gate: ${String(identityError)}`);
         }
-      } catch {
-        // Fidelity gate failure is non-fatal — log but continue
       }
-    }
 
-    const step: NestStepResult = await runner.step();
+      const step: NestStepResult = await runner.step();
+      assertOwner();
 
-    // Sync mutable refs
-    sessRef.current   = step.session;
-    disasmRef.current = runner.disassembly;
-    offsetRef.current = runner.currentOffset;
-    lengthRef.current = runner.currentLength;
+      // Sync mutable refs once for this stable logical iteration.
+      sessRef.current   = step.session;
+      disasmRef.current = runner.disassembly;
+      offsetRef.current = runner.currentOffset;
+      lengthRef.current = runner.currentLength;
 
-    // Stream iteration state into React UI
-    // Keep status='running' while the loop continues (the runner's internal
-    // session starts as 'idle' and is only finalized when shouldContinue=false)
-    setSession(step.shouldContinue ? { ...step.session, status: 'running' } : { ...step.session });
-    setSelectedIter(step.snapshot.iteration);
-    learningSessionRef.current = step.learningSession;
-    setLearningSession({ ...step.learningSession });
-    setIterDecisions(runner.decisions);
-    setCurrentStrategyPlan(step.analysisPlan);
-    if (step.boosts) setLastBoosts(step.boosts);
+      // Until persistence/finalization succeeds, do not present a terminal backend state.
+      setSession({ ...step.session, status: 'running' });
+      setSelectedIter(step.snapshot.iteration);
+      learningSessionRef.current = step.learningSession;
+      setLearningSession({ ...step.learningSession });
+      setIterDecisions(runner.decisions);
+      setCurrentStrategyPlan(step.analysisPlan);
+      if (step.boosts) setLastBoosts(step.boosts);
+
+      const snap = step.snapshot;
+      const assessment = assessConvergence(step.session, snap.verdict);
+      const previous = step.session.iterations.at(-2);
+      const classificationStable = previous !== undefined
+        && previous.verdict.classification === snap.verdict.classification;
+      // A cap, absent data, or an external stop ends work but proves no convergence.
+      const convergenceReason = step.session.status === 'paused' ? 'external-stop'
+        : step.session.status === 'max-reached' ? 'max-iterations' : assessment.reason;
+      const hasConverged = !step.shouldContinue
+        && (step.session.status === 'converged' || step.session.status === 'plateau')
+        && assessment.hasConverged
+        && convergenceReason !== 'max-iterations' && convergenceReason !== 'no-data';
+      // Bind actual NEST reasoning content, not an invented hash or a chain ID.
+      const reasoningBytes = new TextEncoder().encode(JSON.stringify(snap.reasoningChain));
+      const digest = await crypto.subtle.digest('SHA-256', reasoningBytes);
+      assertOwner();
+      const reasoningChainHash = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+      return {
+        step,
+        terminal: !step.shouldContinue,
+        appendRequest: {
+          startedAt: null,
+          completedAt: null,
+          durationMs: snap.durationMs ?? null,
+          inputOffset: null,
+          inputLength: null,
+          classification: snap.verdict?.classification ?? 'unknown',
+          confidence: clampPercent(snap.confidence ?? 0),
+          threatScore: snap.verdict?.threatScore ?? 0,
+          signalCount: snap.verdict?.signals?.length ?? 0,
+          contradictionCount: snap.verdict?.contradictions?.length ?? 0,
+          reasoningChainHash,
+          convergenceReason,
+          hasConverged,
+          stabilityScore: snap.stabilityReport.score,
+          classificationStable,
+          signalDelta: snap.delta ? snap.delta.newSignals.length - snap.delta.removedSignals.length : 0,
+          contradictionBurden: snap.verdict.contradictions.filter(item => item.severity === 'high' || item.severity === 'medium').length,
+          executedActionTypes: null,
+          primaryActionType: null,
+          fileIdentityLocked,
+        },
+      };
+    };
+
+    let step: NestStepResult;
+    if (lcSessionId) {
+      const lifecycleResult = await lifecycleCoordinatorRef.current.processNext(
+        lcSessionId,
+        gyreSnapshotId ?? null,
+        createWork,
+      );
+      assertOwner();
+      step = lifecycleResult.step;
+      setLifecycleSummary(prev => prev
+        ? { ...prev, iterationCount: lifecycleResult.append.iterationCount }
+        : null);
+    } else { return false; }
 
     if (!step.shouldContinue) {
+      // The terminal iteration is now persisted and, when lifecycle tracking is
+      // active, finalized against the exact canonical backend iteration ID.
+      const pp = runner.commitPostProcessing();
+      setSession({ ...step.session });
       setSummary(summarizeSession(step.session));
       learningSessionRef.current = step.learningSession;
       setLearningSession({ ...step.learningSession });
 
-      // M13: Finalize backend lifecycle session
-      if (lcSessionId) {
-        try {
-          const finalSnap = step.session.finalVerdict;
-          await invoke('nest_finalize_session', {
-            request: {
-              sessionId: lcSessionId,
-              verdictSnapshotId: null,
-              sourceEngine: 'GYRE',
-              gyreIsSoleVerdictSource: true,
-              classification: finalSnap?.classification ?? 'unknown',
-              confidence: Math.round((finalSnap?.confidence ?? 0) * 100),
-              threatScore: finalSnap?.threatScore ?? 0,
-              summary: finalSnap?.summary ?? '',
-              signalCount: BigInt(finalSnap?.signals?.length ?? 0),
-              contradictionCount: BigInt(finalSnap?.contradictions?.length ?? 0),
-              reasoningChainHash: '',
-              linkedIterationId: null,
-              nestSummary: null,
-              runtimeProof: null,
-              notes: null,
-            },
-          });
-        } catch { /* non-fatal */ }
-      }
-
-      const pp = step.postProcessing;
       if (pp) {
         setLearningRecord(pp.learningRecord);
         setSimilarBinaries(pp.similarBinaries);
@@ -2257,63 +2350,40 @@ const NestView: React.FC<NestViewProps> = ({
         setTrainingStats(pp.trainingStats);
       }
 
-      // Propagate NEST-enriched verdict to the parent (Verdict panel)
+      // NEST remains advisory; the backend final verdict uses the recorded GYRE snapshot.
       if (step.session.finalVerdict) {
         onNestComplete?.(step.session.finalVerdict);
       }
 
-      return false; // stop
+      return false;
     }
 
-    // M13: Append iteration to backend lifecycle ledger
-    if (lcSessionId) {
-      const snap = step.snapshot;
-      try {
-        const lcResult = await invoke<{ sessionId: string; iterationCount: number }>('nest_append_iteration', {
-          request: {
-            sessionId: lcSessionId,
-            startedAt: null,
-            completedAt: null,
-            durationMs: snap.durationMs ? BigInt(snap.durationMs) : null,
-            inputOffset: null,
-            inputLength: null,
-            classification: snap.verdict?.classification ?? 'unknown',
-            confidence: Math.round((snap.confidence ?? 0) * 100),
-            threatScore: snap.verdict?.threatScore ?? 0,
-            signalCount: BigInt(snap.verdict?.signals?.length ?? 0),
-            contradictionCount: BigInt(snap.verdict?.contradictions?.length ?? 0),
-            reasoningChainHash: '',
-            convergenceReason: '',
-            hasConverged: !step.shouldContinue,
-            stabilityScore: 0.0,
-            classificationStable: !step.shouldContinue,
-            signalDelta: BigInt(0),
-            contradictionBurden: BigInt(0),
-            executedActionTypes: null,
-            primaryActionType: null,
-            fileIdentityLocked: true,
-          },
-        });
-        setLifecycleSummary(prev => prev ? { ...prev, iterationCount: lcResult.iterationCount } : null);
-      } catch { /* non-fatal */ }
-    }
-
-    return true; // keep going
-  }, [binaryPath]);
+    return true;
+  }, [binaryPath, gyreSnapshotId, onNestComplete]);
 
   // ── Start a new session ─────────────────────────────────────────────────
 
   const startSession = useCallback(async () => {
     if (!binaryPath) return;
+    if (!metadata?.sha256 || !/^[a-f0-9]{64}$/i.test(metadata.sha256)) {
+      setError('NEST session creation requires a complete inspected SHA-256. Inspect the file first.');
+      return;
+    }
+    const epoch = ++selectionOwner.current.epoch;
     stopRef.current = false;
     setError(null);
     setSummary(null);
     setSelectedIter(null);
     setIterDecisions([]);
 
-    // M13: Create backend lifecycle session (fire-and-forget — don't block the UI)
+    // Native lifecycle admission is mandatory; rejection must not become a
+    // local-only run that skips subsequent identity verification.
+    lifecycleCoordinatorRef.current.reset();
     lifecycleSessionIdRef.current = null;
     setLifecycleSummary(null);
+    runnerRef.current = null;
+    sessRef.current = null;
+    setSession(null);
     if (metadata?.sha256) {
       try {
         const lcSummary = await invoke<{ sessionId: string; binarySha256: string; iterationCount: number }>('nest_create_session', {
@@ -2334,12 +2404,35 @@ const NestView: React.FC<NestViewProps> = ({
             gyreSchemaVersion: null,
             executionMode: null,
             exportMode: null,
+            config: {
+              config_version: '1.0.0',
+              max_iterations: config.maxIterations,
+              min_iterations: config.minIterations,
+              confidence_threshold: config.confidenceThreshold,
+              plateau_threshold: config.plateauThreshold,
+              disasm_expansion: config.disasmExpansion,
+              aggressiveness: config.aggressiveness,
+              enable_talon: config.enableTalon,
+              enable_strike: config.enableStrike,
+              enable_echo: config.enableEcho,
+              auto_advance: config.autoAdvance,
+              auto_advance_delay_ms: config.autoAdvanceDelay,
+            },
           },
         });
+        if (selectionOwner.current.epoch !== epoch) return;
+        if (!lcSummary || typeof lcSummary.sessionId !== 'string' || !lcSummary.sessionId.trim()
+          || typeof lcSummary.binarySha256 !== 'string'
+          || lcSummary.binarySha256.toLowerCase() !== metadata.sha256.toLowerCase()) {
+          throw new Error('Native lifecycle response does not match the inspected identity.');
+        }
         lifecycleSessionIdRef.current = lcSummary.sessionId;
         setLifecycleSummary({ sessionId: lcSummary.sessionId, binarySha256: metadata.sha256, iterationCount: 0 });
-      } catch {
-        // Lifecycle tracking not critical — session still proceeds
+      } catch (creationError) {
+        if (selectionOwner.current.epoch !== epoch) return;
+        setError(`NEST session creation failed: ${String(creationError)}`);
+        setIsRunning(false);
+        return;
       }
     }
 
@@ -2363,7 +2456,8 @@ const NestView: React.FC<NestViewProps> = ({
         const b = getLearningBoosts(hash ?? undefined, signalIds);
         return b.confidenceBonus > 0 ? b : null;
       },
-      shouldStop:          () => stopRef.current,
+      shouldStop:          () => stopRef.current || selectionOwner.current.epoch !== epoch,
+      deferStepPostProcessing: true,
     });
 
     // Sync initial state from the freshly created runner
@@ -2380,7 +2474,7 @@ const NestView: React.FC<NestViewProps> = ({
     try {
       if (config.autoAdvance) {
         let keepGoing = true;
-        while (keepGoing && !stopRef.current) {
+        while (keepGoing && !stopRef.current && selectionOwner.current.epoch === epoch) {
           keepGoing = await handleStep();
           if (keepGoing && config.autoAdvanceDelay > 0) {
             await new Promise<void>(r => setTimeout(r, config.autoAdvanceDelay));
@@ -2390,24 +2484,28 @@ const NestView: React.FC<NestViewProps> = ({
         await handleStep();
       }
     } catch (e) {
-      setError(String(e));
+      if (selectionOwner.current.epoch === epoch && !stopRef.current
+        && !(e instanceof Error && e.name === 'AbortError')) setError(String(e));
     }
 
-    setIsRunning(false);
+    if (selectionOwner.current.epoch === epoch) setIsRunning(false);
   }, [binaryPath, config, metadata, initialDisassembly, initialOffset, initialLength, strings, disassemblyAnalysis, strikeSignals, handleStep]);
 
   // ── Next iteration (manual advance) ─────────────────────────────────────
 
   const advanceIteration = useCallback(async () => {
     if (!sessRef.current || isRunning) return;
+    const epoch = selectionOwner.current.epoch;
+    stopRef.current = false;
     setIsRunning(true);
     setError(null);
     try {
       await handleStep();
     } catch (e) {
-      setError(String(e));
+      if (selectionOwner.current.epoch === epoch && !stopRef.current
+        && !(e instanceof Error && e.name === 'AbortError')) setError(String(e));
     }
-    setIsRunning(false);
+    if (selectionOwner.current.epoch === epoch) setIsRunning(false);
   }, [isRunning, handleStep]);
 
   // ── Pause / stop ─────────────────────────────────────────────────────────
@@ -2419,10 +2517,11 @@ const NestView: React.FC<NestViewProps> = ({
       sessRef.current = paused;
       setSession({ ...paused });
     }
-    setIsRunning(false);
+    // Keep entered work owned until its await settles; Resume remains disabled.
   }, []);
 
   const resetSession = useCallback(() => {
+    selectionOwner.current.epoch += 1;
     stopRef.current = true;
     runnerRef.current = null;
     sessRef.current = null;
@@ -2442,6 +2541,7 @@ const NestView: React.FC<NestViewProps> = ({
     setIterDecisions([]);
     setDominance(null);
     // M13: reset lifecycle tracking
+    lifecycleCoordinatorRef.current.reset();
     lifecycleSessionIdRef.current = null;
     setLifecycleSummary(null);
   }, [initialDisassembly, initialOffset, initialLength]);
@@ -2802,7 +2902,7 @@ const NestView: React.FC<NestViewProps> = ({
         )}
         {session?.status === 'paused' && (
           <>
-            <button className="nest-btn primary" onClick={advanceIteration}>→ Resume</button>
+            <button className="nest-btn primary" onClick={advanceIteration} disabled={isRunning}>→ Resume</button>
             <button className="nest-btn" onClick={resetSession}>↺ Reset</button>
           </>
         )}

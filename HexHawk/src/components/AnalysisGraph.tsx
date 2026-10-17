@@ -67,8 +67,7 @@ function buildGraphData(
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const PADDING_X = 260;
-  const COL_X = { clusters: 40, verdict: 400, strings: 760 };
+  const COL_X = { clusters: 80, patterns: 380, verdict: 720, strings: 1080 };
 
   // ── Verdict node (centre) ─────────────────────────────────────────────────
   const classColor: Record<string, string> = {
@@ -88,7 +87,7 @@ function buildGraphData(
 
   nodes.push({
     id: 'verdict',
-    position: { x: COL_X.verdict, y: 300 },
+    position: { x: COL_X.verdict, y: 280 },
     data: {
       label: (
         <div style={{ textAlign: 'center', fontFamily: 'monospace' }}>
@@ -118,7 +117,7 @@ function buildGraphData(
     if (clusterImports.length === 0) continue;
 
     matchedClusters.push(cluster);
-    const y = 60 + matchedClusters.length * 100;
+    const y = 70 + (matchedClusters.length - 1) * 125;
 
     nodes.push({
       id: cluster.id,
@@ -162,7 +161,7 @@ function buildGraphData(
 
   suspiciousStrings.forEach((str, idx) => {
     const nodeId = `str-${idx}`;
-    const y = 60 + idx * 90;
+    const y = 70 + idx * 105;
     const shortened = str.text.length > 40 ? str.text.slice(0, 38) + '…' : str.text;
 
     nodes.push({
@@ -198,13 +197,11 @@ function buildGraphData(
   const criticalPatterns = patterns.filter(p => p.severity === 'critical').slice(0, 4);
   criticalPatterns.forEach((pattern, idx) => {
     const nodeId = `pat-${idx}`;
-    const y = matchedClusters.length > 0
-      ? 60 + (matchedClusters.length + 1) * 100 + idx * 80
-      : 80 + idx * 80;
+    const y = 92 + idx * 116;
 
     nodes.push({
       id: nodeId,
-      position: { x: COL_X.clusters + PADDING_X / 2, y },
+      position: { x: COL_X.patterns, y },
       data: {
         label: (
           <div style={{ fontFamily: 'monospace' }}>
@@ -334,13 +331,15 @@ export function AnalysisGraph({
           </span>
         )}
       </div>
-      <div style={{ width: '100%', height: 560 }}>
+      <div className="analysis-graph-canvas">
         <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodeClick={onNodeClick}
           fitView
-          fitViewOptions={{ padding: 0.2 }}
+          fitViewOptions={{ padding: 0.32, maxZoom: 1.05 }}
+          minZoom={0.18}
+          maxZoom={1.6}
           attributionPosition="bottom-right"
         >
           <Background color="#1a2a1a" gap={20} />

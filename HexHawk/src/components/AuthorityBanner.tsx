@@ -22,8 +22,8 @@ export default function AuthorityBanner({ enabled = flags.clarityAuthorityBanner
       }}
     >
       <strong>{copy.advisory}</strong>
-      <span>{` · ${copy.verdict} remains the authority.`}</span>
-      <span>{` ${copy.runtime} is supporting context.`}</span>
+      <span>{` · ${copy.verdict} is based only on HexHawk’s verified analysis signals.`}</span>
+      <span>{` ${copy.runtime} adds context when available.`}</span>
     </section>
   );
 }

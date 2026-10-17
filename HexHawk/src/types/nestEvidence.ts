@@ -8,9 +8,10 @@
 
 export const NEST_EVIDENCE_SCHEMA_MAJOR = 1;
 export const NEST_EVIDENCE_DEFAULT_SCHEMA_VERSION = '1.0.0';
-export const NEST_EVIDENCE_BUNDLE_FORMAT_VERSION = '1.0.0';
-export const NEST_EVIDENCE_REQUIRED_FILES = [
-  'manifest.json',
+export const NEST_EVIDENCE_BUNDLE_FORMAT_VERSION = '1.1.0';
+// Format 1.1+ manifests list payloads only. The actual manifest and its external
+// SHA-256 sidecar remain required physical custody files, not listed payloads.
+export const NEST_EVIDENCE_REQUIRED_PAYLOAD_FILES = [
   'binary_identity.json',
   'session.json',
   'iterations.json',
@@ -18,6 +19,8 @@ export const NEST_EVIDENCE_REQUIRED_FILES = [
   'final_verdict_snapshot.json',
   'audit_refs.json',
 ] as const;
+export const NEST_EVIDENCE_REQUIRED_FILES = ['manifest.json', ...NEST_EVIDENCE_REQUIRED_PAYLOAD_FILES] as const;
+export const NEST_EVIDENCE_REQUIRED_CUSTODY_FILES = [...NEST_EVIDENCE_REQUIRED_FILES, 'manifest.sha256'] as const;
 
 export type RequiredNestEvidenceFileName = (typeof NEST_EVIDENCE_REQUIRED_FILES)[number];
 export type OptionalNestEvidenceFileName = 'runtime_proof.json' | 'review_summary.md';
@@ -625,6 +628,8 @@ export function validateNestManifest(manifest: NestManifest): NestValidationIssu
   validateTimestamps(manifest.timestamps, 'manifest.timestamps', issues);
 
   if (validateArray(manifest.files, 'manifest.files', issues)) {
+    const payloadOnly = typeof manifest.bundle_format_version === 'string'
+      && /^1\.[1-9]\d*\.\d+$/.test(manifest.bundle_format_version);
     const seen = new Set<string>();
     for (const [index, file] of manifest.files.entries()) {
       requireFields(file, `manifest.files[${index}]`, ['name', 'required', 'sha256', 'bytes', 'schema_name', 'schema_version'], issues);
@@ -637,11 +642,15 @@ export function validateNestManifest(manifest: NestManifest): NestValidationIssu
       validateNumber(file.bytes, `manifest.files[${index}].bytes`, issues, true);
       validateString(file.schema_name, `manifest.files[${index}].schema_name`, issues);
       validateSupportedSchemaVersion(file.schema_version, `manifest.files[${index}].schema_version`, issues);
+      if (payloadOnly && ['manifest.json', 'manifest.sha256'].includes(file.name)) {
+        pushIssue(issues, `manifest.files[${index}].name`, 'invalid-value', 'Manifest and checksum sidecar must remain external to the payload hash list.');
+      }
       if (typeof file.name === 'string') {
         seen.add(file.name);
       }
     }
-    for (const requiredFile of NEST_EVIDENCE_REQUIRED_FILES) {
+    const requiredPayloads = payloadOnly ? NEST_EVIDENCE_REQUIRED_PAYLOAD_FILES : NEST_EVIDENCE_REQUIRED_FILES;
+    for (const requiredFile of requiredPayloads) {
       if (!seen.has(requiredFile)) {
         pushIssue(issues, 'manifest.files', 'missing-field', `Missing required bundle file ${requiredFile}.`);
       }

@@ -53,7 +53,7 @@ import { DEFAULT_NEST_CONFIG, type NestConfig } from '../src/utils/nestEngine.js
 import type { NestBackend, DisassemblyResult } from '../src/utils/nestBackend.js';
 import {
   buildNestEvidenceBundleFromSession,
-  toNestEvidenceFileMap,
+  serializeNestEvidenceFileMap,
   validateBuiltNestEvidenceBundle,
   parseNestEvidenceFileMap,
 } from '../src/utils/nestEvidenceIntegration.js';
@@ -396,6 +396,8 @@ async function main() {
   const evidenceBundle = buildNestEvidenceBundleFromSession({
     binaryPath,
     binarySha256: metadata.sha256,
+    binarySha1: metadata.sha1,
+    binaryMd5: metadata.md5,
     fileSizeBytes: metadata.file_size,
     format: metadata.file_type || formatHint,
     architecture: metadata.architecture || 'unknown',
@@ -421,9 +423,9 @@ async function main() {
   }
 
   fs.mkdirSync(evidenceDir, { recursive: true });
-  const fileMap = toNestEvidenceFileMap(evidenceBundle);
+  const fileMap = serializeNestEvidenceFileMap(evidenceBundle);
   for (const [name, value] of Object.entries(fileMap)) {
-    fs.writeFileSync(path.join(evidenceDir, name), JSON.stringify(value, null, 2), 'utf8');
+    fs.writeFileSync(path.join(evidenceDir, name), value, 'utf8');
   }
 
   const loadedFiles: Record<string, unknown> = {

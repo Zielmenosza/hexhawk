@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { open as openFileDialog } from '@tauri-apps/plugin-dialog';
+import uiPackage from '../package.json';
 import './styles.css';
 import { flags } from './config/featureFlags';
 import AuthorityBanner from './components/AuthorityBanner';
@@ -26,7 +27,7 @@ import { verifyLicense, getBuildInfo } from './utils/tauriLicense';
 import type { LicenseInfo } from './utils/tauriLicense';
 
 // Workflow-driven UI
-import WorkflowNav from './components/WorkflowNav';
+import WorkflowNav, { getWorkflowViewPresentation, isFirstReleaseViewAllowed } from './components/WorkflowNav';
 import StrikeApiReferencePanel from './components/StrikeApiReferencePanel';
 import type { NavView, WorkflowState } from './components/WorkflowNav';
 import TopBar from './components/TopBar';
@@ -47,6 +48,7 @@ import ThreatAssessment from './components/ThreatAssessment';
 import BinaryVerdict from './components/BinaryVerdict';
 import { computeVerdict } from './utils/correlationEngine';
 import type { BinaryVerdictResult, BinaryClassification } from './utils/correlationEngine';
+import { useGyreSnapshotRecording } from './utils/useGyreSnapshotRecording';
 import PatternIntelligencePanel from './components/PatternIntelligencePanel';
 import PatternCategoryBrowser from './components/PatternCategoryBrowser';
 import WorkflowGuidance from './components/WorkflowGuidance';
@@ -54,9 +56,10 @@ import JumpToAddressDialog from './components/JumpToAddressDialog';
 import CapabilitySummary from './components/CapabilitySummary';
 import { ControlFlowGraph } from './components/ControlFlowGraph';
 
-// Phase 8 � Decision Engine Components
+// Phase 8 - Decision Engine Components
 import { AnalysisGraph } from './components/AnalysisGraph';
 import { IntelligenceReport, type AiContributions } from './components/IntelligenceReport';
+import type { InvestigationTarget } from './utils/investigationGuidance';
 import { SnapshotHistoryPanel } from './components/SnapshotHistoryPanel';
 import { AutoHealBanner } from './components/AutoHealBanner';
 import { diagnose } from './utils/selfHealEngine';
@@ -80,19 +83,19 @@ import type { AutoAnnotation } from './utils/autoAnnotationEngine';
 // Decompiler
 import DecompilerView, { loadDecompilerOutputMode, persistDecompilerOutputMode } from './components/DecompilerView';
 
-// Phase 9 � Debugger + Signature
+// Phase 9 - Debugger + Signature
 import SignaturePanel from './components/SignaturePanel';
 
-// TALON � Reasoning-Aware Decompiler
+// TALON - Reasoning-Aware Decompiler
 import TalonView from './components/TalonView';
 import DocumentAnalysisPanel from './components/DocumentAnalysisPanel';
 import SandboxPanel from './components/SandboxPanel';
 import ConstraintPanel from './components/ConstraintPanel';
 
-// STRIKE � Runtime Intelligence Debugger
+// STRIKE - Runtime Intelligence Debugger
 import StrikeView from './components/StrikeView';
 
-// ECHO � Fuzzy Signature Recognition
+// ECHO - Fuzzy Signature Recognition
 import EchoView from './components/EchoView';
 import NestView from './components/NestView';
 import ReplView from './components/ReplView';
@@ -108,9 +111,16 @@ import AiInsightPanel from './components/AiInsightPanel';
 import type { AiObservation } from './types/aiObservation';
 import AgentGatePanel from './components/AgentGatePanel';
 import type { AgentGateProposal } from './components/AgentGatePanel';
+import {
+  createAgentGateRejectionRecord,
+  validateAgentGateApproval,
+  type AgentGateActionRecord,
+  type AgentGateAuthorityPacket,
+} from './utils/agentGateAuthority';
 import AnalystPromptCard from './components/AnalystPromptCard';
 import { getAnalystPrompt, selectAnalystPromptTrigger, type AnalystPromptTrigger } from './utils/analystPrompts';
 import HelpAiFeaturesSection from './components/HelpAiFeaturesSection';
+import TechnicalPreviewTrustCenter from './components/TechnicalPreviewTrustCenter';
 import type { Patch as PanelPatch } from './components/PatchPanel';
 import { detectPatchableBranches } from './utils/patchEngine';
 import type { PatchSuggestion } from './utils/patchEngine';
@@ -141,6 +151,16 @@ import {
   sourceLabel,
   splitActivityMessage,
 } from './utils/qaUx';
+import { buildAnalysisProvenance } from './utils/analysisProvenance';
+import { appendEvidenceJournalEntry, type EvidenceJournalEntry, type EvidenceJournalEntryInput } from './utils/evidenceJournal';
+import { SelectedFileGeneration, type SelectedFileOperation, type SelectedFileLane } from './utils/selectedFileGeneration';
+
+import { buildReferenceGraph } from './utils/referenceGraph';
+import {
+  isLegacyRecordCandidateFileName,
+  parseLegacyRecordMetadataFromBytes,
+  type LegacyRecordMetadata,
+} from './utils/legacyRecordMetadata';
 
 type HexHawkContextMenuState = {
   x: number;
@@ -228,7 +248,7 @@ function classificationToCorpusVerdict(
 
 /**
  * Fire-and-forget: append one entry to the corpus log via the Tauri backend.
- * Never throws � logging failures are silently printed to the console so they
+ * Never throws - logging failures are silently printed to the console so they
  * can never interrupt or degrade the analysis experience.
  */
 async function appendCorpusLog(entry: CorpusLogEntry): Promise<void> {
@@ -290,10 +310,10 @@ const WORKSPACE_NAV_ITEMS: WorkspaceNavItem[] = [
   { id: 'disassembly', label: 'Code map', eyebrow: 'instructions' },
   { id: 'cfg', label: 'Branch map', eyebrow: 'flow graph' },
   { id: 'function-notebook', label: 'Function details', eyebrow: 'notebook' },
-  { id: 'ai-observations', label: 'AI observations', eyebrow: 'advisory' },
+  { id: 'ai-observations', label: 'AI observations', eyebrow: 'review notes' },
   { id: 'decompile', label: 'Pseudocode', eyebrow: 'best effort' },
-  { id: 'talon', label: 'Code reasoning', eyebrow: 'TALON' },
-  { id: 'nest', label: 'Evidence loop', eyebrow: 'NEST' },
+  { id: 'talon', label: 'Code reasoning', eyebrow: 'explain' },
+  { id: 'nest', label: 'Evidence loop', eyebrow: 'review' },
   { id: 'repl', label: 'Commands', eyebrow: 'advanced' },
 ];
 
@@ -362,7 +382,7 @@ const FEATURE_GUIDES: Partial<Record<NavView, FeatureGuide>> = {
     plainName: 'One function, all evidence',
     does: 'Combines imports, callers, callees, pseudocode, runtime observations, and known limits for the selected function.',
     how: ['Select a function in the Code map or Branch map.', 'Press F or choose Function details from the right-click menu.', 'Export JSON or Markdown when you need a reviewable function evidence package.'],
-    expect: 'Advisory function evidence only. GYRE remains the sole verdict authority.',
+    expect: 'Function evidence for review. It helps explain the file but does not change the file assessment by itself.',
   },
   decompile: {
     title: 'Pseudocode view',
@@ -372,32 +392,32 @@ const FEATURE_GUIDES: Partial<Record<NavView, FeatureGuide>> = {
     expect: 'Helpful approximation with limitations, especially around types, indirect calls, and optimized code.',
   },
   talon: {
-    title: 'TALON structured reasoning',
+    title: 'Code reasoning',
     plainName: 'Code explanation helper',
     does: 'Adds structured analysis over functions, instructions, and control flow to help explain what code appears to do.',
     how: ['Use after Inspect and Disassemble.', 'Follow address links back to the Code map.', 'Treat summaries as analyst guidance that should be checked against evidence.'],
     expect: 'Explanations and maturity notes, not final security truth.',
   },
   'strike-api': {
-    title: 'STRIKE API reference',
+    title: 'Helper API reference',
     plainName: 'Scriptable advisory helpers',
-    does: 'Documents STRIKE query helpers for IL matching, xrefs, constants, hooks, and Function Intelligence exports.',
-    how: ['Search for a method by name or purpose.', 'Copy the method signature or example.', 'Remember all STRIKE outputs are advisory evidence, not GYRE verdict authority.'],
-    expect: 'Discoverable scripting/query surface with explicit authority boundaries.',
+    does: 'Documents query helpers for intermediate-code matching, cross-references, constants, hooks, and function evidence exports.',
+    how: ['Search for a method by name or purpose.', 'Copy the method signature or example.', 'Treat helper output as supporting evidence that should be checked in the main panels.'],
+    expect: 'Discoverable scripting/query surface with clear review boundaries.',
   },
   verdict: {
-    title: 'Verdict',
+    title: 'File assessment',
     plainName: 'Main classification answer',
-    does: 'Shows the GYRE classification, confidence, supporting signals, reductions, contradictions, and next review areas.',
+    does: 'Shows HexHawk’s classification, confidence, supporting signals, reductions, contradictions, and next review areas.',
     how: ['Read the summary first.', 'Open signal details to see why the score moved.', 'Use contradictions and low confidence as prompts for more evidence, not as errors to ignore.'],
-    expect: 'GYRE remains the verdict authority. Other systems can add evidence or metadata but must not silently replace the classification.',
+    expect: 'The main assessment is based on verified analysis signals. Notes and helper output can add context but must not silently replace the classification.',
   },
   signals: {
     title: 'Signals / why HexHawk flagged things',
     plainName: 'Evidence drivers',
     does: 'Shows suspicious patterns, imports, strings, instruction categories, and other signal groups that influence analysis.',
     how: ['Run disassembly and strings for richer signal coverage.', 'Click addresses to inspect exact evidence.', 'Prefer corroborated signals over isolated weak hints.'],
-    expect: 'A breakdown of reasons and weights. Signals explain the verdict but do not override GYRE by themselves.',
+    expect: 'A breakdown of reasons and weights. Signals explain the assessment but do not override it by themselves.',
   },
   report: {
     title: 'Report export',
@@ -414,11 +434,11 @@ const FEATURE_GUIDES: Partial<Record<NavView, FeatureGuide>> = {
     expect: 'Historical context. Current file state may differ from older snapshots.',
   },
   nest: {
-    title: 'NEST evidence review loop',
+    title: 'Evidence review loop',
     plainName: 'Repeat evidence organizer',
-    does: 'Runs iterative evidence passes and organizes convergence around GYRE-linked outputs.',
-    how: ['Use when confidence is low, signals conflict, or you need a stronger evidence package.', 'Review what changed between passes.', 'Keep high-assurance mode aware of uplift/metadata policy.'],
-    expect: 'Better-organized evidence and possible confidence refinement. NEST does not become verdict authority.',
+    does: 'Runs repeat evidence passes and organizes what changed between them.',
+    how: ['Use when confidence is low, signals conflict, or you need a stronger evidence package.', 'Review what changed between passes.', 'Check any confidence change against the supporting evidence.'],
+    expect: 'Better-organized evidence and possible confidence refinement. It supports the review rather than replacing the main assessment.',
   },
   activity: {
     title: 'Activity log',
@@ -488,18 +508,42 @@ const FEATURE_GUIDES: Partial<Record<NavView, FeatureGuide>> = {
 function FeatureGuideCard({ guide }: { guide?: FeatureGuide }) {
   if (!guide) return null;
   return (
-    <section className="feature-guide-card" data-testid="feature-guide-card">
-      <div className="feature-guide-eyebrow">{guide.plainName}</div>
-      <h2>{guide.title}</h2>
-      <p><strong>What it does:</strong> {guide.does}</p>
-      <div className="feature-guide-how">
-        <strong>How to use it:</strong>
-        <ol>
-          {guide.how.map((step) => <li key={step}>{step}</li>)}
-        </ol>
+    <details className="feature-guide-card" data-testid="feature-guide-card">
+      <summary className="feature-guide-summary">
+        <span>
+          <span className="feature-guide-eyebrow">{guide.plainName}</span>
+          <strong>{guide.title}</strong>
+        </span>
+        <span className="feature-guide-summary-copy">{guide.does}</span>
+        <span className="feature-guide-toggle" aria-hidden="true">Details</span>
+      </summary>
+      <div className="feature-guide-details">
+        <p><strong>What it does:</strong> {guide.does}</p>
+        <div className="feature-guide-how">
+          <strong>How to use it:</strong>
+          <ol>
+            {guide.how.map((step) => <li key={step}>{step}</li>)}
+          </ol>
+        </div>
+        <p><strong>What to expect:</strong> {guide.expect}</p>
       </div>
-      <p><strong>What to expect:</strong> {guide.expect}</p>
-    </section>
+    </details>
+  );
+}
+
+function ActiveToolHeader({ activeView }: { activeView: NavView }) {
+  const tool = getWorkflowViewPresentation(activeView);
+
+  return (
+    <header className="active-tool-header" data-testid="active-tool-header">
+      <span className="active-tool-header-icon" aria-hidden="true">{tool.icon}</span>
+      <div className="active-tool-header-copy">
+        <span className="active-tool-header-eyebrow">Current tool</span>
+        <h1>{tool.title}</h1>
+        <p>{tool.description}</p>
+      </div>
+      <span className="active-tool-header-technical">{tool.technicalLabel}</span>
+    </header>
   );
 }
 
@@ -546,6 +590,7 @@ export type FileMetadata = {
   sha256: string;
   sha1: string;
   md5: string;
+  legacy_record_metadata?: LegacyRecordMetadata;
 };
 
 type PluginMetadata = {
@@ -759,12 +804,17 @@ type CfgEdge = {
   source: string;
   target: string;
   kind?: string;  // "branch", "fallthrough"
-  condition?: string;  // "conditional", "unconditional"
+  condition?: string; // "conditional", "unconditional"
 };
 
 type CfgGraph = {
   nodes: CfgNode[];
   edges: CfgEdge[];
+  truncated?: boolean;
+  node_budget?: number;
+  edge_budget?: number;
+  omitted_nodes?: number;
+  omitted_edges?: number;
 };
 
 export type StringMatch = {
@@ -792,7 +842,7 @@ type Patch = {
   patchedBytes: number[];
   enabled: boolean;
   timestamp: number;
-  // Explainability (optional � absent on manual patches)
+  // Explainability (optional - absent on manual patches)
   reason?: string;
   impact?: string;
   verifyBefore?: string;
@@ -1152,7 +1202,7 @@ async function copyToClipboard(text: string): Promise<void> {
   }
 }
 
-// ─── Virtual HexViewer � module-level constants + row renderer ───────────────
+// --- Virtual HexViewer - module-level constants + row renderer ---------------
 const HEX_ROW_SIZE = 16;
 const HEX_ROW_HEIGHT_PX = 28;
 
@@ -1239,12 +1289,13 @@ const HexRow = React.memo(function HexRow({
       cellOffset < highlightedRange.end;
     const isSearchResult = searchResultsSet.has(byteIndex);
     const patternBg = getHexHighlightColor(value, hexHighlightMode);
+    const endsGroup = hexGrouping > 1 && (idx + 1) % hexGrouping === 0 && idx + 1 < rowBytes.length;
 
     hexCells.push(
       <button
         key={byteIndex}
         type="button"
-        className={`hex-cell${isSelected ? ' selected' : ''}${isCellHighlighted ? ' highlighted' : ''}${isSearchResult ? ' search-result' : ''}`}
+        className={`hex-cell${isSelected ? ' selected' : ''}${isCellHighlighted ? ' highlighted' : ''}${isSearchResult ? ' search-result' : ''}${endsGroup ? ' group-end' : ''}`}
         onClick={() => onSelectByte(byteIndex)}
         title={`${formatHex(cellOffset)} = 0x${value.toString(16).padStart(2, '0').toUpperCase()}${isSearchResult ? ' (search match)' : ''}`}
         style={patternBg ? { background: patternBg } : undefined}
@@ -1252,11 +1303,6 @@ const HexRow = React.memo(function HexRow({
         {value.toString(16).padStart(2, '0').toUpperCase()}
       </button>
     );
-    if (hexGrouping > 1 && (idx + 1) % hexGrouping === 0 && idx + 1 < rowBytes.length) {
-      hexCells.push(
-        <span key={`sep-${byteIndex}`} style={{ display: 'inline-block', width: '4px' }} />
-      );
-    }
   });
 
   const ascii = rowBytes
@@ -1301,7 +1347,7 @@ function HexViewer({
   onRangeSelect?: (start: number, end: number) => void;
   hexGrouping?: 1 | 2 | 4 | 8;
   hexHighlightMode?: 'none' | 'null' | 'printable' | 'entropy';
-  /** Total size of the file � used to show a progress indicator. */
+  /** Total size of the file - used to show a progress indicator. */
   fileSize?: number;
   /** Called when the user scrolls near the bottom to load the next chunk. */
   onLoadMore?: () => void;
@@ -1391,7 +1437,7 @@ function HexViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hexContainerRef, !!onLoadMore]);
 
-  // itemData for HexRow � stable object avoids prop-drilling into each row
+  // itemData for HexRow - stable object avoids prop-drilling into each row
   const hexRowItemData = React.useMemo<HexRowItemData>(
     () => ({
       bytes,
@@ -1607,8 +1653,17 @@ function HexViewer({
       <div
         ref={hexContainerRef}
         className="hex-viewer-scroll"
-        style={{ height: containerHeight, overflowY: 'auto' }}
+        style={{ height: containerHeight }}
       >
+        <div className="hex-column-header" aria-hidden="true">
+          <span>Offset</span>
+          <span className="hex-column-indices">
+            {Array.from({ length: HEX_ROW_SIZE }, (_, column) => (
+              <span key={column}>{column.toString(16).padStart(2, '0').toUpperCase()}</span>
+            ))}
+          </span>
+          <span>ASCII</span>
+        </div>
         <div style={{ height: totalHeight, position: 'relative' }}>
           {virtualItems.map(({ index, top }) => (
             <HexRow
@@ -1673,7 +1728,7 @@ function CfgView({
 
   const exitBlocks = useMemo(() => {
     // A true CFG exit block has no outgoing edges (ends with ret/syscall).
-    // block_type === 'external' nodes are *external jump/call targets* � different concept.
+    // block_type === 'external' nodes are *external jump/call targets* - different concept.
     const s = new Set<string>();
     if (graph) {
       const hasOutgoing = new Set(graph.edges.map(e => e.source));
@@ -1732,9 +1787,11 @@ function CfgView({
 
   if (!graph || graph.nodes.length === 0) {
     return (
-      <div className="panel">
-        <h3>Control Flow Graph</h3>
-        <p>No CFG loaded yet. Use &quot;Build CFG&quot; to analyze the control flow.</p>
+      <div className="panel cfg-empty-panel">
+        <div className="cfg-empty-copy">
+          <h3>Control Flow Graph</h3>
+          <p>No CFG loaded yet. Use &quot;Build CFG&quot; to analyze the control flow.</p>
+        </div>
         {onBuildCfg && (
           <button type="button" className="wf-action-btn wf-action-btn--primary" onClick={onBuildCfg} data-testid="cfg-build-empty-state">
             Build CFG
@@ -1841,7 +1898,13 @@ function CfgView({
                 setPathEndId(node.id);
               }
             }
-            if (node.start !== undefined && node.end !== undefined && onNodeClick) {
+            if (
+              typeof node.start === 'number'
+              && Number.isFinite(node.start)
+              && typeof node.end === 'number'
+              && Number.isFinite(node.end)
+              && onNodeClick
+            ) {
               onNodeClick(node.id, node.start, node.end);
             }
           }}
@@ -1860,18 +1923,108 @@ function CfgView({
 
 export default function App() {
   const browserMode = !hasTauriRuntime();
+  useEffect(() => {
+    if (browserMode) return undefined;
+
+    let cancelled = false;
+    let secondFrame = 0;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        if (cancelled) return;
+        const root = document.getElementById('root');
+        void invoke('reveal_main_window', {
+          readiness: {
+            version: uiPackage.version,
+            href: window.location.href,
+            rootChildCount: root?.childElementCount ?? 0,
+            rootTextLength: root?.innerText.trim().length ?? 0,
+          },
+        }).catch(error => {
+          console.error('Could not reveal HexHawk after the first painted frame:', error);
+        });
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [browserMode]);
+  const browserQaParams = browserMode ? new URLSearchParams(window.location.search) : null;
+  const browserQaTier = (() => {
+    if (!browserMode) return null;
+    try {
+      const value = browserQaParams?.get('qaTier') as Tier | null;
+      return value === 'free' || value === 'pro' || value === 'enterprise' ? value : null;
+    } catch {
+      return null;
+    }
+  })();
+  const browserQaMode = browserQaParams?.has('qa') || browserQaParams?.has('qaTier') || browserQaParams?.has('qaView') || false;
+  const browserQaView = (() => {
+    const value = browserQaParams?.get('qaView') as NavView | null;
+    const views: NavView[] = [
+      'load', 'metadata', 'inspect', 'hex', 'strings', 'disassembly', 'cfg', 'function-notebook',
+      'decompile', 'talon', 'ai-observations', 'verdict', 'signals', 'report', 'history', 'nest',
+      'activity', 'patch', 'constraint', 'sandbox', 'debugger', 'diff', 'repl', 'agent', 'plugins',
+      'strike-api', 'help', 'about',
+    ];
+    return value && views.includes(value) ? value : null;
+  })();
   const [binaryPath, setBinaryPath] = useState<string>(
     () => localStorage.getItem('hexhawk.binaryPath') ?? 'sample.bin'
   );
+  const [draftBinaryPath, setDraftBinaryPath] = useState(binaryPath);
+  const selectionGeneration = useRef(new SelectedFileGeneration(binaryPath));
+  const [operationJournal, setOperationJournal] = useState<EvidenceJournalEntry[]>([]);
+  const inspectedIdentity = useRef<{ request: SelectedFileOperation; sha256: string } | null>(null);
+  useEffect(() => () => selectionGeneration.current.invalidate(), []);
+
+  function captureFileOperation(lane?: SelectedFileLane) {
+    return selectionGeneration.current.capture(binaryPath, lane);
+  }
+  function isCurrentFileOperation(request: SelectedFileOperation | null): request is SelectedFileOperation {
+    return selectionGeneration.current.isCurrent(request);
+  }
+
+  function captureInspectedSha() {
+    const identity = inspectedIdentity.current;
+    return identity && isCurrentFileOperation(identity.request) ? identity.sha256 : null;
+  }
+
+  function requireInspectedSha(sha = captureInspectedSha()) {
+    if (!sha || !/^[a-f0-9]{64}$/i.test(sha)) throw new Error('Inspect the file before native analysis.');
+    return sha;
+  }
+
+  function invalidateChangedIdentity(error: unknown) {
+    if (/File identity changed since inspection|File changed.*while reading/i.test(String(error))) {
+      prepareForBinarySelection(binaryPath);
+      setMetadata(null);
+      setPeExtras(null);
+    }
+  }
+
+  function recordFileOperation(request: SelectedFileOperation, input: Omit<EvidenceJournalEntryInput, 'binaryPath' | 'timestamp'>, timestamp: string) {
+    if (!isCurrentFileOperation(request)) return;
+    setOperationJournal(journal => isCurrentFileOperation(request)
+      ? appendEvidenceJournalEntry(journal, { ...input, binaryPath: request.path, timestamp })
+      : journal);
+  }
+
   const [recentFiles, setRecentFiles] = useState<string[]>(
     () => readStorageJson<string[]>('hexhawk.recentFiles', [])
   );
-  const [showWelcome, setShowWelcome] = useState<boolean>(() => shouldShowWelcome());
+  const [showWelcome, setShowWelcome] = useState<boolean>(() => browserQaMode ? false : shouldShowWelcome());
   const [activeTab, setActiveTab] = useState<AppTab>(
     () => (localStorage.getItem('hexhawk.activeTab') as AppTab) ?? 'metadata'
   );
   const [activeView, setActiveView] = useState<NavView>(
-    () => (localStorage.getItem('hexhawk.activeView') as NavView) ?? 'inspect'
+    () => {
+      const saved = browserQaView ?? (localStorage.getItem('hexhawk.activeView') as NavView) ?? 'inspect';
+      return hasTauriRuntime() && !isFirstReleaseViewAllowed(saved) ? 'load' : saved;
+    }
   );
   const [disassemblyWorkspaceTab, setDisassemblyWorkspaceTab] = useState<DisassemblyWorkspaceTab>(
     () => (localStorage.getItem('hexhawk.disassemblyWorkspaceTab') as DisassemblyWorkspaceTab) ?? 'overview'
@@ -1880,7 +2033,7 @@ export default function App() {
 
   // ─── Tier system ────────────────────────────────────────────────────────────
   const [tier, setTierState] = useState<Tier>(() => loadTier());
-  const effectiveTier: Tier = browserMode ? 'enterprise' : tier;
+  const effectiveTier: Tier = browserQaTier ?? (browserMode ? 'enterprise' : tier);
   const [consoleQueriesUsed, setConsoleQueriesUsed] = useState<number>(
     () => loadConsoleQueriesUsed()
   );
@@ -1947,8 +2100,8 @@ export default function App() {
       if (info.is_trial) {
         // Trial binary: tier is determined by how many days have elapsed.
         // Days 0-15: full Enterprise access for testers
-        // Days 16-30: Enterprise locked ? Pro only
-        // Days 31+:   Pro locked ? Free only
+        // Days 16-30: Enterprise locked; Pro only
+        // Days 31+:   Pro locked; Free only
         const trialTier: Tier = info.pro_locked
           ? 'free'
           : info.enterprise_locked
@@ -1958,7 +2111,8 @@ export default function App() {
         saveTier(trialTier);
         return;
       }
-      // Full binary: attempt to restore stored license key
+      // Full binary: clear any legacy localStorage license key. Client-side key
+      // persistence is disabled until public-key entitlement storage lands.
       const storedKey = loadLicenseKey();
       if (storedKey) {
         verifyLicense(storedKey).then((licInfo) => {
@@ -1966,11 +2120,11 @@ export default function App() {
           setTierState(licInfo.tier as Tier);
           saveTier(licInfo.tier as Tier);
         }).catch(() => {
-          // Stored key is invalid / expired � fall back to manual tier
+          // Stored key is invalid / expired - fall back to manual tier
         });
       }
     }).catch(() => {
-      // Backend not yet ready in dev � silently ignore
+      // Backend not yet ready in dev - silently ignore
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -2011,6 +2165,8 @@ export default function App() {
   const [disasmArchFallback, setDisasmArchFallback] = useState<boolean>(false);
   const [disasmHasMore, setDisasmHasMore] = useState<boolean>(false);
   const [disasmNextByteOffset, setDisasmNextByteOffset] = useState<number | null>(null);
+  // Preserve exact decoded coverage independently of the nullable pagination cursor.
+  const disasmDecodedEndRef = useRef<number | null>(null);
   const [disasmIsLoadingMore, setDisasmIsLoadingMore] = useState<boolean>(false);
   const [disasmIsLoading, setDisasmIsLoading] = useState<boolean>(false);
   const [cfg, setCfg] = useState<CfgGraph | null>(null);
@@ -2078,7 +2234,16 @@ export default function App() {
     return fn ? buildFunctionIntelligence(fn, programAnalysis) : null;
   }, [programAnalysis, selectedFunction, selectedDisasmAddress, currentAddress]);
 
-  // NEST-enriched verdict � set when a NEST session completes; cleared on new file load
+  const referenceGraph = useMemo(() => {
+    if (!programAnalysis) return null;
+    return buildReferenceGraph(programAnalysis, {
+      selectedAddresses: [selectedDisasmAddress, selectedFunction, currentAddress].filter((address): address is number => typeof address === 'number'),
+      nodeBudget: 512,
+      edgeBudget: 1024,
+    });
+  }, [programAnalysis, selectedDisasmAddress, selectedFunction, currentAddress]);
+
+  // NEST-enriched verdict - set when a NEST session completes; cleared on new file load
   const [nestEnrichedVerdict, setNestEnrichedVerdict] = useState<BinaryVerdictResult | null>(null);
   React.useEffect(() => { setNestEnrichedVerdict(null); }, [binaryPath]);
 
@@ -2089,7 +2254,7 @@ export default function App() {
   React.useEffect(() => { setHealDismissed(false); }, [binaryPath]);
   React.useEffect(() => { setShowSelfHealBanner(false); }, [binaryPath]);
 
-  // Unified threat verdict � correlates structure, imports, strings, disassembly
+  // Unified threat verdict - correlates structure, imports, strings, disassembly
   const verdict = useMemo<BinaryVerdictResult>(() => {
     if (!metadata) {
       return computeVerdict({ sections: [], imports: [], strings: [], patterns: [] });
@@ -2105,6 +2270,49 @@ export default function App() {
       patterns: disassemblyAnalysis.suspiciousPatterns,
     });
   }, [metadata, strings, disassemblyAnalysis.suspiciousPatterns]);
+
+  // Record the first ordinary renderer GYRE result once per selected path/hash.
+  // Rust records this trusted-renderer result; it does not independently compute
+  // the verdict or verify the renderer-supplied binary identity.
+  const {
+    binding: activeGyreSnapshotBinding,
+    error: gyreSnapshotRecordingError,
+    retry: retryGyreSnapshotRecording,
+  } = useGyreSnapshotRecording({
+    browserMode,
+    binaryPath,
+    binarySha256: metadata?.sha256 ?? null,
+    verdict,
+  });
+
+  const gyreSnapshotLoggedIdRef = useRef<string | null>(null);
+  const gyreSnapshotLoggedErrorRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!activeGyreSnapshotBinding) return;
+    if (gyreSnapshotLoggedIdRef.current === activeGyreSnapshotBinding.snapshotId) return;
+
+    gyreSnapshotLoggedIdRef.current = activeGyreSnapshotBinding.snapshotId;
+    addLog(
+      `Recorded immutable GYRE snapshot ${activeGyreSnapshotBinding.snapshotId}.`,
+      'info',
+    );
+  }, [activeGyreSnapshotBinding]);
+
+  useEffect(() => {
+    if (!gyreSnapshotRecordingError) {
+      gyreSnapshotLoggedErrorRef.current = null;
+      return;
+    }
+    if (gyreSnapshotLoggedErrorRef.current === gyreSnapshotRecordingError) return;
+
+    gyreSnapshotLoggedErrorRef.current = gyreSnapshotRecordingError;
+    setMessage(`GYRE snapshot recording failed: ${gyreSnapshotRecordingError}`);
+    addLog(
+      `GYRE snapshot recording failed: ${gyreSnapshotRecordingError}`,
+      'error',
+    );
+  }, [gyreSnapshotRecordingError]);
 
 
   // --- Patch Intelligence suggestions ---
@@ -2135,10 +2343,14 @@ export default function App() {
     hasCfg: !!(cfg && cfg.nodes.length > 0),
     hasStrike: false, // extended when STRIKE session is active
     hasNest: !!nestEnrichedVerdict,
-    verdict: nestEnrichedVerdict ?? verdict,
+    verdict: verdict,
   }), [metadata, disassembly, strings, cfg, nestEnrichedVerdict, verdict]);
 
   function navigateView(view: NavView) {
+    if (hasTauriRuntime() && !isFirstReleaseViewAllowed(view)) {
+      setMessage('This workflow is excluded from the bounded Windows first release.');
+      return;
+    }
     setActiveView(view);
     localStorage.setItem('hexhawk.activeView', view);
     // Mirror to legacy tab system
@@ -2156,6 +2368,59 @@ export default function App() {
     if (tab) setAndPersistTab(tab);
   }
 
+  function createReportNavigation() {
+    const owner = captureFileOperation();
+    return (view: InvestigationTarget) => {
+      if (!isCurrentFileOperation(owner)) return;
+      if (hasTauriRuntime() && view !== 'load' && view !== 'inspect' && !captureInspectedSha()) {
+        navigateView('inspect');
+        return;
+      }
+      navigateView(view);
+    };
+  }
+
+  function selectPrimaryNavView(view: NavView) {
+    if (hasTauriRuntime() && !isFirstReleaseViewAllowed(view)) {
+      navigateView(view);
+      return;
+    }
+    if ((view === 'inspect' || view === 'metadata') && binaryPath.trim() && !metadata) {
+      void inspectFile();
+      return;
+    }
+
+    if (view === 'hex' && binaryPath.trim() && hexBytes.length === 0) {
+      void previewHex();
+      return;
+    }
+
+    if (view === 'strings' && binaryPath.trim() && strings.length === 0) {
+      void scanStrings();
+      return;
+    }
+
+    if (view === 'disassembly' && binaryPath.trim() && disassembly.length === 0) {
+      void disassembleFile();
+      return;
+    }
+
+    if (view === 'cfg' && binaryPath.trim() && (!cfg || cfg.nodes.length === 0)) {
+      void (async () => {
+        const request = captureFileOperation();
+        if (!isCurrentFileOperation(request)) return;
+        const loadedInstructions = disassembly.length > 0
+          ? disassembly
+          : await disassembleFile();
+        if (!isCurrentFileOperation(request)) return;
+        await buildCfg(loadedInstructions);
+      })();
+      return;
+    }
+
+    navigateView(view);
+  }
+
   const panelFidelity = useMemo<{ source: SubsystemSource; detail: string }>(() => {
     return getPanelFidelityForView(activeView, browserMode);
   }, [activeView, browserMode]);
@@ -2163,6 +2428,20 @@ export default function App() {
   const qaSubsystemStatuses = useMemo<QASubsystemStatus[]>(() => {
     return getQaSubsystemStatuses(browserMode);
   }, [browserMode]);
+
+  const analysisProvenance = useMemo(() => buildAnalysisProvenance({
+    browserMode,
+    binaryPath,
+    binarySha256: metadata?.sha256 ?? null,
+    metadataLoaded: metadata !== null,
+    stringsCount: strings.length,
+    disassemblyCount: disassembly.length,
+    cfgNodes: cfg?.nodes.length ?? 0,
+    cfgEdges: cfg?.edges.length ?? 0,
+    cfgTruncated: cfg?.truncated ?? false,
+    pluginResultCount: pluginResults.length,
+    operationJournal,
+  }), [browserMode, binaryPath, metadata, strings.length, disassembly.length, cfg, pluginResults.length, operationJournal]);
 
   const seededSignalsAddress = useMemo<number>(() => {
     if (selectedDisasmAddress !== null) return selectedDisasmAddress;
@@ -2193,6 +2472,7 @@ export default function App() {
       },
       panelFidelity,
       qaSubsystemStatuses,
+      analysisProvenance,
       metadata: metadata
         ? {
             fileType: metadata.file_type,
@@ -2251,6 +2531,7 @@ export default function App() {
     };
   }, [
     activeView,
+    analysisProvenance,
     binaryPath,
     browserMode,
     cfg,
@@ -2273,16 +2554,10 @@ export default function App() {
   const [autoAnnotations, setAutoAnnotations] = useState<AutoAnnotation[]>([]);
 
   // M12: Agent evidence review queue & action log
-  type AgentActionEntry = {
-    id: string;
-    tool: string;
-    summary: string;
-    timestamp: number;
-    approved: boolean | null; // null = pending
-  };
   const [agentGateProposals, setAgentGateProposals] = useState<AgentGateProposal[]>([]);
   const [approvedAgentGateProposals, setApprovedAgentGateProposals] = useState<AgentGateProposal[]>([]);
-  const [agentActionLog, setAgentActionLog] = useState<AgentActionEntry[]>([]);
+  const [agentActionLog, setAgentActionLog] = useState<AgentGateActionRecord[]>([]);
+  const consumedAgentGateFingerprintsRef = React.useRef<Set<string>>(new Set());
   const [aiObservations, setAiObservations] = useState<AiObservation[]>([]);
   const [acceptedAiObservations, setAcceptedAiObservations] = useState<AiObservation[]>([]);
   const [dismissedAnalystPrompts, setDismissedAnalystPrompts] = useState<AnalystPromptTrigger[]>([]);
@@ -2292,6 +2567,8 @@ export default function App() {
     setAcceptedAiObservations([]);
     setAgentGateProposals([]);
     setApprovedAgentGateProposals([]);
+    setAgentActionLog([]);
+    consumedAgentGateFingerprintsRef.current = new Set();
     setDismissedAnalystPrompts([]);
   }, [binaryPath]);
 
@@ -2324,6 +2601,7 @@ export default function App() {
           : `Review note: ${observation.title}. ${observation.body}`,
         source: observation.source,
         functionId: observation.functionId,
+        observationId: observation.id,
         address: observation.address,
         gyre_is_sole_verdict_authority: true,
         advisory_only: true,
@@ -2372,28 +2650,29 @@ export default function App() {
     setAcceptedAiObservations(prev => prev.some(observation => observation.id === updated.id) ? prev : [...prev, updated]);
   }, []);
 
-  const handleApproveAgentProposal = React.useCallback((proposal: AgentGateProposal) => {
-    const approved = { ...proposal, does_not_affect_verdict: true as const, advisory_only: true as const, gyre_is_sole_verdict_authority: true as const };
+  const handleApproveAgentProposal = React.useCallback(async (proposal: AgentGateProposal, packet: AgentGateAuthorityPacket) => {
+    const request = captureFileOperation();
+    if (!isCurrentFileOperation(request)) return;
+    const currentProposal = agentGateProposals.find(item => item.id === proposal.id);
+    const result = await validateAgentGateApproval(currentProposal, packet, consumedAgentGateFingerprintsRef.current);
+    if (!isCurrentFileOperation(request)) return;
+    setAgentActionLog(log => [...log, result.record]);
+
+    if (!result.ok || !currentProposal) {
+      addLog(`Agent Gate approval ${result.record.reason ?? 'rejected'} for ${proposal.id}.`, 'warn');
+      return;
+    }
+
+    consumedAgentGateFingerprintsRef.current.add(packet.authority_fingerprint);
+    const approved = { ...currentProposal, does_not_affect_verdict: true as const, advisory_only: true as const, gyre_is_sole_verdict_authority: true as const };
     setApprovedAgentGateProposals(prev => prev.some(item => item.id === approved.id) ? prev : [...prev, approved]);
     setAgentGateProposals(prev => prev.filter(item => item.id !== approved.id));
-    setAgentActionLog(log => [...log, {
-      id: approved.id,
-      tool: 'agent_gate_proposal',
-      summary: `Approved as note: "${approved.proposedValue}" — advisory only; does not affect GYRE verdict`,
-      timestamp: Date.now(),
-      approved: true,
-    }]);
-  }, []);
+    addLog(`Agent Gate note approved with one-time receipt ${packet.authority_fingerprint.slice(0, 16)}.`, 'info');
+  }, [agentGateProposals]);
 
   const handleRejectAgentProposal = React.useCallback((proposal: AgentGateProposal) => {
     setAgentGateProposals(prev => prev.filter(item => item.id !== proposal.id));
-    setAgentActionLog(log => [...log, {
-      id: proposal.id,
-      tool: 'agent_gate_proposal',
-      summary: `Rejected: "${proposal.proposedValue}"`,
-      timestamp: Date.now(),
-      approved: false,
-    }]);
+    setAgentActionLog(log => [...log, createAgentGateRejectionRecord(proposal)]);
   }, []);
   React.useEffect(() => {
     const newAnnotations = generateAutoAnnotations({
@@ -2667,7 +2946,9 @@ export default function App() {
 
   /** Queue an inverted-jump patch for the instruction at `address`. */
   const queueInvertJump = async (address: number) => {
-    if (!hasTauriRuntime()) {
+
+    const request = captureFileOperation();
+    if (!isCurrentFileOperation(request)) return;   if (!hasTauriRuntime()) {
       const patch: Patch = {
         id: `patch-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         address,
@@ -2691,6 +2972,7 @@ export default function App() {
         inverted_opcode: number[];
         description: string;
       }>('get_jump_inversion', { path: safePath, offset: safeOffset });
+      if (!isCurrentFileOperation(request)) return;
 
       if (!result.is_invertible) {
         setMessage(`Not an invertible jump at ${formatHex(address)}: ${result.description}`);
@@ -2703,7 +2985,9 @@ export default function App() {
         path: safePath,
         offset: safeOffset,
         length: safeLength,
+        expectedSha256: requireInspectedSha(),
       });
+      if (!isCurrentFileOperation(request)) return;
 
       const patch: Patch = {
         id: `patch-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -2718,6 +3002,7 @@ export default function App() {
       addLog(`Queued patch: ${result.description} at ${formatHex(address)}`);
       setMessage(`Patch queued: ${result.description} at ${formatHex(address)}`);
     } catch (err) {
+      if (!isCurrentFileOperation(request)) return;
       addLog(`Failed to queue invert-jump patch: ${err}`, 'error');
       setMessage(`Patch failed: ${err}`);
     }
@@ -2725,7 +3010,9 @@ export default function App() {
 
   /** Queue a NOP-sled patch for `count` bytes starting at `address`. */
   const queueNopSled = async (address: number, count: number) => {
-    if (!hasTauriRuntime()) {
+
+    const request = captureFileOperation();
+    if (!isCurrentFileOperation(request)) return;   if (!hasTauriRuntime()) {
       const safeCount = clampInt(count, 1, 64, 'NOP count');
       const originalBytes = buildMockHexBytes(binaryPath, address, safeCount);
       const patch: Patch = {
@@ -2751,7 +3038,9 @@ export default function App() {
         path: safePath,
         offset: safeOffset,
         length: safeCount,
+        expectedSha256: requireInspectedSha(),
       });
+      if (!isCurrentFileOperation(request)) return;
       const nopBytes = new Array<number>(safeCount).fill(0x90);
       const patch: Patch = {
         id: `patch-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -2766,6 +3055,7 @@ export default function App() {
       addLog(`Queued NOP sled (${safeCount}B) at ${formatHex(address)}`);
       setMessage(`NOP sled queued: ${safeCount} bytes at ${formatHex(address)}`);
     } catch (err) {
+      if (!isCurrentFileOperation(request)) return;
       addLog(`Failed to queue NOP patch: ${err}`, 'error');
       setMessage(`Patch failed: ${err}`);
     }
@@ -2778,8 +3068,11 @@ export default function App() {
 
   /** Queue an explainable patch from a Patch Intelligence suggestion. */
   const queueFromSuggestion = async (s: import('./utils/patchEngine').PatchSuggestion) => {
-    if (s.kind === 'invert-jump') {
+
+    const request = captureFileOperation();
+    if (!isCurrentFileOperation(request)) return;   if (s.kind === 'invert-jump') {
       await queueInvertJump(s.address);
+      if (!isCurrentFileOperation(request)) return;
       setPatches(prev => {
         const last = prev[prev.length - 1];
         if (!last || last.address !== s.address) return prev;
@@ -2790,6 +3083,7 @@ export default function App() {
       });
     } else if (s.kind === 'nop-call') {
       await queueNopSled(s.address, 5);
+      if (!isCurrentFileOperation(request)) return;
       setPatches(prev => {
         const last = prev[prev.length - 1];
         if (!last || last.address !== s.address) return prev;
@@ -2806,10 +3100,34 @@ export default function App() {
   const [hexFileSize, setHexFileSize] = useState<number>(0);
   const [hexIsLoadingMore, setHexIsLoadingMore] = useState(false);
 
-  function prepareForBinarySelection(nextBinaryPath: string) {
-    markLoadedFile();
-    setHasLoadedFile(true);
-    setBinaryPath(nextBinaryPath);
+  function resetFileBoundState() {
+    inspectedIdentity.current = null;
+    setOperationJournal([]);
+    setDisassemblyAnalysis({ functions: new Map(), loops: [], suspiciousPatterns: [], referenceStrength: new Map(), blockAnalysis: new Map() });
+    setReferencesMap(new Map());
+    setJumpTargetsMap(new Map());
+    setXrefTypes(new Map());
+    setAddressToBlockMap(new Map());
+    setSelectedFunction(null);
+    setExpandedFunctions(new Set());
+    setAutoAnnotations([]);
+    setBookmarks([]);
+    setAnnotations(new Map());
+    setPatches([]);
+    setHistory([]);
+    setHistoryIndex(-1);
+    setNestEnrichedVerdict(null);
+    setAiObservations([]);
+    setAcceptedAiObservations([]);
+    setAgentGateProposals([]);
+    setApprovedAgentGateProposals([]);
+    setAgentActionLog([]);
+    consumedAgentGateFingerprintsRef.current = new Set();
+    setDismissedAnalystPrompts([]);
+    setDisasmIsLoading(false);
+    setHexIsLoadingMore(false);
+    setHexOffset(0);
+    setMessage('Ready for analysis');
 
     // Reset file-bound state so a new binary does not inherit analysis from
     // the previous file and the workflow returns to "fileLoaded".
@@ -2828,6 +3146,7 @@ export default function App() {
     setDisasmHasMore(false);
     setDisasmNextByteOffset(null);
     setDisasmIsLoadingMore(false);
+    disasmDecodedEndRef.current = null;
     setCfg(null);
     setCfgNaturalLoops([]);
     setCfgDomTree(null);
@@ -2843,11 +3162,35 @@ export default function App() {
     setHighlightedStrings(new Set());
   }
 
+  function prepareForBinarySelection(nextBinaryPath: string) {
+    nextBinaryPath = sanitizeBridgePath(nextBinaryPath, 'selected binary path');
+    selectionGeneration.current.select(nextBinaryPath);
+    markLoadedFile();
+    setHasLoadedFile(true);
+    setBinaryPath(nextBinaryPath);
+    setDraftBinaryPath(nextBinaryPath);
+    resetFileBoundState();
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const requestedPath = params.get('hexhawkFile') ?? params.get('file');
+    if (!requestedPath) return;
+    const safePath = sanitizeBridgePath(requestedPath, 'challenge harness path');
+    prepareForBinarySelection(safePath);
+    addLog(`Loaded challenge harness path from URL: ${safePath}`, browserMode ? 'warn' : 'info');
+    void inspectFile(safePath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   /** Append the next chunk of bytes to the hex view. Called when user scrolls near bottom. */
   const hexLoadMore = async () => {
     if (!binaryPath || hexIsLoadingMore) return;
     const nextOffset = hexOffset + hexBytes.length;
     if (hexFileSize > 0 && nextOffset >= hexFileSize) return; // at end of file
+    const request = captureFileOperation('hex');
+    if (!isCurrentFileOperation(request)) return;
     setHexIsLoadingMore(true);
     if (!hasTauriRuntime()) {
       try {
@@ -2856,7 +3199,7 @@ export default function App() {
           setHexBytes((prev) => [...prev, ...chunk]);
         }
       } finally {
-        setHexIsLoadingMore(false);
+        if (isCurrentFileOperation(request)) setHexIsLoadingMore(false);
       }
       return;
     }
@@ -2867,14 +3210,18 @@ export default function App() {
         path: safePath,
         offset: sanitizeAddress(nextOffset, 'offset'),
         length: 4096,
+        expectedSha256: requireInspectedSha(),
       });
+      if (!isCurrentFileOperation(request)) return;
       if (chunk.length > 0) {
         setHexBytes((prev) => [...prev, ...chunk]);
       }
     } catch (err) {
+      if (!isCurrentFileOperation(request)) return;
+      invalidateChangedIdentity(err);
       addLog(`Failed to load more hex: ${err}`, 'error');
     } finally {
-      setHexIsLoadingMore(false);
+      if (isCurrentFileOperation(request)) setHexIsLoadingMore(false);
     }
   };
 
@@ -3068,51 +3415,10 @@ export default function App() {
     setLogs((current) => [entry, ...current].slice(0, 250));
   }
 
-  /** Export a JSON snapshot of the current analysis session */
+  /** All general exports share the report's identity, replay and CREST gates. */
   function exportAnalysis() {
-    const exportData = {
-      timestamp: new Date().toISOString(),
-      binaryPath,
-      metadata: metadata
-        ? {
-            file_type: metadata.file_type,
-            architecture: metadata.architecture,
-            entry_point: formatHex(metadata.entry_point),
-            file_size: metadata.file_size,
-            sha256: metadata.sha256,
-            md5: metadata.md5,
-            sections: metadata.sections.map(s => ({ name: s.name, entropy: s.entropy.toFixed(2), size: s.file_size })),
-            imports: metadata.imports.map(i => `${i.library}!${i.name}`),
-            exports: metadata.exports.map(e => ({ name: e.name, address: formatHex(e.address) })),
-          }
-        : null,
-      verdict: metadata
-        ? {
-            classification: verdict.classification,
-            threatScore: verdict.threatScore,
-            confidence: verdict.confidence,
-            summary: verdict.summary,
-            signals: verdict.signals.map(s => ({ source: s.source, finding: s.finding, weight: s.weight })),
-            negativeSignals: verdict.negativeSignals.map(s => ({ finding: s.finding, reduction: s.reduction })),
-            amplifiers: verdict.amplifiers,
-            dismissals: verdict.dismissals,
-          }
-        : null,
-      strings: strings.slice(0, 500).map(s => ({ offset: formatHex(s.offset), text: s.text })),
-      disassembly: disassembly.slice(0, 500).map(i => ({ address: formatHex(i.address), mnemonic: i.mnemonic, operands: i.operands })),
-      bookmarks: bookmarks.map(b => ({ address: formatHex(b.address), note: b.note, tags: b.tags })),
-      annotations: [...annotations.entries()].map(([addr, note]) => ({ address: formatHex(addr), note })),
-    };
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const fileName = binaryPath.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, '') ?? 'binary';
-    a.download = `hexhawk-analysis-${fileName}-${Date.now()}.json`;
-    a.click();
-    scheduleUiTimeout(() => URL.revokeObjectURL(url), 1000);
-    addLog('Exported analysis to JSON file.');
+    navigateView('report');
+    setMessage('Review the report, then choose JSON or Markdown export.');
   }
 
   function setAndPersistTab(tab: AppTab) {
@@ -3359,22 +3665,9 @@ export default function App() {
         return;
       }
 
-      try {
-        const response = await invoke<PluginMetadata[]>('list_available_plugins', {});
-        const capped = capArraySize(response, 1000);
-        setPlugins(capped);
-        if (capped.length > 0) {
-          setSelectedPluginName((current) => current || capped[0].name);
-        }
-        if (capped.length !== response.length) addLog('Plugin list display capped to prevent UI freeze.', 'warn');
-        addLog('Loaded available plugins.');
-      } catch (error) {
-        const msg = String(error);
-        console.error('Failed to load plugins', error);
-        setMessage(`Failed to load plugins: ${msg}`);
-        addLog(`Failed to load plugins: ${msg}`, 'warn');
-        setPlugins([]);
-      }
+      // Plugins are excluded from this native release; do not scan/load them
+      // during startup merely because legacy UI still exists in the source.
+      setPlugins([]);
     }
 
     loadPlugins();
@@ -3499,8 +3792,12 @@ export default function App() {
     setMessage('Browse cancelled.');
   }
 
-  async function inspectFile(pathOverride?: string) {
+  async function inspectFile(pathOverride?: string): Promise<SelectedFileOperation | null> {
+    if (!pathOverride && !isCurrentFileOperation(captureFileOperation())) return null;
     const targetPath = pathOverride ?? binaryPath;
+    const safePath = sanitizeBridgePath(targetPath, 'binary path');
+    prepareForBinarySelection(safePath);
+    const request = selectionGeneration.current.capture(safePath)!;
     if (!hasTauriRuntime()) {
       const mockMeta = buildMockMetadata(targetPath);
       const safeRange = sanitizeRange(hexOffset, hexLength);
@@ -3515,41 +3812,90 @@ export default function App() {
       addLog(`Simulated inspect for ${targetPath}`, 'info');
       addLog(`Seeded browser hex preview for ${targetPath} at ${formatHex(safeRange.offset)}.`, 'info');
       navigateView('inspect');
-      return;
+      return request;
     }
 
     try {
-      const safePath = sanitizeBridgePath(targetPath, 'binary path');
-      const response = await invoke<FileMetadata>('inspect_file_metadata', {
-        path: safePath,
-      });
-      setMetadata(response);
-
-      // Fetch PE-specific extras (TLS callbacks + resources) — returns empty for non-PE files
-      try {
-        const extras = await invoke<{ tls_callbacks: Array<{ address: number }>; resources: Array<{ type_name: string; id: number; size: number; offset: number }> }>('inspect_pe_extras', { path: safePath });
-        setPeExtras(extras.tls_callbacks.length > 0 || extras.resources.length > 0 ? extras : null);
-      } catch {
-        setPeExtras(null);
+      const params = { path: safePath };
+      const response = await invoke<FileMetadata>('inspect_file_metadata', params);
+      if (!isCurrentFileOperation(request)) return null;
+      const inspectedAt = new Date().toISOString();
+      const fileName = safePath.split(/[\\/]/).pop() ?? safePath;
+      const legacyRecordCandidate = isLegacyRecordCandidateFileName(fileName);
+      let enrichedResponse = response;
+      if (legacyRecordCandidate) {
+        try {
+          const bytes = await invoke<number[]>('read_hex_range', {
+            path: safePath,
+            offset: 0,
+            length: Math.max(1, Math.min(response.file_size ?? 0, 1024 * 1024)),
+            expectedSha256: response.sha256,
+          });
+          if (!isCurrentFileOperation(request)) return null;
+          const legacyMetadata = parseLegacyRecordMetadataFromBytes(bytes);
+          enrichedResponse = {
+            ...response,
+            file_type:
+              legacyMetadata.format === 'intel-hex'
+                ? 'Intel HEX firmware record'
+                : legacyMetadata.format === 'motorola-srec'
+                  ? 'Motorola S-record firmware record'
+                  : response.file_type,
+            architecture:
+              legacyMetadata.format === 'unknown'
+                ? response.architecture
+                : 'legacy firmware record (addressed bytes)',
+            entry_point: legacyMetadata.entryAddress ?? response.entry_point,
+            legacy_record_metadata: legacyMetadata,
+          };
+          addLog(`Parsed legacy record metadata for ${fileName}: ${legacyMetadata.format}`, 'info');
+        } catch (legacyError) {
+          if (!isCurrentFileOperation(request)) return null;
+          enrichedResponse = {
+            ...response,
+            legacy_record_metadata: {
+              schema: 'hexhawk.legacy_record_metadata.v1',
+              format: 'unknown',
+              recordCount: 0,
+              dataRecordCount: 0,
+              byteCount: 0,
+              ranges: [],
+              strings: [],
+              warnings: [],
+              errors: [`legacy record adapter failed: ${String(legacyError)}`],
+              noExecution: true,
+              authorityBoundary: 'Legacy record metadata is parsed from text records only; it does not execute content, emulate firmware, decompile code, or own GYRE verdict authority.',
+            },
+          };
+          addLog(`Legacy record adapter failed for ${fileName}: ${String(legacyError)}`, 'warn');
+        }
       }
-      setHexFileSize(response.file_size ?? 0);
+      // Fetch PE-specific extras (TLS callbacks + resources) — returns empty for non-PE files
+      const extras = await invoke<{ tls_callbacks: Array<{ address: number }>; resources: Array<{ type_name: string; id: number; size: number; offset: number }> }>('inspect_pe_extras', { path: safePath, expectedSha256: response.sha256 });
+      if (!isCurrentFileOperation(request)) return null;
+      setPeExtras(extras.tls_callbacks.length > 0 || extras.resources.length > 0 ? extras : null);
+      setMetadata(enrichedResponse);
+      inspectedIdentity.current = { request, sha256: response.sha256 };
+      recordFileOperation(request, { action: 'inspect', binarySha256: response.sha256,
+        command: `tauri invoke inspect_file_metadata ${JSON.stringify(params)}`, artifactSource: 'tauri.inspect_file_metadata', analysisLimits: {},
+      }, inspectedAt);
+      setHexFileSize(enrichedResponse.file_size ?? 0);
       setMessage('File inspection completed');
       addLog(`Inspected file: ${targetPath}`);
       navigateView('inspect');
 
       // ── Corpus log ──────────────────────────────────────────────────────────
-      // Compute a verdict from the freshly returned metadata.  Strings and
-      // disassembly patterns may not be loaded yet; computeVerdict handles
-      // empty arrays gracefully and we record what we know right now.
+      // Inspection starts a fresh evidence generation. React closures still
+      // hold old arrays after reset; only the returned metadata seeds this record.
       const freshVerdict = computeVerdict({
-        sections: (response.sections ?? []).map(s => ({
+        sections: (enrichedResponse.sections ?? []).map(s => ({
           name:      s.name,
           entropy:   s.entropy ?? 0,
           file_size: s.file_size ?? 0,
         })),
-        imports:  response.imports ?? [],
-        strings:  strings.map(s => ({ text: s.text })),
-        patterns: disassemblyAnalysis.suspiciousPatterns,
+        imports:  enrichedResponse.imports ?? [],
+        strings:  [],
+        patterns: [],
       });
 
       // Group signal weights by source for engineContributions
@@ -3561,7 +3907,7 @@ export default function App() {
       const filename = targetPath.split(/[/\\]/).pop() ?? targetPath;
 
       void appendCorpusLog({
-        hash:                response.sha256,
+        hash:                enrichedResponse.sha256,
         filename,
         timestamp:           new Date().toISOString(),
         verdict:             classificationToCorpusVerdict(freshVerdict.classification),
@@ -3576,7 +3922,9 @@ export default function App() {
         talonSummary:        null,
         notes:               '',
       });
+      return request;
     } catch (error) {
+      if (!isCurrentFileOperation(request)) return null;
       const rawMsg = String(error);
       const notFound = /(os error 3|cannot find the path|path not found|No such file or directory)/i.test(rawMsg);
       const msg = notFound
@@ -3587,10 +3935,31 @@ export default function App() {
       addLog(`Failed to inspect file: ${msg}`, 'error');
       setMetadata(null);
       setPeExtras(null);
+      inspectedIdentity.current = null;
+      return null;
     }
   }
 
+  async function runSelectedAnalysis(options: { strings?: boolean; code?: boolean } = { strings: true, code: true }) {
+    const request = await inspectFile();
+    if (!isCurrentFileOperation(request)) return;
+    if (options.strings) {
+      await scanStrings();
+      if (!isCurrentFileOperation(request)) return;
+    }
+    if (options.code) {
+      const instructions = await disassembleFile();
+      if (!isCurrentFileOperation(request)) return;
+      await buildCfg(instructions);
+      if (!isCurrentFileOperation(request)) return;
+    }
+    navigateView('verdict');
+  }
+
   async function previewHex() {
+    const request = captureFileOperation('hex');
+    if (!isCurrentFileOperation(request)) return;
+    setHexIsLoadingMore(false);
     if (!hasTauriRuntime()) {
       const safeRange = sanitizeRange(hexOffset, hexLength);
       const response = buildMockHexBytes(binaryPath, safeRange.offset, safeRange.length);
@@ -3610,7 +3979,9 @@ export default function App() {
         path: safePath,
         offset: safeRange.offset,
         length: safeRange.length,
+        expectedSha256: requireInspectedSha(),
       });
+      if (!isCurrentFileOperation(request)) return;
       setHexBytes(response);
       setSelectedHexIndex(null);
       setSelectedDisasmAddress(null);
@@ -3618,8 +3989,10 @@ export default function App() {
       addLog(`Loaded hex preview for ${binaryPath} at offset ${hexOffset}`);
       navigateView('hex');
     } catch (error) {
+      if (!isCurrentFileOperation(request)) return;
       const msg = String(error);
       console.error('Failed to load hex preview', error);
+      invalidateChangedIdentity(error);
       setMessage(`Failed to load hex preview: ${msg}`);
       addLog(`Failed to load hex preview: ${msg}`, 'error');
       setHexBytes([]);
@@ -3628,6 +4001,9 @@ export default function App() {
   }
 
   async function previewHexAt(offset: number) {
+    const request = captureFileOperation('hex');
+    if (!isCurrentFileOperation(request)) return;
+    setHexIsLoadingMore(false);
     if (!hasTauriRuntime()) {
       const safeRange = sanitizeRange(offset, hexLength);
       const response = buildMockHexBytes(binaryPath, safeRange.offset, safeRange.length);
@@ -3648,7 +4024,9 @@ export default function App() {
         path: safePath,
         offset: safeRange.offset,
         length: safeRange.length,
+        expectedSha256: requireInspectedSha(),
       });
+      if (!isCurrentFileOperation(request)) return;
       setHexOffset(safeRange.offset);
       setHexBytes(response);
       setSelectedHexIndex(0);
@@ -3657,14 +4035,19 @@ export default function App() {
       addLog(`Loaded hex preview at ${formatHex(offset)} for ${binaryPath}`);
       navigateView('hex');
     } catch (error) {
+      if (!isCurrentFileOperation(request)) return;
       const msg = String(error);
       console.error('Failed to load hex preview at offset', error);
+      invalidateChangedIdentity(error);
       setMessage(`Failed to load hex preview: ${msg}`);
       addLog(`Failed to load hex preview: ${msg}`, 'error');
     }
   }
 
   async function scanStrings() {
+    const request = captureFileOperation('strings');
+    const binarySha256 = captureInspectedSha();
+    if (!isCurrentFileOperation(request)) return;
     if (!hasTauriRuntime()) {
       const capped = capArraySize(buildMockStrings(binaryPath.split(/[\\/]/).pop() || binaryPath), MAX_BRIDGE_LIST_ITEMS);
       setStrings(capped);
@@ -3678,12 +4061,19 @@ export default function App() {
       const safePath = sanitizeBridgePath(binaryPath, 'binary path');
       const safeRange = sanitizeRange(hexOffset, hexLength);
       const safeMinLength = clampInt(stringMinLength, 1, 4096, 'min string length');
-      const response = await invoke<StringMatch[]>('find_strings', {
+      const params = {
         path: safePath,
         offset: safeRange.offset,
         length: safeRange.length,
         minLength: safeMinLength,
-      });
+        expectedSha256: requireInspectedSha(binarySha256),
+      };
+      const response = await invoke<StringMatch[]>('find_strings', params);
+      if (!isCurrentFileOperation(request)) return;
+      recordFileOperation(request, { action: 'strings', binarySha256,
+        command: `tauri invoke find_strings ${JSON.stringify(params)}`, artifactSource: 'tauri.find_strings',
+        analysisLimits: { offset: params.offset, length: params.length, minLength: params.minLength },
+      }, new Date().toISOString());
       const capped = capArraySize(response, MAX_BRIDGE_LIST_ITEMS);
       setStrings(capped);
       if (capped.length !== response.length) {
@@ -3693,11 +4083,12 @@ export default function App() {
       addLog(`Scanned strings in ${safePath} at ${formatHex(safeRange.offset)} length ${safeRange.length}`);
       navigateView('strings');
     } catch (error) {
+      if (!isCurrentFileOperation(request)) return;
       const msg = String(error);
       console.error('Failed to scan strings', error);
+      invalidateChangedIdentity(error);
       setMessage(`Failed to scan strings: ${msg}`);
       addLog(`Failed to scan strings: ${msg}`, 'error');
-      setStrings([]);
     }
   }
 
@@ -3706,29 +4097,42 @@ export default function App() {
     setSelectedDisasmAddress(hexOffset + index);
   }, [hexOffset]);
 
-  async function disassembleFile(offset?: number) {
+  async function disassembleFile(offset?: number): Promise<DisassembledInstruction[]> {
+    const request = captureFileOperation('disassembly');
+    const binarySha256 = captureInspectedSha();
+    if (!isCurrentFileOperation(request)) return [];
     const startOffset = offset ?? disasmOffset;
     setDisasmIsLoading(true);
+    setDisasmIsLoadingMore(false);
     if (!hasTauriRuntime()) {
       const safeRange = sanitizeRange(startOffset, disasmLength);
       const instructions = buildMockDisassembly(safeRange.offset);
-      setDisassembly(capArraySize(instructions, MAX_UI_DISASSEMBLY_ITEMS));
+      const cappedInstructions = capArraySize(instructions, MAX_UI_DISASSEMBLY_ITEMS);
+      setDisassembly(cappedInstructions);
       setDisasmArch('x86_64');
       setDisasmArchFallback(false);
       setDisasmOffset(safeRange.offset);
       setDisasmHasMore(false);
       setDisasmNextByteOffset(null);
+      disasmDecodedEndRef.current = null;
       setMessage(`Disassembly loaded from ${formatHex(startOffset)} (browser simulation)`);
       addLog(`Simulated disassembly for ${binaryPath} from ${formatHex(startOffset)}`, 'info');
       performFullAnalysis(instructions, cfg, [], 'x86-64');
-      setDisasmIsLoading(false);
+      if (isCurrentFileOperation(request)) setDisasmIsLoading(false);
       navigateView('disassembly');
-      return;
+      return cappedInstructions;
     }
 
     try {
       const safePath = sanitizeBridgePath(binaryPath, 'binary path');
       const safeRange = sanitizeRange(startOffset, disasmLength);
+      const params = {
+        path: safePath,
+        offset: safeRange.offset,
+        length: safeRange.length,
+        maxInstructions: DISASM_CHUNK_SIZE,
+        expectedSha256: requireInspectedSha(binarySha256),
+      };
       const response = await invoke<{
         arch: string;
         is_fallback: boolean;
@@ -3737,12 +4141,12 @@ export default function App() {
         has_more: boolean;
         next_byte_offset: number;
         warnings?: string[];
-      }>('disassemble_file_range', {
-        path: safePath,
-        offset: safeRange.offset,
-        length: safeRange.length,
-        max_instructions: DISASM_CHUNK_SIZE,
-      });
+      }>('disassemble_file_range', params);
+      if (!isCurrentFileOperation(request)) return [];
+      recordFileOperation(request, { action: 'disassembly', binarySha256,
+        command: `tauri invoke disassemble_file_range ${JSON.stringify(params)}`, artifactSource: 'tauri.disassemble_file_range',
+        analysisLimits: { offset: params.offset, length: params.length, maxInstructions: params.maxInstructions, truncated: response.has_more },
+      }, new Date().toISOString());
       const instructions = capArraySize(response.instructions, MAX_UI_DISASSEMBLY_ITEMS);
       if (instructions.length === 0) {
         addLog(`No instructions decoded at ${formatHex(safeRange.offset)} for ${binaryPath}.`, 'warn');
@@ -3750,16 +4154,16 @@ export default function App() {
           setMessage(`No instructions decoded at ${formatHex(safeRange.offset)}. Retrying from 0x0...`);
           setDisasmOffset(0);
           localStorage.setItem('hexhawk.disasmOffset', '0');
-          await disassembleFile(0);
-          return;
+          return await disassembleFile(0);
         }
 
         setMessage(`No instructions decoded at ${formatHex(safeRange.offset)}. Try a different offset.`);
         setDisassembly([]);
         setDisasmHasMore(false);
         setDisasmNextByteOffset(null);
+        disasmDecodedEndRef.current = null;
         navigateView('disassembly');
-        return;
+        return [];
       }
 
       const effectiveStart = instructions[0]?.address ?? safeRange.offset;
@@ -3771,6 +4175,7 @@ export default function App() {
       setDisasmOffset(effectiveStart);
       setDisasmHasMore(response.has_more);
       setDisasmNextByteOffset(response.has_more ? response.next_byte_offset : null);
+      disasmDecodedEndRef.current = response.next_byte_offset;
       const archNote = response.is_fallback ? ` (⚠ unsupported arch - fell back to ${response.arch})` : ` (${response.arch})`;
       setMessage(`Disassembly loaded from ${formatHex(effectiveStart)} to ${formatHex(effectiveEnd)}${archNote}`);
       addLog(`Disassembled ${binaryPath} from ${formatHex(effectiveStart)} to ${formatHex(effectiveEnd)}${archNote}`, response.is_fallback ? 'warn' : 'info');
@@ -3780,21 +4185,26 @@ export default function App() {
       performFullAnalysis(instructions, cfg, response.imports ?? [], response.arch);
       
       navigateView('disassembly');
+      return instructions;
     } catch (error) {
+      if (!isCurrentFileOperation(request)) return [];
       const msg = String(error);
       console.error('Failed to disassemble file', error);
+      invalidateChangedIdentity(error);
       setMessage(`Failed to disassemble file: ${msg}`);
       addLog(`Failed to disassemble file: ${msg}`, 'error');
-      setDisassembly([]);
-      setDisasmHasMore(false);
-      setDisasmNextByteOffset(null);
+      return [];
     } finally {
-      setDisasmIsLoading(false);
+      if (isCurrentFileOperation(request)) setDisasmIsLoading(false);
     }
   }
 
   async function loadMoreDisassembly() {
-    if (!binaryPath || disasmNextByteOffset === null || disasmIsLoadingMore) return;
+    if (!binaryPath || disasmNextByteOffset === null || disasmIsLoadingMore || disasmIsLoading) return;
+    const request = captureFileOperation('disassembly');
+    const binarySha256 = captureInspectedSha();
+    if (!isCurrentFileOperation(request)) return;
+
     if (!hasTauriRuntime()) {
       setDisasmHasMore(false);
       addLog('Browser mode disassembly pagination reached simulated end.', 'info');
@@ -3809,6 +4219,13 @@ export default function App() {
     setDisasmIsLoadingMore(true);
     try {
       const safePath = sanitizeBridgePath(binaryPath, 'binary path');
+      const params = {
+        path: safePath,
+        offset: sanitizeAddress(disasmNextByteOffset, 'offset'),
+        length: clampInt(remaining, 1, 1024 * 1024 * 1024, 'length'),
+        maxInstructions: DISASM_CHUNK_SIZE,
+        expectedSha256: requireInspectedSha(binarySha256),
+      };
       const response = await invoke<{
         arch: string;
         is_fallback: boolean;
@@ -3816,25 +4233,32 @@ export default function App() {
         imports?: AppBackendImport[];
         has_more: boolean;
         next_byte_offset: number;
-      }>('disassemble_file_range', {
-        path: safePath,
-        offset: sanitizeAddress(disasmNextByteOffset, 'offset'),
-        length: clampInt(remaining, 1, 1024 * 1024 * 1024, 'length'),
-        max_instructions: DISASM_CHUNK_SIZE,
-      });
+      }>('disassemble_file_range', params);
+      if (!isCurrentFileOperation(request)) return;
+      recordFileOperation(request, { action: 'disassembly', binarySha256,
+        command: `tauri invoke disassemble_file_range ${JSON.stringify(params)}`, artifactSource: 'tauri.disassemble_file_range',
+        analysisLimits: { offset: params.offset, length: params.length, maxInstructions: params.maxInstructions, truncated: response.has_more },
+      }, new Date().toISOString());
       setDisassembly((prev) => capArraySize([...prev, ...response.instructions], MAX_UI_DISASSEMBLY_ITEMS));
       setDisasmHasMore(response.has_more);
       setDisasmNextByteOffset(response.has_more ? response.next_byte_offset : null);
+      disasmDecodedEndRef.current = response.next_byte_offset;
     } catch (error) {
+      if (!isCurrentFileOperation(request)) return;
       const msg = String(error);
       console.error('Failed to load more disassembly', error);
+      invalidateChangedIdentity(error);
       addLog(`Failed to load more disassembly: ${msg}`, 'error');
     } finally {
-      setDisasmIsLoadingMore(false);
+      if (isCurrentFileOperation(request)) setDisasmIsLoadingMore(false);
     }
   }
 
-  async function buildCfg() {
+  async function buildCfg(instructionsOverride?: DisassembledInstruction[]) {
+    const request = captureFileOperation('cfg');
+    const binarySha256 = captureInspectedSha();
+    if (!isCurrentFileOperation(request)) return;
+    const cfgInstructions = instructionsOverride ?? disassembly;
     if (!hasTauriRuntime()) {
       const response = buildMockCfg(disasmOffset);
       setCfg(response);
@@ -3849,26 +4273,47 @@ export default function App() {
       }
       setMessage('CFG built successfully (browser-mode simulation).');
       addLog(`Simulated CFG build for ${binaryPath}`, 'info');
-      performFullAnalysis(disassembly.length > 0 ? disassembly : buildMockDisassembly(disasmOffset), response, [], disasmArch);
+      performFullAnalysis(cfgInstructions.length > 0 ? cfgInstructions : buildMockDisassembly(disasmOffset), response, [], disasmArch);
       navigateView('cfg');
       return;
     }
 
     try {
       const safePath = sanitizeBridgePath(binaryPath, 'binary path');
-      const cfgOffset = disassembly.length > 0
-        ? disassembly[0].address
+      const cfgOffset = cfgInstructions.length > 0
+        ? cfgInstructions[0].address
         : disasmOffset;
-      const cfgLength = disassembly.length > 1
-        ? Math.max(1, (disassembly[disassembly.length - 1].address - disassembly[0].address) + 1)
-        : disasmLength;
+      // Instruction starts do not encode the last instruction's width. Use
+      // the native decoder's exclusive consumed-byte end, including one-instruction ranges.
+      let cfgLength = disasmLength;
+      if (cfgInstructions.length > 0) {
+        const decodedEnd = disasmDecodedEndRef.current;
+        if (decodedEnd === null || !Number.isSafeInteger(decodedEnd)
+          || decodedEnd <= cfgInstructions[cfgInstructions.length - 1].address) {
+          throw new Error('CFG requires a valid decoder byte boundary; disassemble this range again.');
+        }
+        cfgLength = decodedEnd - cfgOffset;
+      }
       const safeRange = sanitizeRange(cfgOffset, cfgLength);
-      const response = await invoke<CfgGraph>('build_cfg', {
+      const params = {
         path: safePath,
         offset: safeRange.offset,
         length: safeRange.length,
-      });
+        expectedSha256: requireInspectedSha(binarySha256),
+      };
+      const response = await invoke<CfgGraph>('build_cfg', params);
+      if (!isCurrentFileOperation(request)) return;
+      recordFileOperation(request, { action: 'cfg', binarySha256,
+        command: `tauri invoke build_cfg ${JSON.stringify(params)}`, artifactSource: 'tauri.build_cfg',
+        analysisLimits: { offset: params.offset, length: params.length, nodeBudget: response.node_budget, edgeBudget: response.edge_budget, omittedNodes: response.omitted_nodes, omittedEdges: response.omitted_edges, truncated: response.truncated },
+      }, new Date().toISOString());
       setCfg(response);
+      if (response.truncated) {
+        addLog(
+          `CFG truncated for UI safety: showing ${response.nodes.length}/${response.node_budget ?? 'budget'} nodes and ${response.edges.length}/${response.edge_budget ?? 'budget'} edges; omitted ${response.omitted_nodes ?? 0} nodes and ${response.omitted_edges ?? 0} edges.`,
+          'warn',
+        );
+      }
       setCfgNaturalLoops(computeNaturalLoops(response));
       if (response.nodes.length > 0) {
         const { domTree, postDomTree } = buildDomTreeFromCfg(response);
@@ -3878,23 +4323,26 @@ export default function App() {
         setCfgDomTree(null);
         setCfgPostDomTree(null);
       }
-      setMessage('CFG built successfully');
+      setMessage(response.truncated ? 'CFG built with UI-safety truncation' : 'CFG built successfully');
       addLog(`Built CFG for ${binaryPath}`);
       
       // PHASE 5: Re-analyze with new CFG data
-      performFullAnalysis(disassembly, response, [], disasmArch);
+      performFullAnalysis(cfgInstructions, response, [], disasmArch);
       
       navigateView('cfg');
     } catch (error) {
+      if (!isCurrentFileOperation(request)) return;
       const msg = String(error);
       console.error('Failed to build CFG', error);
+      invalidateChangedIdentity(error);
       setMessage(`Failed to build CFG: ${msg}`);
       addLog(`Failed to build CFG: ${msg}`, 'error');
-      setCfg(null);
     }
   }
 
   async function analyzePlugins() {
+    const request = captureFileOperation();
+    if (!isCurrentFileOperation(request)) return;
     if (!hasTauriRuntime()) {
       const response = buildMockPluginResults(binaryPath);
       setPluginResults(response);
@@ -3909,11 +4357,13 @@ export default function App() {
       const response = await invoke<PluginExecutionResult[]>('run_plugins_on_file', {
         path: safePath,
       });
+      if (!isCurrentFileOperation(request)) return;
       setPluginResults(response);
       setMessage('Plugin analysis completed');
       addLog(`Ran plugin analysis for ${binaryPath}`);
       navigateView('plugins');
     } catch (error) {
+      if (!isCurrentFileOperation(request)) return;
       const msg = String(error);
       console.error('Failed to run plugins', error);
       setMessage(`Failed to run plugin analysis: ${msg}`);
@@ -4045,6 +4495,8 @@ export default function App() {
 
   /** Legacy: Jump to hex then optionally to disassembly */
   async function jumpToHexThenDisasm(offset: number, length?: number) {
+    const request = captureFileOperation();
+    if (!isCurrentFileOperation(request)) return;
     navigateTo({
       address: offset,
       range: length ? { start: offset, end: offset + length } : undefined,
@@ -4052,7 +4504,7 @@ export default function App() {
       skipHistory: false,
     });
     scheduleUiTimeout(() => {
-      disassembleFile(offset);
+      if (isCurrentFileOperation(request)) void disassembleFile(offset);
     }, 100);
   }
 
@@ -4151,12 +4603,7 @@ export default function App() {
         detail: 'Inspect, scan strings, disassemble, build CFG, then show verdict.',
         disabled: !hasFileCandidate,
         action: async () => {
-          await inspectFile();
-          await scanStrings();
-          await disassembleFile();
-          await buildCfg();
-          navigateView('verdict');
-          addLog('Context menu: completed quick triage sequence.', 'info');
+          await runSelectedAnalysis();
         },
       },
       {
@@ -4448,11 +4895,12 @@ export default function App() {
       <div className="wf-body">
         {/* ── Left: Primary Nav ─────────────────────────────────────────────── */}
         <WorkflowNav
+          boundedRelease={hasTauriRuntime()}
           activeView={activeView}
           workflowState={workflowState}
           tier={effectiveTier}
           fileName={binaryPath.split(/[\\/]/).pop() ?? binaryPath}
-          onSelect={navigateView}
+          onSelect={selectPrimaryNavView}
           onLoadFile={pickFile}
           agentQueueCount={agentGateProposals.length}
         />
@@ -4514,6 +4962,8 @@ export default function App() {
             </div>
           </div>
 
+          <ActiveToolHeader activeView={activeView} />
+
           {/* Action Bar */}
           <ActionBar
             workflowState={workflowState}
@@ -4526,13 +4976,7 @@ export default function App() {
             onDisassemble={() => disassembleFile()}
             onBuildCfg={buildCfg}
             onScanStrings={scanStrings}
-            onRunAnalysis={async () => {
-              await inspectFile();
-              await scanStrings();
-              await disassembleFile();
-              await buildCfg();
-              navigateView('verdict');
-            }}
+            onRunAnalysis={() => runSelectedAnalysis()}
             onNavigate={navigateView}
             onExport={exportAnalysis}
             onJumpTo={() => setShowJumpDialog(true)}
@@ -4573,9 +5017,11 @@ export default function App() {
             </div>
           )}
 
-          {/* ── Main Panel � workflow CTA or active view ──────────────────── */}
+          {/* -- Main Panel - workflow CTA or active view -------------------- */}
           <div
-            className={`wf-panel ${WORKSPACE_VIEW_IDS.has(activeView) ? 'wf-panel--workspace' : ''}`}
+            className={`wf-panel wf-panel--scroll-owner ${WORKSPACE_VIEW_IDS.has(activeView) ? 'wf-panel--workspace' : ''}`}
+            data-testid="workspace-scroll-owner"
+            data-scroll-contract="primary"
           >
             {panelFidelity && (
               <PanelFidelityBadge source={panelFidelity.source} detail={panelFidelity.detail} />
@@ -4590,8 +5036,16 @@ export default function App() {
             )}
 
             {WORKSPACE_VIEW_IDS.has(activeView) && (
-              <WorkspaceTabStrip activeView={activeView} onSelect={navigateView} />
+              <WorkspaceTabStrip activeView={activeView} onSelect={selectPrimaryNavView} />
             )}
+
+            <div className="wf-analysis-prompt-slot" aria-live="polite">
+              <AnalystPromptCard
+                prompt={analystPrompt}
+                onDismiss={(trigger) => setDismissedAnalystPrompts(prev => prev.includes(trigger) ? prev : [...prev, trigger])}
+                onNavigate={(targetView) => selectPrimaryNavView(targetView as NavView)}
+              />
+            </div>
 
             {activeView === 'strike-api' && <StrikeApiReferencePanel />}
 
@@ -4614,8 +5068,8 @@ export default function App() {
                 <div className="file-picker-row" style={{ marginTop: '0.5rem' }}>
                   <input
                     type="text"
-                    value={binaryPath}
-                    onChange={(event) => setBinaryPath(event.target.value)}
+                    value={draftBinaryPath}
+                    onChange={(event) => setDraftBinaryPath(event.target.value)}
                     className="binary-path-display"
                     data-testid="load-path-input"
                     aria-label="Binary path"
@@ -4626,7 +5080,7 @@ export default function App() {
                     className="browse-btn"
                     data-testid="load-apply-path"
                     onClick={() => {
-                      const candidate = binaryPath.trim();
+                      const candidate = draftBinaryPath.trim();
                       if (!candidate) {
                         setMessage('Provide a binary path before applying it.');
                         addLog('Missing binary path while applying runtime harness path.', 'warn');
@@ -4675,7 +5129,7 @@ export default function App() {
                     onDisassemble={() => disassembleFile()}
                     onBuildCfg={buildCfg}
                     onScanStrings={scanStrings}
-                    onRunAnalysis={async () => { await inspectFile(); await scanStrings(); navigateView('verdict'); }}
+                    onRunAnalysis={() => runSelectedAnalysis({ strings: true })}
                     onViewVerdict={() => navigateView('verdict')}
                   />
                 )}
@@ -4726,7 +5180,7 @@ export default function App() {
                     onDisassemble={() => disassembleFile()}
                     onBuildCfg={buildCfg}
                     onScanStrings={scanStrings}
-                    onRunAnalysis={async () => { await inspectFile(); navigateView('verdict'); }}
+                    onRunAnalysis={() => runSelectedAnalysis({})}
                     onViewVerdict={() => navigateView('verdict')}
                   />
                 )}
@@ -4742,7 +5196,7 @@ export default function App() {
                     onDisassemble={() => disassembleFile()}
                     onBuildCfg={buildCfg}
                     onScanStrings={scanStrings}
-                    onRunAnalysis={async () => { await inspectFile(); navigateView('verdict'); }}
+                    onRunAnalysis={() => runSelectedAnalysis({})}
                     onViewVerdict={() => navigateView('verdict')}
                   />
                 )}
@@ -4757,6 +5211,52 @@ export default function App() {
                       <div className="metadata-row"><span>File Size</span><span>{(metadata.file_size / 1024).toFixed(1)} KB</span></div>
                       <div className="metadata-row"><span>SHA-256</span><span style={{ fontFamily: 'monospace', fontSize: '0.75rem', wordBreak: 'break-all' }}>{metadata.sha256}</span></div>
                     </div>
+                    {metadata.legacy_record_metadata && (
+                      <>
+                        <h4>Legacy Record Metadata</h4>
+                        <div className="metadata-grid" data-testid="legacy-record-metadata">
+                          <div className="metadata-row"><span>Format</span><span>{metadata.legacy_record_metadata.format}</span></div>
+                          <div className="metadata-row"><span>Records</span><span>{metadata.legacy_record_metadata.recordCount} total · {metadata.legacy_record_metadata.dataRecordCount} data</span></div>
+                          <div className="metadata-row"><span>Decoded bytes</span><span>{metadata.legacy_record_metadata.byteCount}</span></div>
+                          <div className="metadata-row"><span>Address ranges</span><span>{metadata.legacy_record_metadata.ranges.length}</span></div>
+                          <div className="metadata-row"><span>No execution</span><span>{metadata.legacy_record_metadata.noExecution ? 'yes — text records only' : 'no'}</span></div>
+                          <div className="metadata-row"><span>Authority</span><span>{metadata.legacy_record_metadata.authorityBoundary}</span></div>
+                        </div>
+                        {metadata.legacy_record_metadata.ranges.length > 0 && (
+                          <div className="imports-table">
+                            <div className="imports-row imports-header"><div>Start</div><div>End</div><div>Bytes</div></div>
+                            {metadata.legacy_record_metadata.ranges.slice(0, 25).map((range, i) => (
+                              <div key={`${range.start}-${range.endInclusive}-${i}`} className="imports-row">
+                                <div><code>{formatHex(range.start)}</code></div>
+                                <div><code>{formatHex(range.endInclusive)}</code></div>
+                                <div>{range.byteLength}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {metadata.legacy_record_metadata.strings.length > 0 && (
+                          <div className="imports-table">
+                            <div className="imports-row imports-header"><div>String Address</div><div>Value</div></div>
+                            {metadata.legacy_record_metadata.strings.slice(0, 20).map((recordString, i) => (
+                              <div key={`${recordString.address}-${i}`} className="imports-row">
+                                <div><code>{formatHex(recordString.address)}</code></div>
+                                <div><code>{recordString.value}</code></div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {(metadata.legacy_record_metadata.warnings.length > 0 || metadata.legacy_record_metadata.errors.length > 0) && (
+                          <div className="panel-subtle" data-testid="legacy-record-warnings">
+                            {metadata.legacy_record_metadata.warnings.map((warning) => (
+                              <p key={warning}>⚠ {warning}</p>
+                            ))}
+                            {metadata.legacy_record_metadata.errors.map((error) => (
+                              <p key={error}>✖ {error}</p>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    )}
                     <h4>Sections ({metadata.sections.length})</h4>
                     <div className="imports-table">
                       <div className="imports-row imports-header">
@@ -4870,7 +5370,7 @@ export default function App() {
                   onJumpToDisasm={(addr) => { selectAddress(addr); navigateView('disassembly'); }}
                   highlightedRange={highlightedHexRange ?? undefined}
                   fileSize={hexFileSize || metadata?.file_size}
-                  onLoadMore={() => void previewHexAt(hexOffset + hexBytes.length)}
+                  onLoadMore={hexLoadMore}
                 />
               </div>
             )}
@@ -4978,7 +5478,7 @@ export default function App() {
                       onShowReferences={(address) => { setSelectedDisasmAddress(address); setDisassemblyWorkspaceTab('xrefs'); localStorage.setItem('hexhawk.disassemblyWorkspaceTab', 'xrefs'); setShowReferencesPanel(true); }}
                       onInvertJump={(address) => { setDisassemblyWorkspaceTab('patches'); localStorage.setItem('hexhawk.disassemblyWorkspaceTab', 'patches'); void queueInvertJump(address); }}
                       onNopOut={(address, count) => { setDisassemblyWorkspaceTab('patches'); localStorage.setItem('hexhawk.disassemblyWorkspaceTab', 'patches'); void queueNopSled(address, count); }}
-                      onLoadMore={disasmHasMore ? () => disassembleFile(disasmNextByteOffset ?? undefined) : undefined}
+                      onLoadMore={disasmHasMore ? loadMoreDisassembly : undefined}
                       hasMore={disasmHasMore}
                       isLoadingMore={disasmIsLoadingMore}
                       patchedAddresses={patches.length > 0 ? new Set(patches.map(p => p.address)) : undefined}
@@ -5061,8 +5561,8 @@ export default function App() {
 
             {/* ── CFG ───────────────────────────────────────────────────────── */}
             {activeView === 'cfg' && (
-              <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: 0 }} data-testid="panel-cfg">
-                <div style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
+              <div className="cfg-workspace-main" data-testid="panel-cfg" data-workspace-root="bounded-canvas">
+                <div className="cfg-workspace-graph-slot">
                   <CfgView graph={cfg} naturalLoops={cfgNaturalLoops} onNodeClick={selectCfgBlock} highlightedBlockId={highlightedCfgBlock} onBuildCfg={buildCfg} />
                 </div>
                 {cfgDomTree && (
@@ -5157,7 +5657,7 @@ export default function App() {
                         borderRadius: '0.4rem', fontSize: '0.82rem', color: '#4ade80',
                       }}>
                         <span>?</span>
-                        <span>NEST-enriched verdict - {nestEnrichedVerdict.signals.length} signals, {nestEnrichedVerdict.confidence ?? nestEnrichedVerdict.threatScore}% confidence</span>
+                        <span>NEST advisory: {nestEnrichedVerdict.signals.length} signals, {nestEnrichedVerdict.confidence ?? nestEnrichedVerdict.threatScore}% advisory confidence. GYRE base confidence remains {verdict.confidence}%.</span>
                         <button
                           onClick={() => setNestEnrichedVerdict(null)}
                           style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#4ade80', cursor: 'pointer', fontSize: '0.8rem' }}
@@ -5172,14 +5672,14 @@ export default function App() {
                         onDismiss={() => setHealDismissed(true)}
                       />
                     )}
-                    <BinaryVerdict verdict={nestEnrichedVerdict ?? verdict} onNavigateTab={(tab) => setAndPersistTab(tab as AppTab)} onJumpToAddress={jumpToDisassembly} />
+                    <BinaryVerdict verdict={verdict} onNavigateTab={(tab) => setAndPersistTab(tab as AppTab)} onJumpToAddress={jumpToDisassembly} />
                     <div style={{ marginTop: '1.5rem' }}>
                       <AnalysisGraph
                         imports={metadata?.imports ?? []}
                         strings={strings.map(s => ({ offset: s.offset, text: s.text }))}
                         disassembly={disassembly.map(i => ({ address: i.address, mnemonic: i.mnemonic, operands: i.operands }))}
                         patterns={disassemblyAnalysis.suspiciousPatterns}
-                        verdict={nestEnrichedVerdict ?? verdict}
+                        verdict={verdict}
                         onNavigate={(tab) => setAndPersistTab(tab as AppTab)}
                         onSelectStringOffset={() => navigateView('strings')}
                         onSelectAddress={(address) => { selectAddress(address); navigateView('disassembly'); }}
@@ -5212,7 +5712,7 @@ export default function App() {
                           void scanStrings();
                           addLog('Signals panel requested string scan seed.', 'info');
                         }}
-                      >𝕊 Scan Strings</button>
+                      >S Scan Strings</button>
                     </div>
                   </div>
                 ) : disassemblyAnalysis.suspiciousPatterns.length === 0 ? (
@@ -5277,14 +5777,44 @@ export default function App() {
                 </div>
               ) : (
                 <div className="workspace-view-shell workspace-view-scroll" data-testid="panel-nest">
+                  {gyreSnapshotRecordingError && (
+                    <div
+                      role="alert"
+                      data-testid="gyre-snapshot-recording-error"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        marginBottom: '0.75rem',
+                        padding: '0.6rem 0.75rem',
+                        border: '1px solid #dc2626',
+                        borderRadius: '0.4rem',
+                        background: '#2a1010',
+                        color: '#fecaca',
+                        fontSize: '0.82rem',
+                      }}
+                    >
+                      <span>GYRE snapshot recording failed: {gyreSnapshotRecordingError}</span>
+                      <button
+                        type="button"
+                        onClick={retryGyreSnapshotRecording}
+                        style={{ marginLeft: 'auto' }}
+                      >
+                        Retry snapshot recording
+                      </button>
+                    </div>
+                  )}
                   <NestView
                     binaryPath={binaryPath} metadata={metadata} disassembly={disassembly}
+                    gyreSnapshotId={activeGyreSnapshotBinding?.snapshotId ?? null}
                     strings={strings} disassemblyAnalysis={disassemblyAnalysis}
                     disasmOffset={disasmOffset} disasmLength={disasmLength}
                     onAddressSelect={(addr) => { selectAddress(addr); navigateView('disassembly'); }}
-                    onNestComplete={(v) => setNestEnrichedVerdict(v)}
+                    onNestComplete={((request) => (v) => {
+                      if (isCurrentFileOperation(request)) setNestEnrichedVerdict(v);
+                    })(captureFileOperation())}
                     onLoadTrainingBinary={(path) => {
-                      setBinaryPath(path);
+                      prepareForBinarySelection(path);
                       setRecentFiles(prev => {
                         const next = [path, ...prev.filter(f => f !== path)].slice(0, 10);
                         localStorage.setItem('hexhawk.recentFiles', JSON.stringify(next));
@@ -5303,12 +5833,25 @@ export default function App() {
             {activeView === 'report' && (
               <div className="panel" style={{ overflowY: 'auto', flex: 1 }} data-testid="panel-report">
                 <IntelligenceReport
-                  verdict={nestEnrichedVerdict ?? verdict}
+                  verdict={verdict}
                   binaryPath={binaryPath}
                   binarySize={metadata?.file_size}
                   architecture={metadata?.architecture}
                   fileType={metadata?.file_type}
                   aiContributions={aiContributions}
+                  provenance={analysisProvenance}
+                  cfgBudget={cfg ? {
+                    nodes: cfg.nodes.length,
+                    edges: cfg.edges.length,
+                    nodeBudget: cfg.node_budget,
+                    edgeBudget: cfg.edge_budget,
+                    omittedNodes: cfg.omitted_nodes,
+                    omittedEdges: cfg.omitted_edges,
+                    truncated: cfg.truncated,
+                  } : null}
+                  legacyRecordMetadata={metadata?.legacy_record_metadata ?? null}
+                  referenceGraph={referenceGraph}
+                  onNavigate={createReportNavigation()}
                 />
               </div>
             )}
@@ -5382,34 +5925,34 @@ export default function App() {
             ))}
 
             {/* ── Agent Gate ────────────────────────────────────────────────── */}
-            {activeView === 'agent' && gateTab('agent', 'Agent Gate', (
+            {activeView === 'agent' && gateTab('agent', 'AI Suggestions', (
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px 16px' }} data-testid="panel-agent">
                 <div className="agent-gate-panel">
-                  <h2 className="agent-gate-title">⬢ Agent suggestion review</h2>
                   <AgentGatePanel
                     proposals={agentGateProposals}
                     approvedProposals={approvedAgentGateProposals}
+                    actionLog={agentActionLog}
                     onApprove={handleApproveAgentProposal}
                     onReject={handleRejectAgentProposal}
                   />
 
                   {/* Agent action log */}
                   <section className="agent-gate-section">
-                    <h3 className="agent-gate-section-title">Agent Action Log ({agentActionLog.length})</h3>
+                    <h3 className="agent-gate-section-title">Machine-readable decision log ({agentActionLog.length})</h3>
                     {agentActionLog.length === 0 ? (
                       <p className="agent-gate-empty">No actions recorded yet.</p>
                     ) : (
                       <table className="agent-log-table">
                         <thead>
-                          <tr><th>Time</th><th>Tool</th><th>Summary</th><th>Decision</th></tr>
+                          <tr><th>Time</th><th>Action</th><th>Fingerprint</th><th>Decision</th></tr>
                         </thead>
                         <tbody>
                           {[...agentActionLog].reverse().map(e => (
-                            <tr key={e.id} className={`agent-log-row agent-log-row--${e.approved === true ? 'approved' : e.approved === false ? 'rejected' : 'pending'}`}>
+                            <tr key={`${e.proposal_id}-${e.timestamp}-${e.authority_fingerprint}`} className={`agent-log-row agent-log-row--${e.result === 'accepted' ? 'approved' : 'rejected'}`}>
                               <td>{new Date(e.timestamp).toLocaleTimeString()}</td>
-                              <td><code>{e.tool}</code></td>
-                              <td>{e.summary}</td>
-                              <td>{e.approved === true ? '✓ Approved' : e.approved === false ? '✗ Rejected' : '⏳ Pending'}</td>
+                              <td><code>{e.action_class}</code></td>
+                              <td><code>{e.authority_fingerprint.slice(0, 16)}</code></td>
+                              <td>{e.result === 'accepted' ? '✓ Approved once' : `✗ ${e.reason?.replace(/_/g, ' ') ?? 'Rejected'}`}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -5448,7 +5991,7 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+                <div className="workspace-flow-root" data-workspace-root="flow">
                   <StrikeView
                     binaryPath={binaryPath || null}
                     currentAddress={currentAddress}
@@ -5481,7 +6024,7 @@ export default function App() {
                     baseStrings={strings}
                     baseDisassembly={disassembly}
                     baseCfg={cfg}
-                    baseVerdict={nestEnrichedVerdict ?? verdict}
+                    baseVerdict={verdict}
                     onJumpToAddress={jumpToDisassembly}
                   />
                 </div>
@@ -5510,14 +6053,16 @@ export default function App() {
                           >
                             <div className="plugin-card-top">
                               <div>
-                                <strong>{plugin.enabled ? '[?]' : '[ ]'} {plugin.name}</strong>
+                                <strong>{plugin.enabled ? '[enabled]' : '[disabled]'} {plugin.name}</strong>
                                 <div className="plugin-description">{plugin.description}</div>
                               </div>
                               <div className="plugin-actions">
                                 <button onClick={(e) => { e.stopPropagation(); void reloadPlugin(plugin.name); }} disabled={isReloading}>
                                   {isReloading ? 'Reloading...' : 'Reload'}
                                 </button>
-                                <div className="plugin-status-icon">{status === 'success' ? '?' : status === 'error' ? '?' : ''}</div>
+                                <div className={`plugin-status-icon ${status ? `plugin-status-icon--${status}` : ''}`}>
+                                  {status === 'success' ? 'OK' : status === 'error' ? 'ERR' : ''}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -5528,7 +6073,7 @@ export default function App() {
                       <div className="panel" style={{ marginTop: '0.5rem' }}>
                         <strong>{selectedPlugin.name}</strong> - {selectedPlugin.description}
                         {selectedPlugin.version && <div>Version: {selectedPlugin.version}</div>}
-                        {selectedPlugin.path && <div>Path: {selectedPlugin.path}</div>}
+                        {selectedPlugin.path && <div className="plugin-detail-path">Path: {selectedPlugin.path}</div>}
                       </div>
                     )}
                     <div style={{ marginTop: '1rem' }}>
@@ -5666,10 +6211,27 @@ export default function App() {
 
                 <h4 style={{ color: '#00d4ff' }}>License Keys</h4>
                 <p style={{ color: '#aaa', fontSize: '0.88rem' }}>
-                  Keys use the <code>HKHK-XXXXX-XXXXX-XXXXX-XXXXX</code> format. Open the key icon in the top bar to activate a license and unlock enabled Pro or Enterprise features.
+                  Legacy HKHK license keys are disabled in this build while activation moves to public-key entitlements. Open the key icon to see the current activation status.
                 </p>
 
                 <h4 style={{ color: '#00d4ff' }}>Trust and Verification</h4>
+                <TechnicalPreviewTrustCenter
+                  signingStatus="unsigned technical preview"
+                  localMode="local-first with explicit online/licensing/export features"
+                />
+                <section className="report-section challenge-point-system-panel" data-testid="challenge-point-system-panel">
+                  <div className="report-section-title">Challenge Point System</div>
+                  <p className="report-policy-note">
+                    HexHawk now includes an authority-safe scoring model for the full Challenges corpus: file identity,
+                    artifact diversity, evidence coverage, C-like pseudocode accuracy probes, GUI/replay checks, and cleanup custody.
+                    Points reward reproducible proof, not hype; they never prove verdict correctness or release readiness.
+                  </p>
+                  <ul style={{ color: '#ccc', paddingLeft: '1.2rem', fontSize: '0.9rem' }}>
+                    <li>Uses SHA-256 identity and explicit safety labels for challenge files, including quarantined partial downloads.</li>
+                    <li>Scores C-output quality by recovered branches, loops, typed variables, unresolved instructions/calls, and optional compile/round-trip checks.</li>
+                    <li>Records cleanup as custody actions so broad deletes cannot silently inflate readiness points.</li>
+                  </ul>
+                </section>
                 <ul style={{ color: '#ccc', paddingLeft: '1.2rem', fontSize: '0.9rem' }}>
                   <li><a href="https://hexhawk.ke/trust-center/" target="_blank" rel="noreferrer">Trust Center</a></li>
                   <li><a href="https://hexhawk.ke/keys-revocations/" target="_blank" rel="noreferrer">Keys and Revocations Registry</a></li>
@@ -5679,14 +6241,9 @@ export default function App() {
                 </ul>
               </div>
             )}
-            <AnalystPromptCard
-              prompt={analystPrompt}
-              onDismiss={(trigger) => setDismissedAnalystPrompts(prev => prev.includes(trigger) ? prev : [...prev, trigger])}
-              onNavigate={(targetView) => navigateView(targetView as NavView)}
-            />
           </div>
 
-          {/* Operator Console � persistent bottom bar when view is active */}
+          {/* Operator Console - persistent bottom bar when view is active */}
           {activeView === 'verdict' && effectiveTier !== 'free' && (
             <div className="wf-console-bar">
               <OperatorConsole

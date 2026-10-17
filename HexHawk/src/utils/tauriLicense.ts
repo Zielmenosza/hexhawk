@@ -3,6 +3,10 @@
 
 import { invoke } from '@tauri-apps/api/core';
 
+function hasTauriRuntime(): boolean {
+  return typeof window !== 'undefined' && typeof (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
+}
+
 export interface LicenseInfo {
   tier: 'pro' | 'enterprise';
   expiry_year: number;
@@ -23,13 +27,20 @@ export interface BuildInfo {
   pro_locked?: boolean;
 }
 
-/** Verify a raw license key string (HKHK-…).
- *  Resolves with LicenseInfo on success; rejects with an error string. */
+/** Verify a raw license entitlement string. Activation currently rejects
+ *  fail-closed until an issuer-signed public-key verifier is implemented. */
 export async function verifyLicense(key: string): Promise<LicenseInfo> {
+  if (!hasTauriRuntime()) {
+    void key;
+    throw new Error('License activation requires the native HexHawk app. Legacy HKHK keys are disabled because the old verifier embedded issuer signing material in the client.');
+  }
   return invoke<LicenseInfo>('verify_license', { key });
 }
 
 /** Returns build metadata — specifically whether this is a Trial binary. */
 export async function getBuildInfo(): Promise<BuildInfo> {
+  if (!hasTauriRuntime()) {
+    return { is_trial: false, version: '1.0.0-web' };
+  }
   return invoke<BuildInfo>('get_build_info');
 }

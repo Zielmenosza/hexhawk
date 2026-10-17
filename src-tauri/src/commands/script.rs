@@ -17,14 +17,14 @@
 //!   find_bytes    — byte-pattern search (yara-lite)
 //!   entropy       — compute Shannon entropy over a range
 
-use std::time::Instant;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::time::Instant;
 
 use crate::commands::disassemble::disassemble_file_range;
 use crate::commands::hex::{get_file_size, read_hex_range};
-use crate::commands::strings::extract_strings;
 use crate::commands::inspect::inspect_file_metadata;
+use crate::commands::strings::extract_strings;
 
 // ── Request / Response types ──────────────────────────────────────────────────
 
@@ -77,9 +77,7 @@ fn param_str<'a>(params: &'a Value, key: &str) -> Option<&'a str> {
 }
 
 fn param_u64(params: &Value, key: &str, default: u64) -> u64 {
-    params.get(key)
-        .and_then(|v| v.as_u64())
-        .unwrap_or(default)
+    params.get(key).and_then(|v| v.as_u64()).unwrap_or(default)
 }
 
 fn param_usize(params: &Value, key: &str, default: usize) -> usize {
@@ -198,11 +196,10 @@ pub fn run_script(script: BatchScript) -> Result<ScriptOutput, String> {
 
     let path = &script.path;
     // Validate path exists before running any steps
-    std::fs::metadata(path)
-        .map_err(|_| format!("File not found: {path}"))?;
+    std::fs::metadata(path).map_err(|_| format!("File not found: {path}"))?;
 
     let timeout_ms = script.timeout_ms.unwrap_or(60_000).min(300_000);
-    let deadline   = Instant::now() + std::time::Duration::from_millis(timeout_ms);
+    let deadline = Instant::now() + std::time::Duration::from_millis(timeout_ms);
     let wall_start = Instant::now();
 
     let mut results: Vec<StepResult> = Vec::with_capacity(script.steps.len());
@@ -217,7 +214,9 @@ pub fn run_script(script: BatchScript) -> Result<ScriptOutput, String> {
                 result_key: step.result_key.clone(),
                 success: false,
                 data: None,
-                error: Some(format!("Script timeout ({timeout_ms} ms) exceeded before this step ran.")),
+                error: Some(format!(
+                    "Script timeout ({timeout_ms} ms) exceeded before this step ran."
+                )),
                 duration_ms: 0,
             });
             steps_failed += 1;
@@ -268,97 +267,109 @@ pub fn run_script(script: BatchScript) -> Result<ScriptOutput, String> {
 
 // ── Operation implementations ─────────────────────────────────────────────────
 
-fn disassemble_section(path: &str, section_name: &str, max_insn: Option<u64>) -> Result<Value, String> {
+fn disassemble_section(
+    path: &str,
+    section_name: &str,
+    max_insn: Option<u64>,
+) -> Result<Value, String> {
+    use memmap2::MmapOptions;
     use object::{Object, ObjectSection};
     use std::fs;
-    use memmap2::MmapOptions;
 
-    let file_handle = fs::File::open(path)
-        .map_err(|e| format!("Cannot open file: {e}"))?;
+    let file_handle = fs::File::open(path).map_err(|e| format!("Cannot open file: {e}"))?;
     let mmap = unsafe {
-        MmapOptions::new().map(&file_handle)
+        MmapOptions::new()
+            .map(&file_handle)
             .map_err(|e| format!("mmap failed: {e}"))?
     };
 
-    let obj = object::File::parse(&*mmap)
-        .map_err(|e| format!("Object parse failed: {e}"))?;
+    let obj = object::File::parse(&*mmap).map_err(|e| format!("Object parse failed: {e}"))?;
 
     // Find the section by name (try both with and without dot prefix)
-    let sec = obj.sections()
+    let sec = obj
+        .sections()
         .find(|s| {
             let name = s.name().unwrap_or("");
             name.eq_ignore_ascii_case(section_name)
                 || name.eq_ignore_ascii_case(&format!(".{}", section_name.trim_start_matches('.')))
         })
         .ok_or_else(|| {
-            let names: Vec<_> = obj.sections()
+            let names: Vec<_> = obj
+                .sections()
                 .filter_map(|s| s.name().ok().map(|n| n.to_string()))
                 .collect();
-            format!("Section '{section_name}' not found. Available: {}", names.join(", "))
+            format!(
+                "Section '{section_name}' not found. Available: {}",
+                names.join(", ")
+            )
         })?;
 
-    let file_offset = sec.file_range()
+    let file_offset = sec
+        .file_range()
         .ok_or_else(|| format!("Section '{section_name}' has no file range (BSS?)"))?
         .0 as usize;
     let sec_size = sec.size() as usize;
 
-    let result = disassemble_file_range(
-        path.to_string(),
-        file_offset,
-        sec_size,
-        max_insn,
-    )?;
+    let result = disassemble_file_range(path.to_string(), file_offset, sec_size, max_insn)?;
 
     let mut v = serde_json::to_value(result).map_err(|e| e.to_string())?;
     if let Some(obj) = v.as_object_mut() {
-        obj.insert("section".to_string(), Value::String(section_name.to_string()));
-        obj.insert("section_offset".to_string(), Value::Number(file_offset.into()));
+        obj.insert(
+            "section".to_string(),
+            Value::String(section_name.to_string()),
+        );
+        obj.insert(
+            "section_offset".to_string(),
+            Value::Number(file_offset.into()),
+        );
         obj.insert("section_size".to_string(), Value::Number(sec_size.into()));
     }
     Ok(v)
 }
 
 fn list_sections(path: &str) -> Result<Value, String> {
+    use memmap2::MmapOptions;
     use object::{Object, ObjectSection, SectionKind};
     use std::fs;
-    use memmap2::MmapOptions;
 
-    let file_handle = fs::File::open(path)
-        .map_err(|e| format!("Cannot open file: {e}"))?;
+    let file_handle = fs::File::open(path).map_err(|e| format!("Cannot open file: {e}"))?;
     let mmap = unsafe {
-        MmapOptions::new().map(&file_handle)
+        MmapOptions::new()
+            .map(&file_handle)
             .map_err(|e| format!("mmap failed: {e}"))?
     };
 
-    let obj = object::File::parse(&*mmap)
-        .map_err(|e| format!("Object parse failed: {e}"))?;
+    let obj = object::File::parse(&*mmap).map_err(|e| format!("Object parse failed: {e}"))?;
 
-    let sections: Vec<Value> = obj.sections().map(|sec| {
-        let kind = match sec.kind() {
-            SectionKind::Text => "text",
-            SectionKind::Data => "data",
-            SectionKind::ReadOnlyData => "rodata",
-            SectionKind::UninitializedData => "bss",
-            SectionKind::Other => "other",
-            _ => "unknown",
-        };
-        let (file_offset, file_size) = sec.file_range().unwrap_or((0, 0));
-        serde_json::json!({
-            "name": sec.name().unwrap_or("?"),
-            "kind": kind,
-            "virtual_address": sec.address(),
-            "file_offset": file_offset,
-            "size": sec.size(),
-            "file_size": file_size,
+    let sections: Vec<Value> = obj
+        .sections()
+        .map(|sec| {
+            let kind = match sec.kind() {
+                SectionKind::Text => "text",
+                SectionKind::Data => "data",
+                SectionKind::ReadOnlyData => "rodata",
+                SectionKind::UninitializedData => "bss",
+                SectionKind::Other => "other",
+                _ => "unknown",
+            };
+            let (file_offset, file_size) = sec.file_range().unwrap_or((0, 0));
+            serde_json::json!({
+                "name": sec.name().unwrap_or("?"),
+                "kind": kind,
+                "virtual_address": sec.address(),
+                "file_offset": file_offset,
+                "size": sec.size(),
+                "file_size": file_size,
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(serde_json::json!({ "sections": sections, "count": sections.len() }))
 }
 
 fn find_byte_pattern(path: &str, pattern_hex: &str, limit: usize) -> Result<Value, String> {
-    use std::fs;
     use memmap2::MmapOptions;
+    use std::fs;
 
     // Parse hex pattern, allowing spaces and wildcards ('??')
     let tokens: Vec<&str> = pattern_hex.split_whitespace().collect();
@@ -370,18 +381,21 @@ fn find_byte_pattern(path: &str, pattern_hex: &str, limit: usize) -> Result<Valu
     }
 
     // Each token is either a hex byte "AB" or a wildcard "??"
-    let pattern: Vec<Option<u8>> = tokens.iter().map(|t| {
-        if *t == "??" || *t == "?" {
-            None
-        } else {
-            u8::from_str_radix(t, 16).ok()
-        }
-    }).collect();
+    let pattern: Vec<Option<u8>> = tokens
+        .iter()
+        .map(|t| {
+            if *t == "??" || *t == "?" {
+                None
+            } else {
+                u8::from_str_radix(t, 16).ok()
+            }
+        })
+        .collect();
 
-    let file_handle = fs::File::open(path)
-        .map_err(|e| format!("Cannot open file: {e}"))?;
+    let file_handle = fs::File::open(path).map_err(|e| format!("Cannot open file: {e}"))?;
     let mmap = unsafe {
-        MmapOptions::new().map(&file_handle)
+        MmapOptions::new()
+            .map(&file_handle)
             .map_err(|e| format!("mmap failed: {e}"))?
     };
     let data: &[u8] = &mmap;
@@ -421,38 +435,41 @@ fn find_byte_pattern(path: &str, pattern_hex: &str, limit: usize) -> Result<Valu
 
 fn find_xrefs_to(path: &str, target_addr: u64, max_insn: usize) -> Result<Value, String> {
     use capstone::prelude::*;
+    use memmap2::MmapOptions;
     use object::{Architecture, Object};
     use std::fs;
-    use memmap2::MmapOptions;
 
-    let file_handle = fs::File::open(path)
-        .map_err(|e| format!("Cannot open file: {e}"))?;
+    let file_handle = fs::File::open(path).map_err(|e| format!("Cannot open file: {e}"))?;
     let mmap = unsafe {
-        MmapOptions::new().map(&file_handle)
+        MmapOptions::new()
+            .map(&file_handle)
             .map_err(|e| format!("mmap failed: {e}"))?
     };
     let data: &[u8] = &mmap;
 
-    let obj = object::File::parse(data)
-        .map_err(|e| format!("Object parse failed: {e}"))?;
+    let obj = object::File::parse(data).map_err(|e| format!("Object parse failed: {e}"))?;
 
     let cs = match obj.architecture() {
-        Architecture::X86_64 => Capstone::new().x86()
+        Architecture::X86_64 => Capstone::new()
+            .x86()
             .mode(arch::x86::ArchMode::Mode64)
             .detail(true)
             .build()
             .map_err(|e| e.to_string())?,
-        Architecture::I386 => Capstone::new().x86()
+        Architecture::I386 => Capstone::new()
+            .x86()
             .mode(arch::x86::ArchMode::Mode32)
             .detail(true)
             .build()
             .map_err(|e| e.to_string())?,
-        Architecture::Aarch64 => Capstone::new().arm64()
+        Architecture::Aarch64 => Capstone::new()
+            .arm64()
             .mode(arch::arm64::ArchMode::Arm)
             .detail(true)
             .build()
             .map_err(|e| e.to_string())?,
-        _ => Capstone::new().x86()
+        _ => Capstone::new()
+            .x86()
             .mode(arch::x86::ArchMode::Mode64)
             .detail(true)
             .build()
@@ -460,7 +477,8 @@ fn find_xrefs_to(path: &str, target_addr: u64, max_insn: usize) -> Result<Value,
     };
 
     let limit = max_insn.min(65536);
-    let insns = cs.disasm_count(data, 0, limit)
+    let insns = cs
+        .disasm_count(data, 0, limit)
         .map_err(|e| format!("Disassembly failed: {e}"))?;
 
     let mut xrefs: Vec<Value> = Vec::new();
@@ -471,8 +489,9 @@ fn find_xrefs_to(path: &str, target_addr: u64, max_insn: usize) -> Result<Value,
         // Simple: look for the target address hex in the operand string
         let target_hex_lo = format!("{:x}", target_addr);
         let target_hex_up = format!("{:X}", target_addr);
-        let target_dec    = format!("{}", target_addr);
-        if ops.contains(&target_hex_lo) || ops.contains(&target_hex_up) || ops.contains(&target_dec) {
+        let target_dec = format!("{}", target_addr);
+        if ops.contains(&target_hex_lo) || ops.contains(&target_hex_up) || ops.contains(&target_dec)
+        {
             let kind = if m.starts_with('j') || m == "jmp" {
                 "jump"
             } else if m == "call" || m == "callq" {
@@ -505,7 +524,8 @@ pub(crate) fn shannon_entropy(bytes: &[u8]) -> f64 {
         counts[b as usize] += 1;
     }
     let len = bytes.len() as f64;
-    counts.iter()
+    counts
+        .iter()
         .filter(|&&c| c > 0)
         .map(|&c| {
             let p = c as f64 / len;
@@ -519,6 +539,6 @@ pub(crate) fn classify_entropy(h: f64) -> &'static str {
         0..=3 => "low (plaintext / structured data)",
         4..=5 => "moderate (mixed code/data)",
         6..=7 => "high (compressed or encrypted likely)",
-        _     => "very high (likely encrypted / packed)",
+        _ => "very high (likely encrypted / packed)",
     }
 }

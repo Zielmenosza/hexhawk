@@ -6,9 +6,30 @@
     <meta name="description" content="HexHawk is a Rust/Tauri reverse engineering workspace with plugin-driven binary analysis and hex inspection." />
     <link rel="icon" type="image/png" href="./src-tauri/icons/icon.png" />
     <title>HexHawk</title>
+    <style>
+      .startup-shell {
+        min-height: 100vh;
+        display: grid;
+        place-content: center;
+        gap: 0.75rem;
+        box-sizing: border-box;
+        padding: 2rem;
+        background: #080c14;
+        color: #d7e7f4;
+        font: 500 16px/1.5 system-ui, sans-serif;
+        text-align: center;
+      }
+      .startup-shell strong { color: #5fd7ff; font-size: 1.35rem; }
+      .startup-shell small { color: #8aa2b8; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="startup-shell" role="status" aria-live="polite">
+        <strong>Starting HexHawk…</strong>
+        <small>Loading the analysis workspace.</small>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

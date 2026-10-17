@@ -46,6 +46,7 @@ import { scanSignatures } from './signatureEngine';
 import {
   extractCfgSignals,
   type CfgAnalysisSummary,
+  type CfgGraph,
 } from './cfgSignalExtractor';
 import {
   buildAnalysisPlan,
@@ -61,7 +62,7 @@ import {
   type LearningDecision,
 } from './iterationLearning';
 import { applyLearningBoost, type LearningBoosts } from './learningStore';
-import type { NestBackend } from './nestBackend';
+import type { NestBackend, DisassemblyResult } from './nestBackend';
 import type {
   FileMetadata,
   SuspiciousPattern,
@@ -137,13 +138,24 @@ export interface NestRunnerOptions {
    */
   seedConfidence?:     number;
   /**
-   * Return true to stop the loop early (checked before each iteration).
+   * Return true to cancel work (checked at entry, after awaits and callbacks).
+   * Entered backend work is awaited, but cancellation rejects with AbortError
+   * without starting another phase or treating cancellation as convergence.
    * Wire this to a stopRef in the UI, or to a signal in the CLI.
    */
   shouldStop?:         () => boolean;
 }
 
 // ── NestSessionRunner ─────────────────────────────────────────────────────────
+
+/** Shared cancellation gate for the core, wrapper and auto-fetch entrypoint. */
+export function assertNestRunnerActive(shouldStop?: () => boolean): void {
+  if (shouldStop?.()) {
+    const error = new Error('NEST work stopped before completion.');
+    error.name = 'AbortError';
+    throw error;
+  }
+}
 
 /**
  * Runs a NEST self-improving analysis session.
@@ -193,6 +205,7 @@ export class NestSessionRunner {
    */
   async runOne(): Promise<NestIterationResult> {
     const { opts } = this;
+    assertNestRunnerActive(opts.shouldStop);
     const {
       filePath, config, backend, metadata, strings,
       disassemblyAnalysis, strikeSignals,
@@ -234,12 +247,19 @@ export class NestSessionRunner {
     let cfgPatterns: SuspiciousPattern[] = [];
     let cfgSummary: CfgAnalysisSummary | undefined;
     if (instrs.length > 0) {
+      let cfgGraph: CfgGraph | undefined;
       try {
-        const cfgGraph = await backend.buildCfg(filePath, offset, length);
-        const cfgResult = extractCfgSignals(cfgGraph);
-        cfgPatterns = cfgResult.patterns;
-        cfgSummary  = cfgResult.summary;
+        cfgGraph = await backend.buildCfg(filePath, offset, length, metadata?.sha256);
       } catch { /* non-fatal */ }
+      // Outside the transport catch: cancellation must not become success.
+      assertNestRunnerActive(opts.shouldStop);
+      if (cfgGraph) {
+        try {
+          const cfgResult = extractCfgSignals(cfgGraph);
+          cfgPatterns = cfgResult.patterns;
+          cfgSummary  = cfgResult.summary;
+        } catch { /* malformed CFG remains non-fatal */ }
+      }
     }
 
     // ── 5. Build iteration input ────────────────────────────────────────────
@@ -264,6 +284,7 @@ export class NestSessionRunner {
     const rawVerdict = runCorrelationPass(input);
     const hash       = metadata?.sha256 ?? null;
     const boosts     = opts.getBoosts?.(hash, rawVerdict.signals.map(s => s.id)) ?? null;
+    assertNestRunnerActive(opts.shouldStop);
     let verdict      = boosts ? applyLearningBoost(rawVerdict, boosts) : rawVerdict;
     // If a seedConfidence floor is set (owned binary), ensure iteration 0 starts
     // no lower than the previously achieved best confidence.
@@ -333,8 +354,8 @@ export class NestSessionRunner {
     this.sess = { ...sess, iterations: [...sess.iterations, snapshot] };
 
     // ── 11. Determine stop or continue ───────────────────────────────────────
-    const externalStop  = opts.shouldStop?.() ?? false;
-    const shouldContinue = !uncertainty.shouldStop && !externalStop;
+    assertNestRunnerActive(opts.shouldStop);
+    const shouldContinue = !uncertainty.shouldStop;
 
     if (!shouldContinue) {
       const status =
@@ -355,24 +376,31 @@ export class NestSessionRunner {
     };
 
     opts.onIteration?.(result);
+    assertNestRunnerActive(opts.shouldStop);
 
     // ── 12. Expand disassembly for next iteration (backend call) ─────────────
     if (shouldContinue && plan) {
       const rangeReq = analysisPlan?.disasmRequest
         ? { offset: analysisPlan.disasmRequest.offset, length: analysisPlan.disasmRequest.length }
         : selectNextDisasmRange(plan, { offset, length }, config);
+      let response: DisassemblyResult | undefined;
       try {
-        const response = await backend.disassembleRange(filePath, rangeReq.offset, rangeReq.length);
-        const merged   = new Map<number, DisassembledInstruction>(
-          this.instrs.map(i => [i.address, i]),
-        );
-        for (const instr of response.instructions) {
-          merged.set(instr.address, instr);
-        }
-        this.instrs = Array.from(merged.values()).sort((a, b) => a.address - b.address);
-        this.offset = Math.min(offset, rangeReq.offset);
-        this.length = this.instrs.length * 4;
+        response = await backend.disassembleRange(filePath, rangeReq.offset, rangeReq.length, metadata?.sha256);
       } catch { /* expansion failed — keep current coverage */ }
+      assertNestRunnerActive(opts.shouldStop);
+      if (response) {
+        try {
+          const merged = new Map<number, DisassembledInstruction>(
+            this.instrs.map(i => [i.address, i]),
+          );
+          for (const instr of response.instructions) {
+            merged.set(instr.address, instr);
+          }
+          this.instrs = Array.from(merged.values()).sort((a, b) => a.address - b.address);
+          this.offset = Math.min(offset, rangeReq.offset);
+          this.length = this.instrs.length * 4;
+        } catch { /* malformed expansion — keep current coverage */ }
+      }
     }
 
     return result;
@@ -388,18 +416,14 @@ export class NestSessionRunner {
     let keepGoing = true;
 
     while (keepGoing) {
-      if (this.opts.shouldStop?.()) break;
+      assertNestRunnerActive(this.opts.shouldStop);
       const result = await this.runOne();
+      assertNestRunnerActive(this.opts.shouldStop);
       keepGoing = result.shouldContinue;
       if (keepGoing && delayMs > 0) {
         await new Promise<void>(r => setTimeout(r, delayMs));
+        assertNestRunnerActive(this.opts.shouldStop);
       }
-    }
-
-    // Ensure finalized even if stopped externally
-    if (this.sess.status === 'running' || this.sess.status === 'idle') {
-      this.sess  = finalizeSession(this.sess, 'max-reached');
-      this.lsess = finalizeLearningSession(this.lsess);
     }
 
     return {

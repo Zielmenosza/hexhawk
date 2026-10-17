@@ -1,499 +1,166 @@
 # HexHawk
 
-**HexHawk is a local-first reverse-engineering workbench for examining binaries, following the evidence, and producing reports that another analyst can actually review.**
-
-It is built with **Rust, Tauri, React, and TypeScript** and is designed around a fairly simple idea:
-
-> Tools can help an analyst understand a binary, but they should not quietly turn guesses into facts.
-
-HexHawk brings static analysis, disassembly, function analysis, decompiler output, debugger evidence, signature matching and reporting into one desktop workflow while keeping the source and confidence of that evidence visible.
-
-You can open a local binary, investigate what it contains and how it behaves, follow relationships between functions and evidence, and export the results for later review.
-
----
-
-## What HexHawk Does
-
-At a high level, the workflow looks like this:
-
-**Binary → Evidence → Analysis → Correlation → Verdict → Report**
-
-Give HexHawk a supported local file such as an:
-
-* EXE
-* DLL
-* SYS
-* BIN
-* supported sample path
-
-HexHawk can then help you inspect things such as:
-
-* binary identity and metadata
-* strings and imports
-* disassembly
-* control flow
-* cross-references
-* function boundaries
-* calling conventions
-* Win32 constants
-* pseudocode
-* debugger and trace observations
-* signatures and related binaries
-* evidence associated with individual functions
-
-The end result can be exported as a reviewable report or evidence package that keeps source information, uncertainty and known limitations attached.
-
-HexHawk is therefore best thought of as an **analyst workbench**, not a one-click "tell me whether this file is safe" tool.
-
----
-
-## Why HexHawk Exists
-
-Reverse engineering usually means moving between several different views and tools.
-
-One tool shows disassembly.
-
-Another helps with debugging.
-
-Another searches signatures.
-
-Notes end up somewhere else.
-
-Then, eventually, somebody has to work out which observations are actual evidence, which are reconstruction, and which are simply educated guesses.
-
-HexHawk is trying to bring those pieces into one coherent workflow.
-
-More importantly, it deliberately separates **evidence** from **verdicts**.
-
-Decompiler output does not automatically become truth.
-
-Debugger observations do not silently rewrite static conclusions.
-
-AI assistance does not get to make an authoritative classification.
-
-Each subsystem has a specific job and a defined boundary.
-
----
-
-## The HexHawk Engines
-
-HexHawk uses several named components internally. You do not need to understand all of them before using the application, but this is what they are responsible for.
-
-### GYRE
-
-**GYRE is the final classification authority.**
-
-It owns the base verdict and confidence.
-
-Other engines can provide evidence or bounded confidence refinement, but they do not silently replace GYRE's classification.
-
-### NEST
-
-**NEST organizes and converges evidence.**
-
-It collects supporting information and packages evidence around GYRE's verdict.
-
-NEST helps answer:
-
-> "What evidence supports this conclusion?"
-
-It does not create an independent competing verdict.
-
-### TALON
-
-**TALON handles decompilation and structured pseudocode.**
-
-Its output is useful for understanding what code appears to be doing, but reconstructed pseudocode remains advisory rather than authoritative.
-
-### STRIKE
-
-**STRIKE handles runtime and debugger evidence.**
-
-It tracks things such as execution observations, call stacks, traces and behavioral differences discovered while the program is running.
-
-Runtime evidence can strengthen an investigation, but STRIKE does not own the final classification.
-
-### ECHO
-
-**ECHO handles signature and cross-binary correlation.**
-
-This includes exact and fuzzy matching that can help identify relationships between the file being examined and previously known material.
-
-### AETHERFRAME / Forge
-
-**AETHERFRAME provides optional evidence refinement, confidence uplift and lineage metadata.**
-
-Its contribution is bounded by policy.
-
-It cannot change GYRE's underlying classification.
-
-The standalone AetherFrame core is product-agnostic and adapter-driven. HexHawk is one integration and proving ground for it rather than the conceptual owner of AetherFrame itself.
-
-### CREST
-
-**CREST packages analysis into reports and exports.**
-
-Its job is to turn the investigation into something another analyst can read, review and hand off.
-
-### NEXUS
-
-**NEXUS is the assistant/consumer layer.**
-
-It can help a user interact with the available analysis, but it does not own classification truth.
-
----
-
-## Function Intelligence
-
-A major part of the current HexHawk work is **Function Intelligence**.
-
-Instead of making an analyst jump between unrelated views, Function Intelligence brings the evidence associated with a selected function together in one place.
-
-The Function Notebook can show things such as:
-
-* imports used by the function
-* outgoing and incoming calls
-* pseudocode
-* calling-convention information
-* runtime observations
-* known limitations
-* related evidence
-
-Function Intelligence can also be exported as **JSON or Markdown**.
-
-It is still an advisory evidence layer.
-
-The hierarchy remains:
-
-**GYRE owns classification.**
-
-**NEST organizes evidence.**
-
-**TALON reconstructs code.**
-
-**STRIKE contributes runtime observations.**
-
-Function Intelligence brings those pieces together without pretending they all carry the same level of authority.
-
----
-
-## Current Capabilities
-
-HexHawk currently includes:
-
-* native Tauri desktop application
-* Rust backend commands
-* React + TypeScript frontend
-* binary identity and metadata inspection
-* string extraction
-* disassembly
-* control-flow analysis
-* evidence workflows
-* report generation
-* PE import-table parsing
-* queryable cross-reference indexing
-* function-boundary recovery heuristics
-* Win32 constant annotation
-* calling-convention inference
-* Function Intelligence
-* Function Notebook
-* JSON and Markdown function exports
-* debugger/trace evidence
-* NEST evidence bundle validation
-* GYRE verdict-source validation
-* ECHO signature correlation
-* optional AETHERFRAME lineage and report metadata
-* stable GUI selectors for workflow testing
-* export-parity validation
-* local/offline analysis
-* optional BYOK AI integration where configured
-* trial and licensed feature paths
-* Windows MSI and NSIS packaging support
-
-TALON has also received work around:
-
-* CFG/disassembly range alignment
-* fallback block partitioning
-* cross-block argument recovery
-* first-pass semantic naming
-* intermediate-representation artefact cleanup
-
----
-
-## Recent Function Intelligence Work
-
-The current Function Intelligence layer builds on several earlier HexHawk releases:
-
-| Version     | Work introduced                                                                                                                   |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| v1.17.0     | PE import-table parsing                                                                                                           |
-| v1.18.0     | Queryable xref index                                                                                                              |
-| v1.19.0     | Function-boundary recovery heuristics                                                                                             |
-| v1.20.0     | Win32 constant semantic annotation                                                                                                |
-| v1.21.0     | TALON pseudocode IR cleanup                                                                                                       |
-| v1.22.0     | Debugger call-stack reconstruction                                                                                                |
-| v1.23.0     | Conditional breakpoint expressions                                                                                                |
-| v1.24.0     | Calling-convention inference                                                                                                      |
-| v1.25–v1.30 | Function Intelligence model, static/runtime correlation, exports, Function Notebook, workflow integration and regression coverage |
-
-Together, these features form the current function-level evidence view rather than a collection of unrelated analysis features.
-
----
-
-## Current Project Status
-
-As of the **2026-07-09 documentation refresh**, the current source tree should be considered a **validated Function Intelligence source candidate and controlled early-access workbench**.
-
-The relevant development branch is:
-
-```text
-feature/re-workbench-core-next
-```
-
-Recent source tags include:
-
-```text
-v1.30.0-function-intelligence-regression
-v1.31.0-byte-counter-clippy-fix
-```
-
-The current source validation completed successfully:
-
-* Rust workspace tests: **85 backend tests**
-* `nest_cli`: **20 tests**
-* plugin/doc-test crates: completed with no tests where applicable
-* `cargo clippy --workspace -- -D warnings`: passed
-* `npx tsc --noEmit`: passed
-* frontend Vitest: **59 files / 832 tests**
-* `yarn build`: passed
-
-The frontend build still reports the existing Vite chunk-size/dynamic-import warnings.
-
-### What that does not mean
-
-A passing source tree is not automatically a releasable installer.
-
-The current source state still requires a fresh release build and artifact-level validation before it should be treated as a deployment or public-release candidate.
-
-In particular, the exact release artifacts still need:
-
-* clean release-worktree rebuild
-* artifact hashes
-* signing verification
-* installer smoke testing
-* Function Notebook smoke testing
-* export smoke testing
-
-Older June 20/21 release evidence remains useful as historical provenance, but it does **not** prove that newly produced v1.30/v1.31 artifacts pass those same gates.
-
----
-
-## Release Status
-
-| Stage                                   | Status                 |
-| --------------------------------------- | ---------------------- |
-| Source candidate                        | ✅ Validated            |
-| Fresh unsigned deployment candidate     | ⏳ Pending release gate |
-| Controlled external signed-tester build | ❌ Not yet              |
-| Public release candidate                | ❌ Not yet              |
-| Public-trusted signing                  | ❌ Not yet verified     |
-| Updater ready                           | ❌ No                   |
-| Enterprise/procurement ready            | ❌ No                   |
-
-Authenticode verification on the **exact generated artifacts** is required before a build should be described as publicly trusted or signed.
-
----
-
-## What HexHawk Is Not
-
-HexHawk is deliberately **not** intended to be:
-
-* a one-click malware/safety verdict generator
-* an automatic sandbox detonation platform
-* an unchecked AI analysis engine
-* a system where decompiler guesses silently become facts
-* a replacement for analyst judgment
-* a public or enterprise-ready product before its release gates have actually passed
-
-The goal is reviewable analysis, not artificial certainty.
-
----
-
-## Getting Started
-
-### Requirements
-
-For the current internal Windows workflow you will need:
-
-* Windows 10 or Windows 11
-* Rust/Cargo toolchain
-* Node.js environment
-* Yarn
-* the project's frontend and Rust dependencies
-
-HexHawk uses **WebView2** through its Tauri desktop shell. Installer builds are configured to bootstrap the required WebView2 runtime.
-
-> **Unsigned build warning**
+> **Bounded Windows first-release candidate — RC HOLD.** This engineering build is not release approved or safety-certified. Its scope is authorized local PE32/x86 and PE32+/x64 EXE/DLL files up to 64 MiB, analyzed as data without execution: open → inspect/static analysis → GYRE verdict/evidence/limitations → identity-consistent JSON/Markdown reports. NEST manages evidence; CREST packages it; advisory output cannot replace GYRE authority.
 >
-> Until an organization-trusted signing process is configured and verified, locally generated installers may trigger Windows security warnings.
+> Native sidebar workflows outside that journey are disabled independently of license tier. Scripting/REPL, plugins, live debugging/memory editing, sandboxing, patching, comparison, saved-history restoration, function/decompiler/advisory-AI workspaces, online AI, updates and other input formats/platforms are excluded. Legacy feature descriptions/screenshots below are background, not qualification or availability claims for this candidate. Remaining dependency/security, notices/legal, signing and independent release approvals are open.
 
----
+HexHawk is a local-first Windows reverse-engineering and binary-analysis workbench. It helps an analyst open a file, establish its identity, inspect bytes and code, organize evidence, review a GYRE-owned assessment, and export a report another person can check.
 
-## Build From Source
+> **Current posture — 2026-08-20:** technical preview. The current Windows NSIS build is unsigned and may trigger SmartScreen. HexHawk is not a malware sandbox, a safety certificate, or a replacement for analyst judgment.
 
-Install the frontend dependencies:
+![Legacy HexHawk browser preview](docs/assets/hexhawk-for-dummies/03-analysis-workspace.png)
+
+This is a legacy browser/dev preview, not a current native-runtime or release qualification screenshot. See [source verification and remaining gates](docs/RELIABILITY_VERIFICATION.md).
+
+The persistent **Current tool** header always shows:
+
+- the beginner-facing tool name;
+- a plain-language explanation;
+- the technical label used by experienced analysts;
+- the matching tool icon.
+
+## Start here
+
+- **New to HexHawk:** [HexHawk for Dummies](docs/HEXHAWK_FOR_DUMMIES.md)
+- **High-assurance use:** [High-Assurance Guide](docs/HIGH_ASSURANCE_GUIDE.md)
+- **Current tester posture:** [Tester Release Status](docs/TESTER_RELEASE_STATUS.md)
+- **Keyboard use:** [Keyboard Shortcuts](KEYBOARD_SHORTCUTS.md)
+- **Plugins:** [Plugin Quick Reference](PLUGIN_QUICK_REFERENCE.md)
+- **Authority rules:** [Engine Boundary Doctrine](docs/ENGINE_BOUNDARY_DOCTRINE.md)
+- **Market fit:** [Competitive Landscape](competitive_landscape.html)
+
+## Safe first analysis
+
+1. Use a file you are authorized to inspect.
+2. Open HexHawk. The interface should appear normally; a manual refresh is not part of startup.
+3. Select **Open a file** (`Load Binary`) and choose the file.
+4. Select **Start inspection** (`Inspect`). Run this before tools that need parsed file facts.
+5. Review **File summary** (`Metadata`) and **Find readable text** (`Strings`).
+6. Use **Read program instructions** (`Disassembly`) and **See possible code paths** (`CFG`) where useful.
+7. Review **Overall assessment** (`Verdict`) and **Reasons behind the result** (`Signals`).
+8. Use **Repeat and organize checks** (`NEST`) when evidence conflicts or needs a stronger lifecycle record.
+9. Use **Create a report** (`Report`) to package identity, evidence, authority markers, and limitations.
+
+### Important runtime warning
+
+**Live Debugger** (`Debugger`) launches the selected file. Use it only with software you trust and only in an environment approved for runtime investigation. **Run inspection scripts** (`Sandbox`) is a helper-script surface; it is not a malware detonation sandbox.
+
+## Current tool names
+
+`HexHawk/src/components/WorkflowNav.tsx` is the terminology source of truth.
+
+| Group | Beginner-facing name | Technical label | What it does |
+|---|---|---|---|
+| File | Open a file | Load Binary | Select the local file to examine. |
+| File | File summary | Metadata | Show type, platform, size, fingerprints, and file regions. |
+| Understand the file | Start inspection | Inspect | Record file facts needed by later tools. |
+| Understand the file | View exact file bytes | Hex Viewer | Show the bytes stored on disk. |
+| Understand the file | Find readable text | Strings | Find URLs, paths, names, messages, and other text clues. |
+| Understand the file | Read program instructions | Disassembly | Translate machine code into processor instructions. |
+| Understand the file | See possible code paths | CFG | Map decisions, loops, and exits. |
+| Understand the file | Examine one function | Function Notebook | Gather calls, callers, readable code, and evidence for one function. |
+| Understand the file | Read code-like text | Decompile | Produce estimated pseudocode, not original source. |
+| Understand the file | Explain selected code | TALON | Explain selected code and show supporting evidence. |
+| Understand the file | Review AI suggestions | AI Observations | Show advisory explanations and next steps. |
+| Results and records | Overall assessment | Verdict | Present the GYRE-owned classification, confidence, evidence, and unknowns. |
+| Results and records | Reasons behind the result | Signals | Show the reasons that influenced the assessment. |
+| Results and records | Create a report | Report | Package evidence and limitations for review. |
+| Results and records | Open earlier results | Snapshot History | Reopen saved inspection results. |
+| Results and records | Repeat and organize checks | NEST | Manage evidence through repeated review passes; it does not own the verdict. |
+| Results and records | See what happened | Activity | Review actions, warnings, and errors from the session. |
+| Advanced tools | Plan changes to the file | Patch | Prepare exact changes for review before applying anything. |
+| Advanced tools | Work out required inputs | Constraint | Suggest inputs that may lead to a chosen path. |
+| Advanced tools | Run inspection scripts | Sandbox | Run available inspection helpers; not a malware sandbox. |
+| Advanced tools | Live Debugger | Debugger | Execute trusted software under debugger control. |
+| Advanced tools | Compare two files | Binary Diff | Compare bytes, text, functions, blocks, and assessment changes. |
+| Advanced tools | Run advanced commands | REPL | Run experienced-user inspection commands. |
+| Advanced tools | Review AI-proposed notes | Agent Gate | Accept or reject advisory notes; notes cannot change the assessment. |
+| Add-ons | Run add-on tools | Plugin Manager | Run built-in or approved local plugins. |
+| Help | Learn how to use HexHawk | Help | Show workflows, shortcuts, and common fixes. |
+| Help | Automate runtime queries | STRIKE API | Document scriptable runtime-observation queries. |
+| Help | About HexHawk | About HexHawk | Explain local processing and judgment boundaries. |
+
+## Authority and evidence boundaries
+
+- **GYRE owns the verdict and base confidence.**
+- **NEST stores, organizes, and manages evidence through its lifecycle.** It does not replace GYRE.
+- **AETHERFRAME is bounded advisory governance.** It may attach lineage, budgets, uncertainty, checkpoints, and proof limits; it cannot change a GYRE verdict or NEST evidence.
+- **TALON, STRIKE, ECHO, plugins, debugger output, decompiler output, comparison output, and AI observations are supporting evidence or advisory help.**
+- **CREST/report output packages evidence.** Packaging does not create a new verdict authority.
+- **NEXUS/AI assistance is advisory and must remain labelled.**
+
+A suspicious clue is not proof of malware. A clean-looking assessment is not a permanent safety guarantee.
+
+## Windows installation and artifact verification
+
+The current locally verified deliverable is an unsigned NSIS installer named:
+
+```text
+target/release/bundle/nsis/HexHawk_1.0.0_x64-setup.exe
+```
+
+Use the adjacent `HexHawk_1.0.0_x64-setup.exe.sha256` sidecar or the current release handoff to obtain the expected hash. The exact hash is intentionally not embedded in these packaged docs: changing a document inside the installer changes the installer hash.
+
+Verify from the bundle folder with:
+
+```bash
+cd target/release/bundle/nsis
+sha256sum -c HexHawk_1.0.0_x64-setup.exe.sha256
+```
+
+The expected result is `HexHawk_1.0.0_x64-setup.exe: OK`. This records repository-local validation; it is not a public distribution or signing claim.
+
+## Build and validate from source
+
+Prerequisites: Windows 10/11, WebView2, Rust/Cargo, Node.js, and the repository's Yarn 4 toolchain.
 
 ```bash
 yarn install
-```
-
-Check the TypeScript source:
-
-```bash
-npx tsc --noEmit
-```
-
-Build the frontend:
-
-```bash
-yarn build
-```
-
-Run the Rust checks:
-
-```bash
-cargo check --workspace
-cargo test --workspace
-```
-
-Build the Tauri application:
-
-```bash
-yarn tauri:build
-```
-
----
-
-## Full Validation
-
-The following commands were used for the current source-validation claims:
-
-```bash
+yarn typecheck
+yarn test --reporter=dot
+npm --prefix HexHawk run build
+cargo fmt --all -- --check
 cargo test --workspace
 cargo clippy --workspace -- -D warnings
-
-cd HexHawk
-
-npx tsc --noEmit
-
-TEST_FILES=$(find src \( -name '*.test.ts' -o -name '*.test.tsx' \) \
-  | grep -v node_modules \
-  | sort \
-  | tr '\n' ' ')
-
-npx vitest run --reporter=dot $TEST_FILES
-
-yarn build
 ```
 
-These validate the source tree.
+Development desktop app:
 
-They do **not** replace the packaging, signing, installer or application smoke-test gates required for an actual release.
+```bash
+yarn tauri:dev
+```
 
----
+NSIS-only build:
 
-## For New Evaluators
+```bash
+node node_modules/@tauri-apps/cli/tauri.js build --bundles nsis
+```
 
-If you are looking at HexHawk for the first time, a useful mental model is:
+The configured Tauri build hook uses `yarn workspace hexhawk-ui build`. Do not treat a Vite browser preview as packaged-native proof.
+
+## What HexHawk does not claim
+
+HexHawk does not claim to:
+
+- certify a file as safe;
+- detonate malware in an isolated cloud sandbox;
+- bypass protections;
+- prove exploitability or shell access from one signal;
+- recover exact original source code;
+- let AI or NEST silently replace GYRE;
+- be a universal replacement for IDA Pro, Ghidra, Binary Ninja, Cutter, or x64dbg;
+- be publicly trusted or procurement-ready while the Windows artifact remains unsigned.
+
+## Repository map
 
 ```text
-Load a binary
-     ↓
-Inspect the facts
-     ↓
-Explore code and functions
-     ↓
-Collect static + runtime evidence
-     ↓
-Correlate supporting information
-     ↓
-Review the GYRE-backed conclusion
-     ↓
-Export the investigation
+HexHawk/                  React/TypeScript desktop interface
+docs/                     Product, operator, assurance, and evidence documentation
+src-tauri/                Rust/Tauri backend and Windows packaging
+plugin-api/               Plugin ABI and result model
+plugins/                  Built-in/sample plugins
+site-build/               Static public-site deployment inputs
+competitive_landscape.html Editorial source for the comparison page
 ```
 
-The important part is that the steps remain inspectable.
-
-You should be able to tell:
-
-* where evidence came from
-* whether something was observed or inferred
-* which component produced it
-* what limitations apply
-* who owns the final classification
-
-That distinction is central to the project.
-
----
-
-## Documentation
-
-If you are completely new to HexHawk, start with:
-
-```text
-docs/HEXHAWK_FOR_DUMMIES.md
-```
-
-That document is intended to provide the more detailed beginner and evaluator walkthrough.
-
-For competitive and job-fit positioning against established reverse-engineering tools, see:
-
-```text
-competitive_landscape.html
-```
-
----
-
-## Development Philosophy
-
-HexHawk follows a few important rules.
-
-### Evidence should remain evidence
-
-A useful observation should not silently become a verdict simply because several tools agree with it.
-
-### Reconstruction is not ground truth
-
-Decompiler output can be extremely useful while still being an approximation of the original source.
-
-### Runtime and static analysis are complementary
-
-What a program appears capable of doing and what it actually does during a particular trace are different forms of evidence.
-
-Both matter.
-
-Neither should erase the other.
-
-### Automation should help the analyst, not hide the analysis
-
-AI and automated correlation are useful when they reduce repetitive work and expose relationships.
-
-They become dangerous when they hide uncertainty.
-
-### Reports should survive handoff
-
-An investigation should make sense to somebody other than the person who performed it.
-
-That means conclusions need evidence, source labels and limitations attached to them.
-
----
-
-## In Short
-
-HexHawk is being built as a **local reverse-engineering workbench where analysts can inspect binaries, follow function-level evidence, combine static and runtime observations, and export reviewable findings without losing track of what is fact, reconstruction or inference.**
-
-The source is currently in a validated early-access state.
-
-The next major boundary is not adding another analytical feature.
-
-It is proving that the **exact packaged artifacts** satisfy the signing, installer, smoke-test and release gates required to move from a validated source tree to a trustworthy distributable build.
+Historical evidence, dated run reports, deployment captures, and archived decision records intentionally preserve what was true at their recorded time. They are not silently rewritten to resemble the current release.

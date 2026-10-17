@@ -84,7 +84,8 @@ pub fn solve_z3_constraint(smtlib: String, timeout_secs: Option<u64>) -> Z3Resul
                 runtime_ms: start.elapsed().as_millis() as u64,
                 error: Some(if missing {
                     "Z3 not found in PATH. Install Z3 (https://github.com/Z3Prover/z3/releases) \
-                     and ensure `z3` is on your PATH.".into()
+                     and ensure `z3` is on your PATH."
+                        .into()
                 } else {
                     format!("Failed to spawn z3: {e}")
                 }),
@@ -132,7 +133,10 @@ pub fn solve_z3_constraint(smtlib: String, timeout_secs: Option<u64>) -> Z3Resul
             model: vec![],
             z3_missing: false,
             runtime_ms: start.elapsed().as_millis() as u64,
-            error: Some(format!("z3 timed out after {} seconds", timeout_dur.as_secs())),
+            error: Some(format!(
+                "z3 timed out after {} seconds",
+                timeout_dur.as_secs()
+            )),
         };
     }
 
@@ -190,10 +194,14 @@ fn parse_model(output: &str) -> Vec<Z3ModelEntry> {
     let mut entries = Vec::new();
     for line in output.lines() {
         let line = line.trim();
-        if !line.starts_with("(define-fun") { continue; }
+        if !line.starts_with("(define-fun") {
+            continue;
+        }
         // (define-fun NAME () TYPE VALUE)
         let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 5 { continue; }
+        if parts.len() < 5 {
+            continue;
+        }
         let name = parts[1].to_string();
         // Last token before ')' is the value
         let raw_value = parts.last().unwrap_or(&"?").trim_end_matches(')');
