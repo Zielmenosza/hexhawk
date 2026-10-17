@@ -321,7 +321,16 @@ describe('extractIOCs', () => {
   it('extracts HTTP URLs', () => {
     const iocs = extractIOCs(['http://malware.example.com/c2/callback?id=1']);
     expect(iocs.some(i => i.kind === 'url')).toBe(true);
-    expect(iocs.some(i => i.value.includes('malware.example.com'))).toBe(true);
+    expect(
+      iocs.some(i => {
+        if (i.kind !== 'url') return false;
+        try {
+          return new URL(i.value).hostname === 'malware.example.com';
+        } catch {
+          return false;
+        }
+      })
+    ).toBe(true);
   });
 
   it('extracts Windows registry paths', () => {
