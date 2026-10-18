@@ -10,7 +10,7 @@ default-run = "hexhawk-backend"
 tauri-build = { version = "2.5.3", features = [] }
 
 [dependencies]
-tauri = { version = "2.10.3", features = [] }
+tauri = { version = "2.11.1", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-stronghold = "2"
 iota_stronghold = "2"
