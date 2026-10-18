@@ -114,9 +114,7 @@ fn read_vli(data: &[u8]) -> Option<(u32, usize)> {
         // 21-bit
         let second = *data.get(1)?;
         let third = *data.get(2)?;
-        let val = (((first & 0x1F) as u32) << 16)
-            | ((second as u32) << 8)
-            | (third as u32);
+        let val = (((first & 0x1F) as u32) << 16) | ((second as u32) << 8) | (third as u32);
         Some((val, 3))
     } else if first & 0xF0 == 0xE0 {
         // 28-bit
@@ -130,7 +128,9 @@ fn read_vli(data: &[u8]) -> Option<(u32, usize)> {
         Some((val, 4))
     } else {
         // 32-bit: next 4 bytes are the value
-        if data.len() < 5 { return None; }
+        if data.len() < 5 {
+            return None;
+        }
         let val = u32::from_be_bytes([data[1], data[2], data[3], data[4]]);
         Some((val, 5))
     }
@@ -208,7 +208,9 @@ fn parse_sig_header(data: &[u8]) -> Result<SigHeader, String> {
     let old_n_functions = read_u16le!();
     let _crc16 = read_u16le!();
     // ctype[12]
-    if data.get(pos..pos + 12).is_none() { return Err("EOF at ctype".into()); }
+    if data.get(pos..pos + 12).is_none() {
+        return Err("EOF at ctype".into());
+    }
     pos += 12;
     let lib_name_len = read_u8!() as usize;
     let _ctypes_crc16 = read_u16le!();
@@ -221,7 +223,11 @@ fn parse_sig_header(data: &[u8]) -> Result<SigHeader, String> {
 
     let pattern_size: usize = if version >= 9 {
         let ps = read_u16le!() as usize;
-        if ps == 0 { DEFAULT_PATTERN_SIZE } else { ps }
+        if ps == 0 {
+            DEFAULT_PATTERN_SIZE
+        } else {
+            ps
+        }
     } else {
         DEFAULT_PATTERN_SIZE
     };
@@ -257,7 +263,11 @@ struct TreeWalker<'a> {
 
 impl<'a> TreeWalker<'a> {
     fn new(data: &'a [u8], pattern_size: usize) -> Self {
-        Self { data, pos: 0, pattern_size }
+        Self {
+            data,
+            pos: 0,
+            pattern_size,
+        }
     }
 
     fn remaining(&self) -> &[u8] {
@@ -292,12 +302,7 @@ impl<'a> TreeWalker<'a> {
     /// Walk the trie from the current position, building up `path` as we descend.
     /// `depth` is the current byte index into the pattern (0-based).
     /// `path` collects the pattern bytes (None = wildcard).
-    fn walk(
-        &mut self,
-        depth: usize,
-        path: &mut Vec<Option<u8>>,
-        out: &mut Vec<FlirtPattern>,
-    ) {
+    fn walk(&mut self, depth: usize, path: &mut Vec<Option<u8>>, out: &mut Vec<FlirtPattern>) {
         if depth >= self.pattern_size {
             // Leaf: parse CRC + module list
             if let Some(pat) = self.parse_leaf(path) {
@@ -325,7 +330,11 @@ impl<'a> TreeWalker<'a> {
                 None => return,
             };
 
-            let pattern_byte: Option<u8> = if child_byte == b'.' { None } else { Some(child_byte) };
+            let pattern_byte: Option<u8> = if child_byte == b'.' {
+                None
+            } else {
+                Some(child_byte)
+            };
             path.push(pattern_byte);
 
             self.walk(depth + 1, path, out);
@@ -354,7 +363,7 @@ impl<'a> TreeWalker<'a> {
             let flags = self.read_u8()?;
 
             let is_local = flags & 0x01 != 0;
-            let is_ref   = flags & 0x02 != 0;
+            let is_ref = flags & 0x02 != 0;
 
             if is_ref {
                 // Reference: read ref_delta (vli) + ref_name (cstr) — skip for now
@@ -363,7 +372,11 @@ impl<'a> TreeWalker<'a> {
             } else {
                 let name = self.read_cstr()?;
                 if name.len() >= MIN_FUNC_NAME_LEN {
-                    names.push(FlirtPatternName { func_offset, name, is_local });
+                    names.push(FlirtPatternName {
+                        func_offset,
+                        name,
+                        is_local,
+                    });
                 }
             }
 
@@ -450,7 +463,7 @@ fn parse_pat_line(line: &str) -> Option<FlirtPattern> {
     }
 
     let crc_len = u8::from_str_radix(crc_len_hex, 16).ok()?;
-    let crc16   = u16::from_str_radix(crc16_hex,   16).ok()?;
+    let crc16 = u16::from_str_radix(crc16_hex, 16).ok()?;
     let total_len = u32::from_str_radix(total_len_hex, 16).ok()?;
 
     // Primary name (may have :1 etc. suffix = secondary reference)
@@ -458,7 +471,11 @@ fn parse_pat_line(line: &str) -> Option<FlirtPattern> {
     {
         let (offset, name) = split_pat_name_ref(primary_name);
         if name.len() >= MIN_FUNC_NAME_LEN {
-            names.push(FlirtPatternName { func_offset: offset, name, is_local: false });
+            names.push(FlirtPatternName {
+                func_offset: offset,
+                name,
+                is_local: false,
+            });
         }
     }
 
@@ -482,7 +499,13 @@ fn parse_pat_line(line: &str) -> Option<FlirtPattern> {
         }
     }
 
-    Some(FlirtPattern { bytes, crc_len, crc16, total_len, names })
+    Some(FlirtPattern {
+        bytes,
+        crc_len,
+        crc16,
+        total_len,
+        names,
+    })
 }
 
 /// Some .pat name fields look like `00 _name` or `01 _name` (local/global prefix).

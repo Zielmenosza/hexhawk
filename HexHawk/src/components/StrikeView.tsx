@@ -43,6 +43,8 @@ import { parseHexHawkTraceJson, TraceParseError, type TraceEvent, type TraceSess
 import { correlateTraceSession, type TraceCorrelationReport, type TraceImportLike } from '../utils/traceCorrelation';
 import { buildProgramAnalysis } from '../utils/disassemblyAnalysis';
 import type { Instruction } from '../utils/disassemblyModel';
+import PacketIntelligencePanel from './PacketIntelligencePanel';
+import GuidedValueFinderPanel from './GuidedValueFinderPanel';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -606,7 +608,7 @@ const StrikeView: React.FC<StrikeViewProps> = ({
   const canLoad     = !loading;
 
   return (
-    <div className="stk-root">
+    <div className="stk-root" data-workspace-root="flow">
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="stk-header">
         <span className="stk-brand">STRIKE</span>
@@ -634,10 +636,20 @@ const StrikeView: React.FC<StrikeViewProps> = ({
         )}
       </div>
 
+      <GuidedValueFinderPanel />
+
+      <details className="stk-disclosure stk-debugger-disclosure">
+        <summary>
+          <span>
+            <strong>Advanced debugger controls</strong>
+            <small>Launch/attach, breakpoints, stepping, registers, and imported traces</small>
+          </span>
+        </summary>
+
       {/* ── Controls ────────────────────────────────────────────────────────── */}
       <div className="stk-controls">
         <button className="stk-btn stk-btn--primary" onClick={handleLoad} disabled={!canLoad}>
-          {loading ? '…' : '⊞ Load'}
+          {loading ? '…' : '⊞ Launch under debugger'}
         </button>
         <button className="stk-btn" onClick={handleStep} disabled={!canStep}>
           ⬥ Step
@@ -868,6 +880,17 @@ const StrikeView: React.FC<StrikeViewProps> = ({
           </div>
         </div>
       )}
+      </details>
+
+      <details className="stk-disclosure">
+        <summary>
+          <span>
+            <strong>Packet Intelligence</strong>
+            <small>Import an offline HAR for sanitized traffic metadata</small>
+          </span>
+        </summary>
+        <PacketIntelligencePanel />
+      </details>
     </div>
   );
 };

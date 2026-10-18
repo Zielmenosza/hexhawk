@@ -116,14 +116,18 @@ pub enum NestValidationCode {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestValidationIssue {
-    pub path:    String,
-    pub code:    NestValidationCode,
+    pub path: String,
+    pub code: NestValidationCode,
     pub message: String,
 }
 
 impl NestValidationIssue {
     fn new(path: impl Into<String>, code: NestValidationCode, message: impl Into<String>) -> Self {
-        Self { path: path.into(), code, message: message.into() }
+        Self {
+            path: path.into(),
+            code,
+            message: message.into(),
+        }
     }
 }
 
@@ -131,111 +135,111 @@ impl NestValidationIssue {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestActor {
-    pub id:           String,
+    pub id: String,
     #[serde(rename = "type")]
-    pub actor_type:   ActorType,
+    pub actor_type: ActorType,
     pub display_name: String,
-    pub tenant_id:    Option<String>,
-    pub team_id:      Option<String>,
+    pub tenant_id: Option<String>,
+    pub team_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestTimestamps {
-    pub created_at:   String,
-    pub started_at:   Option<String>,
+    pub created_at: String,
+    pub started_at: Option<String>,
     pub completed_at: Option<String>,
-    pub exported_at:  Option<String>,
+    pub exported_at: Option<String>,
 }
 
 /// Gyre linkage block — present on `NestSessionRecord`.
 /// GYRE invariant: `gyre_is_sole_verdict_source` MUST be `true`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestGyreLinkage {
-    pub verdict_snapshot_id:         String,
-    pub gyre_schema_version:         String,
-    pub gyre_build_id:               String,
+    pub verdict_snapshot_id: String,
+    pub gyre_schema_version: String,
+    pub gyre_build_id: String,
     /// Must always be `true`; `false` is a replay-critical violation.
     pub gyre_is_sole_verdict_source: bool,
-    pub nest_role:                   String,
+    pub nest_role: String,
 }
 
 /// Nest linkage block — present on `NestFinalVerdictSnapshot`.
 /// GYRE invariant: `gyre_is_sole_verdict_source` MUST be `true`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestFinalVerdictNestLinkage {
-    pub session_id:                  String,
-    pub final_iteration_id:          String,
-    pub nest_enrichment_applied:     bool,
+    pub session_id: String,
+    pub final_iteration_id: String,
+    pub nest_enrichment_applied: bool,
     /// Must always be `true`; `false` is a replay-critical violation.
     pub gyre_is_sole_verdict_source: bool,
-    pub nest_summary:                Option<String>,
+    pub nest_summary: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestBinaryHashes {
     pub sha256: String,
-    pub sha1:   String,
-    pub md5:    String,
+    pub sha1: String,
+    pub md5: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestFileBoundProof {
-    pub proof_status:         FileBoundProofStatus,
-    pub proof_basis:          Vec<String>,
-    pub binary_sha256:        String,
-    pub file_size_bytes:      u64,
-    pub session_hash_lock:    Option<bool>,
+    pub proof_status: FileBoundProofStatus,
+    pub proof_basis: Vec<String>,
+    pub binary_sha256: String,
+    pub file_size_bytes: u64,
+    pub session_hash_lock: Option<bool>,
     pub runtime_proof_present: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestManifestFile {
-    pub name:           String,
-    pub required:       bool,
-    pub sha256:         String,
-    pub bytes:          u64,
-    pub schema_name:    String,
+    pub name: String,
+    pub required: bool,
+    pub sha256: String,
+    pub bytes: u64,
+    pub schema_name: String,
     pub schema_version: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestImmutability {
-    pub bundle_locked:   bool,
-    pub locked_at:       Option<String>,
+    pub bundle_locked: bool,
+    pub locked_at: Option<String>,
     pub mutation_policy: MutationPolicy,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestReplayInfo {
-    pub replayable:            bool,
-    pub mode_supported:        Vec<String>,
+    pub replayable: bool,
+    pub mode_supported: Vec<String>,
     pub requires_binary_bytes: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestConvergence {
-    pub has_converged:         bool,
-    pub reason:                String,
-    pub confidence:            u32,
+    pub has_converged: bool,
+    pub reason: String,
+    pub confidence: u32,
     pub classification_stable: bool,
-    pub signal_delta:          i64,
-    pub contradiction_burden:  i64,
-    pub stability_score:       f64,
+    pub signal_delta: i64,
+    pub contradiction_burden: i64,
+    pub stability_score: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestSessionConfig {
-    pub config_version:       String,
-    pub max_iterations:       u32,
-    pub min_iterations:       u32,
+    pub config_version: String,
+    pub max_iterations: u32,
+    pub min_iterations: u32,
     pub confidence_threshold: u32,
-    pub plateau_threshold:    u32,
-    pub disasm_expansion:     u32,
-    pub aggressiveness:       String,
-    pub enable_talon:         bool,
-    pub enable_strike:        bool,
-    pub enable_echo:          bool,
-    pub auto_advance:         bool,
+    pub plateau_threshold: u32,
+    pub disasm_expansion: u32,
+    pub aggressiveness: String,
+    pub enable_talon: bool,
+    pub enable_strike: bool,
+    pub enable_echo: bool,
+    pub auto_advance: bool,
     pub auto_advance_delay_ms: u64,
 }
 
@@ -247,70 +251,70 @@ pub struct NestInputWindow {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestIterationVerdictSnapshot {
-    pub classification:      String,
-    pub confidence:          u32,
-    pub threat_score:        u32,
-    pub signal_count:        u64,
+    pub classification: String,
+    pub confidence: u32,
+    pub threat_score: u32,
+    pub signal_count: u64,
     pub contradiction_count: u64,
     pub reasoning_chain_hash: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestConvergenceSnapshot {
-    pub has_converged:         bool,
-    pub reason:                String,
-    pub stability_score:       f64,
+    pub has_converged: bool,
+    pub reason: String,
+    pub stability_score: f64,
     pub classification_stable: bool,
-    pub signal_delta:          i64,
-    pub contradiction_burden:  i64,
+    pub signal_delta: i64,
+    pub contradiction_burden: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestIterationItem {
-    pub iteration_id:          String,
-    pub iteration_index:       u32,
-    pub session_id:            String,
-    pub binary_sha256:         String,
-    pub started_at:            String,
-    pub completed_at:          Option<String>,
-    pub duration_ms:           Option<u64>,
-    pub input_window:          Option<NestInputWindow>,
-    pub executed_actions:      Option<Vec<JsonValue>>,
-    pub verdict_snapshot:      NestIterationVerdictSnapshot,
-    pub convergence_snapshot:  NestConvergenceSnapshot,
-    pub file_identity_locked:  bool,
+    pub iteration_id: String,
+    pub iteration_index: u32,
+    pub session_id: String,
+    pub binary_sha256: String,
+    pub started_at: String,
+    pub completed_at: Option<String>,
+    pub duration_ms: Option<u64>,
+    pub input_window: Option<NestInputWindow>,
+    pub executed_actions: Option<Vec<JsonValue>>,
+    pub verdict_snapshot: NestIterationVerdictSnapshot,
+    pub convergence_snapshot: NestConvergenceSnapshot,
+    pub file_identity_locked: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestSignalDeltaSummary {
-    pub added_count:     u64,
-    pub removed_count:   u64,
+    pub added_count: u64,
+    pub removed_count: u64,
     pub unchanged_count: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestRefinementExecution {
-    pub action_types:          Vec<String>,
-    pub primary_action_type:   String,
-    pub executed:              bool,
+    pub action_types: Vec<String>,
+    pub primary_action_type: String,
+    pub executed: bool,
     pub primary_action_reason: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestDeltaItem {
-    pub delta_id:               String,
-    pub from_iteration_id:      String,
-    pub to_iteration_id:        String,
-    pub from_iteration_index:   u32,
-    pub to_iteration_index:     u32,
-    pub binary_sha256:          String,
-    pub confidence_delta:       i64,
+    pub delta_id: String,
+    pub from_iteration_id: String,
+    pub to_iteration_id: String,
+    pub from_iteration_index: u32,
+    pub to_iteration_index: u32,
+    pub binary_sha256: String,
+    pub confidence_delta: i64,
     pub classification_changed: bool,
-    pub signal_delta_summary:   Option<NestSignalDeltaSummary>,
-    pub contradiction_delta:    Option<i64>,
-    pub refinement_execution:   Option<NestRefinementExecution>,
-    pub projected_gain:         Option<i64>,
-    pub actual_gain:            Option<i64>,
+    pub signal_delta_summary: Option<NestSignalDeltaSummary>,
+    pub contradiction_delta: Option<i64>,
+    pub refinement_execution: Option<NestRefinementExecution>,
+    pub projected_gain: Option<i64>,
+    pub actual_gain: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -321,20 +325,20 @@ pub struct NestSourceFidelity {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestRuntimeArtifact {
-    pub path:          String,
+    pub path: String,
     pub artifact_type: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestAuditEvent {
-    pub event_id:   String,
+    pub event_id: String,
     pub event_type: String,
-    pub timestamp:  String,
-    pub actor_id:   String,
+    pub timestamp: String,
+    pub actor_id: String,
     pub actor_type: String,
     pub session_id: String,
-    pub summary:    String,
-    pub details:    Option<JsonValue>,
+    pub summary: String,
+    pub details: Option<JsonValue>,
 }
 
 // ── Outer file structs ────────────────────────────────────────────────────────
@@ -342,173 +346,175 @@ pub struct NestAuditEvent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NestManifest {
-    pub schema_name:           String,
-    pub schema_version:        String,
+    pub schema_name: String,
+    pub schema_version: String,
     pub bundle_schema_version: String,
     pub bundle_format_version: String,
-    pub bundle_id:             String,
-    pub session_id:            String,
-    pub binary_id:             String,
-    pub binary_sha256:         String,
-    pub engine_build_id:       String,
-    pub policy_version:        String,
-    pub actor:                 NestActor,
-    pub timestamps:            NestTimestamps,
-    pub files:                 Vec<NestManifestFile>,
-    pub immutability:          NestImmutability,
-    pub replay:                NestReplayInfo,
-    pub export_mode:           Option<ExportMode>,
-    pub notes:                 Option<String>,
+    pub bundle_id: String,
+    pub session_id: String,
+    pub binary_id: String,
+    pub binary_sha256: String,
+    pub engine_build_id: String,
+    pub policy_version: String,
+    pub actor: NestActor,
+    pub timestamps: NestTimestamps,
+    pub files: Vec<NestManifestFile>,
+    pub immutability: NestImmutability,
+    pub replay: NestReplayInfo,
+    pub export_mode: Option<ExportMode>,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NestBinaryIdentity {
-    pub schema_name:      String,
-    pub schema_version:   String,
-    pub bundle_id:        String,
-    pub session_id:       String,
-    pub binary_id:        String,
-    pub binary_sha256:    String,
-    pub hashes:           NestBinaryHashes,
-    pub file_size_bytes:  u64,
-    pub format:           String,
-    pub architecture:     String,
-    pub first_seen_at:    String,
-    pub identity_source:  IdentitySource,
+    pub schema_name: String,
+    pub schema_version: String,
+    pub bundle_id: String,
+    pub session_id: String,
+    pub binary_id: String,
+    pub binary_sha256: String,
+    pub hashes: NestBinaryHashes,
+    pub file_size_bytes: u64,
+    pub format: String,
+    pub architecture: String,
+    pub first_seen_at: String,
+    pub identity_source: IdentitySource,
     pub file_bound_proof: NestFileBoundProof,
-    pub original_path:    Option<String>,
-    pub file_name:        String,
+    pub original_path: Option<String>,
+    pub file_name: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NestSessionRecord {
-    pub schema_name:             String,
-    pub schema_version:          String,
-    pub bundle_id:               String,
-    pub session_id:              String,
-    pub binary_id:               String,
-    pub binary_sha256:           String,
-    pub engine_build_id:         String,
-    pub policy_version:          String,
-    pub actor:                   NestActor,
-    pub timestamps:              NestTimestamps,
-    pub status:                  SessionStatus,
-    pub execution_mode:          ExecutionMode,
-    pub config:                  NestSessionConfig,
-    pub iteration_count:         u32,
-    pub delta_count:             u32,
-    pub final_iteration_index:   u32,
-    pub convergence:             NestConvergence,
-    pub gyre_linkage:            NestGyreLinkage,
-    pub runtime_proof_required:  Option<bool>,
-    pub notes:                   Option<Vec<String>>,
+    pub schema_name: String,
+    pub schema_version: String,
+    pub bundle_id: String,
+    pub session_id: String,
+    pub binary_id: String,
+    pub binary_sha256: String,
+    pub engine_build_id: String,
+    pub policy_version: String,
+    pub actor: NestActor,
+    pub timestamps: NestTimestamps,
+    pub status: SessionStatus,
+    pub execution_mode: ExecutionMode,
+    pub config: NestSessionConfig,
+    pub iteration_count: u32,
+    pub delta_count: u32,
+    pub final_iteration_index: u32,
+    pub convergence: NestConvergence,
+    pub gyre_linkage: NestGyreLinkage,
+    pub runtime_proof_required: Option<bool>,
+    pub notes: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NestIterationsFile {
-    pub schema_name:   String,
+    pub schema_name: String,
     pub schema_version: String,
-    pub bundle_id:     String,
-    pub session_id:    String,
-    pub binary_id:     String,
+    pub bundle_id: String,
+    pub session_id: String,
+    pub binary_id: String,
     pub binary_sha256: String,
-    pub count:         usize,
-    pub items:         Vec<NestIterationItem>,
+    pub count: usize,
+    pub items: Vec<NestIterationItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NestDeltasFile {
-    pub schema_name:   String,
+    pub schema_name: String,
     pub schema_version: String,
-    pub bundle_id:     String,
-    pub session_id:    String,
-    pub binary_id:     String,
+    pub bundle_id: String,
+    pub session_id: String,
+    pub binary_id: String,
     pub binary_sha256: String,
-    pub count:         usize,
-    pub items:         Vec<NestDeltaItem>,
+    pub count: usize,
+    pub items: Vec<NestDeltaItem>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NestFinalVerdictSnapshot {
-    pub schema_name:          String,
-    pub schema_version:       String,
-    pub bundle_id:            String,
-    pub session_id:           String,
-    pub binary_id:            String,
-    pub binary_sha256:        String,
-    pub verdict_snapshot_id:  String,
-    pub source_engine:        String,
-    pub gyre_build_id:        String,
-    pub gyre_schema_version:  String,
-    pub classification:       String,
-    pub confidence:           u32,
-    pub threat_score:         u32,
-    pub summary:              String,
-    pub signal_count:         u64,
-    pub contradiction_count:  u64,
+    pub schema_name: String,
+    pub schema_version: String,
+    pub bundle_id: String,
+    pub session_id: String,
+    pub binary_id: String,
+    pub binary_sha256: String,
+    pub verdict_snapshot_id: String,
+    pub source_engine: String,
+    pub gyre_build_id: String,
+    pub gyre_schema_version: String,
+    pub classification: String,
+    pub confidence: u32,
+    pub threat_score: u32,
+    pub summary: String,
+    pub signal_count: u64,
+    pub contradiction_count: u64,
     pub reasoning_chain_hash: String,
-    pub linked_iteration_id:  String,
-    pub nest_linkage:         NestFinalVerdictNestLinkage,
+    pub linked_iteration_id: String,
+    pub nest_linkage: NestFinalVerdictNestLinkage,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NestRuntimeProof {
-    pub schema_name:              String,
-    pub schema_version:           String,
-    pub bundle_id:                String,
-    pub session_id:               String,
-    pub binary_id:                String,
-    pub binary_sha256:            String,
-    pub runtime_mode:             RuntimeMode,
-    pub proof_status:             RuntimeProofStatus,
-    pub has_tauri_runtime:        bool,
-    pub browser_mode:             bool,
-    pub source_fidelity:          Option<NestSourceFidelity>,
+    pub schema_name: String,
+    pub schema_version: String,
+    pub bundle_id: String,
+    pub session_id: String,
+    pub binary_id: String,
+    pub binary_sha256: String,
+    pub runtime_mode: RuntimeMode,
+    pub proof_status: RuntimeProofStatus,
+    pub has_tauri_runtime: bool,
+    pub browser_mode: bool,
+    pub source_fidelity: Option<NestSourceFidelity>,
     pub linked_runtime_artifacts: Option<Vec<NestRuntimeArtifact>>,
-    pub run_id:                   Option<String>,
-    pub page_url:                 Option<String>,
+    pub run_id: Option<String>,
+    pub page_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NestAuditRefs {
-    pub schema_name:   String,
+    pub schema_name: String,
     pub schema_version: String,
-    pub bundle_id:     String,
-    pub session_id:    String,
-    pub binary_id:     String,
+    pub bundle_id: String,
+    pub session_id: String,
+    pub binary_id: String,
     pub binary_sha256: String,
-    pub actor:         NestActor,
+    pub actor: NestActor,
     pub policy_version: String,
     pub audit_backend: String,
-    pub events:        Vec<NestAuditEvent>,
+    pub events: Vec<NestAuditEvent>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NestEvidenceBundle {
-    pub manifest:               NestManifest,
-    pub binary_identity:        NestBinaryIdentity,
-    pub session:                NestSessionRecord,
-    pub iterations:             NestIterationsFile,
-    pub deltas:                 NestDeltasFile,
+    pub manifest: NestManifest,
+    pub binary_identity: NestBinaryIdentity,
+    pub session: NestSessionRecord,
+    pub iterations: NestIterationsFile,
+    pub deltas: NestDeltasFile,
     pub final_verdict_snapshot: NestFinalVerdictSnapshot,
-    pub audit_refs:             NestAuditRefs,
-    pub runtime_proof:          Option<NestRuntimeProof>,
+    pub audit_refs: NestAuditRefs,
+    pub runtime_proof: Option<NestRuntimeProof>,
 }
 
 // ── ID and hash validation helpers ────────────────────────────────────────────
 
 /// Returns true if all characters are in the Crockford base-32 alphabet.
 fn is_crockford(s: &str) -> bool {
-    s.chars().all(|c| matches!(c,
-        '0'..='9' | 'A'..='H' | 'J' | 'K' | 'M' | 'N' | 'P'..='T' | 'V'..='Z'
-    ))
+    s.chars().all(|c| {
+        matches!(c,
+            '0'..='9' | 'A'..='H' | 'J' | 'K' | 'M' | 'N' | 'P'..='T' | 'V'..='Z'
+        )
+    })
 }
 
 /// Returns true if all characters are lowercase hexadecimal.
@@ -530,24 +536,36 @@ fn valid_session_id(id: &str) -> bool {
 
 fn valid_iteration_id(id: &str) -> bool {
     // nestiter_<26>_NNNN
-    if !id.starts_with("nestiter_") { return false; }
+    if !id.starts_with("nestiter_") {
+        return false;
+    }
     let rest = &id["nestiter_".len()..];
-    if rest.len() != 26 + 1 + 4 { return false; }
+    if rest.len() != 26 + 1 + 4 {
+        return false;
+    }
     let (ulid, suffix) = rest.split_at(26);
     is_crockford(ulid) && suffix.starts_with('_') && suffix[1..].chars().all(|c| c.is_ascii_digit())
 }
 
 fn valid_delta_id(id: &str) -> bool {
     // nestdelta_<26>_NNNN_NNNN
-    if !id.starts_with("nestdelta_") { return false; }
+    if !id.starts_with("nestdelta_") {
+        return false;
+    }
     let rest = &id["nestdelta_".len()..];
-    if rest.len() != 26 + 1 + 4 + 1 + 4 { return false; }
+    if rest.len() != 26 + 1 + 4 + 1 + 4 {
+        return false;
+    }
     let (ulid, suffix) = rest.split_at(26);
-    if !is_crockford(ulid) { return false; }
+    if !is_crockford(ulid) {
+        return false;
+    }
     let parts: Vec<&str> = suffix[1..].splitn(2, '_').collect();
     parts.len() == 2
-        && parts[0].len() == 4 && parts[0].chars().all(|c| c.is_ascii_digit())
-        && parts[1].len() == 4 && parts[1].chars().all(|c| c.is_ascii_digit())
+        && parts[0].len() == 4
+        && parts[0].chars().all(|c| c.is_ascii_digit())
+        && parts[1].len() == 4
+        && parts[1].chars().all(|c| c.is_ascii_digit())
 }
 
 fn valid_verdict_snapshot_id(id: &str) -> bool {
@@ -556,23 +574,83 @@ fn valid_verdict_snapshot_id(id: &str) -> bool {
 
 fn valid_binary_id(id: &str) -> bool {
     // binary_sha256_<64 lowercase hex>
-    if !id.starts_with("binary_sha256_") { return false; }
+    if !id.starts_with("binary_sha256_") {
+        return false;
+    }
     let hash = &id["binary_sha256_".len()..];
     hash.len() == 64 && is_lowercase_hex(hash)
 }
 
-fn valid_sha256(h: &str) -> bool { h.len() == 64 && is_lowercase_hex(h) }
-fn valid_sha1(h: &str)   -> bool { h.len() == 40 && is_lowercase_hex(h) }
-fn valid_md5(h: &str)    -> bool { h.len() == 32 && is_lowercase_hex(h) }
+fn valid_sha256(h: &str) -> bool {
+    h.len() == 64 && is_lowercase_hex(h)
+}
+fn valid_sha1(h: &str) -> bool {
+    h.len() == 40 && is_lowercase_hex(h)
+}
+fn valid_md5(h: &str) -> bool {
+    h.len() == 32 && is_lowercase_hex(h)
+}
 
-/// Very lightweight RFC3339 UTC check: ends with Z, has T at position 10, length ≥ 20.
+/// Parse the timestamp, not merely its punctuation. Evidence uses UTC RFC3339.
 fn valid_rfc3339_utc(s: &str) -> bool {
-    s.len() >= 20 && s.ends_with('Z') && s.as_bytes().get(10) == Some(&b'T')
+    time::OffsetDateTime::parse(s, &time::format_description::well_known::Rfc3339)
+        .is_ok_and(|value| value.offset() == time::UtcOffset::UTC)
+}
+
+pub(super) fn validate_session_config(config: &NestSessionConfig) -> Result<(), String> {
+    if config.config_version != "1.0.0" || config.max_iterations == 0
+        || config.min_iterations > config.max_iterations || config.confidence_threshold > 100
+        || !matches!(config.aggressiveness.as_str(), "conservative" | "balanced" | "aggressive") {
+        return Err("Unsupported or invalid actual NEST session config".into());
+    }
+    Ok(())
+}
+
+// Legacy evidence also uses opaque reasoning references/IDs in this field.
+// Require a present reference; do not retrospectively claim all values are SHA-256.
+fn valid_reasoning_reference(value: &str) -> bool {
+    !value.trim().is_empty() && !value.chars().any(char::is_control)
+}
+
+pub(super) fn validate_iteration_domain(
+    confidence: u32,
+    threat_score: u32,
+    stability_score: f64,
+    started_at: Option<&str>,
+    completed_at: Option<&str>,
+    reasoning_reference: &str,
+) -> Result<(), String> {
+    if confidence > 100 || threat_score > 100 {
+        return Err("Iteration confidence and threat_score must be in 0..=100".into());
+    }
+    if !stability_score.is_finite() || !(0.0..=1.0).contains(&stability_score) {
+        return Err("Iteration stability_score must be finite and in 0..=1".into());
+    }
+    if [started_at, completed_at].into_iter().flatten().any(|value| !valid_rfc3339_utc(value)) {
+        return Err("Iteration timestamps must be valid UTC RFC3339".into());
+    }
+    if !valid_reasoning_reference(reasoning_reference) {
+        return Err("Iteration reasoning_chain_hash must contain a reasoning reference".into());
+    }
+    Ok(())
+}
+
+pub(super) fn validate_iteration_evidence(item: &NestIterationItem) -> Result<(), String> {
+    validate_iteration_domain(
+        item.verdict_snapshot.confidence,
+        item.verdict_snapshot.threat_score,
+        item.convergence_snapshot.stability_score,
+        Some(&item.started_at),
+        item.completed_at.as_deref(),
+        &item.verdict_snapshot.reasoning_chain_hash,
+    )
 }
 
 fn valid_semver_major(ver: &str, required_major: u64) -> bool {
     let parts: Vec<&str> = ver.splitn(3, '.').collect();
-    if parts.len() != 3 { return false; }
+    if parts.len() != 3 {
+        return false;
+    }
     if let Ok(major) = parts[0].parse::<u64>() {
         return major == required_major;
     }
@@ -587,92 +665,162 @@ fn valid_semver_major(ver: &str, required_major: u64) -> bool {
 /// Issues are non-exhaustive — multiple violations may appear in one call.
 pub fn validate_bundle(bundle: &NestEvidenceBundle) -> Vec<NestValidationIssue> {
     let mut issues: Vec<NestValidationIssue> = Vec::new();
-    let add = |issues: &mut Vec<NestValidationIssue>, path: &str, code: NestValidationCode, msg: &str| {
-        issues.push(NestValidationIssue::new(path, code, msg));
-    };
+    let add =
+        |issues: &mut Vec<NestValidationIssue>, path: &str, code: NestValidationCode, msg: &str| {
+            issues.push(NestValidationIssue::new(path, code, msg));
+        };
 
     // Convenience aliases
-    let m   = &bundle.manifest;
-    let bi  = &bundle.binary_identity;
-    let s   = &bundle.session;
-    let it  = &bundle.iterations;
-    let dl  = &bundle.deltas;
-    let fv  = &bundle.final_verdict_snapshot;
-    let ar  = &bundle.audit_refs;
+    let m = &bundle.manifest;
+    let bi = &bundle.binary_identity;
+    let s = &bundle.session;
+    let it = &bundle.iterations;
+    let dl = &bundle.deltas;
+    let fv = &bundle.final_verdict_snapshot;
+    let ar = &bundle.audit_refs;
+
+    // Domain checks must also cover persisted legacy state before new export.
+    for (idx, item) in it.items.iter().enumerate() {
+        if let Err(message) = validate_iteration_evidence(item) {
+            add(&mut issues, &format!("iterations.items[{idx}]"), NestValidationCode::ReplayCriticalError, &message);
+        }
+    }
+    if fv.confidence > 100 || fv.threat_score > 100
+        || !valid_reasoning_reference(&fv.reasoning_chain_hash) {
+        add(&mut issues, "final_verdict_snapshot", NestValidationCode::ReplayCriticalError,
+            "Final GYRE evidence has invalid scores or missing reasoning reference");
+    }
+    if s.convergence.confidence > 100 || !s.convergence.stability_score.is_finite()
+        || !(0.0..=1.0).contains(&s.convergence.stability_score) {
+        add(&mut issues, "session.convergence", NestValidationCode::ReplayCriticalError,
+            "Convergence scores are outside their supported domains");
+    }
+    for (name, stamps) in [("manifest.timestamps", &m.timestamps), ("session.timestamps", &s.timestamps)] {
+        if !valid_rfc3339_utc(&stamps.created_at)
+            || [&stamps.started_at, &stamps.completed_at, &stamps.exported_at].into_iter()
+                .flatten().any(|stamp| !valid_rfc3339_utc(stamp)) {
+            add(&mut issues, name, NestValidationCode::ReplayCriticalError, "Invalid UTC RFC3339 timestamp");
+        }
+    }
+    for (idx, event) in ar.events.iter().enumerate() {
+        if !valid_rfc3339_utc(&event.timestamp) {
+            add(&mut issues, &format!("audit_refs.events[{idx}].timestamp"), NestValidationCode::ReplayCriticalError,
+                "Invalid UTC RFC3339 timestamp");
+        }
+    }
+    if let Err(message) = validate_session_config(&s.config) {
+        add(&mut issues, "session.config", NestValidationCode::ReplayCriticalError, &message);
+    }
 
     // 1. Schema version major == 1 for all outer files
     for (path, ver) in [
-        ("manifest",               m.schema_version.as_str()),
-        ("binary_identity",        bi.schema_version.as_str()),
-        ("session",                s.schema_version.as_str()),
-        ("iterations",             it.schema_version.as_str()),
-        ("deltas",                 dl.schema_version.as_str()),
+        ("manifest", m.schema_version.as_str()),
+        ("binary_identity", bi.schema_version.as_str()),
+        ("session", s.schema_version.as_str()),
+        ("iterations", it.schema_version.as_str()),
+        ("deltas", dl.schema_version.as_str()),
         ("final_verdict_snapshot", fv.schema_version.as_str()),
-        ("audit_refs",             ar.schema_version.as_str()),
+        ("audit_refs", ar.schema_version.as_str()),
     ] {
         if !valid_semver_major(ver, NEST_EVIDENCE_SCHEMA_MAJOR) {
-            add(&mut issues, path, NestValidationCode::UnsupportedSchemaVersion,
-                &format!("schema_version major must be {NEST_EVIDENCE_SCHEMA_MAJOR}, got '{ver}'"));
+            add(
+                &mut issues,
+                path,
+                NestValidationCode::UnsupportedSchemaVersion,
+                &format!("schema_version major must be {NEST_EVIDENCE_SCHEMA_MAJOR}, got '{ver}'"),
+            );
         }
     }
 
     // 2. ID format validation
     if !valid_bundle_id(&m.bundle_id) {
-        add(&mut issues, "manifest.bundle_id", NestValidationCode::InvalidValue,
-            "bundle_id must match nestbundle_<ULID>");
+        add(
+            &mut issues,
+            "manifest.bundle_id",
+            NestValidationCode::InvalidValue,
+            "bundle_id must match nestbundle_<ULID>",
+        );
     }
     if !valid_session_id(&m.session_id) {
-        add(&mut issues, "manifest.session_id", NestValidationCode::InvalidValue,
-            "session_id must match nestsession_<ULID>");
+        add(
+            &mut issues,
+            "manifest.session_id",
+            NestValidationCode::InvalidValue,
+            "session_id must match nestsession_<ULID>",
+        );
     }
     if !valid_binary_id(&m.binary_id) {
-        add(&mut issues, "manifest.binary_id", NestValidationCode::InvalidValue,
-            "binary_id must match binary_sha256_<sha256>");
+        add(
+            &mut issues,
+            "manifest.binary_id",
+            NestValidationCode::InvalidValue,
+            "binary_id must match binary_sha256_<sha256>",
+        );
     }
     if !valid_sha256(&m.binary_sha256) {
-        add(&mut issues, "manifest.binary_sha256", NestValidationCode::InvalidValue,
-            "binary_sha256 must be 64 lowercase hex chars");
+        add(
+            &mut issues,
+            "manifest.binary_sha256",
+            NestValidationCode::InvalidValue,
+            "binary_sha256 must be 64 lowercase hex chars",
+        );
     }
 
     // 3. Cross-file bundle_id consistency
     for (file, id) in [
         ("binary_identity", bi.bundle_id.as_str()),
-        ("session",         s.bundle_id.as_str()),
-        ("iterations",      it.bundle_id.as_str()),
-        ("deltas",          dl.bundle_id.as_str()),
+        ("session", s.bundle_id.as_str()),
+        ("iterations", it.bundle_id.as_str()),
+        ("deltas", dl.bundle_id.as_str()),
         ("final_verdict_snapshot", fv.bundle_id.as_str()),
-        ("audit_refs",      ar.bundle_id.as_str()),
+        ("audit_refs", ar.bundle_id.as_str()),
     ] {
         if id != m.bundle_id {
-            add(&mut issues, file, NestValidationCode::ConsistencyError,
-                &format!("{file}.bundle_id does not match manifest.bundle_id"));
+            add(
+                &mut issues,
+                file,
+                NestValidationCode::ConsistencyError,
+                &format!("{file}.bundle_id does not match manifest.bundle_id"),
+            );
         }
     }
     if let Some(rp) = &bundle.runtime_proof {
         if rp.bundle_id != m.bundle_id {
-            add(&mut issues, "runtime_proof", NestValidationCode::ConsistencyError,
-                "runtime_proof.bundle_id does not match manifest.bundle_id");
+            add(
+                &mut issues,
+                "runtime_proof",
+                NestValidationCode::ConsistencyError,
+                "runtime_proof.bundle_id does not match manifest.bundle_id",
+            );
         }
     }
 
     // 4. Cross-file session_id consistency
     for (file, id) in [
         ("binary_identity", bi.session_id.as_str()),
-        ("session",         s.session_id.as_str()),
-        ("iterations",      it.session_id.as_str()),
-        ("deltas",          dl.session_id.as_str()),
+        ("session", s.session_id.as_str()),
+        ("iterations", it.session_id.as_str()),
+        ("deltas", dl.session_id.as_str()),
         ("final_verdict_snapshot", fv.session_id.as_str()),
-        ("audit_refs",      ar.session_id.as_str()),
+        ("audit_refs", ar.session_id.as_str()),
     ] {
         if id != m.session_id {
-            add(&mut issues, file, NestValidationCode::ConsistencyError,
-                &format!("{file}.session_id does not match manifest.session_id"));
+            add(
+                &mut issues,
+                file,
+                NestValidationCode::ConsistencyError,
+                &format!("{file}.session_id does not match manifest.session_id"),
+            );
         }
     }
     if let Some(rp) = &bundle.runtime_proof {
         if rp.session_id != m.session_id {
-            add(&mut issues, "runtime_proof", NestValidationCode::ConsistencyError,
-                "runtime_proof.session_id does not match manifest.session_id");
+            add(
+                &mut issues,
+                "runtime_proof",
+                NestValidationCode::ConsistencyError,
+                "runtime_proof.session_id does not match manifest.session_id",
+            );
         }
     }
 
@@ -680,107 +828,159 @@ pub fn validate_bundle(bundle: &NestEvidenceBundle) -> Vec<NestValidationIssue> 
     let root_sha256 = m.binary_sha256.as_str();
     for (file, sha) in [
         ("binary_identity", bi.binary_sha256.as_str()),
-        ("session",         s.binary_sha256.as_str()),
-        ("iterations",      it.binary_sha256.as_str()),
-        ("deltas",          dl.binary_sha256.as_str()),
+        ("session", s.binary_sha256.as_str()),
+        ("iterations", it.binary_sha256.as_str()),
+        ("deltas", dl.binary_sha256.as_str()),
         ("final_verdict_snapshot", fv.binary_sha256.as_str()),
-        ("audit_refs",      ar.binary_sha256.as_str()),
+        ("audit_refs", ar.binary_sha256.as_str()),
     ] {
         if sha != root_sha256 {
-            add(&mut issues, file, NestValidationCode::ReplayCriticalError,
-                &format!("{file}.binary_sha256 does not match manifest.binary_sha256"));
+            add(
+                &mut issues,
+                file,
+                NestValidationCode::ReplayCriticalError,
+                &format!("{file}.binary_sha256 does not match manifest.binary_sha256"),
+            );
         }
     }
     if let Some(rp) = &bundle.runtime_proof {
         if rp.binary_sha256 != root_sha256 {
-            add(&mut issues, "runtime_proof", NestValidationCode::ReplayCriticalError,
-                "runtime_proof.binary_sha256 does not match manifest.binary_sha256");
+            add(
+                &mut issues,
+                "runtime_proof",
+                NestValidationCode::ReplayCriticalError,
+                "runtime_proof.binary_sha256 does not match manifest.binary_sha256",
+            );
         }
     }
     for (idx, item) in it.items.iter().enumerate() {
         if item.binary_sha256 != root_sha256 {
-            add(&mut issues, &format!("iterations.items[{idx}].binary_sha256"),
+            add(
+                &mut issues,
+                &format!("iterations.items[{idx}].binary_sha256"),
                 NestValidationCode::ReplayCriticalError,
-                "Iteration binary_sha256 does not match bundle binary_sha256");
+                "Iteration binary_sha256 does not match bundle binary_sha256",
+            );
         }
     }
     for (idx, item) in dl.items.iter().enumerate() {
         if item.binary_sha256 != root_sha256 {
-            add(&mut issues, &format!("deltas.items[{idx}].binary_sha256"),
+            add(
+                &mut issues,
+                &format!("deltas.items[{idx}].binary_sha256"),
                 NestValidationCode::ReplayCriticalError,
-                "Delta binary_sha256 does not match bundle binary_sha256");
+                "Delta binary_sha256 does not match bundle binary_sha256",
+            );
         }
     }
 
     // 6. file_bound_proof consistency
     if bi.file_bound_proof.binary_sha256 != root_sha256 {
-        add(&mut issues, "binary_identity.file_bound_proof.binary_sha256",
+        add(
+            &mut issues,
+            "binary_identity.file_bound_proof.binary_sha256",
             NestValidationCode::ReplayCriticalError,
-            "file_bound_proof.binary_sha256 does not match binary_identity.binary_sha256");
+            "file_bound_proof.binary_sha256 does not match binary_identity.binary_sha256",
+        );
     }
     if bi.file_bound_proof.file_size_bytes != bi.file_size_bytes {
-        add(&mut issues, "binary_identity.file_bound_proof.file_size_bytes",
+        add(
+            &mut issues,
+            "binary_identity.file_bound_proof.file_size_bytes",
             NestValidationCode::ReplayCriticalError,
-            "file_bound_proof.file_size_bytes does not match binary_identity.file_size_bytes");
+            "file_bound_proof.file_size_bytes does not match binary_identity.file_size_bytes",
+        );
     }
     if bi.hashes.sha256 != root_sha256 {
-        add(&mut issues, "binary_identity.hashes.sha256",
+        add(
+            &mut issues,
+            "binary_identity.hashes.sha256",
             NestValidationCode::ReplayCriticalError,
-            "hashes.sha256 does not match binary_sha256");
+            "hashes.sha256 does not match binary_sha256",
+        );
     }
 
     // 7. Hash format validation
     if !valid_sha1(&bi.hashes.sha1) {
-        add(&mut issues, "binary_identity.hashes.sha1", NestValidationCode::InvalidValue,
-            "sha1 must be 40 lowercase hex chars");
+        add(
+            &mut issues,
+            "binary_identity.hashes.sha1",
+            NestValidationCode::InvalidValue,
+            "sha1 must be 40 lowercase hex chars",
+        );
     }
     if !valid_md5(&bi.hashes.md5) {
-        add(&mut issues, "binary_identity.hashes.md5", NestValidationCode::InvalidValue,
-            "md5 must be 32 lowercase hex chars");
+        add(
+            &mut issues,
+            "binary_identity.hashes.md5",
+            NestValidationCode::InvalidValue,
+            "md5 must be 32 lowercase hex chars",
+        );
     }
 
     // 8. GYRE sole-verdict-source invariants
     if !s.gyre_linkage.gyre_is_sole_verdict_source {
-        add(&mut issues, "session.gyre_linkage.gyre_is_sole_verdict_source",
+        add(
+            &mut issues,
+            "session.gyre_linkage.gyre_is_sole_verdict_source",
             NestValidationCode::ReplayCriticalError,
-            "gyre_is_sole_verdict_source must be true — GYRE is the sole verdict authority");
+            "gyre_is_sole_verdict_source must be true — GYRE is the sole verdict authority",
+        );
     }
     if fv.source_engine != "gyre" {
-        add(&mut issues, "final_verdict_snapshot.source_engine",
+        add(
+            &mut issues,
+            "final_verdict_snapshot.source_engine",
             NestValidationCode::ReplayCriticalError,
-            "source_engine must be 'gyre' — GYRE is the sole verdict authority");
+            "source_engine must be 'gyre' — GYRE is the sole verdict authority",
+        );
     }
     if !fv.nest_linkage.gyre_is_sole_verdict_source {
-        add(&mut issues, "final_verdict_snapshot.nest_linkage.gyre_is_sole_verdict_source",
+        add(
+            &mut issues,
+            "final_verdict_snapshot.nest_linkage.gyre_is_sole_verdict_source",
             NestValidationCode::ReplayCriticalError,
-            "gyre_is_sole_verdict_source must be true — GYRE is the sole verdict authority");
+            "gyre_is_sole_verdict_source must be true — GYRE is the sole verdict authority",
+        );
     }
 
     // 9. verdict_snapshot_id cross-file consistency
     let snap_id = s.gyre_linkage.verdict_snapshot_id.as_str();
     if fv.verdict_snapshot_id != snap_id {
-        add(&mut issues, "final_verdict_snapshot.verdict_snapshot_id",
+        add(
+            &mut issues,
+            "final_verdict_snapshot.verdict_snapshot_id",
             NestValidationCode::ConsistencyError,
-            "verdict_snapshot_id does not match session.gyre_linkage.verdict_snapshot_id");
+            "verdict_snapshot_id does not match session.gyre_linkage.verdict_snapshot_id",
+        );
     }
     if !valid_verdict_snapshot_id(&fv.verdict_snapshot_id) {
-        add(&mut issues, "final_verdict_snapshot.verdict_snapshot_id",
+        add(
+            &mut issues,
+            "final_verdict_snapshot.verdict_snapshot_id",
             NestValidationCode::InvalidValue,
-            "verdict_snapshot_id must match gyresnap_<ULID>");
+            "verdict_snapshot_id must match gyresnap_<ULID>",
+        );
     }
 
     // 10. nest_role must contain "enrich"
     if !s.gyre_linkage.nest_role.contains("enrich") {
-        add(&mut issues, "session.gyre_linkage.nest_role",
+        add(
+            &mut issues,
+            "session.gyre_linkage.nest_role",
             NestValidationCode::InvalidValue,
-            "nest_role must indicate enrichment-only (must contain 'enrich')");
+            "nest_role must indicate enrichment-only (must contain 'enrich')",
+        );
     }
 
     // 11. linked_iteration_id vs nest_linkage.final_iteration_id
     if fv.linked_iteration_id != fv.nest_linkage.final_iteration_id {
-        add(&mut issues, "final_verdict_snapshot.nest_linkage.final_iteration_id",
+        add(
+            &mut issues,
+            "final_verdict_snapshot.nest_linkage.final_iteration_id",
             NestValidationCode::ConsistencyError,
-            "final_iteration_id does not match linked_iteration_id");
+            "final_iteration_id does not match linked_iteration_id",
+        );
     }
 
     // 12. Iteration ID uniqueness and format
@@ -788,20 +988,34 @@ pub fn validate_bundle(bundle: &NestEvidenceBundle) -> Vec<NestValidationIssue> 
         let mut seen: HashSet<&str> = HashSet::new();
         for (idx, item) in it.items.iter().enumerate() {
             if !valid_iteration_id(&item.iteration_id) {
-                add(&mut issues, &format!("iterations.items[{idx}].iteration_id"),
+                add(
+                    &mut issues,
+                    &format!("iterations.items[{idx}].iteration_id"),
                     NestValidationCode::InvalidValue,
-                    "iteration_id must match nestiter_<ULID>_NNNN");
+                    "iteration_id must match nestiter_<ULID>_NNNN",
+                );
             }
             if seen.contains(item.iteration_id.as_str()) {
-                add(&mut issues, &format!("iterations.items[{idx}].iteration_id"),
+                add(
+                    &mut issues,
+                    &format!("iterations.items[{idx}].iteration_id"),
                     NestValidationCode::ConsistencyError,
-                    "duplicate iteration_id");
+                    "duplicate iteration_id",
+                );
             }
             seen.insert(&item.iteration_id);
         }
         if it.items.len() != it.count {
-            add(&mut issues, "iterations.count", NestValidationCode::ConsistencyError,
-                &format!("iterations.count={} but items.len()={}", it.count, it.items.len()));
+            add(
+                &mut issues,
+                "iterations.count",
+                NestValidationCode::ConsistencyError,
+                &format!(
+                    "iterations.count={} but items.len()={}",
+                    it.count,
+                    it.items.len()
+                ),
+            );
         }
     }
 
@@ -811,47 +1025,76 @@ pub fn validate_bundle(bundle: &NestEvidenceBundle) -> Vec<NestValidationIssue> 
         let mut seen: HashSet<&str> = HashSet::new();
         for (idx, item) in dl.items.iter().enumerate() {
             if !valid_delta_id(&item.delta_id) {
-                add(&mut issues, &format!("deltas.items[{idx}].delta_id"),
+                add(
+                    &mut issues,
+                    &format!("deltas.items[{idx}].delta_id"),
                     NestValidationCode::InvalidValue,
-                    "delta_id must match nestdelta_<ULID>_NNNN_NNNN");
+                    "delta_id must match nestdelta_<ULID>_NNNN_NNNN",
+                );
             }
             if seen.contains(item.delta_id.as_str()) {
-                add(&mut issues, &format!("deltas.items[{idx}].delta_id"),
+                add(
+                    &mut issues,
+                    &format!("deltas.items[{idx}].delta_id"),
                     NestValidationCode::ConsistencyError,
-                    "duplicate delta_id");
+                    "duplicate delta_id",
+                );
             }
             seen.insert(&item.delta_id);
             if !iter_ids.contains(item.from_iteration_id.as_str()) {
-                add(&mut issues, &format!("deltas.items[{idx}].from_iteration_id"),
+                add(
+                    &mut issues,
+                    &format!("deltas.items[{idx}].from_iteration_id"),
                     NestValidationCode::ConsistencyError,
-                    "from_iteration_id not found in iterations");
+                    "from_iteration_id not found in iterations",
+                );
             }
             if !iter_ids.contains(item.to_iteration_id.as_str()) {
-                add(&mut issues, &format!("deltas.items[{idx}].to_iteration_id"),
+                add(
+                    &mut issues,
+                    &format!("deltas.items[{idx}].to_iteration_id"),
                     NestValidationCode::ConsistencyError,
-                    "to_iteration_id not found in iterations");
+                    "to_iteration_id not found in iterations",
+                );
             }
             if item.from_iteration_index >= item.to_iteration_index {
-                add(&mut issues, &format!("deltas.items[{idx}]"),
+                add(
+                    &mut issues,
+                    &format!("deltas.items[{idx}]"),
                     NestValidationCode::InvalidValue,
-                    "Delta iteration indexes must move forward");
+                    "Delta iteration indexes must move forward",
+                );
             }
         }
         if dl.items.len() != dl.count {
-            add(&mut issues, "deltas.count", NestValidationCode::ConsistencyError,
-                &format!("deltas.count={} but items.len()={}", dl.count, dl.items.len()));
+            add(
+                &mut issues,
+                "deltas.count",
+                NestValidationCode::ConsistencyError,
+                &format!(
+                    "deltas.count={} but items.len()={}",
+                    dl.count,
+                    dl.items.len()
+                ),
+            );
         }
     }
 
     // 14. runtime_proof_required implies runtime_proof present
     if s.runtime_proof_required == Some(true) && bundle.runtime_proof.is_none() {
-        add(&mut issues, "runtime_proof", NestValidationCode::MissingField,
-            "session.runtime_proof_required=true but runtime_proof is absent");
+        add(
+            &mut issues,
+            "runtime_proof",
+            NestValidationCode::MissingField,
+            "session.runtime_proof_required=true but runtime_proof is absent",
+        );
     }
 
-    // 15. Required files present in manifest.files
+    // 15. Format 1.1+ lists required payloads, not the manifest/sidecar themselves.
+    // Keep the legacy 1.0 schema checks; they do not prove legacy disk hashes.
+    let payload_only = valid_semver_major(&m.bundle_format_version, NEST_EVIDENCE_SCHEMA_MAJOR)
+        && m.bundle_format_version.split('.').nth(1).and_then(|v| v.parse::<u32>().ok()).unwrap_or(0) >= 1;
     const REQUIRED_FILES: &[&str] = &[
-        "manifest.json",
         "binary_identity.json",
         "session.json",
         "iterations.json",
@@ -860,19 +1103,37 @@ pub fn validate_bundle(bundle: &NestEvidenceBundle) -> Vec<NestValidationIssue> 
         "audit_refs.json",
     ];
     let present: HashSet<&str> = m.files.iter().map(|f| f.name.as_str()).collect();
+    if !payload_only && !present.contains("manifest.json") {
+        add(&mut issues, "manifest.files", NestValidationCode::MissingField,
+            "Required file 'manifest.json' missing from legacy manifest.files");
+    }
+    if payload_only && (present.contains("manifest.json") || present.contains("manifest.sha256")) {
+        add(&mut issues, "manifest.files", NestValidationCode::InvalidValue,
+            "Manifest and checksum sidecar must remain external to the payload hash list");
+    }
     for required in REQUIRED_FILES {
         if !present.contains(required) {
-            add(&mut issues, "manifest.files", NestValidationCode::MissingField,
-                &format!("Required file '{required}' missing from manifest.files"));
+            add(
+                &mut issues,
+                "manifest.files",
+                NestValidationCode::MissingField,
+                &format!("Required file '{required}' missing from manifest.files"),
+            );
         }
     }
 
     // 16. File entry schema version major
     for (idx, f) in m.files.iter().enumerate() {
         if !valid_semver_major(&f.schema_version, NEST_EVIDENCE_SCHEMA_MAJOR) {
-            add(&mut issues, &format!("manifest.files[{idx}].schema_version"),
+            add(
+                &mut issues,
+                &format!("manifest.files[{idx}].schema_version"),
                 NestValidationCode::UnsupportedSchemaVersion,
-                &format!("File '{}' schema_version major must be {NEST_EVIDENCE_SCHEMA_MAJOR}", f.name));
+                &format!(
+                    "File '{}' schema_version major must be {NEST_EVIDENCE_SCHEMA_MAJOR}",
+                    f.name
+                ),
+            );
         }
     }
 
@@ -886,196 +1147,294 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    #[test]
+    fn payload_manifest_custody_requires_non_circular_complete_listing() {
+        let mut bundle = make_bundle();
+        bundle.manifest.bundle_format_version = "1.1.0".into();
+        bundle.manifest.files.retain(|f| f.name != "manifest.json");
+        assert!(validate_bundle(&bundle).is_empty(), "{:?}", validate_bundle(&bundle));
+        for name in ["manifest.json", "manifest.sha256"] {
+            let mut circular = bundle.clone();
+            let mut entry = circular.manifest.files[0].clone();
+            entry.name = name.into();
+            circular.manifest.files.push(entry);
+            assert!(validate_bundle(&circular).iter().any(|i| i.path.starts_with("manifest.files") && matches!(i.code, NestValidationCode::InvalidValue)));
+        }
+        for name in ["binary_identity.json", "session.json", "iterations.json", "deltas.json", "final_verdict_snapshot.json", "audit_refs.json"] {
+            let mut missing = bundle.clone();
+            missing.manifest.files.retain(|f| f.name != name);
+            assert!(validate_bundle(&missing).iter().any(|i| matches!(i.code, NestValidationCode::MissingField) && i.message.contains(name)));
+        }
+    }
+
     // ── Fixture factory ───────────────────────────────────────────────────────
 
     const ULID: &str = "ABCDE12345FGHJKMNPQRST0123";
 
-    fn bundle_id()    -> String { format!("nestbundle_{ULID}") }
-    fn session_id()   -> String { format!("nestsession_{ULID}") }
-    fn iter_id(n: u32)  -> String { format!("nestiter_{ULID}_{n:04}") }
-    fn delta_id(a: u32, b: u32) -> String { format!("nestdelta_{ULID}_{a:04}_{b:04}") }
-    fn snap_id()      -> String { format!("gyresnap_{ULID}") }
-    fn sha256_a()     -> String { "a1b2c3d4e5f6".repeat(5) + "a1b2" }
-    fn sha256_b()     -> String { "b2c3d4e5f6a1".repeat(5) + "b2c3" }
-    fn sha1_a()       -> String { "a1b2c3d4e5f6".repeat(3) + "a1b2" }
-    fn md5_a()        -> String { "a1b2c3d4e5f6".repeat(2) + "a1b2c3d4" }
-    fn binary_id()    -> String { format!("binary_sha256_{}", sha256_a()) }
+    fn bundle_id() -> String {
+        format!("nestbundle_{ULID}")
+    }
+    fn session_id() -> String {
+        format!("nestsession_{ULID}")
+    }
+    fn iter_id(n: u32) -> String {
+        format!("nestiter_{ULID}_{n:04}")
+    }
+    fn delta_id(a: u32, b: u32) -> String {
+        format!("nestdelta_{ULID}_{a:04}_{b:04}")
+    }
+    fn snap_id() -> String {
+        format!("gyresnap_{ULID}")
+    }
+    fn sha256_a() -> String {
+        "a1b2c3d4e5f6".repeat(5) + "a1b2"
+    }
+    fn sha256_b() -> String {
+        "b2c3d4e5f6a1".repeat(5) + "b2c3"
+    }
+    fn sha1_a() -> String {
+        "a1b2c3d4e5f6".repeat(3) + "a1b2"
+    }
+    fn md5_a() -> String {
+        "a1b2c3d4e5f6".repeat(2) + "a1b2c3d4"
+    }
+    fn binary_id() -> String {
+        format!("binary_sha256_{}", sha256_a())
+    }
 
     fn make_actor() -> NestActor {
         NestActor {
-            id:           "user:alice".into(),
-            actor_type:   ActorType::User,
+            id: "user:alice".into(),
+            actor_type: ActorType::User,
             display_name: "Alice".into(),
-            tenant_id:    None,
-            team_id:      None,
+            tenant_id: None,
+            team_id: None,
         }
     }
 
     fn make_timestamps() -> NestTimestamps {
         NestTimestamps {
-            created_at:   "2026-04-29T16:49:00Z".into(),
-            started_at:   Some("2026-04-29T16:49:02Z".into()),
+            created_at: "2026-04-29T16:49:00Z".into(),
+            started_at: Some("2026-04-29T16:49:02Z".into()),
             completed_at: Some("2026-04-29T16:50:12Z".into()),
-            exported_at:  Some("2026-04-29T16:51:00Z".into()),
+            exported_at: Some("2026-04-29T16:51:00Z".into()),
         }
     }
 
     fn make_gyre_linkage() -> NestGyreLinkage {
         NestGyreLinkage {
-            verdict_snapshot_id:         snap_id(),
-            gyre_schema_version:         "1.0.0".into(),
-            gyre_build_id:               "1.0.0+abc123def456".into(),
+            verdict_snapshot_id: snap_id(),
+            gyre_schema_version: "1.0.0".into(),
+            gyre_build_id: "1.0.0+abc123def456".into(),
             gyre_is_sole_verdict_source: true,
-            nest_role:                   "iterative-enrichment-only".into(),
+            nest_role: "iterative-enrichment-only".into(),
         }
     }
 
     fn make_config() -> NestSessionConfig {
         NestSessionConfig {
-            config_version:        "1.0.0".into(),
-            max_iterations:        5,
-            min_iterations:        3,
-            confidence_threshold:  80,
-            plateau_threshold:     3,
-            disasm_expansion:      512,
-            aggressiveness:        "balanced".into(),
-            enable_talon:          true,
-            enable_strike:         false,
-            enable_echo:           true,
-            auto_advance:          true,
+            config_version: "1.0.0".into(),
+            max_iterations: 5,
+            min_iterations: 3,
+            confidence_threshold: 80,
+            plateau_threshold: 3,
+            disasm_expansion: 512,
+            aggressiveness: "balanced".into(),
+            enable_talon: true,
+            enable_strike: false,
+            enable_echo: true,
+            auto_advance: true,
             auto_advance_delay_ms: 600,
         }
     }
 
     fn make_manifest() -> NestManifest {
         NestManifest {
-            schema_name:           "nest.manifest".into(),
-            schema_version:        "1.0.0".into(),
+            schema_name: "nest.manifest".into(),
+            schema_version: "1.0.0".into(),
             bundle_schema_version: "1.0.0".into(),
             bundle_format_version: "1.0.0".into(),
-            bundle_id:             bundle_id(),
-            session_id:            session_id(),
-            binary_id:             binary_id(),
-            binary_sha256:         sha256_a(),
-            engine_build_id:       "1.0.0+abc123def456".into(),
-            policy_version:        "2026-04-29.1".into(),
-            actor:                 make_actor(),
-            timestamps:            NestTimestamps {
-                created_at:   "2026-04-29T16:49:00Z".into(),
-                started_at:   None,
+            bundle_id: bundle_id(),
+            session_id: session_id(),
+            binary_id: binary_id(),
+            binary_sha256: sha256_a(),
+            engine_build_id: "1.0.0+abc123def456".into(),
+            policy_version: "2026-04-29.1".into(),
+            actor: make_actor(),
+            timestamps: NestTimestamps {
+                created_at: "2026-04-29T16:49:00Z".into(),
+                started_at: None,
                 completed_at: None,
-                exported_at:  Some("2026-04-29T16:51:00Z".into()),
+                exported_at: Some("2026-04-29T16:51:00Z".into()),
             },
             files: vec![
-                NestManifestFile { name: "manifest.json".into(),              required: true, sha256: sha256_a(), bytes: 1024, schema_name: "nest.manifest".into(),              schema_version: "1.0.0".into() },
-                NestManifestFile { name: "binary_identity.json".into(),       required: true, sha256: sha256_a(), bytes: 512,  schema_name: "nest.binary_identity".into(),       schema_version: "1.0.0".into() },
-                NestManifestFile { name: "session.json".into(),               required: true, sha256: sha256_a(), bytes: 2048, schema_name: "nest.session".into(),               schema_version: "1.0.0".into() },
-                NestManifestFile { name: "iterations.json".into(),            required: true, sha256: sha256_a(), bytes: 4096, schema_name: "nest.iterations".into(),            schema_version: "1.0.0".into() },
-                NestManifestFile { name: "deltas.json".into(),                required: true, sha256: sha256_a(), bytes: 2048, schema_name: "nest.deltas".into(),                schema_version: "1.0.0".into() },
-                NestManifestFile { name: "final_verdict_snapshot.json".into(),required: true, sha256: sha256_a(), bytes: 1024, schema_name: "nest.final_verdict_snapshot".into(),schema_version: "1.0.0".into() },
-                NestManifestFile { name: "audit_refs.json".into(),            required: true, sha256: sha256_a(), bytes: 512,  schema_name: "nest.audit_refs".into(),            schema_version: "1.0.0".into() },
+                NestManifestFile {
+                    name: "manifest.json".into(),
+                    required: true,
+                    sha256: sha256_a(),
+                    bytes: 1024,
+                    schema_name: "nest.manifest".into(),
+                    schema_version: "1.0.0".into(),
+                },
+                NestManifestFile {
+                    name: "binary_identity.json".into(),
+                    required: true,
+                    sha256: sha256_a(),
+                    bytes: 512,
+                    schema_name: "nest.binary_identity".into(),
+                    schema_version: "1.0.0".into(),
+                },
+                NestManifestFile {
+                    name: "session.json".into(),
+                    required: true,
+                    sha256: sha256_a(),
+                    bytes: 2048,
+                    schema_name: "nest.session".into(),
+                    schema_version: "1.0.0".into(),
+                },
+                NestManifestFile {
+                    name: "iterations.json".into(),
+                    required: true,
+                    sha256: sha256_a(),
+                    bytes: 4096,
+                    schema_name: "nest.iterations".into(),
+                    schema_version: "1.0.0".into(),
+                },
+                NestManifestFile {
+                    name: "deltas.json".into(),
+                    required: true,
+                    sha256: sha256_a(),
+                    bytes: 2048,
+                    schema_name: "nest.deltas".into(),
+                    schema_version: "1.0.0".into(),
+                },
+                NestManifestFile {
+                    name: "final_verdict_snapshot.json".into(),
+                    required: true,
+                    sha256: sha256_a(),
+                    bytes: 1024,
+                    schema_name: "nest.final_verdict_snapshot".into(),
+                    schema_version: "1.0.0".into(),
+                },
+                NestManifestFile {
+                    name: "audit_refs.json".into(),
+                    required: true,
+                    sha256: sha256_a(),
+                    bytes: 512,
+                    schema_name: "nest.audit_refs".into(),
+                    schema_version: "1.0.0".into(),
+                },
             ],
             immutability: NestImmutability {
-                bundle_locked:   true,
-                locked_at:       Some("2026-04-29T16:51:00Z".into()),
+                bundle_locked: true,
+                locked_at: Some("2026-04-29T16:51:00Z".into()),
                 mutation_policy: MutationPolicy::ImmutableAfterExport,
             },
             replay: NestReplayInfo {
-                replayable:            true,
-                mode_supported:        vec!["local".into()],
+                replayable: true,
+                mode_supported: vec!["local".into()],
                 requires_binary_bytes: true,
             },
             export_mode: None,
-            notes:       None,
+            notes: None,
         }
     }
 
     fn make_binary_identity() -> NestBinaryIdentity {
         NestBinaryIdentity {
-            schema_name:     "nest.binary_identity".into(),
-            schema_version:  "1.0.0".into(),
-            bundle_id:       bundle_id(),
-            session_id:      session_id(),
-            binary_id:       binary_id(),
-            binary_sha256:   sha256_a(),
-            hashes:          NestBinaryHashes { sha256: sha256_a(), sha1: sha1_a(), md5: md5_a() },
+            schema_name: "nest.binary_identity".into(),
+            schema_version: "1.0.0".into(),
+            bundle_id: bundle_id(),
+            session_id: session_id(),
+            binary_id: binary_id(),
+            binary_sha256: sha256_a(),
+            hashes: NestBinaryHashes {
+                sha256: sha256_a(),
+                sha1: sha1_a(),
+                md5: md5_a(),
+            },
             file_size_bytes: 184320,
-            format:          "PE/MZ".into(),
-            architecture:    "x86_64".into(),
-            first_seen_at:   "2026-04-29T16:49:00Z".into(),
+            format: "PE/MZ".into(),
+            architecture: "x86_64".into(),
+            first_seen_at: "2026-04-29T16:49:00Z".into(),
             identity_source: IdentitySource::LocalPath,
             file_bound_proof: NestFileBoundProof {
-                proof_status:         FileBoundProofStatus::Proven,
-                proof_basis:          vec!["sha256-match".into(), "file-size-match".into()],
-                binary_sha256:        sha256_a(),
-                file_size_bytes:      184320,
-                session_hash_lock:    Some(true),
+                proof_status: FileBoundProofStatus::Proven,
+                proof_basis: vec!["sha256-match".into(), "file-size-match".into()],
+                binary_sha256: sha256_a(),
+                file_size_bytes: 184320,
+                session_hash_lock: Some(true),
                 runtime_proof_present: None,
             },
-            original_path: Some("D:\\Challenges\\FlareAuthenticator\\FlareAuthenticator.exe".into()),
-            file_name:     "FlareAuthenticator.exe".into(),
+            original_path: Some(
+                "D:\\Challenges\\FlareAuthenticator\\FlareAuthenticator.exe".into(),
+            ),
+            file_name: "FlareAuthenticator.exe".into(),
         }
     }
 
     fn make_session() -> NestSessionRecord {
         NestSessionRecord {
-            schema_name:            "nest.session".into(),
-            schema_version:         "1.0.0".into(),
-            bundle_id:              bundle_id(),
-            session_id:             session_id(),
-            binary_id:              binary_id(),
-            binary_sha256:          sha256_a(),
-            engine_build_id:        "1.0.0+abc123def456".into(),
-            policy_version:         "2026-04-29.1".into(),
-            actor:                  make_actor(),
-            timestamps:             make_timestamps(),
-            status:                 SessionStatus::Completed,
-            execution_mode:         ExecutionMode::LocalTauri,
-            config:                 make_config(),
-            iteration_count:        2,
-            delta_count:            1,
-            final_iteration_index:  2,
-            convergence:            NestConvergence {
-                has_converged:         true,
-                reason:                "confidence-threshold".into(),
-                confidence:            87,
+            schema_name: "nest.session".into(),
+            schema_version: "1.0.0".into(),
+            bundle_id: bundle_id(),
+            session_id: session_id(),
+            binary_id: binary_id(),
+            binary_sha256: sha256_a(),
+            engine_build_id: "1.0.0+abc123def456".into(),
+            policy_version: "2026-04-29.1".into(),
+            actor: make_actor(),
+            timestamps: make_timestamps(),
+            status: SessionStatus::Completed,
+            execution_mode: ExecutionMode::LocalTauri,
+            config: make_config(),
+            iteration_count: 2,
+            delta_count: 1,
+            final_iteration_index: 2,
+            convergence: NestConvergence {
+                has_converged: true,
+                reason: "confidence-threshold".into(),
+                confidence: 87,
                 classification_stable: true,
-                signal_delta:          3,
-                contradiction_burden:  0,
-                stability_score:       0.91,
+                signal_delta: 3,
+                contradiction_burden: 0,
+                stability_score: 0.91,
             },
-            gyre_linkage:           make_gyre_linkage(),
+            gyre_linkage: make_gyre_linkage(),
             runtime_proof_required: None,
-            notes:                  None,
+            notes: None,
         }
     }
 
     fn make_iter_item(index: u32, sha: &str) -> NestIterationItem {
         NestIterationItem {
-            iteration_id:         iter_id(index),
-            iteration_index:      index,
-            session_id:           session_id(),
-            binary_sha256:        sha.to_owned(),
-            started_at:           "2026-04-29T16:49:02Z".into(),
-            completed_at:         Some("2026-04-29T16:49:25Z".into()),
-            duration_ms:          Some(23000),
-            input_window:         Some(NestInputWindow { offset: 0, length: 4096 }),
-            executed_actions:     None,
-            verdict_snapshot:     NestIterationVerdictSnapshot {
-                classification:       "malicious".into(),
-                confidence:           87,
-                threat_score:         87,
-                signal_count:         10,
-                contradiction_count:  0,
+            iteration_id: iter_id(index),
+            iteration_index: index,
+            session_id: session_id(),
+            binary_sha256: sha.to_owned(),
+            started_at: "2026-04-29T16:49:02Z".into(),
+            completed_at: Some("2026-04-29T16:49:25Z".into()),
+            duration_ms: Some(23000),
+            input_window: Some(NestInputWindow {
+                offset: 0,
+                length: 4096,
+            }),
+            executed_actions: None,
+            verdict_snapshot: NestIterationVerdictSnapshot {
+                classification: "malicious".into(),
+                confidence: 87,
+                threat_score: 87,
+                signal_count: 10,
+                contradiction_count: 0,
                 reasoning_chain_hash: sha256_a(),
             },
             convergence_snapshot: NestConvergenceSnapshot {
-                has_converged:         true,
-                reason:                "confidence-threshold".into(),
-                stability_score:       0.91,
+                has_converged: true,
+                reason: "confidence-threshold".into(),
+                stability_score: 0.91,
                 classification_stable: true,
-                signal_delta:          3,
-                contradiction_burden:  0,
+                signal_delta: 3,
+                contradiction_burden: 0,
             },
             file_identity_locked: true,
         }
@@ -1083,14 +1442,14 @@ mod tests {
 
     fn make_iterations() -> NestIterationsFile {
         NestIterationsFile {
-            schema_name:   "nest.iterations".into(),
+            schema_name: "nest.iterations".into(),
             schema_version: "1.0.0".into(),
-            bundle_id:     bundle_id(),
-            session_id:    session_id(),
-            binary_id:     binary_id(),
+            bundle_id: bundle_id(),
+            session_id: session_id(),
+            binary_id: binary_id(),
             binary_sha256: sha256_a(),
-            count:         2,
-            items:         vec![
+            count: 2,
+            items: vec![
                 make_iter_item(1, &sha256_a()),
                 make_iter_item(2, &sha256_a()),
             ],
@@ -1099,95 +1458,95 @@ mod tests {
 
     fn make_deltas() -> NestDeltasFile {
         NestDeltasFile {
-            schema_name:   "nest.deltas".into(),
+            schema_name: "nest.deltas".into(),
             schema_version: "1.0.0".into(),
-            bundle_id:     bundle_id(),
-            session_id:    session_id(),
-            binary_id:     binary_id(),
+            bundle_id: bundle_id(),
+            session_id: session_id(),
+            binary_id: binary_id(),
             binary_sha256: sha256_a(),
-            count:         1,
-            items:         vec![NestDeltaItem {
-                delta_id:               delta_id(1, 2),
-                from_iteration_id:      iter_id(1),
-                to_iteration_id:        iter_id(2),
-                from_iteration_index:   1,
-                to_iteration_index:     2,
-                binary_sha256:          sha256_a(),
-                confidence_delta:       23,
+            count: 1,
+            items: vec![NestDeltaItem {
+                delta_id: delta_id(1, 2),
+                from_iteration_id: iter_id(1),
+                to_iteration_id: iter_id(2),
+                from_iteration_index: 1,
+                to_iteration_index: 2,
+                binary_sha256: sha256_a(),
+                confidence_delta: 23,
                 classification_changed: true,
-                signal_delta_summary:   None,
-                contradiction_delta:    Some(-1),
-                refinement_execution:   None,
-                projected_gain:         None,
-                actual_gain:            None,
+                signal_delta_summary: None,
+                contradiction_delta: Some(-1),
+                refinement_execution: None,
+                projected_gain: None,
+                actual_gain: None,
             }],
         }
     }
 
     fn make_final_verdict() -> NestFinalVerdictSnapshot {
         NestFinalVerdictSnapshot {
-            schema_name:          "nest.final_verdict_snapshot".into(),
-            schema_version:       "1.0.0".into(),
-            bundle_id:            bundle_id(),
-            session_id:           session_id(),
-            binary_id:            binary_id(),
-            binary_sha256:        sha256_a(),
-            verdict_snapshot_id:  snap_id(),
-            source_engine:        "gyre".into(),
-            gyre_build_id:        "1.0.0+abc123def456".into(),
-            gyre_schema_version:  "1.0.0".into(),
-            classification:       "malicious".into(),
-            confidence:           87,
-            threat_score:         87,
-            summary:              "Test summary.".into(),
-            signal_count:         10,
-            contradiction_count:  0,
+            schema_name: "nest.final_verdict_snapshot".into(),
+            schema_version: "1.0.0".into(),
+            bundle_id: bundle_id(),
+            session_id: session_id(),
+            binary_id: binary_id(),
+            binary_sha256: sha256_a(),
+            verdict_snapshot_id: snap_id(),
+            source_engine: "gyre".into(),
+            gyre_build_id: "1.0.0+abc123def456".into(),
+            gyre_schema_version: "1.0.0".into(),
+            classification: "malicious".into(),
+            confidence: 87,
+            threat_score: 87,
+            summary: "Test summary.".into(),
+            signal_count: 10,
+            contradiction_count: 0,
             reasoning_chain_hash: sha256_a(),
-            linked_iteration_id:  iter_id(2),
-            nest_linkage:         NestFinalVerdictNestLinkage {
-                session_id:              session_id(),
-                final_iteration_id:      iter_id(2),
+            linked_iteration_id: iter_id(2),
+            nest_linkage: NestFinalVerdictNestLinkage {
+                session_id: session_id(),
+                final_iteration_id: iter_id(2),
                 nest_enrichment_applied: true,
                 gyre_is_sole_verdict_source: true,
-                nest_summary:            None,
+                nest_summary: None,
             },
         }
     }
 
     fn make_audit_refs() -> NestAuditRefs {
         NestAuditRefs {
-            schema_name:   "nest.audit_refs".into(),
+            schema_name: "nest.audit_refs".into(),
             schema_version: "1.0.0".into(),
-            bundle_id:     bundle_id(),
-            session_id:    session_id(),
-            binary_id:     binary_id(),
+            bundle_id: bundle_id(),
+            session_id: session_id(),
+            binary_id: binary_id(),
             binary_sha256: sha256_a(),
-            actor:         make_actor(),
+            actor: make_actor(),
             policy_version: "2026-04-29.1".into(),
             audit_backend: "local-append-log".into(),
-            events:        vec![NestAuditEvent {
-                event_id:   "evt_0001".into(),
+            events: vec![NestAuditEvent {
+                event_id: "evt_0001".into(),
                 event_type: "nest.session.created".into(),
-                timestamp:  "2026-04-29T16:49:00Z".into(),
-                actor_id:   "user:alice".into(),
+                timestamp: "2026-04-29T16:49:00Z".into(),
+                actor_id: "user:alice".into(),
                 actor_type: "user".into(),
                 session_id: session_id(),
-                summary:    "Session created.".into(),
-                details:    None,
+                summary: "Session created.".into(),
+                details: None,
             }],
         }
     }
 
     fn make_bundle() -> NestEvidenceBundle {
         NestEvidenceBundle {
-            manifest:               make_manifest(),
-            binary_identity:        make_binary_identity(),
-            session:                make_session(),
-            iterations:             make_iterations(),
-            deltas:                 make_deltas(),
+            manifest: make_manifest(),
+            binary_identity: make_binary_identity(),
+            session: make_session(),
+            iterations: make_iterations(),
+            deltas: make_deltas(),
             final_verdict_snapshot: make_final_verdict(),
-            audit_refs:             make_audit_refs(),
-            runtime_proof:          None,
+            audit_refs: make_audit_refs(),
+            runtime_proof: None,
         }
     }
 
@@ -1208,7 +1567,12 @@ mod tests {
         assert_eq!(restored.manifest.bundle_id, bundle_id());
         assert_eq!(restored.session.gyre_linkage.verdict_snapshot_id, snap_id());
         assert_eq!(restored.final_verdict_snapshot.source_engine, "gyre");
-        assert!(restored.final_verdict_snapshot.nest_linkage.gyre_is_sole_verdict_source);
+        assert!(
+            restored
+                .final_verdict_snapshot
+                .nest_linkage
+                .gyre_is_sole_verdict_source
+        );
     }
 
     #[test]
@@ -1233,7 +1597,10 @@ mod tests {
             "replay":        { "replayable": true, "mode_supported": ["local"], "requires_binary_bytes": true }
         });
         let result: Result<NestManifest, _> = serde_json::from_value(json);
-        assert!(result.is_err(), "Expected deserialization to fail for missing bundle_id");
+        assert!(
+            result.is_err(),
+            "Expected deserialization to fail for missing bundle_id"
+        );
     }
 
     #[test]
@@ -1241,10 +1608,14 @@ mod tests {
         let mut bundle = make_bundle();
         bundle.session.gyre_linkage.gyre_is_sole_verdict_source = false;
         let issues = validate_bundle(&bundle);
-        let critical: Vec<_> = issues.iter()
+        let critical: Vec<_> = issues
+            .iter()
             .filter(|i| i.code == NestValidationCode::ReplayCriticalError)
             .collect();
-        assert!(!critical.is_empty(), "Expected replay-critical-error for gyre violation");
+        assert!(
+            !critical.is_empty(),
+            "Expected replay-critical-error for gyre violation"
+        );
     }
 
     #[test]
@@ -1252,10 +1623,14 @@ mod tests {
         let mut bundle = make_bundle();
         bundle.final_verdict_snapshot.source_engine = "nest".into();
         let issues = validate_bundle(&bundle);
-        let critical: Vec<_> = issues.iter()
+        let critical: Vec<_> = issues
+            .iter()
             .filter(|i| i.code == NestValidationCode::ReplayCriticalError)
             .collect();
-        assert!(!critical.is_empty(), "Expected replay-critical-error for source_engine != gyre");
+        assert!(
+            !critical.is_empty(),
+            "Expected replay-critical-error for source_engine != gyre"
+        );
     }
 
     #[test]
@@ -1263,7 +1638,8 @@ mod tests {
         let mut bundle = make_bundle();
         bundle.session.binary_sha256 = sha256_b();
         let issues = validate_bundle(&bundle);
-        let critical: Vec<_> = issues.iter()
+        let critical: Vec<_> = issues
+            .iter()
             .filter(|i| i.code == NestValidationCode::ReplayCriticalError)
             .collect();
         assert!(!critical.is_empty());
@@ -1272,9 +1648,11 @@ mod tests {
     #[test]
     fn verdict_snap_mismatch_produces_consistency_error() {
         let mut bundle = make_bundle();
-        bundle.session.gyre_linkage.verdict_snapshot_id = format!("gyresnap_DIFFERENT12345FGHJKMNPQR");
+        bundle.session.gyre_linkage.verdict_snapshot_id =
+            format!("gyresnap_DIFFERENT12345FGHJKMNPQR");
         let issues = validate_bundle(&bundle);
-        let consistency: Vec<_> = issues.iter()
+        let consistency: Vec<_> = issues
+            .iter()
             .filter(|i| i.code == NestValidationCode::ConsistencyError)
             .collect();
         assert!(!consistency.is_empty());
@@ -1285,7 +1663,8 @@ mod tests {
         let mut bundle = make_bundle();
         bundle.iterations.items[1].iteration_id = iter_id(1); // duplicate of item 0
         let issues = validate_bundle(&bundle);
-        let consistency: Vec<_> = issues.iter()
+        let consistency: Vec<_> = issues
+            .iter()
             .filter(|i| i.code == NestValidationCode::ConsistencyError)
             .collect();
         assert!(!consistency.is_empty());
@@ -1296,7 +1675,8 @@ mod tests {
         let mut bundle = make_bundle();
         bundle.deltas.items[0].from_iteration_id = iter_id(99);
         let issues = validate_bundle(&bundle);
-        let consistency: Vec<_> = issues.iter()
+        let consistency: Vec<_> = issues
+            .iter()
             .filter(|i| i.code == NestValidationCode::ConsistencyError)
             .collect();
         assert!(!consistency.is_empty());
@@ -1306,9 +1686,10 @@ mod tests {
     fn reverse_delta_indexes_produce_invalid_value() {
         let mut bundle = make_bundle();
         bundle.deltas.items[0].from_iteration_index = 3;
-        bundle.deltas.items[0].to_iteration_index   = 1;
+        bundle.deltas.items[0].to_iteration_index = 1;
         let issues = validate_bundle(&bundle);
-        let inv_val: Vec<_> = issues.iter()
+        let inv_val: Vec<_> = issues
+            .iter()
             .filter(|i| i.code == NestValidationCode::InvalidValue)
             .collect();
         assert!(!inv_val.is_empty());
@@ -1320,7 +1701,8 @@ mod tests {
         bundle.session.runtime_proof_required = Some(true);
         // runtime_proof is None
         let issues = validate_bundle(&bundle);
-        let missing: Vec<_> = issues.iter()
+        let missing: Vec<_> = issues
+            .iter()
             .filter(|i| i.code == NestValidationCode::MissingField)
             .collect();
         assert!(!missing.is_empty());
@@ -1331,7 +1713,8 @@ mod tests {
         let mut bundle = make_bundle();
         bundle.manifest.schema_version = "2.0.0".into();
         let issues = validate_bundle(&bundle);
-        let unsupported: Vec<_> = issues.iter()
+        let unsupported: Vec<_> = issues
+            .iter()
             .filter(|i| i.code == NestValidationCode::UnsupportedSchemaVersion)
             .collect();
         assert!(!unsupported.is_empty());
@@ -1349,8 +1732,10 @@ mod tests {
     fn helper_valid_iteration_id_accepts_correct_format() {
         assert!(valid_iteration_id(&iter_id(1)));
         assert!(valid_iteration_id(&iter_id(9999)));
-        assert!(!valid_iteration_id("nestiter_ABCDE12345FGHJKMNPQRST0123_01")); // 2 digits not 4
-        assert!(!valid_iteration_id("nestiter_ABCDE12345FGHJKMNPQRST0123"));    // no suffix
+        assert!(!valid_iteration_id(
+            "nestiter_ABCDE12345FGHJKMNPQRST0123_01"
+        )); // 2 digits not 4
+        assert!(!valid_iteration_id("nestiter_ABCDE12345FGHJKMNPQRST0123")); // no suffix
     }
 
     #[test]
@@ -1365,4 +1750,21 @@ mod tests {
         assert!(!valid_sha256(&upper));
         assert!(valid_sha256(&sha256_a()));
     }
+    #[test]
+    fn evidence_repair_bundle_rejects_out_of_domain_iteration_evidence() {
+        let good = serde_json::to_value(make_bundle()).unwrap();
+        for (pointer, value) in [
+            ("/iterations/items/0/verdict_snapshot/confidence", json!(101)),
+            ("/iterations/items/0/verdict_snapshot/threat_score", json!(101)),
+            ("/iterations/items/0/convergence_snapshot/stability_score", json!(-1)),
+            ("/iterations/items/0/started_at", json!("2026-99-99T99:99:99Z")),
+            ("/iterations/items/0/completed_at", json!("not-a-date")),
+            ("/iterations/items/0/verdict_snapshot/reasoning_chain_hash", json!("")),
+        ] {
+            let mut json = good.clone(); *json.pointer_mut(pointer).unwrap() = value;
+            let bundle = serde_json::from_value(json).unwrap();
+            assert!(validate_bundle(&bundle).iter().any(|i| i.code == NestValidationCode::ReplayCriticalError), "export accepted invalid {pointer}");
+        }
+    }
+
 }

@@ -8,10 +8,10 @@
 //! For large files (> 4 MB) the data is split into parallel chunks so all
 //! CPU cores contribute — typical 4-8× speedup on 64 MB payloads.
 
+use rayon::prelude::*;
 use serde::Serialize;
 use std::fs;
 use std::io::{Read, Seek, SeekFrom};
-use rayon::prelude::*;
 
 // ── Output types ──────────────────────────────────────────────────────────────
 
@@ -40,11 +40,10 @@ pub struct ExtractedStrings {
 // ── Public entry point ────────────────────────────────────────────────────────
 
 pub fn extract_strings(path: String) -> Result<ExtractedStrings, String> {
-    const SCAN_LIMIT: u64 = 64 * 1024 * 1024;  // 64 MB max scan
-    const TAIL_SIZE:  u64 = 4 * 1024 * 1024;   // always scan last 4 MB
+    const SCAN_LIMIT: u64 = 64 * 1024 * 1024; // 64 MB max scan
+    const TAIL_SIZE: u64 = 4 * 1024 * 1024; // always scan last 4 MB
 
-    let file_meta = fs::metadata(&path)
-        .map_err(|e| format!("stat failed: {e}"))?;
+    let file_meta = fs::metadata(&path).map_err(|e| format!("stat failed: {e}"))?;
     let file_size = file_meta.len();
 
     // ── Read bytes to scan ────────────────────────────────────────────────
@@ -55,14 +54,14 @@ pub fn extract_strings(path: String) -> Result<ExtractedStrings, String> {
         // Tail: last TAIL_SIZE bytes
         let head_size = (SCAN_LIMIT - TAIL_SIZE) as usize;
         let mut buf = vec![0u8; head_size];
-        let mut f = fs::File::open(&path)
-            .map_err(|e| format!("Failed to open: {e}"))?;
+        let mut f = fs::File::open(&path).map_err(|e| format!("Failed to open: {e}"))?;
         f.read_exact(&mut buf)
             .map_err(|e| format!("Head read error: {e}"))?;
         f.seek(SeekFrom::End(-(TAIL_SIZE as i64)))
             .map_err(|e| format!("Seek error: {e}"))?;
         let mut tail = vec![0u8; TAIL_SIZE as usize];
-        let n = f.read(&mut tail)
+        let n = f
+            .read(&mut tail)
             .map_err(|e| format!("Tail read error: {e}"))?;
         buf.extend_from_slice(&tail[..n]);
         buf
@@ -78,7 +77,7 @@ pub fn extract_strings(path: String) -> Result<ExtractedStrings, String> {
     // chunk boundary are rare and short enough that the duplicates are harmless
     // (they'll be deduplicated via sort_unstable + dedup below).
     const PARALLEL_THRESHOLD: usize = 4 * 1024 * 1024;
-    const CHUNK_SIZE: usize         = 4 * 1024 * 1024;
+    const CHUNK_SIZE: usize = 4 * 1024 * 1024;
 
     let (mut ascii, mut unicode) = if data.len() > PARALLEL_THRESHOLD {
         let chunks: Vec<&[u8]> = data.chunks(CHUNK_SIZE).collect();
@@ -103,11 +102,15 @@ pub fn extract_strings(path: String) -> Result<ExtractedStrings, String> {
     };
 
     // ── Categorize ─────────────────────────────────────────────────────────
-    let all: Vec<&str> = ascii.iter().chain(unicode.iter()).map(String::as_str).collect();
-    let urls      = classify_urls(&all);
-    let paths     = classify_paths(&all);
+    let all: Vec<&str> = ascii
+        .iter()
+        .chain(unicode.iter())
+        .map(String::as_str)
+        .collect();
+    let urls = classify_urls(&all);
+    let paths = classify_paths(&all);
     let api_names = classify_api_names(&all);
-    let total     = ascii.len() + unicode.len();
+    let total = ascii.len() + unicode.len();
 
     Ok(ExtractedStrings {
         ascii,
@@ -147,7 +150,9 @@ fn extract_ascii(data: &[u8], min_len: usize) -> Vec<String> {
 // Slides by 1 byte at a time to handle misaligned strings.
 
 fn extract_utf16le(data: &[u8], min_len: usize) -> Vec<String> {
-    if data.len() < 4 { return vec![]; }
+    if data.len() < 4 {
+        return vec![];
+    }
     let mut result = Vec::new();
     let mut current: Vec<u16> = Vec::new();
     let mut i = 0usize;
@@ -177,30 +182,44 @@ fn extract_utf16le(data: &[u8], min_len: usize) -> Vec<String> {
 // ── Classification helpers ────────────────────────────────────────────────────
 
 fn classify_urls(strings: &[&str]) -> Vec<String> {
-    strings.iter()
+    strings
+        .iter()
         .filter(|s| {
-            s.contains("http://") || s.contains("https://") ||
-            s.contains("ftp://")  || s.contains("tcp://")   ||
-            s.contains("://")
+            s.contains("http://")
+                || s.contains("https://")
+                || s.contains("ftp://")
+                || s.contains("tcp://")
+                || s.contains("://")
         })
         .map(|s| s.to_string())
         .collect()
 }
 
 fn classify_paths(strings: &[&str]) -> Vec<String> {
-    strings.iter()
+    strings
+        .iter()
         .filter(|s| {
-            s.starts_with("C:\\") || s.starts_with("c:\\")  ||
-            s.starts_with("\\\\")                            ||
-            s.contains("\\System32\\") || s.contains("\\Windows\\") ||
-            s.contains("\\Temp\\")     || s.contains("\\AppData\\") ||
-            s.starts_with("HKEY_")     || s.starts_with("HKCU")     ||
-            s.starts_with("HKLM")      || s.starts_with("SOFTWARE\\") ||
-            s.starts_with("/etc/")     || s.starts_with("/proc/")   ||
-            s.starts_with("/tmp/")     || s.starts_with("/dev/")    ||
-            s.ends_with(".exe")        || s.ends_with(".dll")       ||
-            s.ends_with(".sys")        || s.ends_with(".bat")       ||
-            s.ends_with(".ps1")        || s.ends_with(".vbs")
+            s.starts_with("C:\\")
+                || s.starts_with("c:\\")
+                || s.starts_with("\\\\")
+                || s.contains("\\System32\\")
+                || s.contains("\\Windows\\")
+                || s.contains("\\Temp\\")
+                || s.contains("\\AppData\\")
+                || s.starts_with("HKEY_")
+                || s.starts_with("HKCU")
+                || s.starts_with("HKLM")
+                || s.starts_with("SOFTWARE\\")
+                || s.starts_with("/etc/")
+                || s.starts_with("/proc/")
+                || s.starts_with("/tmp/")
+                || s.starts_with("/dev/")
+                || s.ends_with(".exe")
+                || s.ends_with(".dll")
+                || s.ends_with(".sys")
+                || s.ends_with(".bat")
+                || s.ends_with(".ps1")
+                || s.ends_with(".vbs")
         })
         .map(|s| s.to_string())
         .collect()
@@ -208,7 +227,8 @@ fn classify_paths(strings: &[&str]) -> Vec<String> {
 
 fn classify_api_names(strings: &[&str]) -> Vec<String> {
     // Heuristic: PascalCase, ASCII-only, len 4..=64, no spaces
-    strings.iter()
+    strings
+        .iter()
         .filter(|s| {
             let bytes = s.as_bytes();
             let len = bytes.len();
@@ -226,30 +246,34 @@ fn classify_api_names(strings: &[&str]) -> Vec<String> {
 
 fn detect_magic_hint(data: &[u8]) -> String {
     match data {
-        [0x4D, 0x5A, ..]                   => "PE/MZ".into(),
-        [0x7F, 0x45, 0x4C, 0x46, ..]       => "ELF".into(),
+        [0x4D, 0x5A, ..] => "PE/MZ".into(),
+        [0x7F, 0x45, 0x4C, 0x46, ..] => "ELF".into(),
         [0xCF, 0xFA, 0xED, 0xFE, ..]
         | [0xCE, 0xFA, 0xED, 0xFE, ..]
-        | [0xCA, 0xFE, 0xBA, 0xBE, ..]     => "Mach-O".into(),
-        [0x25, 0x50, 0x44, 0x46, ..]       => "PDF".into(),
-        [0x50, 0x4B, 0x03, 0x04, ..]
-        | [0x50, 0x4B, 0x05, 0x06, ..]     => "ZIP".into(),
+        | [0xCA, 0xFE, 0xBA, 0xBE, ..] => "Mach-O".into(),
+        [0x25, 0x50, 0x44, 0x46, ..] => "PDF".into(),
+        [0x50, 0x4B, 0x03, 0x04, ..] | [0x50, 0x4B, 0x05, 0x06, ..] => "ZIP".into(),
         [0x52, 0x61, 0x72, 0x21, 0x1A, ..] => "RAR".into(),
         [0x37, 0x7A, 0xBC, 0xAF, 0x27, ..] => "7-Zip".into(),
-        [0x1F, 0x8B, ..]                   => "GZip".into(),
-        [0x23, 0x21, ..]                   => "Script/shebang".into(),
-        [0x0A, 0x0D, 0x0D, 0x0A, ..]       => "PCAPNG".into(),
-        [0xD4, 0xC3, 0xB2, 0xA1, ..]
-        | [0xA1, 0xB2, 0xC3, 0xD4, ..]     => "PCAP".into(),
-        _                                  => {
+        [0x1F, 0x8B, ..] => "GZip".into(),
+        [0x23, 0x21, ..] => "Script/shebang".into(),
+        [0x0A, 0x0D, 0x0D, 0x0A, ..] => "PCAPNG".into(),
+        [0xD4, 0xC3, 0xB2, 0xA1, ..] | [0xA1, 0xB2, 0xC3, 0xD4, ..] => "PCAP".into(),
+        _ => {
             // Check if it looks like a text file (first 512 bytes printable)
             let sample = &data[..std::cmp::min(512, data.len())];
             if sample.iter().all(|&b| b >= 0x09 && b < 0x80) {
                 "Text/Script".into()
             } else {
-                let magic = data.get(..4).map(|b| {
-                    b.iter().map(|x| format!("{x:02X}")).collect::<Vec<_>>().join(" ")
-                }).unwrap_or_else(|| "??".into());
+                let magic = data
+                    .get(..4)
+                    .map(|b| {
+                        b.iter()
+                            .map(|x| format!("{x:02X}"))
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    })
+                    .unwrap_or_else(|| "??".into());
                 format!("Unknown [magic: {magic}]")
             }
         }

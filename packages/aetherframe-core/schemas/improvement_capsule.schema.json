@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hexhawk.local/schemas/aetherframe/improvement_capsule.schema.json",
+  "title": "AetherFrame Improvement Capsule",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "capsuleId", "title", "product", "objective", "hypothesis", "status",
+    "authorityBoundary", "scope", "budget", "evidence", "uncertainty", "verification",
+    "reviewCheckpoints", "stopConditions", "rollbackPlan"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "aetherframe.improvement_capsule.v1" },
+    "capsuleId": { "type": "string", "minLength": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "product": { "type": "string", "minLength": 1 },
+    "objective": { "type": "string", "minLength": 1 },
+    "hypothesis": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["proposed", "approved", "in_progress", "verified", "stopped", "rejected"] },
+    "authorityBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["protectedFields", "forbiddenActions", "requiredApprovals"],
+      "properties": {
+        "protectedFields": { "$ref": "#/$defs/nonEmptyStrings" },
+        "forbiddenActions": { "$ref": "#/$defs/nonEmptyStrings" },
+        "requiredApprovals": { "$ref": "#/$defs/nonEmptyStrings" }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["targetPaths", "maxFilesChanged", "maxChangedLines", "allowedChangeKinds"],
+      "properties": {
+        "targetPaths": { "$ref": "#/$defs/nonEmptyStrings" },
+        "maxFilesChanged": { "type": "integer", "minimum": 1 },
+        "maxChangedLines": { "type": "integer", "minimum": 1 },
+        "allowedChangeKinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "enum": ["code", "tests", "schema", "documentation", "configuration"] }
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxDurationMinutes", "maxIterations", "maxTestCommands"],
+      "properties": {
+        "maxDurationMinutes": { "type": "integer", "minimum": 1 },
+        "maxIterations": { "type": "integer", "minimum": 1 },
+        "maxTestCommands": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "reference", "claim", "capturedAt", "reproducible"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": { "enum": ["repo_state", "test_result", "command_output", "artifact", "user_feedback", "external_context"] },
+          "reference": { "type": "string", "minLength": 1 },
+          "claim": { "type": "string", "minLength": 1 },
+          "capturedAt": { "type": "string", "minLength": 1 },
+          "reproducible": { "type": "boolean" }
+        }
+      }
+    },
+    "uncertainty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "unresolvedQuestions", "proofLimits"],
+      "properties": {
+        "level": { "enum": ["low", "medium", "high"] },
+        "unresolvedQuestions": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "proofLimits": { "$ref": "#/$defs/nonEmptyStrings" }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiredCommands", "successCriteria", "failureSignals", "evidenceRefs"],
+      "properties": {
+        "requiredCommands": { "$ref": "#/$defs/nonEmptyStrings" },
+        "successCriteria": { "$ref": "#/$defs/nonEmptyStrings" },
+        "failureSignals": { "$ref": "#/$defs/nonEmptyStrings" },
+        "evidenceRefs": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "reviewCheckpoints": { "$ref": "#/$defs/nonEmptyStrings" },
+    "stopConditions": { "$ref": "#/$defs/nonEmptyStrings" },
+    "rollbackPlan": { "type": "string", "minLength": 1 },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grantedBy", "scope", "grantedAt"],
+      "properties": {
+        "grantedBy": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "grantedAt": { "type": "string", "minLength": 1 }
+      }
+    }
+  },
+  "$defs": {
+    "nonEmptyStrings": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

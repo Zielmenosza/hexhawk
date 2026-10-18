@@ -81,7 +81,7 @@ export default function WorkflowCta({
             <button type="button" className="wf-cta-action-btn" onClick={onBuildCfg}>⬡ Build branch map</button>
           )}
           {!hasStrings && (
-            <button type="button" className="wf-cta-action-btn" onClick={onScanStrings}>𝕊 Find readable strings</button>
+            <button type="button" className="wf-cta-action-btn" onClick={onScanStrings}>S Find readable strings</button>
           )}
           <button type="button" className="wf-cta-primary-btn" onClick={onRunAnalysis}>⚡ Run analysis and show verdict</button>
         </div>

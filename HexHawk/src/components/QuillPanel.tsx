@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
-import { sanitizeBridgePath, sanitizePluginFilename } from '../utils/tauriGuards';
+import { sanitizePluginFilename } from '../utils/tauriGuards';
 
 function hasTauriRuntime(): boolean {
   return typeof window !== 'undefined' && typeof (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ !== 'undefined';
@@ -42,10 +42,10 @@ export default function QuillPanel({ onPluginListChanged }: Props) {
       setPluginDir('Browser mode (simulated plugin directory)');
       setUserPlugins([
         {
-          filename: 'demo_rules.dll',
-          path: '/browser/simulated/demo_rules.dll',
+          filename: 'demo_rules.hexhawk-plugin.json',
+          path: '/browser/simulated/demo_rules.hexhawk-plugin.json',
           name: 'DemoRules',
-          description: 'Simulated QUILL plugin for browser-only testing',
+          description: 'Simulated advisory-only manifest plugin for browser testing',
           version: '1.0.0',
           load_error: null,
         },
@@ -82,32 +82,23 @@ export default function QuillPanel({ onPluginListChanged }: Props) {
       return;
     }
 
-    let selected: string | string[] | null;
     try {
-      selected = await open({
-        title: 'Select HexHawk Plugin',
+      await open({
+        title: 'Select HexHawk Advisory Plugin Manifest',
         filters: [
-          { name: 'HexHawk Plugin', extensions: ['dll', 'so', 'dylib'] },
+          { name: 'HexHawk Advisory Plugin Manifest', extensions: ['json'] },
         ],
         multiple: false,
       });
     } catch {
       return; // dialog cancelled
     }
-    if (!selected || Array.isArray(selected)) return;
 
-    setInstalling(true);
-    try {
-      const safeSrcPath = sanitizeBridgePath(selected, 'plugin path');
-      const info = await invoke<UserPluginInfo>('install_plugin', { srcPath: safeSrcPath });
-      setSuccessMsg(`Installed "${info.name}" successfully.`);
-      await loadPlugins();
-      onPluginListChanged?.();
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setInstalling(false);
-    }
+    setInstalling(false);
+    setError(
+      'Phase 1 plugin safety gate: native plugin installation is disabled. ' +
+      'Use manifest-only advisory plugins after the backend manifest runtime is wired.',
+    );
   }
 
   async function handleUninstall(filename: string, displayName: string) {
@@ -216,23 +207,21 @@ export default function QuillPanel({ onPluginListChanged }: Props) {
         <p className="plugin-loading">Loading…</p>
       ) : userPlugins.length === 0 ? (
         <div className="plugin-empty">
-          <p>No QUILL plugins installed.</p>
+          <p>No advisory plugins installed.</p>
           <div className="plugin-sdk-hint">
-            <strong>How to create a QUILL plugin</strong>
+            <strong>Phase 1 safe plugin contract</strong>
             <ol>
               <li>
-                Create a new Rust crate with <code>crate-type = ["cdylib"]</code> and add
-                <code>plugin_api = &#123; path = "../plugin-api" &#125;</code> as a dependency.
+                Create a <code>hexhawk.plugin_manifest.v1</code> JSON manifest with explicit permissions.
               </li>
               <li>
-                Export a <code>#[no_mangle] pub extern "C" fn hexhawk_plugin_entry() -&gt; *const PluginEntry</code> symbol.
+                Allowed Phase 1 permissions are read-only evidence access plus advisory observations/report sections.
               </li>
               <li>
-                Run <code>cargo build --release</code> and install the resulting
-                <code>.dll</code> / <code>.so</code> / <code>.dylib</code> here.
+                Native <code>.dll</code> / <code>.so</code> / <code>.dylib</code> plugins remain disabled until signed/trusted bundle review is implemented.
               </li>
             </ol>
-            <p>See <code>plugins/byte_counter/</code> in the repo for a complete example.</p>
+            <p>Plugin output is advisory only and cannot mutate GYRE verdict authority.</p>
           </div>
         </div>
       ) : (

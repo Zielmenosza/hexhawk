@@ -1084,6 +1084,7 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     signals.push({
       source: 'imports',
       id: 'rat-composite',
+      certainty: 'inferred', // Co-occurring imports are observations; this conclusion is not.
       finding: `RAT/info-stealer composite: ${ratHits}/5 co-occurring characteristic signal categories (system-enum, OS-fingerprint, network, anti-debug, thread-manip) — high-specificity indicator`,
       weight: 12,
       corroboratedBy: corrobIds,
@@ -1104,6 +1105,7 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
     signals.push({
       source: 'imports',
       id: 'wiper-composite',
+      certainty: 'inferred', // Declare derivation at its producer, not by arbitrary rule-name suffix.
       finding: 'Wiper-composite: cryptographic decryption + process-execution + system-shutdown APIs co-occur — canonical dropper/wiper execution chain',
       weight: 11,
       corroboratedBy: corrobIds,
@@ -1903,6 +1905,7 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
   for (const sig of signals) {
     if (sig.certainty != null) continue; // preserve if already set by caller
 
+
     // DIRECT runtime evidence is always 'observed'
     if (sig.id.startsWith('strike-')) {
       sig.certainty = 'observed';
@@ -1941,7 +1944,8 @@ export function computeVerdict(input: CorrelationInput): BinaryVerdictResult {
       continue;
     }
 
-    // Composites are always inferred (require multiple confirmed inputs)
+    // Composites are inferred; the engine's import composites declare this at
+    // emission. Literal YARA matches retain observed certainty regardless of name.
     if (sig.id.endsWith('-composite') || sig.source === 'signatures') {
       sig.certainty = 'inferred';
       continue;

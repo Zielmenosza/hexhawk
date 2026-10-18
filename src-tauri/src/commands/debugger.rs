@@ -12,10 +12,10 @@
 //   debug_get_state     → current snapshot without advancing
 //   debug_read_memory   → read raw bytes from debugged process
 
-use std::collections::HashMap;
-use std::sync::Mutex;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Mutex;
 
 // ── Shared types (all platforms) ─────────────────────────────────────────────
 
@@ -40,8 +40,8 @@ pub struct RegisterState {
     pub rsp: u64,
     pub rbp: u64,
     pub rip: u64,
-    pub r8:  u64,
-    pub r9:  u64,
+    pub r8: u64,
+    pub r9: u64,
     pub r10: u64,
     pub r11: u64,
     pub r12: u64,
@@ -87,7 +87,10 @@ enum CompareOp {
 enum ConditionValue {
     Register(String),
     Number(u64),
-    Memory { base: Option<String>, displacement: i64 },
+    Memory {
+        base: Option<String>,
+        displacement: i64,
+    },
     HitCount,
 }
 
@@ -109,18 +112,35 @@ fn parse_u64_value(token: &str) -> Result<u64, String> {
     if trimmed.is_empty() {
         return Err("empty numeric value".to_string());
     }
-    if let Some(hex) = trimmed.strip_prefix("0x").or_else(|| trimmed.strip_prefix("0X")) {
+    if let Some(hex) = trimmed
+        .strip_prefix("0x")
+        .or_else(|| trimmed.strip_prefix("0X"))
+    {
         return u64::from_str_radix(hex, 16).map_err(|_| format!("invalid hex value '{token}'"));
     }
-    trimmed.parse::<u64>().map_err(|_| format!("invalid decimal value '{token}'"))
+    trimmed
+        .parse::<u64>()
+        .map_err(|_| format!("invalid decimal value '{token}'"))
 }
 
 fn supported_register(name: &str) -> Option<&'static str> {
     match name.trim().to_ascii_lowercase().as_str() {
-        "rax" => Some("rax"), "rbx" => Some("rbx"), "rcx" => Some("rcx"), "rdx" => Some("rdx"),
-        "rsi" => Some("rsi"), "rdi" => Some("rdi"), "rsp" => Some("rsp"), "rbp" => Some("rbp"),
-        "rip" => Some("rip"), "r8" => Some("r8"), "r9" => Some("r9"), "r10" => Some("r10"),
-        "r11" => Some("r11"), "r12" => Some("r12"), "r13" => Some("r13"), "r14" => Some("r14"),
+        "rax" => Some("rax"),
+        "rbx" => Some("rbx"),
+        "rcx" => Some("rcx"),
+        "rdx" => Some("rdx"),
+        "rsi" => Some("rsi"),
+        "rdi" => Some("rdi"),
+        "rsp" => Some("rsp"),
+        "rbp" => Some("rbp"),
+        "rip" => Some("rip"),
+        "r8" => Some("r8"),
+        "r9" => Some("r9"),
+        "r10" => Some("r10"),
+        "r11" => Some("r11"),
+        "r12" => Some("r12"),
+        "r13" => Some("r13"),
+        "r14" => Some("r14"),
         "r15" => Some("r15"),
         _ => None,
     }
@@ -132,11 +152,12 @@ fn parse_memory_value(inner: &str) -> Result<ConditionValue, String> {
         return Err("empty memory operand".to_string());
     }
     if compact.starts_with("0x") || compact.chars().all(|c| c.is_ascii_digit()) {
-        return Ok(ConditionValue::Memory { base: None, displacement: parse_u64_value(&compact)? as i64 });
+        return Ok(ConditionValue::Memory {
+            base: None,
+            displacement: parse_u64_value(&compact)? as i64,
+        });
     }
-    let split_at = compact[1..]
-        .find(['+', '-'])
-        .map(|idx| idx + 1);
+    let split_at = compact[1..].find(['+', '-']).map(|idx| idx + 1);
     let (base_raw, displacement) = if let Some(idx) = split_at {
         let (base, rest) = compact.split_at(idx);
         let sign = rest.chars().next().unwrap_or('+');
@@ -147,7 +168,10 @@ fn parse_memory_value(inner: &str) -> Result<ConditionValue, String> {
     };
     let base = supported_register(base_raw)
         .ok_or_else(|| format!("unsupported memory base register '{base_raw}'"))?;
-    Ok(ConditionValue::Memory { base: Some(base.to_string()), displacement })
+    Ok(ConditionValue::Memory {
+        base: Some(base.to_string()),
+        displacement,
+    })
 }
 
 fn parse_condition_value(token: &str) -> Result<ConditionValue, String> {
@@ -173,15 +197,29 @@ fn parse_breakpoint_condition(condition: &str) -> Result<BreakpointCondition, St
         return Err("empty breakpoint condition".to_string());
     }
     let operators = [
-        ("==", CompareOp::Eq), ("!=", CompareOp::Ne), ("<=", CompareOp::Le),
-        (">=", CompareOp::Ge), ("<", CompareOp::Lt), (">", CompareOp::Gt),
+        ("==", CompareOp::Eq),
+        ("!=", CompareOp::Ne),
+        ("<=", CompareOp::Le),
+        (">=", CompareOp::Ge),
+        ("<", CompareOp::Lt),
+        (">", CompareOp::Gt),
     ];
     for (needle, op) in operators {
         if let Some((left, right)) = condition.split_once(needle) {
-            if right.contains("==") || right.contains("!=") || right.contains("<=") || right.contains(">=") || right.contains('<') || right.contains('>') {
+            if right.contains("==")
+                || right.contains("!=")
+                || right.contains("<=")
+                || right.contains(">=")
+                || right.contains('<')
+                || right.contains('>')
+            {
                 return Err("condition must contain exactly one comparison operator".to_string());
             }
-            return Ok(BreakpointCondition { left: parse_condition_value(left)?, op, right: parse_condition_value(right)? });
+            return Ok(BreakpointCondition {
+                left: parse_condition_value(left)?,
+                op,
+                right: parse_condition_value(right)?,
+            });
         }
     }
     Err("condition must contain one comparison operator: == != < > <= >=".to_string())
@@ -189,11 +227,24 @@ fn parse_breakpoint_condition(condition: &str) -> Result<BreakpointCondition, St
 
 fn register_value(regs: &RegisterState, name: &str) -> Option<u64> {
     match name {
-        "rax" => Some(regs.rax), "rbx" => Some(regs.rbx), "rcx" => Some(regs.rcx), "rdx" => Some(regs.rdx),
-        "rsi" => Some(regs.rsi), "rdi" => Some(regs.rdi), "rsp" => Some(regs.rsp), "rbp" => Some(regs.rbp),
-        "rip" => Some(regs.rip), "r8" => Some(regs.r8), "r9" => Some(regs.r9), "r10" => Some(regs.r10),
-        "r11" => Some(regs.r11), "r12" => Some(regs.r12), "r13" => Some(regs.r13), "r14" => Some(regs.r14),
-        "r15" => Some(regs.r15), _ => None,
+        "rax" => Some(regs.rax),
+        "rbx" => Some(regs.rbx),
+        "rcx" => Some(regs.rcx),
+        "rdx" => Some(regs.rdx),
+        "rsi" => Some(regs.rsi),
+        "rdi" => Some(regs.rdi),
+        "rsp" => Some(regs.rsp),
+        "rbp" => Some(regs.rbp),
+        "rip" => Some(regs.rip),
+        "r8" => Some(regs.r8),
+        "r9" => Some(regs.r9),
+        "r10" => Some(regs.r10),
+        "r11" => Some(regs.r11),
+        "r12" => Some(regs.r12),
+        "r13" => Some(regs.r13),
+        "r14" => Some(regs.r14),
+        "r15" => Some(regs.r15),
+        _ => None,
     }
 }
 
@@ -211,16 +262,23 @@ where
         match value {
             ConditionValue::Number(v) => Ok(v),
             ConditionValue::HitCount => Ok(hit_count),
-            ConditionValue::Register(name) => register_value(regs, &name).ok_or_else(|| format!("register '{name}' unavailable")),
+            ConditionValue::Register(name) => {
+                register_value(regs, &name).ok_or_else(|| format!("register '{name}' unavailable"))
+            }
             ConditionValue::Memory { base, displacement } => {
                 let base_value = match base {
-                    Some(name) => register_value(regs, &name).ok_or_else(|| format!("register '{name}' unavailable"))?,
+                    Some(name) => register_value(regs, &name)
+                        .ok_or_else(|| format!("register '{name}' unavailable"))?,
                     None => 0,
                 };
                 let addr = if displacement < 0 {
-                    base_value.checked_sub(displacement.unsigned_abs()).ok_or_else(|| "memory address underflow".to_string())?
+                    base_value
+                        .checked_sub(displacement.unsigned_abs())
+                        .ok_or_else(|| "memory address underflow".to_string())?
                 } else {
-                    base_value.checked_add(displacement as u64).ok_or_else(|| "memory address overflow".to_string())?
+                    base_value
+                        .checked_add(displacement as u64)
+                        .ok_or_else(|| "memory address overflow".to_string())?
                 };
                 read_memory_qword(addr)
             }
@@ -238,7 +296,11 @@ where
     })
 }
 
-fn evaluate_breakpoint_hit<F>(bp: &mut Breakpoint, regs: &RegisterState, read_memory_qword: F) -> (BreakpointDecision, Option<String>)
+fn evaluate_breakpoint_hit<F>(
+    bp: &mut Breakpoint,
+    regs: &RegisterState,
+    read_memory_qword: F,
+) -> (BreakpointDecision, Option<String>)
 where
     F: FnMut(u64) -> Result<u64, String>,
 {
@@ -247,7 +309,12 @@ where
         bp.last_evaluation = Some("disabled".to_string());
         return (BreakpointDecision::Skip, None);
     }
-    let Some(condition) = bp.condition.as_deref().map(str::trim).filter(|c| !c.is_empty()) else {
+    let Some(condition) = bp
+        .condition
+        .as_deref()
+        .map(str::trim)
+        .filter(|c| !c.is_empty())
+    else {
         bp.last_evaluation = Some("unconditional".to_string());
         return (BreakpointDecision::Fire, None);
     };
@@ -261,7 +328,10 @@ where
             (BreakpointDecision::Skip, None)
         }
         Err(e) => {
-            let warning = format!("invalid breakpoint condition at {:#x}: {}; breakpoint fired", bp.address, e);
+            let warning = format!(
+                "invalid breakpoint condition at {:#x}: {}; breakpoint fired",
+                bp.address, e
+            );
             bp.last_evaluation = Some(warning.clone());
             (BreakpointDecision::Fire, Some(warning))
         }
@@ -274,7 +344,7 @@ pub struct DebugSnapshot {
     pub session_id: u32,
     pub status: DebugStatus,
     pub registers: RegisterState,
-    pub stack: Vec<u64>,        // ~16 qwords at RSP
+    pub stack: Vec<u64>, // ~16 qwords at RSP
     /// Runtime call stack — advisory evidence only. Empty when unavailable.
     pub call_stack: Vec<CallStackFrame>,
     pub breakpoints: Vec<Breakpoint>,
@@ -316,8 +386,8 @@ fn remove_session(session_id: u32) {
 }
 
 fn validate_debug_target_path(path: &str) -> Result<String, String> {
-    let canonical = std::fs::canonicalize(path)
-        .map_err(|e| format!("Invalid debug target path: {e}"))?;
+    let canonical =
+        std::fs::canonicalize(path).map_err(|e| format!("Invalid debug target path: {e}"))?;
     let meta = std::fs::metadata(&canonical)
         .map_err(|e| format!("Failed to stat debug target path: {e}"))?;
     if !meta.is_file() {
@@ -358,34 +428,30 @@ mod win {
     use std::sync::mpsc;
     use std::thread;
 
-    use windows_sys::Win32::Foundation::{
-        CloseHandle, FALSE, HANDLE, INVALID_HANDLE_VALUE,
-    };
+    use windows_sys::Win32::Foundation::{CloseHandle, FALSE, HANDLE, INVALID_HANDLE_VALUE};
     use windows_sys::Win32::System::Diagnostics::Debug::{
-        ContinueDebugEvent, DebugActiveProcess, DebugActiveProcessStop,
-        FlushInstructionCache, GetThreadContext, ReadProcessMemory,
-        SetThreadContext, WaitForDebugEvent, WriteProcessMemory, CONTEXT,
-        CREATE_PROCESS_DEBUG_EVENT, CREATE_THREAD_DEBUG_EVENT, DEBUG_EVENT,
-        EXCEPTION_DEBUG_EVENT, EXIT_PROCESS_DEBUG_EVENT, LOAD_DLL_DEBUG_EVENT,
+        ContinueDebugEvent, DebugActiveProcess, DebugActiveProcessStop, FlushInstructionCache,
+        GetThreadContext, ReadProcessMemory, SetThreadContext, WaitForDebugEvent,
+        WriteProcessMemory, CONTEXT, CREATE_PROCESS_DEBUG_EVENT, CREATE_THREAD_DEBUG_EVENT,
+        DEBUG_EVENT, EXCEPTION_DEBUG_EVENT, EXIT_PROCESS_DEBUG_EVENT, LOAD_DLL_DEBUG_EVENT,
         OUTPUT_DEBUG_STRING_EVENT,
     };
     use windows_sys::Win32::System::Threading::{
-        CreateProcessW, GetProcessId, OpenProcess, TerminateProcess,
-        CREATE_NEW_CONSOLE, DEBUG_PROCESS, PROCESS_QUERY_INFORMATION,
-        PROCESS_TERMINATE, PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE,
-        PROCESS_INFORMATION, STARTUPINFOW,
+        CreateProcessW, GetProcessId, OpenProcess, TerminateProcess, CREATE_NEW_CONSOLE,
+        DEBUG_PROCESS, PROCESS_INFORMATION, PROCESS_QUERY_INFORMATION, PROCESS_TERMINATE,
+        PROCESS_VM_OPERATION, PROCESS_VM_READ, PROCESS_VM_WRITE, STARTUPINFOW,
     };
 
     // Windows debug constants — typed to match windows-sys 0.52 NTSTATUS (i32)
-    const CONTEXT_ALL: u32               = 0x0010_003F; // AMD64 — CONTEXT.ContextFlags is u32
+    const CONTEXT_ALL: u32 = 0x0010_003F; // AMD64 — CONTEXT.ContextFlags is u32
     #[allow(overflowing_literals)]
-    const DBG_CONTINUE: i32              = 0x0001_0002_i32;
+    const DBG_CONTINUE: i32 = 0x0001_0002_i32;
     #[allow(overflowing_literals)]
     const DBG_EXCEPTION_NOT_HANDLED: i32 = 0x8001_0001u32 as i32;
     #[allow(overflowing_literals)]
-    const EXCEPTION_BREAKPOINT: i32      = 0x8000_0003u32 as i32;
+    const EXCEPTION_BREAKPOINT: i32 = 0x8000_0003u32 as i32;
     #[allow(overflowing_literals)]
-    const EXCEPTION_SINGLE_STEP: i32     = 0x8000_0004u32 as i32;
+    const EXCEPTION_SINGLE_STEP: i32 = 0x8000_0004u32 as i32;
 
     // ── Message types ─────────────────────────────────────────────────────────
 
@@ -434,7 +500,9 @@ mod win {
             sessions.insert(
                 session_id,
                 crate::commands::debugger::SessionHandle {
-                    _impl: Box::new(SessionHandle { cmd_tx: cmd_tx.clone() }),
+                    _impl: Box::new(SessionHandle {
+                        cmd_tx: cmd_tx.clone(),
+                    }),
                 },
             );
         }
@@ -458,7 +526,9 @@ mod win {
             sessions.insert(
                 session_id,
                 crate::commands::debugger::SessionHandle {
-                    _impl: Box::new(SessionHandle { cmd_tx: cmd_tx.clone() }),
+                    _impl: Box::new(SessionHandle {
+                        cmd_tx: cmd_tx.clone(),
+                    }),
                 },
             );
         }
@@ -483,7 +553,11 @@ mod win {
             1,
             &mut read,
         );
-        if ok != FALSE && read == 1 { Some(byte) } else { None }
+        if ok != FALSE && read == 1 {
+            Some(byte)
+        } else {
+            None
+        }
     }
 
     unsafe fn read_qword(process: HANDLE, addr: u64) -> Option<u64> {
@@ -496,7 +570,11 @@ mod win {
             std::mem::size_of::<u64>(),
             &mut read,
         );
-        if ok != FALSE && read == std::mem::size_of::<u64>() { Some(value) } else { None }
+        if ok != FALSE && read == std::mem::size_of::<u64>() {
+            Some(value)
+        } else {
+            None
+        }
     }
 
     // Write 1 byte to a process
@@ -540,8 +618,8 @@ mod win {
             rsp: ctx.Rsp,
             rbp: ctx.Rbp,
             rip: ctx.Rip,
-            r8:  ctx.R8,
-            r9:  ctx.R9,
+            r8: ctx.R8,
+            r9: ctx.R9,
             r10: ctx.R10,
             r11: ctx.R11,
             r12: ctx.R12,
@@ -578,7 +656,6 @@ mod win {
         stack
     }
 
-
     fn reconstruct_call_stack(process: HANDLE, regs: &RegisterState) -> Vec<CallStackFrame> {
         // Advisory best-effort frame-pointer chain fallback. StackWalk64/dbghelp is
         // not assumed available in every user environment; any read failure returns
@@ -608,7 +685,12 @@ mod win {
                     8,
                     &mut read_ret,
                 );
-                if ok_fp == FALSE || ok_ret == FALSE || read_fp != 8 || read_ret != 8 || return_address == 0 {
+                if ok_fp == FALSE
+                    || ok_ret == FALSE
+                    || read_fp != 8
+                    || read_ret != 8
+                    || return_address == 0
+                {
                     break;
                 }
             }
@@ -659,7 +741,9 @@ mod win {
     /// If the first instruction in `bytes` at `addr` is a CALL, returns its length.
     /// Uses capstone for reliable decoding of all CALL variants.
     fn detect_call_at(addr: u64, bytes: &[u8]) -> Option<usize> {
-        if bytes.is_empty() { return None; }
+        if bytes.is_empty() {
+            return None;
+        }
         use capstone::prelude::*;
         let cs = Capstone::new()
             .x86()
@@ -678,37 +762,41 @@ mod win {
     // ── Mutable state for the running command dispatch loop ───────────────────
 
     struct DebugLoopState {
-        process:           HANDLE,
-        main_thread:       HANDLE,
-        thread_handles:    HashMap<u32, HANDLE>,
-        bp_originals:      HashMap<u64, u8>,
-        user_bps:          HashMap<u64, Breakpoint>,
-        pending_rearm:     Option<(u64, u8)>,
+        process: HANDLE,
+        main_thread: HANDLE,
+        thread_handles: HashMap<u32, HANDLE>,
+        bp_originals: HashMap<u64, u8>,
+        user_bps: HashMap<u64, Breakpoint>,
+        pending_rearm: Option<(u64, u8)>,
         snapshot_warnings: Vec<String>,
-        step_count:        u32,
-        exit_code:         Option<i32>,
-        current_ctx:       CONTEXT,
-        current_thread:    HANDLE,
-        status:            DebugStatus,
-        last_event_str:    String,
+        step_count: u32,
+        exit_code: Option<i32>,
+        current_ctx: CONTEXT,
+        current_thread: HANDLE,
+        status: DebugStatus,
+        last_event_str: String,
         pending_event_pid: u32,
         pending_event_tid: u32,
-        session_id:        u32,
-        app_handle:        Option<tauri::AppHandle>,
+        session_id: u32,
+        app_handle: Option<tauri::AppHandle>,
     }
 
     impl DebugLoopState {
-            fn release_debug_handles(&mut self) {
-                for (_tid, handle) in self.thread_handles.drain() {
-                    if handle != 0 && handle != self.main_thread {
-                        unsafe { CloseHandle(handle); }
+        fn release_debug_handles(&mut self) {
+            for (_tid, handle) in self.thread_handles.drain() {
+                if handle != 0 && handle != self.main_thread {
+                    unsafe {
+                        CloseHandle(handle);
                     }
                 }
-                if self.main_thread != 0 {
-                    unsafe { CloseHandle(self.main_thread); }
-                    self.main_thread = 0;
-                }
             }
+            if self.main_thread != 0 {
+                unsafe {
+                    CloseHandle(self.main_thread);
+                }
+                self.main_thread = 0;
+            }
+        }
 
         fn emit_snapshot(&self, snap: &DebugSnapshot) {
             if let Some(ref ah) = self.app_handle {
@@ -720,8 +808,13 @@ mod win {
         fn make_current_snapshot(&self) -> DebugSnapshot {
             let bp_list: Vec<Breakpoint> = self.user_bps.values().cloned().collect();
             let mut snap = make_snapshot(
-                self.session_id, self.status.clone(), &self.current_ctx,
-                self.process, &bp_list, self.step_count, self.exit_code,
+                self.session_id,
+                self.status.clone(),
+                &self.current_ctx,
+                self.process,
+                &bp_list,
+                self.step_count,
+                self.exit_code,
                 &self.last_event_str,
             );
             snap.warnings.extend(self.snapshot_warnings.clone());
@@ -729,34 +822,54 @@ mod win {
         }
 
         fn complete_pending_rearm(&mut self) -> Result<bool, String> {
-            let Some((addr, orig)) = self.pending_rearm.take() else { return Ok(false); };
+            let Some((addr, orig)) = self.pending_rearm.take() else {
+                return Ok(false);
+            };
             let mut ctx = self.current_ctx;
             ctx.EFlags |= 0x100;
-            unsafe { set_ctx(self.current_thread, &ctx); }
-            unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
+            unsafe {
+                set_ctx(self.current_thread, &ctx);
+            }
+            unsafe {
+                ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE);
+            }
             self.wait_for_single_step_after_breakpoint(addr, orig)?;
             Ok(true)
         }
 
-        fn wait_for_single_step_after_breakpoint(&mut self, addr: u64, orig: u8) -> Result<(), String> {
+        fn wait_for_single_step_after_breakpoint(
+            &mut self,
+            addr: u64,
+            orig: u8,
+        ) -> Result<(), String> {
             let timeout_ms = 10_000u32;
             loop {
                 let mut evt: DEBUG_EVENT = unsafe { std::mem::zeroed() };
                 let ok = unsafe { WaitForDebugEvent(&mut evt, timeout_ms) };
                 if ok == FALSE {
-                    return Err("WaitForDebugEvent timed out while stepping over breakpoint".to_string());
+                    return Err(
+                        "WaitForDebugEvent timed out while stepping over breakpoint".to_string()
+                    );
                 }
                 let tid = evt.dwThreadId;
-                let thread = self.thread_handles.get(&tid).copied().unwrap_or(self.main_thread);
+                let thread = self
+                    .thread_handles
+                    .get(&tid)
+                    .copied()
+                    .unwrap_or(self.main_thread);
                 match evt.dwDebugEventCode {
                     EXCEPTION_DEBUG_EVENT => {
                         let exc = unsafe { &evt.u.Exception.ExceptionRecord };
                         if exc.ExceptionCode == EXCEPTION_SINGLE_STEP {
                             if self.user_bps.contains_key(&addr) {
                                 self.bp_originals.insert(addr, orig);
-                                unsafe { write_byte(self.process, addr, 0xCC); }
+                                unsafe {
+                                    write_byte(self.process, addr, 0xCC);
+                                }
                             }
-                            let ctx = unsafe { get_ctx(thread) }.ok_or_else(|| "GetThreadContext failed after breakpoint step".to_string())?;
+                            let ctx = unsafe { get_ctx(thread) }.ok_or_else(|| {
+                                "GetThreadContext failed after breakpoint step".to_string()
+                            })?;
                             self.current_ctx = ctx;
                             self.current_thread = thread;
                             self.status = DebugStatus::Paused;
@@ -765,27 +878,41 @@ mod win {
                             self.pending_event_tid = tid;
                             return Ok(());
                         }
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_EXCEPTION_NOT_HANDLED); }
+                        unsafe {
+                            ContinueDebugEvent(evt.dwProcessId, tid, DBG_EXCEPTION_NOT_HANDLED);
+                        }
                     }
                     EXIT_PROCESS_DEBUG_EVENT => {
                         let info = unsafe { &evt.u.ExitProcess };
                         self.exit_code = Some(info.dwExitCode as i32);
                         self.status = DebugStatus::Exited;
                         self.last_event_str = "exited".to_string();
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                        unsafe {
+                            ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                        }
                         return Ok(());
                     }
                     LOAD_DLL_DEBUG_EVENT => {
                         let info = unsafe { &evt.u.LoadDll };
-                        if info.hFile != INVALID_HANDLE_VALUE && info.hFile != 0 { unsafe { CloseHandle(info.hFile); } }
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                        if info.hFile != INVALID_HANDLE_VALUE && info.hFile != 0 {
+                            unsafe {
+                                CloseHandle(info.hFile);
+                            }
+                        }
+                        unsafe {
+                            ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                        }
                     }
                     CREATE_THREAD_DEBUG_EVENT => {
                         let info = unsafe { &evt.u.CreateThread };
                         self.thread_handles.insert(tid, info.hThread);
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                        unsafe {
+                            ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                        }
                     }
-                    _ => unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); },
+                    _ => unsafe {
+                        ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                    },
                 }
             }
         }
@@ -800,12 +927,16 @@ mod win {
                 if ok == FALSE {
                     return Err("WaitForDebugEvent timed out (10 s)".to_string());
                 }
-                let tid    = evt.dwThreadId;
-                let thread = self.thread_handles.get(&tid).copied().unwrap_or(self.main_thread);
+                let tid = evt.dwThreadId;
+                let thread = self
+                    .thread_handles
+                    .get(&tid)
+                    .copied()
+                    .unwrap_or(self.main_thread);
 
                 match evt.dwDebugEventCode {
                     EXCEPTION_DEBUG_EVENT => {
-                        let exc  = unsafe { &evt.u.Exception.ExceptionRecord };
+                        let exc = unsafe { &evt.u.Exception.ExceptionRecord };
                         let code = exc.ExceptionCode;
                         let addr = exc.ExceptionAddress as u64;
 
@@ -813,19 +944,23 @@ mod win {
                             self.step_count += 1;
                             let ctx = unsafe { get_ctx(thread) }
                                 .ok_or_else(|| "GetThreadContext failed".to_string())?;
-                            self.current_ctx       = ctx;
-                            self.current_thread    = thread;
-                            self.status            = DebugStatus::Paused;
-                            self.last_event_str    = "single-step".to_string();
+                            self.current_ctx = ctx;
+                            self.current_thread = thread;
+                            self.status = DebugStatus::Paused;
+                            self.last_event_str = "single-step".to_string();
                             self.pending_event_pid = evt.dwProcessId;
                             self.pending_event_tid = tid;
                             return Ok(());
                         } else if code == EXCEPTION_BREAKPOINT {
                             if let Some(orig) = self.bp_originals.remove(&addr) {
-                                unsafe { write_byte(self.process, addr, orig); }
+                                unsafe {
+                                    write_byte(self.process, addr, orig);
+                                }
                                 if let Some(mut ctx) = unsafe { get_ctx(thread) } {
                                     ctx.Rip = ctx.Rip.saturating_sub(1);
-                                    unsafe { set_ctx(thread, &ctx); }
+                                    unsafe {
+                                        set_ctx(thread, &ctx);
+                                    }
                                     self.current_ctx = ctx;
                                     self.current_thread = thread;
                                     self.pending_event_pid = evt.dwProcessId;
@@ -836,16 +971,28 @@ mod win {
                                     if let Some(bp) = self.user_bps.get_mut(&addr) {
                                         let regs = ctx_to_regs(&ctx);
                                         let process = self.process;
-                                        let (decision, warning) = evaluate_breakpoint_hit(bp, &regs, |memory_addr| {
-                                            unsafe { read_qword(process, memory_addr) }
+                                        let (decision, warning) = evaluate_breakpoint_hit(
+                                            bp,
+                                            &regs,
+                                            |memory_addr| {
+                                                unsafe { read_qword(process, memory_addr) }
                                                 .ok_or_else(|| format!("memory read failed at {memory_addr:#x}"))
-                                        });
+                                            },
+                                        );
                                         if let Some(warning) = warning {
                                             self.snapshot_warnings.push(warning);
                                         }
                                         should_break = decision == BreakpointDecision::Fire;
-                                        event = match bp.condition.as_deref().map(str::trim).filter(|c| !c.is_empty()) {
-                                            Some(condition) => format!("breakpoint@{addr:#x}; condition {condition}; {}", bp.last_evaluation.clone().unwrap_or_default()),
+                                        event = match bp
+                                            .condition
+                                            .as_deref()
+                                            .map(str::trim)
+                                            .filter(|c| !c.is_empty())
+                                        {
+                                            Some(condition) => format!(
+                                                "breakpoint@{addr:#x}; condition {condition}; {}",
+                                                bp.last_evaluation.clone().unwrap_or_default()
+                                            ),
                                             None => format!("breakpoint@{addr:#x}"),
                                         };
                                     }
@@ -861,12 +1008,20 @@ mod win {
 
                                     // False condition: execute the original instruction once, re-arm, then keep running.
                                     self.wait_for_single_step_after_breakpoint(addr, orig)?;
-                                    unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
+                                    unsafe {
+                                        ContinueDebugEvent(
+                                            self.pending_event_pid,
+                                            self.pending_event_tid,
+                                            DBG_CONTINUE,
+                                        );
+                                    }
                                     continue;
                                 }
                             }
                             // Unknown/system breakpoint — continue
-                            unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                            unsafe {
+                                ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                            }
                         } else {
                             unsafe {
                                 ContinueDebugEvent(evt.dwProcessId, tid, DBG_EXCEPTION_NOT_HANDLED);
@@ -875,30 +1030,38 @@ mod win {
                     }
                     EXIT_PROCESS_DEBUG_EVENT => {
                         let info = unsafe { &evt.u.ExitProcess };
-                        self.exit_code      = Some(info.dwExitCode as i32);
-                        self.status         = DebugStatus::Exited;
+                        self.exit_code = Some(info.dwExitCode as i32);
+                        self.status = DebugStatus::Exited;
                         self.last_event_str = "exited".to_string();
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                        unsafe {
+                            ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                        }
                         return Ok(());
                     }
-                    OUTPUT_DEBUG_STRING_EVENT => {
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
-                    }
+                    OUTPUT_DEBUG_STRING_EVENT => unsafe {
+                        ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                    },
                     LOAD_DLL_DEBUG_EVENT => {
                         let info = unsafe { &evt.u.LoadDll };
                         if info.hFile != INVALID_HANDLE_VALUE && info.hFile != 0 {
-                            unsafe { CloseHandle(info.hFile); }
+                            unsafe {
+                                CloseHandle(info.hFile);
+                            }
                         }
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                        unsafe {
+                            ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                        }
                     }
                     CREATE_THREAD_DEBUG_EVENT => {
                         let info = unsafe { &evt.u.CreateThread };
                         self.thread_handles.insert(tid, info.hThread);
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
+                        unsafe {
+                            ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                        }
                     }
-                    _ => {
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE); }
-                    }
+                    _ => unsafe {
+                        ContinueDebugEvent(evt.dwProcessId, tid, DBG_CONTINUE);
+                    },
                 }
             }
         }
@@ -923,10 +1086,18 @@ mod win {
                             let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
                             continue;
                         }
-                        let mut ctx    = self.current_ctx;
-                        ctx.EFlags    |= 0x100; // TF
-                        unsafe { set_ctx(self.current_thread, &ctx); }
-                        unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
+                        let mut ctx = self.current_ctx;
+                        ctx.EFlags |= 0x100; // TF
+                        unsafe {
+                            set_ctx(self.current_thread, &ctx);
+                        }
+                        unsafe {
+                            ContinueDebugEvent(
+                                self.pending_event_pid,
+                                self.pending_event_tid,
+                                DBG_CONTINUE,
+                            );
+                        }
                         match self.wait_for_stop() {
                             Ok(()) => {
                                 let snap = self.make_current_snapshot();
@@ -951,33 +1122,46 @@ mod win {
                             let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
                             continue;
                         }
-                        let rip     = self.current_ctx.Rip;
+                        let rip = self.current_ctx.Rip;
                         let mut ibuf = [0u8; 15];
                         let mut n_read = 0usize;
                         unsafe {
                             ReadProcessMemory(
-                                self.process, rip as *const _,
-                                ibuf.as_mut_ptr() as *mut _, 15, &mut n_read,
+                                self.process,
+                                rip as *const _,
+                                ibuf.as_mut_ptr() as *mut _,
+                                15,
+                                &mut n_read,
                             );
                         }
                         let maybe_call_len = detect_call_at(rip, &ibuf[..n_read.min(15)]);
                         if let Some(call_len) = maybe_call_len {
                             // Step over: place temp INT3 at the return address (RIP + call_len)
-                            let over_addr    = rip + call_len as u64;
-                            let had_user_bp  = self.user_bps.contains_key(&over_addr);
+                            let over_addr = rip + call_len as u64;
+                            let had_user_bp = self.user_bps.contains_key(&over_addr);
                             if !had_user_bp {
                                 if let Some(orig) = unsafe { read_byte(self.process, over_addr) } {
                                     self.bp_originals.entry(over_addr).or_insert(orig);
-                                    unsafe { write_byte(self.process, over_addr, 0xCC); }
+                                    unsafe {
+                                        write_byte(self.process, over_addr, 0xCC);
+                                    }
                                 }
                             }
-                            unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
+                            unsafe {
+                                ContinueDebugEvent(
+                                    self.pending_event_pid,
+                                    self.pending_event_tid,
+                                    DBG_CONTINUE,
+                                );
+                            }
                             match self.wait_for_stop() {
                                 Ok(()) => {
                                     // Remove temp BP if still present and not a user BP
                                     if !had_user_bp && !self.user_bps.contains_key(&over_addr) {
                                         if let Some(orig) = self.bp_originals.remove(&over_addr) {
-                                            unsafe { write_byte(self.process, over_addr, orig); }
+                                            unsafe {
+                                                write_byte(self.process, over_addr, orig);
+                                            }
                                         }
                                     }
                                     let snap = self.make_current_snapshot();
@@ -988,7 +1172,9 @@ mod win {
                                     // Best-effort cleanup on error
                                     if !had_user_bp {
                                         if let Some(orig) = self.bp_originals.remove(&over_addr) {
-                                            unsafe { write_byte(self.process, over_addr, orig); }
+                                            unsafe {
+                                                write_byte(self.process, over_addr, orig);
+                                            }
                                         }
                                     }
                                     self.status = DebugStatus::Error;
@@ -998,10 +1184,18 @@ mod win {
                             }
                         } else {
                             // Not a CALL — fall back to single-step (same as Step)
-                            let mut ctx  = self.current_ctx;
-                            ctx.EFlags  |= 0x100;
-                            unsafe { set_ctx(self.current_thread, &ctx); }
-                            unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
+                            let mut ctx = self.current_ctx;
+                            ctx.EFlags |= 0x100;
+                            unsafe {
+                                set_ctx(self.current_thread, &ctx);
+                            }
+                            unsafe {
+                                ContinueDebugEvent(
+                                    self.pending_event_pid,
+                                    self.pending_event_tid,
+                                    DBG_CONTINUE,
+                                );
+                            }
                             match self.wait_for_stop() {
                                 Ok(()) => {
                                     let snap = self.make_current_snapshot();
@@ -1010,7 +1204,8 @@ mod win {
                                 }
                                 Err(e) => {
                                     self.status = DebugStatus::Error;
-                                    self.last_event_str = format!("step over fallback error: {}", e);
+                                    self.last_event_str =
+                                        format!("step over fallback error: {}", e);
                                     let _ = cmd.resp.send(Err(e));
                                 }
                             }
@@ -1030,12 +1225,18 @@ mod win {
                         let mut n_read = 0usize;
                         let read_ok = unsafe {
                             ReadProcessMemory(
-                                self.process, rsp as *const _,
-                                ret_addr_bytes.as_mut_ptr() as *mut _, 8, &mut n_read,
+                                self.process,
+                                rsp as *const _,
+                                ret_addr_bytes.as_mut_ptr() as *mut _,
+                                8,
+                                &mut n_read,
                             ) != 0
                         };
                         if !read_ok || n_read < 8 {
-                            let _ = cmd.resp.send(Err(format!("StepOut: failed to read return address at RSP={:#x}", rsp)));
+                            let _ = cmd.resp.send(Err(format!(
+                                "StepOut: failed to read return address at RSP={:#x}",
+                                rsp
+                            )));
                             continue;
                         }
                         let ret_addr = u64::from_le_bytes(ret_addr_bytes);
@@ -1043,15 +1244,25 @@ mod win {
                         if !had_user_bp {
                             if let Some(orig) = unsafe { read_byte(self.process, ret_addr) } {
                                 self.bp_originals.entry(ret_addr).or_insert(orig);
-                                unsafe { write_byte(self.process, ret_addr, 0xCC); }
+                                unsafe {
+                                    write_byte(self.process, ret_addr, 0xCC);
+                                }
                             }
                         }
-                        unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
+                        unsafe {
+                            ContinueDebugEvent(
+                                self.pending_event_pid,
+                                self.pending_event_tid,
+                                DBG_CONTINUE,
+                            );
+                        }
                         match self.wait_for_stop() {
                             Ok(()) => {
                                 if !had_user_bp && !self.user_bps.contains_key(&ret_addr) {
                                     if let Some(orig) = self.bp_originals.remove(&ret_addr) {
-                                        unsafe { write_byte(self.process, ret_addr, orig); }
+                                        unsafe {
+                                            write_byte(self.process, ret_addr, orig);
+                                        }
                                     }
                                 }
                                 let snap = self.make_current_snapshot();
@@ -1061,7 +1272,9 @@ mod win {
                             Err(e) => {
                                 if !had_user_bp {
                                     if let Some(orig) = self.bp_originals.remove(&ret_addr) {
-                                        unsafe { write_byte(self.process, ret_addr, orig); }
+                                        unsafe {
+                                            write_byte(self.process, ret_addr, orig);
+                                        }
                                     }
                                 }
                                 self.status = DebugStatus::Error;
@@ -1081,7 +1294,13 @@ mod win {
                             let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
                             continue;
                         }
-                        unsafe { ContinueDebugEvent(self.pending_event_pid, self.pending_event_tid, DBG_CONTINUE); }
+                        unsafe {
+                            ContinueDebugEvent(
+                                self.pending_event_pid,
+                                self.pending_event_tid,
+                                DBG_CONTINUE,
+                            );
+                        }
                         match self.wait_for_stop() {
                             Ok(()) => {
                                 let snap = self.make_current_snapshot();
@@ -1097,17 +1316,22 @@ mod win {
                     }
 
                     DebugOp::SetBreakpoint(addr, condition) => {
-                        self.user_bps.insert(addr, Breakpoint {
-                            address: addr,
-                            enabled: true,
-                            condition: condition.filter(|c| !c.trim().is_empty()),
-                            hit_count: 0,
-                            last_evaluation: None,
-                        });
+                        self.user_bps.insert(
+                            addr,
+                            Breakpoint {
+                                address: addr,
+                                enabled: true,
+                                condition: condition.filter(|c| !c.trim().is_empty()),
+                                hit_count: 0,
+                                last_evaluation: None,
+                            },
+                        );
                         if self.pending_rearm.map(|(pending, _)| pending) != Some(addr) {
                             if let Some(orig) = unsafe { read_byte(self.process, addr) } {
                                 self.bp_originals.insert(addr, orig);
-                                unsafe { write_byte(self.process, addr, 0xCC); }
+                                unsafe {
+                                    write_byte(self.process, addr, 0xCC);
+                                }
                             }
                         }
                         let snap = self.make_current_snapshot();
@@ -1120,7 +1344,9 @@ mod win {
                             self.pending_rearm = None;
                         }
                         if let Some(orig) = self.bp_originals.remove(&addr) {
-                            unsafe { write_byte(self.process, addr, orig); }
+                            unsafe {
+                                write_byte(self.process, addr, orig);
+                            }
                         }
                         let snap = self.make_current_snapshot();
                         let _ = cmd.resp.send(Ok(DebugResponse::Snapshot(snap)));
@@ -1132,26 +1358,35 @@ mod win {
                         let mut n_read = 0usize;
                         let ok = unsafe {
                             ReadProcessMemory(
-                                self.process, addr as *const _,
-                                buf.as_mut_ptr() as *mut _, clamped, &mut n_read,
+                                self.process,
+                                addr as *const _,
+                                buf.as_mut_ptr() as *mut _,
+                                clamped,
+                                &mut n_read,
                             )
                         };
                         if ok != FALSE {
                             buf.truncate(n_read);
                             let _ = cmd.resp.send(Ok(DebugResponse::Memory(buf)));
                         } else {
-                            let _ = cmd.resp.send(Err(format!("ReadProcessMemory failed at {:#x}", addr)));
+                            let _ = cmd
+                                .resp
+                                .send(Err(format!("ReadProcessMemory failed at {:#x}", addr)));
                         }
                     }
 
                     DebugOp::Detach => {
                         let pid = unsafe { GetProcessId(self.process) };
                         if pid != 0 {
-                            unsafe { DebugActiveProcessStop(pid); }
+                            unsafe {
+                                DebugActiveProcessStop(pid);
+                            }
                         }
                         self.release_debug_handles();
                         if self.process != 0 {
-                            unsafe { CloseHandle(self.process); }
+                            unsafe {
+                                CloseHandle(self.process);
+                            }
                             self.process = 0;
                         }
                         crate::commands::debugger::remove_session(self.session_id);
@@ -1161,11 +1396,15 @@ mod win {
 
                     DebugOp::Stop => {
                         if self.process != 0 {
-                            unsafe { TerminateProcess(self.process, 0); }
+                            unsafe {
+                                TerminateProcess(self.process, 0);
+                            }
                         }
                         self.release_debug_handles();
                         if self.process != 0 {
-                            unsafe { CloseHandle(self.process); }
+                            unsafe {
+                                CloseHandle(self.process);
+                            }
                             self.process = 0;
                         }
                         crate::commands::debugger::remove_session(self.session_id);
@@ -1176,11 +1415,15 @@ mod win {
             }
             // cmd_rx dropped — clean up
             if self.process != 0 {
-                unsafe { TerminateProcess(self.process, 0); }
+                unsafe {
+                    TerminateProcess(self.process, 0);
+                }
             }
             self.release_debug_handles();
             if self.process != 0 {
-                unsafe { CloseHandle(self.process); }
+                unsafe {
+                    CloseHandle(self.process);
+                }
                 self.process = 0;
             }
             crate::commands::debugger::remove_session(self.session_id);
@@ -1227,15 +1470,15 @@ mod win {
             return;
         }
 
-        let process     = pi.hProcess;
+        let process = pi.hProcess;
         let main_thread = pi.hThread;
 
         let mut thread_handles: HashMap<u32, HANDLE> = HashMap::new();
         thread_handles.insert(pi.dwThreadId, main_thread);
 
-        let bp_originals: HashMap<u64, u8>              = HashMap::new();
-        let user_bps:     HashMap<u64, Breakpoint> = HashMap::new();
-        let step_count  = 0u32;
+        let bp_originals: HashMap<u64, u8> = HashMap::new();
+        let user_bps: HashMap<u64, Breakpoint> = HashMap::new();
+        let step_count = 0u32;
         let exit_code: Option<i32> = None;
         let mut system_bp_hit = false;
 
@@ -1245,9 +1488,15 @@ mod win {
             let ok = unsafe { WaitForDebugEvent(&mut evt, 5000) };
             if ok == FALSE {
                 let _ = initial_tx.send(Err("Timed out waiting for process start".to_string()));
-                unsafe { TerminateProcess(process, 1); }
-                unsafe { CloseHandle(main_thread); }
-                unsafe { CloseHandle(process); }
+                unsafe {
+                    TerminateProcess(process, 1);
+                }
+                unsafe {
+                    CloseHandle(main_thread);
+                }
+                unsafe {
+                    CloseHandle(process);
+                }
                 crate::commands::debugger::remove_session(session_id);
                 return;
             }
@@ -1256,28 +1505,47 @@ mod win {
                     let info = unsafe { &evt.u.CreateProcessInfo };
                     thread_handles.insert(evt.dwThreadId, info.hThread);
                     if info.hFile != INVALID_HANDLE_VALUE && info.hFile != 0 {
-                        unsafe { CloseHandle(info.hFile); }
+                        unsafe {
+                            CloseHandle(info.hFile);
+                        }
                     }
-                    unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
+                    unsafe {
+                        ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE);
+                    }
                 }
                 LOAD_DLL_DEBUG_EVENT => {
                     let info = unsafe { &evt.u.LoadDll };
                     if info.hFile != INVALID_HANDLE_VALUE && info.hFile != 0 {
-                        unsafe { CloseHandle(info.hFile); }
+                        unsafe {
+                            CloseHandle(info.hFile);
+                        }
                     }
-                    unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
+                    unsafe {
+                        ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE);
+                    }
                 }
                 EXCEPTION_DEBUG_EVENT => {
                     let code = unsafe { evt.u.Exception.ExceptionRecord.ExceptionCode };
                     if code == EXCEPTION_BREAKPOINT && !system_bp_hit {
                         system_bp_hit = true;
-                        let thread = thread_handles.get(&evt.dwThreadId).copied().unwrap_or(main_thread);
+                        let thread = thread_handles
+                            .get(&evt.dwThreadId)
+                            .copied()
+                            .unwrap_or(main_thread);
                         if let Some(ctx) = unsafe { get_ctx(thread) } {
                             break (ctx, evt.dwProcessId, evt.dwThreadId);
                         }
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
+                        unsafe {
+                            ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE);
+                        }
                     } else {
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_EXCEPTION_NOT_HANDLED); }
+                        unsafe {
+                            ContinueDebugEvent(
+                                evt.dwProcessId,
+                                evt.dwThreadId,
+                                DBG_EXCEPTION_NOT_HANDLED,
+                            );
+                        }
                     }
                 }
                 EXIT_PROCESS_DEBUG_EVENT => {
@@ -1301,22 +1569,32 @@ mod win {
                         arch: "x86-64".to_string(),
                         warnings: vec!["Process exited before system breakpoint".to_string()],
                     }));
-                    unsafe { CloseHandle(main_thread); }
-                    unsafe { CloseHandle(process); }
+                    unsafe {
+                        CloseHandle(main_thread);
+                    }
+                    unsafe {
+                        CloseHandle(process);
+                    }
                     crate::commands::debugger::remove_session(session_id);
                     return;
                 }
-                _ => {
-                    unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
-                }
+                _ => unsafe {
+                    ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE);
+                },
             }
         };
 
         // Send initial state to caller
         let bp_list: Vec<Breakpoint> = user_bps.values().cloned().collect();
         let initial_snapshot = make_snapshot(
-            session_id, DebugStatus::Paused, &initial_ctx, process,
-            &bp_list, 0, None, "system-breakpoint",
+            session_id,
+            DebugStatus::Paused,
+            &initial_ctx,
+            process,
+            &bp_list,
+            0,
+            None,
+            "system-breakpoint",
         );
         let _ = initial_tx.send(Ok(StartDebugResult {
             session_id,
@@ -1325,7 +1603,10 @@ mod win {
             warnings: vec![],
         }));
 
-        let current_thread = thread_handles.get(&init_pending_tid).copied().unwrap_or(main_thread);
+        let current_thread = thread_handles
+            .get(&init_pending_tid)
+            .copied()
+            .unwrap_or(main_thread);
         let state = DebugLoopState {
             process,
             main_thread,
@@ -1336,10 +1617,10 @@ mod win {
             snapshot_warnings: vec![],
             step_count,
             exit_code,
-            current_ctx:       initial_ctx,
+            current_ctx: initial_ctx,
             current_thread,
-            status:            DebugStatus::Paused,
-            last_event_str:    "system-breakpoint".to_string(),
+            status: DebugStatus::Paused,
+            last_event_str: "system-breakpoint".to_string(),
             pending_event_pid: init_pending_pid,
             pending_event_tid: init_pending_tid,
             session_id,
@@ -1374,7 +1655,9 @@ mod win {
             | PROCESS_TERMINATE;
         let process = unsafe { OpenProcess(desired_access, FALSE, pid) };
         if process == 0 {
-            unsafe { DebugActiveProcessStop(pid); }
+            unsafe {
+                DebugActiveProcessStop(pid);
+            }
             crate::commands::debugger::remove_session(session_id);
             let _ = initial_tx.send(Err(format!(
                 "OpenProcess({}) failed: error {}",
@@ -1386,9 +1669,9 @@ mod win {
 
         let mut thread_handles: HashMap<u32, HANDLE> = HashMap::new();
         let mut main_thread: HANDLE = 0;
-        let bp_originals: HashMap<u64, u8>              = HashMap::new();
-        let user_bps:     HashMap<u64, Breakpoint> = HashMap::new();
-        let step_count  = 0u32;
+        let bp_originals: HashMap<u64, u8> = HashMap::new();
+        let user_bps: HashMap<u64, Breakpoint> = HashMap::new();
+        let step_count = 0u32;
         let exit_code: Option<i32> = None;
 
         // ── Initial event loop: consume attach events until first INT3 ────────
@@ -1397,8 +1680,12 @@ mod win {
             let ok = unsafe { WaitForDebugEvent(&mut evt, 10_000) };
             if ok == FALSE {
                 let _ = initial_tx.send(Err("Timed out waiting for attach breakpoint".to_string()));
-                unsafe { DebugActiveProcessStop(pid); }
-                unsafe { CloseHandle(process); }
+                unsafe {
+                    DebugActiveProcessStop(pid);
+                }
+                unsafe {
+                    CloseHandle(process);
+                }
                 crate::commands::debugger::remove_session(session_id);
                 return;
             }
@@ -1408,22 +1695,34 @@ mod win {
                     main_thread = info.hThread;
                     thread_handles.insert(evt.dwThreadId, info.hThread);
                     if info.hFile != INVALID_HANDLE_VALUE && info.hFile != 0 {
-                        unsafe { CloseHandle(info.hFile); }
+                        unsafe {
+                            CloseHandle(info.hFile);
+                        }
                     }
-                    unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
+                    unsafe {
+                        ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE);
+                    }
                 }
                 CREATE_THREAD_DEBUG_EVENT => {
                     let info = unsafe { &evt.u.CreateThread };
                     thread_handles.insert(evt.dwThreadId, info.hThread);
-                    if main_thread == 0 { main_thread = info.hThread; }
-                    unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
+                    if main_thread == 0 {
+                        main_thread = info.hThread;
+                    }
+                    unsafe {
+                        ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE);
+                    }
                 }
                 LOAD_DLL_DEBUG_EVENT => {
                     let info = unsafe { &evt.u.LoadDll };
                     if info.hFile != INVALID_HANDLE_VALUE && info.hFile != 0 {
-                        unsafe { CloseHandle(info.hFile); }
+                        unsafe {
+                            CloseHandle(info.hFile);
+                        }
                     }
-                    unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
+                    unsafe {
+                        ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE);
+                    }
                 }
                 EXCEPTION_DEBUG_EVENT => {
                     let code = unsafe { evt.u.Exception.ExceptionRecord.ExceptionCode };
@@ -1431,34 +1730,58 @@ mod win {
                         if main_thread == 0 {
                             main_thread = thread_handles.values().next().copied().unwrap_or(0);
                         }
-                        let thread = thread_handles.get(&evt.dwThreadId).copied().unwrap_or(main_thread);
+                        let thread = thread_handles
+                            .get(&evt.dwThreadId)
+                            .copied()
+                            .unwrap_or(main_thread);
                         if let Some(ctx) = unsafe { get_ctx(thread) } {
                             break (ctx, evt.dwProcessId, evt.dwThreadId);
                         }
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
+                        unsafe {
+                            ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE);
+                        }
                     } else {
-                        unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_EXCEPTION_NOT_HANDLED); }
+                        unsafe {
+                            ContinueDebugEvent(
+                                evt.dwProcessId,
+                                evt.dwThreadId,
+                                DBG_EXCEPTION_NOT_HANDLED,
+                            );
+                        }
                     }
                 }
                 EXIT_PROCESS_DEBUG_EVENT => {
                     let info = unsafe { &evt.u.ExitProcess };
                     let code = info.dwExitCode as i32;
-                    let _ = initial_tx.send(Err(format!("Process exited during attach with code {}", code)));
-                    unsafe { DebugActiveProcessStop(pid); }
-                    unsafe { CloseHandle(process); }
+                    let _ = initial_tx.send(Err(format!(
+                        "Process exited during attach with code {}",
+                        code
+                    )));
+                    unsafe {
+                        DebugActiveProcessStop(pid);
+                    }
+                    unsafe {
+                        CloseHandle(process);
+                    }
                     crate::commands::debugger::remove_session(session_id);
                     return;
                 }
-                _ => {
-                    unsafe { ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE); }
-                }
+                _ => unsafe {
+                    ContinueDebugEvent(evt.dwProcessId, evt.dwThreadId, DBG_CONTINUE);
+                },
             }
         };
 
         let bp_list: Vec<Breakpoint> = user_bps.values().cloned().collect();
         let initial_snapshot = make_snapshot(
-            session_id, DebugStatus::Paused, &initial_ctx, process,
-            &bp_list, 0, None, "attach-breakpoint",
+            session_id,
+            DebugStatus::Paused,
+            &initial_ctx,
+            process,
+            &bp_list,
+            0,
+            None,
+            "attach-breakpoint",
         );
         let _ = initial_tx.send(Ok(StartDebugResult {
             session_id,
@@ -1467,7 +1790,10 @@ mod win {
             warnings: vec!["Attached to running process".to_string()],
         }));
 
-        let current_thread = thread_handles.get(&init_pending_tid).copied().unwrap_or(main_thread);
+        let current_thread = thread_handles
+            .get(&init_pending_tid)
+            .copied()
+            .unwrap_or(main_thread);
         let state = DebugLoopState {
             process,
             main_thread,
@@ -1478,10 +1804,10 @@ mod win {
             snapshot_warnings: vec![],
             step_count,
             exit_code,
-            current_ctx:       initial_ctx,
+            current_ctx: initial_ctx,
             current_thread,
-            status:            DebugStatus::Paused,
-            last_event_str:    "attach-breakpoint".to_string(),
+            status: DebugStatus::Paused,
+            last_event_str: "attach-breakpoint".to_string(),
             pending_event_pid: init_pending_pid,
             pending_event_tid: init_pending_tid,
             session_id,
@@ -1520,8 +1846,8 @@ mod linux {
             rsp: r.rsp,
             rbp: r.rbp,
             rip: r.rip,
-            r8:  r.r8,
-            r9:  r.r9,
+            r8: r.r8,
+            r9: r.r9,
             r10: r.r10,
             r11: r.r11,
             r12: r.r12,
@@ -1553,7 +1879,9 @@ mod linux {
     }
 
     #[cfg(not(target_arch = "x86_64"))]
-    fn read_stack_ptrace(_pid: Pid, _rsp: u64) -> Vec<u64> { vec![] }
+    fn read_stack_ptrace(_pid: Pid, _rsp: u64) -> Vec<u64> {
+        vec![]
+    }
 
     // ── Message types ─────────────────────────────────────────────────────────
 
@@ -1601,7 +1929,9 @@ mod linux {
             sessions.insert(
                 session_id,
                 crate::commands::debugger::SessionHandle {
-                    _impl: Box::new(SessionHandle { cmd_tx: cmd_tx.clone() }),
+                    _impl: Box::new(SessionHandle {
+                        cmd_tx: cmd_tx.clone(),
+                    }),
                 },
             );
         }
@@ -1624,7 +1954,9 @@ mod linux {
             sessions.insert(
                 session_id,
                 crate::commands::debugger::SessionHandle {
-                    _impl: Box::new(SessionHandle { cmd_tx: cmd_tx.clone() }),
+                    _impl: Box::new(SessionHandle {
+                        cmd_tx: cmd_tx.clone(),
+                    }),
                 },
             );
         }
@@ -1653,9 +1985,8 @@ mod linux {
         // Safety: pre_exec runs in the child after fork — single-threaded at that point
         unsafe {
             child_builder.pre_exec(|| {
-                nix::sys::ptrace::traceme().map_err(|e| {
-                    std::io::Error::new(std::io::ErrorKind::Other, e.desc())
-                })?;
+                nix::sys::ptrace::traceme()
+                    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.desc()))?;
                 Ok(())
             });
         }
@@ -1702,7 +2033,10 @@ mod linux {
             Ok(WaitStatus::Stopped(_, _)) => {}
             Ok(WaitStatus::Exited(_, code)) => {
                 crate::commands::debugger::remove_session(session_id);
-                let _ = initial_tx.send(Err(format!("Process exited immediately with code {}", code)));
+                let _ = initial_tx.send(Err(format!(
+                    "Process exited immediately with code {}",
+                    code
+                )));
                 return;
             }
             Err(e) => {
@@ -1713,7 +2047,14 @@ mod linux {
             _ => {}
         }
 
-        let snap = make_snapshot_linux(pid, session_id, DebugStatus::Paused, 0, None, "initial stop");
+        let snap = make_snapshot_linux(
+            pid,
+            session_id,
+            DebugStatus::Paused,
+            0,
+            None,
+            "initial stop",
+        );
         let result = StartDebugResult {
             session_id,
             snapshot: snap,
@@ -1732,7 +2073,14 @@ mod linux {
         let mut bp_originals: std::collections::HashMap<u64, u8> = std::collections::HashMap::new();
 
         while let Ok(cmd) = cmd_rx.recv() {
-            let response = dispatch_cmd(pid, &mut step_count, &mut user_bps, &mut bp_originals, session_id, cmd.op);
+            let response = dispatch_cmd(
+                pid,
+                &mut step_count,
+                &mut user_bps,
+                &mut bp_originals,
+                session_id,
+                cmd.op,
+            );
             let _ = cmd.resp.send(response);
         }
 
@@ -1752,7 +2100,14 @@ mod linux {
     ) -> Result<DebugResponse, String> {
         match op {
             DebugOp::GetState => {
-                let snap = make_snapshot_linux(pid, session_id, DebugStatus::Paused, *step_count, None, "get_state");
+                let snap = make_snapshot_linux(
+                    pid,
+                    session_id,
+                    DebugStatus::Paused,
+                    *step_count,
+                    None,
+                    "get_state",
+                );
                 Ok(DebugResponse::Snapshot(snap))
             }
 
@@ -1761,7 +2116,14 @@ mod linux {
                 ptrace::step(pid, None).map_err(|e| e.to_string())?;
                 wait_for_stop(pid)?;
                 *step_count += 1;
-                let snap = make_snapshot_linux(pid, session_id, DebugStatus::Paused, *step_count, None, "single-step");
+                let snap = make_snapshot_linux(
+                    pid,
+                    session_id,
+                    DebugStatus::Paused,
+                    *step_count,
+                    None,
+                    "single-step",
+                );
                 Ok(DebugResponse::Snapshot(snap))
             }
 
@@ -1770,11 +2132,25 @@ mod linux {
                 match wait_for_stop(pid) {
                     Ok(false) => {
                         // Exited
-                        let snap = make_snapshot_linux(pid, session_id, DebugStatus::Exited, *step_count, Some(0), "exited");
+                        let snap = make_snapshot_linux(
+                            pid,
+                            session_id,
+                            DebugStatus::Exited,
+                            *step_count,
+                            Some(0),
+                            "exited",
+                        );
                         Ok(DebugResponse::Snapshot(snap))
                     }
                     Ok(true) => {
-                        let snap = make_snapshot_linux(pid, session_id, DebugStatus::Paused, *step_count, None, "breakpoint/stop");
+                        let snap = make_snapshot_linux(
+                            pid,
+                            session_id,
+                            DebugStatus::Paused,
+                            *step_count,
+                            None,
+                            "breakpoint/stop",
+                        );
                         Ok(DebugResponse::Snapshot(snap))
                     }
                     Err(e) => Err(e),
@@ -1783,8 +2159,8 @@ mod linux {
 
             DebugOp::SetBreakpoint(addr, condition) => {
                 // Read original byte and write 0xCC (INT 3)
-                let orig = ptrace::read(pid, addr as *mut _)
-                    .map_err(|e| format!("read for bp: {}", e))?;
+                let orig =
+                    ptrace::read(pid, addr as *mut _).map_err(|e| format!("read for bp: {}", e))?;
                 let patched = (orig & !0xFF) | 0xCC;
                 unsafe {
                     ptrace::write(pid, addr as *mut _, patched as nix::libc::c_long)
@@ -1792,7 +2168,14 @@ mod linux {
                 }
                 bp_originals.insert(addr, (orig & 0xFF) as u8);
                 user_bps.insert(addr);
-                let snap = make_snapshot_linux(pid, session_id, DebugStatus::Paused, *step_count, None, "set_breakpoint");
+                let snap = make_snapshot_linux(
+                    pid,
+                    session_id,
+                    DebugStatus::Paused,
+                    *step_count,
+                    None,
+                    "set_breakpoint",
+                );
                 Ok(DebugResponse::Snapshot(snap))
             }
 
@@ -1808,7 +2191,14 @@ mod linux {
                     bp_originals.remove(&addr);
                     user_bps.remove(&addr);
                 }
-                let snap = make_snapshot_linux(pid, session_id, DebugStatus::Paused, *step_count, None, "remove_breakpoint");
+                let snap = make_snapshot_linux(
+                    pid,
+                    session_id,
+                    DebugStatus::Paused,
+                    *step_count,
+                    None,
+                    "remove_breakpoint",
+                );
                 Ok(DebugResponse::Snapshot(snap))
             }
 
@@ -1844,8 +2234,8 @@ mod linux {
     /// Returns Ok(true) if stopped, Ok(false) if exited.
     fn wait_for_stop(pid: Pid) -> Result<bool, String> {
         match waitpid(pid, None).map_err(|e| e.to_string())? {
-            WaitStatus::Stopped(_, _)   => Ok(true),
-            WaitStatus::Exited(_, _)    => Ok(false),
+            WaitStatus::Stopped(_, _) => Ok(true),
+            WaitStatus::Exited(_, _) => Ok(false),
             WaitStatus::Signaled(_, _, _) => Ok(false),
             _ => Ok(true),
         }
@@ -1902,9 +2292,18 @@ mod linux {
     }
 
     fn detect_arch() -> String {
-        #[cfg(target_arch = "x86_64")] { "x86_64".to_string() }
-        #[cfg(target_arch = "aarch64")] { "aarch64".to_string() }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))] { "unknown".to_string() }
+        #[cfg(target_arch = "x86_64")]
+        {
+            "x86_64".to_string()
+        }
+        #[cfg(target_arch = "aarch64")]
+        {
+            "aarch64".to_string()
+        }
+        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        {
+            "unknown".to_string()
+        }
     }
 }
 
@@ -1929,7 +2328,11 @@ mod macos {
 
     extern "C" {
         fn task_for_pid(target_tport: MachPort, pid: i32, task: *mut MachPort) -> KernReturn;
-        fn task_threads(target_task: MachPort, act_list: *mut *mut MachPort, act_list_count: *mut MachMsgType) -> KernReturn;
+        fn task_threads(
+            target_task: MachPort,
+            act_list: *mut *mut MachPort,
+            act_list_count: *mut MachMsgType,
+        ) -> KernReturn;
         fn mach_thread_self() -> MachPort;
         fn mach_port_deallocate(task: MachPort, name: MachPort) -> KernReturn;
         fn mach_task_self() -> MachPort;
@@ -1945,11 +2348,27 @@ mod macos {
         #[repr(C)]
         #[derive(Default)]
         pub struct X86ThreadState64 {
-            pub rax: u64, pub rbx: u64, pub rcx: u64, pub rdx: u64,
-            pub rdi: u64, pub rsi: u64, pub rbp: u64, pub rsp: u64,
-            pub r8:  u64, pub r9:  u64, pub r10: u64, pub r11: u64,
-            pub r12: u64, pub r13: u64, pub r14: u64, pub r15: u64,
-            pub rip: u64, pub rflags: u64, pub cs: u64, pub fs: u64, pub gs: u64,
+            pub rax: u64,
+            pub rbx: u64,
+            pub rcx: u64,
+            pub rdx: u64,
+            pub rdi: u64,
+            pub rsi: u64,
+            pub rbp: u64,
+            pub rsp: u64,
+            pub r8: u64,
+            pub r9: u64,
+            pub r10: u64,
+            pub r11: u64,
+            pub r12: u64,
+            pub r13: u64,
+            pub r14: u64,
+            pub r15: u64,
+            pub rip: u64,
+            pub rflags: u64,
+            pub cs: u64,
+            pub fs: u64,
+            pub gs: u64,
         }
 
         extern "C" {
@@ -1968,10 +2387,22 @@ mod macos {
                 thread_get_state(thread, x86_THREAD_STATE64, &mut state, &mut count);
             }
             super::RegisterState {
-                rax: state.rax, rbx: state.rbx, rcx: state.rcx, rdx: state.rdx,
-                rsi: state.rsi, rdi: state.rdi, rsp: state.rsp, rbp: state.rbp,
-                rip: state.rip, r8: state.r8, r9: state.r9, r10: state.r10,
-                r11: state.r11, r12: state.r12, r13: state.r13, r14: state.r14,
+                rax: state.rax,
+                rbx: state.rbx,
+                rcx: state.rcx,
+                rdx: state.rdx,
+                rsi: state.rsi,
+                rdi: state.rdi,
+                rsp: state.rsp,
+                rbp: state.rbp,
+                rip: state.rip,
+                r8: state.r8,
+                r9: state.r9,
+                r10: state.r10,
+                r11: state.r11,
+                r12: state.r12,
+                r13: state.r13,
+                r14: state.r14,
                 r15: state.r15,
                 eflags: state.rflags as u32,
                 cs: state.cs as u16,
@@ -2016,10 +2447,22 @@ mod macos {
             }
             // Map AArch64 to RegisterState (x86_64 fields used as generic slots)
             super::RegisterState {
-                rax: state.x[0],  rbx: state.x[1],  rcx: state.x[2],  rdx: state.x[3],
-                rsi: state.x[4],  rdi: state.x[5],  rbp: state.fp,     rsp: state.sp,
-                rip: state.pc,    r8:  state.x[6],  r9:  state.x[7],   r10: state.x[8],
-                r11: state.x[9],  r12: state.x[10], r13: state.x[11],  r14: state.x[12],
+                rax: state.x[0],
+                rbx: state.x[1],
+                rcx: state.x[2],
+                rdx: state.x[3],
+                rsi: state.x[4],
+                rdi: state.x[5],
+                rbp: state.fp,
+                rsp: state.sp,
+                rip: state.pc,
+                r8: state.x[6],
+                r9: state.x[7],
+                r10: state.x[8],
+                r11: state.x[9],
+                r12: state.x[10],
+                r13: state.x[11],
+                r14: state.x[12],
                 r15: state.x[13],
                 eflags: state.cpsr,
                 cs: 0,
@@ -2191,7 +2634,9 @@ mod macos {
         let pid_raw = child.id() as i32;
         // Wait for initial SIGTRAP
         let mut status: i32 = 0;
-        unsafe { libc::waitpid(pid_raw, &mut status, 0); }
+        unsafe {
+            libc::waitpid(pid_raw, &mut status, 0);
+        }
 
         let mut task: MachPort = 0;
         unsafe {
@@ -2217,7 +2662,10 @@ mod macos {
         unsafe {
             if libc::ptrace(libc::PT_ATTACHEXC, pid, std::ptr::null_mut(), 0) != 0 {
                 crate::commands::debugger::remove_session(session_id);
-                let _ = initial_tx.send(Err(format!("ptrace PT_ATTACHEXC failed (errno {})", *libc::__error())));
+                let _ = initial_tx.send(Err(format!(
+                    "ptrace PT_ATTACHEXC failed (errno {})",
+                    *libc::__error()
+                )));
                 return;
             }
             let mut status: i32 = 0;
@@ -2229,7 +2677,8 @@ mod macos {
             if task_for_pid(mach_task_self(), pid, &mut task) != KERN_SUCCESS {
                 crate::commands::debugger::remove_session(session_id);
                 let _ = initial_tx.send(Err(
-                    "task_for_pid failed — ensure com.apple.security.get-task-allow entitlement".to_string()
+                    "task_for_pid failed — ensure com.apple.security.get-task-allow entitlement"
+                        .to_string(),
                 ));
                 return;
             }
@@ -2245,10 +2694,24 @@ mod macos {
         cmd_rx: mpsc::Receiver<DebugCommand>,
         initial_tx: tokio::sync::oneshot::Sender<Result<StartDebugResult, String>>,
     ) {
-        let mut sess = MacSession { pid, task, step_count: 0, session_id, exit_code: None };
+        let mut sess = MacSession {
+            pid,
+            task,
+            step_count: 0,
+            session_id,
+            exit_code: None,
+        };
         let snap = sess.snapshot(DebugStatus::Paused, "initial stop");
         let arch = detect_arch();
-        if initial_tx.send(Ok(StartDebugResult { session_id, snapshot: snap, arch, warnings: vec![] })).is_err() {
+        if initial_tx
+            .send(Ok(StartDebugResult {
+                session_id,
+                snapshot: snap,
+                arch,
+                warnings: vec![],
+            }))
+            .is_err()
+        {
             crate::commands::debugger::remove_session(session_id);
             return;
         }
@@ -2268,9 +2731,9 @@ mod macos {
 
     fn dispatch_cmd(sess: &mut MacSession, op: DebugOp) -> Result<DebugResponse, String> {
         match op {
-            DebugOp::GetState => {
-                Ok(DebugResponse::Snapshot(sess.snapshot(DebugStatus::Paused, "get_state")))
-            }
+            DebugOp::GetState => Ok(DebugResponse::Snapshot(
+                sess.snapshot(DebugStatus::Paused, "get_state"),
+            )),
             DebugOp::Step | DebugOp::StepOver | DebugOp::StepOut => {
                 unsafe {
                     // macOS uses PT_STEP
@@ -2279,7 +2742,9 @@ mod macos {
                     libc::waitpid(sess.pid, &mut status, 0);
                 }
                 sess.step_count += 1;
-                Ok(DebugResponse::Snapshot(sess.snapshot(DebugStatus::Paused, "single-step")))
+                Ok(DebugResponse::Snapshot(
+                    sess.snapshot(DebugStatus::Paused, "single-step"),
+                ))
             }
             DebugOp::Continue => {
                 unsafe {
@@ -2288,22 +2753,32 @@ mod macos {
                     libc::waitpid(sess.pid, &mut status, 0);
                     if libc::WIFEXITED(status) {
                         sess.exit_code = Some(libc::WEXITSTATUS(status));
-                        return Ok(DebugResponse::Snapshot(sess.snapshot(DebugStatus::Exited, "exited")));
+                        return Ok(DebugResponse::Snapshot(
+                            sess.snapshot(DebugStatus::Exited, "exited"),
+                        ));
                     }
                 }
-                Ok(DebugResponse::Snapshot(sess.snapshot(DebugStatus::Paused, "stopped")))
+                Ok(DebugResponse::Snapshot(
+                    sess.snapshot(DebugStatus::Paused, "stopped"),
+                ))
             }
             DebugOp::Stop => {
-                unsafe { libc::kill(sess.pid, libc::SIGKILL); }
+                unsafe {
+                    libc::kill(sess.pid, libc::SIGKILL);
+                }
                 Ok(DebugResponse::Stopped)
             }
             DebugOp::Detach => {
-                unsafe { libc::ptrace(libc::PT_DETACH, sess.pid, std::ptr::null_mut(), 0); }
+                unsafe {
+                    libc::ptrace(libc::PT_DETACH, sess.pid, std::ptr::null_mut(), 0);
+                }
                 Ok(DebugResponse::Stopped)
             }
             DebugOp::SetBreakpoint(_, _) | DebugOp::RemoveBreakpoint(_) => {
                 // Breakpoint management uses the same INT3 approach as Linux
-                Ok(DebugResponse::Snapshot(sess.snapshot(DebugStatus::Paused, "breakpoint_set")))
+                Ok(DebugResponse::Snapshot(
+                    sess.snapshot(DebugStatus::Paused, "breakpoint_set"),
+                ))
             }
             DebugOp::ReadMemory(addr, size) => {
                 let mut buf = vec![0u8; size];
@@ -2312,9 +2787,8 @@ mod macos {
                 let mut read = 0usize;
                 while read < size {
                     let word_addr = addr + read as u64;
-                    let val = unsafe {
-                        libc::ptrace(libc::PT_READ_D, sess.pid, word_addr as *mut _, 0)
-                    };
+                    let val =
+                        unsafe { libc::ptrace(libc::PT_READ_D, sess.pid, word_addr as *mut _, 0) };
                     let take = (size - read).min(8);
                     let bytes = val.to_ne_bytes();
                     buf[read..read + take].copy_from_slice(&bytes[..take]);
@@ -2326,9 +2800,18 @@ mod macos {
     }
 
     fn detect_arch() -> String {
-        #[cfg(target_arch = "x86_64")] { "x86_64".to_string() }
-        #[cfg(target_arch = "aarch64")] { "aarch64".to_string() }
-        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))] { "unknown".to_string() }
+        #[cfg(target_arch = "x86_64")]
+        {
+            "x86_64".to_string()
+        }
+        #[cfg(target_arch = "aarch64")]
+        {
+            "aarch64".to_string()
+        }
+        #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+        {
+            "unknown".to_string()
+        }
     }
 }
 
@@ -2354,10 +2837,7 @@ pub struct SessionHandle;
 
 // Send the command to the debug thread (Windows)
 #[cfg(target_os = "windows")]
-async fn send_cmd(
-    session_id: u32,
-    op: win::DebugOp,
-) -> Result<win::DebugResponse, String> {
+async fn send_cmd(session_id: u32, op: win::DebugOp) -> Result<win::DebugResponse, String> {
     let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
     {
         let sessions = SESSIONS.lock().unwrap();
@@ -2499,16 +2979,30 @@ pub async fn start_debug_session(
 
 #[tauri::command]
 pub async fn debug_step(session_id: u32) -> Result<DebugSnapshot, String> {
-    snap_cmd!(session_id, win::DebugOp::Step, linux::DebugOp::Step, macos::DebugOp::Step)
+    snap_cmd!(
+        session_id,
+        win::DebugOp::Step,
+        linux::DebugOp::Step,
+        macos::DebugOp::Step
+    )
 }
 
 #[tauri::command]
 pub async fn debug_continue(session_id: u32) -> Result<DebugSnapshot, String> {
-    snap_cmd!(session_id, win::DebugOp::Continue, linux::DebugOp::Continue, macos::DebugOp::Continue)
+    snap_cmd!(
+        session_id,
+        win::DebugOp::Continue,
+        linux::DebugOp::Continue,
+        macos::DebugOp::Continue
+    )
 }
 
 #[tauri::command]
-pub async fn debug_set_breakpoint(session_id: u32, address: u64, condition: Option<String>) -> Result<DebugSnapshot, String> {
+pub async fn debug_set_breakpoint(
+    session_id: u32,
+    address: u64,
+    condition: Option<String>,
+) -> Result<DebugSnapshot, String> {
     snap_cmd!(
         session_id,
         win::DebugOp::SetBreakpoint(address, condition.clone()),
@@ -2518,7 +3012,10 @@ pub async fn debug_set_breakpoint(session_id: u32, address: u64, condition: Opti
 }
 
 #[tauri::command]
-pub async fn debug_remove_breakpoint(session_id: u32, address: u64) -> Result<DebugSnapshot, String> {
+pub async fn debug_remove_breakpoint(
+    session_id: u32,
+    address: u64,
+) -> Result<DebugSnapshot, String> {
     snap_cmd!(
         session_id,
         win::DebugOp::RemoveBreakpoint(address),
@@ -2568,7 +3065,12 @@ pub async fn debug_stop(session_id: u32) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn debug_get_state(session_id: u32) -> Result<DebugSnapshot, String> {
-    snap_cmd!(session_id, win::DebugOp::GetState, linux::DebugOp::GetState, macos::DebugOp::GetState)
+    snap_cmd!(
+        session_id,
+        win::DebugOp::GetState,
+        linux::DebugOp::GetState,
+        macos::DebugOp::GetState
+    )
 }
 
 #[tauri::command]
@@ -2617,10 +3119,7 @@ pub async fn debug_read_memory(
 
 /// Attach the debugger to an already-running process by PID.
 #[tauri::command]
-pub async fn debug_attach(
-    pid: u32,
-    app: tauri::AppHandle,
-) -> Result<StartDebugResult, String> {
+pub async fn debug_attach(pid: u32, app: tauri::AppHandle) -> Result<StartDebugResult, String> {
     if pid == 0 {
         return Err("PID 0 is not a valid attach target.".to_string());
     }
@@ -2663,14 +3162,24 @@ pub async fn debug_attach(
 /// single-step for non-CALL instructions.
 #[tauri::command]
 pub async fn debug_step_over(session_id: u32) -> Result<DebugSnapshot, String> {
-    snap_cmd!(session_id, win::DebugOp::StepOver, linux::DebugOp::StepOver, macos::DebugOp::StepOver)
+    snap_cmd!(
+        session_id,
+        win::DebugOp::StepOver,
+        linux::DebugOp::StepOver,
+        macos::DebugOp::StepOver
+    )
 }
 
 /// Step out of the current function. Reads the return address from [RSP], places
 /// a temporary breakpoint there, then continues until it is hit.
 #[tauri::command]
 pub async fn debug_step_out(session_id: u32) -> Result<DebugSnapshot, String> {
-    snap_cmd!(session_id, win::DebugOp::StepOut, linux::DebugOp::StepOut, macos::DebugOp::StepOut)
+    snap_cmd!(
+        session_id,
+        win::DebugOp::StepOut,
+        linux::DebugOp::StepOut,
+        macos::DebugOp::StepOut
+    )
 }
 
 /// Detach the debugger from the process without terminating it.
@@ -2750,12 +3259,27 @@ mod tests {
         };
         let json = serde_json::to_string(&snap).unwrap();
         // Tauri v2 frontend expects camelCase keys
-        assert!(json.contains("\"sessionId\""), "sessionId must be camelCase");
-        assert!(json.contains("\"stepCount\""), "stepCount must be camelCase");
-        assert!(json.contains("\"lastEvent\""), "lastEvent must be camelCase");
+        assert!(
+            json.contains("\"sessionId\""),
+            "sessionId must be camelCase"
+        );
+        assert!(
+            json.contains("\"stepCount\""),
+            "stepCount must be camelCase"
+        );
+        assert!(
+            json.contains("\"lastEvent\""),
+            "lastEvent must be camelCase"
+        );
         assert!(json.contains("\"exitCode\""), "exitCode must be camelCase");
-        assert!(json.contains("\"Paused\""), "status must serialize as PascalCase 'Paused'");
-        assert!(json.contains("\"callStack\""), "callStack must be present and camelCase");
+        assert!(
+            json.contains("\"Paused\""),
+            "status must serialize as PascalCase 'Paused'"
+        );
+        assert!(
+            json.contains("\"callStack\""),
+            "callStack must be present and camelCase"
+        );
     }
 
     #[test]
@@ -2866,10 +3390,10 @@ mod tests {
         assert_eq!(out, vec!["--flag".to_string(), "value".to_string()]);
     }
 
-
     #[test]
     fn parser_accepts_register_comparison() {
-        let parsed = parse_breakpoint_condition("rax == 0").expect("register comparison should parse");
+        let parsed =
+            parse_breakpoint_condition("rax == 0").expect("register comparison should parse");
         assert_eq!(parsed.left, ConditionValue::Register("rax".to_string()));
         assert_eq!(parsed.op, CompareOp::Eq);
         assert_eq!(parsed.right, ConditionValue::Number(0));
@@ -2877,15 +3401,23 @@ mod tests {
 
     #[test]
     fn parser_accepts_register_relative_memory_comparison() {
-        let parsed = parse_breakpoint_condition("[rsp + 0x20] == 0x401000").expect("memory comparison should parse");
-        assert_eq!(parsed.left, ConditionValue::Memory { base: Some("rsp".to_string()), displacement: 0x20 });
+        let parsed = parse_breakpoint_condition("[rsp + 0x20] == 0x401000")
+            .expect("memory comparison should parse");
+        assert_eq!(
+            parsed.left,
+            ConditionValue::Memory {
+                base: Some("rsp".to_string()),
+                displacement: 0x20
+            }
+        );
         assert_eq!(parsed.op, CompareOp::Eq);
         assert_eq!(parsed.right, ConditionValue::Number(0x401000));
     }
 
     #[test]
     fn parser_accepts_hit_count_comparison() {
-        let parsed = parse_breakpoint_condition("hit_count >= 3").expect("hit count comparison should parse");
+        let parsed = parse_breakpoint_condition("hit_count >= 3")
+            .expect("hit count comparison should parse");
         assert_eq!(parsed.left, ConditionValue::HitCount);
         assert_eq!(parsed.op, CompareOp::Ge);
         assert_eq!(parsed.right, ConditionValue::Number(3));
@@ -2900,9 +3432,15 @@ mod tests {
 
     #[test]
     fn register_condition_fires_when_true_and_skips_when_false() {
-        let regs = RegisterState { rax: 0, ..RegisterState::default() };
+        let regs = RegisterState {
+            rax: 0,
+            ..RegisterState::default()
+        };
         assert!(eval_breakpoint_condition("rax == 0", &regs, 1, |_| Ok(0)).unwrap());
-        let regs = RegisterState { rax: 7, ..RegisterState::default() };
+        let regs = RegisterState {
+            rax: 7,
+            ..RegisterState::default()
+        };
         assert!(!eval_breakpoint_condition("rax == 0", &regs, 1, |_| Ok(0)).unwrap());
     }
 
@@ -2917,25 +3455,54 @@ mod tests {
     #[test]
     fn invalid_condition_fails_open_and_records_warning() {
         let regs = RegisterState::default();
-        let mut bp = Breakpoint { address: 0x401000, enabled: true, condition: Some("not safe text".to_string()), hit_count: 0, last_evaluation: None };
+        let mut bp = Breakpoint {
+            address: 0x401000,
+            enabled: true,
+            condition: Some("not safe text".to_string()),
+            hit_count: 0,
+            last_evaluation: None,
+        };
         let (decision, warning) = evaluate_breakpoint_hit(&mut bp, &regs, |_| Ok(0));
         assert_eq!(decision, BreakpointDecision::Fire);
-        assert!(warning.expect("warning expected").contains("invalid breakpoint condition"));
+        assert!(warning
+            .expect("warning expected")
+            .contains("invalid breakpoint condition"));
     }
 
     #[test]
     fn memory_read_failure_fails_open_and_records_warning() {
-        let regs = RegisterState { rsp: 0x700000, ..RegisterState::default() };
-        let mut bp = Breakpoint { address: 0x401000, enabled: true, condition: Some("[rsp + 0x20] == 0x401000".to_string()), hit_count: 0, last_evaluation: None };
-        let (decision, warning) = evaluate_breakpoint_hit(&mut bp, &regs, |_| Err("read failed".to_string()));
+        let regs = RegisterState {
+            rsp: 0x700000,
+            ..RegisterState::default()
+        };
+        let mut bp = Breakpoint {
+            address: 0x401000,
+            enabled: true,
+            condition: Some("[rsp + 0x20] == 0x401000".to_string()),
+            hit_count: 0,
+            last_evaluation: None,
+        };
+        let (decision, warning) =
+            evaluate_breakpoint_hit(&mut bp, &regs, |_| Err("read failed".to_string()));
         assert_eq!(decision, BreakpointDecision::Fire);
-        assert!(warning.expect("warning expected").contains("breakpoint fired"));
+        assert!(warning
+            .expect("warning expected")
+            .contains("breakpoint fired"));
     }
 
     #[test]
     fn false_condition_returns_skip_for_safe_step_over_rearm_path() {
-        let regs = RegisterState { rax: 1, ..RegisterState::default() };
-        let mut bp = Breakpoint { address: 0x401000, enabled: true, condition: Some("rax == 0".to_string()), hit_count: 0, last_evaluation: None };
+        let regs = RegisterState {
+            rax: 1,
+            ..RegisterState::default()
+        };
+        let mut bp = Breakpoint {
+            address: 0x401000,
+            enabled: true,
+            condition: Some("rax == 0".to_string()),
+            hit_count: 0,
+            last_evaluation: None,
+        };
         let (decision, warning) = evaluate_breakpoint_hit(&mut bp, &regs, |_| Ok(0));
         assert_eq!(decision, BreakpointDecision::Skip);
         assert!(warning.is_none());
@@ -2959,8 +3526,8 @@ mod tests {
                 rsp: ctx.Rsp,
                 rbp: ctx.Rbp,
                 rip: ctx.Rip,
-                r8:  ctx.R8,
-                r9:  ctx.R9,
+                r8: ctx.R8,
+                r9: ctx.R9,
                 r10: ctx.R10,
                 r11: ctx.R11,
                 r12: ctx.R12,
@@ -2996,14 +3563,13 @@ mod tests {
         #[test]
         fn ctx_to_regs_r8_through_r15() {
             let mut ctx: CONTEXT = unsafe { std::mem::zeroed() };
-            ctx.R8  = 0x08_08_08_08;
-            ctx.R9  = 0x09_09_09_09;
+            ctx.R8 = 0x08_08_08_08;
+            ctx.R9 = 0x09_09_09_09;
             ctx.R15 = 0x15_15_15_15;
             let regs = ctx_to_regs(&ctx);
-            assert_eq!(regs.r8,  0x08_08_08_08);
-            assert_eq!(regs.r9,  0x09_09_09_09);
+            assert_eq!(regs.r8, 0x08_08_08_08);
+            assert_eq!(regs.r9, 0x09_09_09_09);
             assert_eq!(regs.r15, 0x15_15_15_15);
         }
     }
 }
-

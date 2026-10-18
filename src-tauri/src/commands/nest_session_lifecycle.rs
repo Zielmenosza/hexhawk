@@ -1,18 +1,26 @@
+use crate::commands::gyre_snapshot::{
+    resolve_recorded_snapshot_at_root, snapshot_root, GyreRecordedVerdictSnapshot,
+    GYRE_SNAPSHOT_PROVENANCE, GYRE_SNAPSHOT_SCHEMA_VERSION, SUPPORTED_GYRE_BUILD_ID,
+    SUPPORTED_GYRE_SCHEMA_VERSION,
+};
 use crate::commands::nest_evidence::{
     validate_bundle, ActorType, ExecutionMode, ExportMode, FileBoundProofStatus, IdentitySource,
-    MutationPolicy, NestActor, NestAuditEvent, NestAuditRefs, NestBinaryHashes,
-    NestBinaryIdentity, NestConvergence, NestConvergenceSnapshot, NestDeltaItem, NestDeltasFile,
-    NestEvidenceBundle, NestFileBoundProof, NestFinalVerdictNestLinkage,
-    NestFinalVerdictSnapshot, NestGyreLinkage, NestImmutability, NestInputWindow,
-    NestIterationItem, NestIterationsFile, NestIterationVerdictSnapshot, NestManifest,
-    NestManifestFile, NestRefinementExecution, NestReplayInfo, NestRuntimeProof,
-    NestSessionConfig, NestSessionRecord, NestSignalDeltaSummary, NestTimestamps,
-    NestValidationIssue, RuntimeProofStatus, RuntimeMode, SessionStatus,
+    MutationPolicy, NestActor, NestAuditEvent, NestAuditRefs, NestBinaryHashes, NestBinaryIdentity,
+    NestConvergence, NestConvergenceSnapshot, NestDeltaItem, NestDeltasFile, NestEvidenceBundle,
+    NestFileBoundProof, NestFinalVerdictNestLinkage, NestFinalVerdictSnapshot, NestGyreLinkage,
+    NestImmutability, NestInputWindow, NestIterationItem, NestIterationVerdictSnapshot,
+    NestIterationsFile, NestManifest, NestManifestFile, NestRefinementExecution, NestReplayInfo,
+    NestRuntimeProof, NestSessionConfig, NestSessionRecord, NestSignalDeltaSummary, NestTimestamps,
+    NestValidationIssue, RuntimeMode, RuntimeProofStatus, SessionStatus,
 };
+use md5::Md5;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
+use sha1::Sha1;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::Manager;
@@ -20,9 +28,44 @@ use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 
 const LIFECYCLE_SCHEMA_VERSION: &str = "1.0.0";
-const LIFECYCLE_BUNDLE_FORMAT_VERSION: &str = "1.0.0";
+const LIFECYCLE_BUNDLE_FORMAT_VERSION: &str = "1.1.0";
 const DEFAULT_POLICY_VERSION: &str = "local-policy-1";
 const DEFAULT_ENGINE_BUILD_ID: &str = "1.0.0+tauri-local";
+
+fn nest_identity_hashes(path: &str) -> Result<(String, String, String, u64), String> {
+    super::analysis_bound::with_admission(|| {
+        let bytes = super::inspect::read_inspection_snapshot(path)?;
+        Ok((format!("{:x}", Sha256::digest(&bytes)), format!("{:x}", Sha1::digest(&bytes)),
+            format!("{:x}", Md5::digest(&bytes)), bytes.len() as u64))
+    })
+}
+
+fn verify_create_request_file(
+    request: &NestSessionCreateRequest,
+) -> Result<(String, String), String> {
+    let (actual_sha256, actual_sha1, actual_md5, size) = nest_identity_hashes(&request.binary_path)?;
+    if size != request.file_size_bytes {
+        return Err("NEST binary file size does not match the supplied identity".to_string());
+    }
+    if actual_sha256 != request.binary_sha256 {
+        return Err("NEST binary SHA-256 does not match the supplied identity".to_string());
+    }
+    if request
+        .binary_sha1
+        .as_deref()
+        .is_some_and(|value| value != actual_sha1)
+    {
+        return Err("NEST binary SHA-1 does not match the supplied identity".to_string());
+    }
+    if request
+        .binary_md5
+        .as_deref()
+        .is_some_and(|value| value != actual_md5)
+    {
+        return Err("NEST binary MD5 does not match the supplied identity".to_string());
+    }
+    Ok((actual_sha1, actual_md5))
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,12 +86,14 @@ pub struct NestSessionCreateRequest {
     pub gyre_schema_version: Option<String>,
     pub execution_mode: Option<ExecutionMode>,
     pub export_mode: Option<ExportMode>,
+    pub config: Option<NestSessionConfig>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NestSessionAppendIterationRequest {
     pub session_id: String,
+    pub client_iteration_key: String,
     pub started_at: Option<String>,
     pub completed_at: Option<String>,
     pub duration_ms: Option<u64>,
@@ -73,18 +118,46 @@ pub struct NestSessionAppendIterationRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct NestSessionAppendIterationResponse {
+    pub session_id: String,
+    pub iteration_count: u32,
+    pub iteration_id: String,
+    pub replayed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct NestIterationAppendRecord {
+    iteration_id: String,
+    request: NestSessionAppendIterationRequest,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NestSessionFinalizeRequest {
     pub session_id: String,
+    pub gyre_snapshot_id: String,
+    // Legacy renderer fields remain deserializable during migration, but are never
+    // authoritative and never populate a new final snapshot.
+    #[serde(default)]
     pub verdict_snapshot_id: Option<String>,
-    pub source_engine: String,
-    pub gyre_is_sole_verdict_source: bool,
-    pub classification: String,
-    pub confidence: u32,
-    pub threat_score: u32,
-    pub summary: String,
-    pub signal_count: u64,
-    pub contradiction_count: u64,
-    pub reasoning_chain_hash: String,
+    #[serde(default)]
+    pub source_engine: Option<String>,
+    #[serde(default)]
+    pub gyre_is_sole_verdict_source: Option<bool>,
+    #[serde(default)]
+    pub classification: Option<String>,
+    #[serde(default)]
+    pub confidence: Option<u32>,
+    #[serde(default)]
+    pub threat_score: Option<u32>,
+    #[serde(default)]
+    pub summary: Option<String>,
+    #[serde(default)]
+    pub signal_count: Option<u64>,
+    #[serde(default)]
+    pub contradiction_count: Option<u64>,
+    #[serde(default)]
+    pub reasoning_chain_hash: Option<String>,
     pub linked_iteration_id: Option<String>,
     pub nest_summary: Option<String>,
     pub runtime_proof: Option<NestRuntimeProof>,
@@ -144,11 +217,18 @@ struct NestSessionLifecycleState {
     gyre_schema_version: String,
     execution_mode: ExecutionMode,
     export_mode: ExportMode,
+    // Missing in legacy states: never invent a replayable configuration.
+    #[serde(default)]
+    config: Option<NestSessionConfig>,
+    #[serde(default)]
+    finalization_request: Option<NestSessionFinalizeRequest>,
     created_at: String,
     completed_at: Option<String>,
     status: SessionStatus,
     notes: Vec<String>,
     iterations: Vec<NestIterationItem>,
+    #[serde(default)]
+    iteration_append_records: HashMap<String, NestIterationAppendRecord>,
     deltas: Vec<NestDeltaItem>,
     final_verdict_snapshot: Option<NestFinalVerdictSnapshot>,
     runtime_proof: Option<NestRuntimeProof>,
@@ -158,6 +238,9 @@ struct NestSessionLifecycleState {
 static LIFECYCLE_SESSIONS: Lazy<Mutex<HashMap<String, NestSessionLifecycleState>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+// Serialize lifecycle read/modify/persist transactions, not just map accesses.
+// Otherwise two concurrent finalizations can both read an unfinished clone.
+static LIFECYCLE_MUTATIONS: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 static LIFECYCLE_COUNTER: Lazy<Mutex<u64>> = Lazy::new(|| Mutex::new(0));
 
 fn now_iso() -> String {
@@ -231,25 +314,112 @@ fn event_id(ulid: &str, index: usize) -> String {
     format!("evt_{ulid}_{:04}", index)
 }
 
+fn unique_temp_path_for(path: &Path) -> Result<PathBuf, String> {
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| format!("Invalid output path: {}", path.display()))?;
+    let nonce = OffsetDateTime::now_utc().unix_timestamp_nanos();
+    Ok(path.with_file_name(format!(".{file_name}.{}.{}.tmp", std::process::id(), nonce)))
+}
+
+fn atomic_write_bytes(path: &Path, body: &[u8]) -> Result<(), String> {
+    let parent = path
+        .parent()
+        .ok_or_else(|| format!("Output path has no parent directory: {}", path.display()))?;
+    std::fs::create_dir_all(parent).map_err(|e| {
+        format!(
+            "Failed to create parent directory {}: {e}",
+            parent.display()
+        )
+    })?;
+
+    let tmp_path = unique_temp_path_for(path)?;
+    let write_result = (|| -> Result<(), String> {
+        let mut tmp_options = std::fs::OpenOptions::new();
+        tmp_options.write(true).create_new(true);
+        let mut tmp_file = tmp_options.open(&tmp_path).map_err(|e| {
+            format!(
+                "Failed to create temporary file {}: {e}",
+                tmp_path.display()
+            )
+        })?;
+        use std::io::Write;
+        tmp_file
+            .write_all(body)
+            .map_err(|e| format!("Failed to write temporary file {}: {e}", tmp_path.display()))?;
+        tmp_file
+            .sync_all()
+            .map_err(|e| format!("Failed to sync temporary file {}: {e}", tmp_path.display()))?;
+        Ok(())
+    })();
+
+    if let Err(error) = write_result {
+        let _ = std::fs::remove_file(&tmp_path);
+        return Err(error);
+    }
+
+    replace_file(&tmp_path, path).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp_path);
+        format!("Failed to atomically replace {}: {e}", path.display())
+    })
+}
+
+#[cfg(windows)]
+fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Storage::FileSystem::{
+        MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
+    };
+    let source_wide: Vec<u16> = source.as_os_str().encode_wide().chain(Some(0)).collect();
+    let destination_wide: Vec<u16> = destination
+        .as_os_str()
+        .encode_wide()
+        .chain(Some(0))
+        .collect();
+    let result = unsafe {
+        MoveFileExW(
+            source_wide.as_ptr(),
+            destination_wide.as_ptr(),
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+        )
+    };
+    if result == 0 {
+        Err(std::io::Error::last_os_error())
+    } else {
+        Ok(())
+    }
+}
+
+#[cfg(not(windows))]
+fn replace_file(source: &Path, destination: &Path) -> std::io::Result<()> {
+    std::fs::rename(source, destination)
+}
+
 fn persist_state(root: &Path, state: &NestSessionLifecycleState) -> Result<(), String> {
     let dir = session_dir(root, &state.session_id);
     std::fs::create_dir_all(&dir)
         .map_err(|e| format!("Failed to create session directory: {e}"))?;
     let body = serde_json::to_string_pretty(state)
         .map_err(|e| format!("Failed to serialize lifecycle state: {e}"))?;
-    std::fs::write(state_path(root, &state.session_id), body)
+    atomic_write_bytes(&state_path(root, &state.session_id), body.as_bytes())
         .map_err(|e| format!("Failed to persist lifecycle state: {e}"))
 }
 
-fn load_state_from_disk(root: &Path, session_id: &str) -> Result<NestSessionLifecycleState, String> {
+fn load_state_from_disk(
+    root: &Path,
+    session_id: &str,
+) -> Result<NestSessionLifecycleState, String> {
     let path = state_path(root, session_id);
     let text = std::fs::read_to_string(&path)
         .map_err(|e| format!("Failed to read lifecycle state at {}: {e}", path.display()))?;
-    serde_json::from_str(&text)
-        .map_err(|e| format!("Failed to parse lifecycle state JSON: {e}"))
+    serde_json::from_str(&text).map_err(|e| format!("Failed to parse lifecycle state JSON: {e}"))
 }
 
-fn get_or_load_state(app: &tauri::AppHandle, session_id: &str) -> Result<NestSessionLifecycleState, String> {
+fn get_or_load_state(
+    app: &tauri::AppHandle,
+    session_id: &str,
+) -> Result<NestSessionLifecycleState, String> {
     if let Some(in_mem) = LIFECYCLE_SESSIONS.lock().unwrap().get(session_id).cloned() {
         return Ok(in_mem);
     }
@@ -272,6 +442,7 @@ fn upsert_state(app: &tauri::AppHandle, state: NestSessionLifecycleState) -> Res
     Ok(())
 }
 
+#[cfg(test)]
 fn default_session_config() -> NestSessionConfig {
     NestSessionConfig {
         config_version: LIFECYCLE_SCHEMA_VERSION.to_string(),
@@ -310,15 +481,13 @@ fn to_summary(state: &NestSessionLifecycleState) -> NestSessionLifecycleSummary 
 }
 
 fn build_session_record(state: &NestSessionLifecycleState) -> Result<NestSessionRecord, String> {
-    let final_verdict = state
-        .final_verdict_snapshot
-        .as_ref()
-        .ok_or_else(|| "Cannot build session record before final verdict snapshot exists".to_string())?;
+    let final_verdict = state.final_verdict_snapshot.as_ref().ok_or_else(|| {
+        "Cannot build session record before final verdict snapshot exists".to_string()
+    })?;
 
-    let last_iter = state
-        .iterations
-        .last()
-        .ok_or_else(|| "Cannot build session record before at least one iteration exists".to_string())?;
+    let last_iter = state.iterations.last().ok_or_else(|| {
+        "Cannot build session record before at least one iteration exists".to_string()
+    })?;
 
     Ok(NestSessionRecord {
         schema_name: "nest.session".to_string(),
@@ -338,12 +507,12 @@ fn build_session_record(state: &NestSessionLifecycleState) -> Result<NestSession
         },
         status: state.status.clone(),
         execution_mode: state.execution_mode.clone(),
-        config: default_session_config(),
+        config: state.config.clone().ok_or("Actual session config is missing; legacy state cannot be exported as replayable")?,
         iteration_count: state.iterations.len() as u32,
         delta_count: state.deltas.len() as u32,
         final_iteration_index: state.iterations.len() as u32,
         convergence: NestConvergence {
-            has_converged: true,
+            has_converged: last_iter.convergence_snapshot.has_converged,
             reason: last_iter.convergence_snapshot.reason.clone(),
             confidence: final_verdict.confidence,
             classification_stable: last_iter.convergence_snapshot.classification_stable,
@@ -374,15 +543,8 @@ fn build_evidence_bundle(state: &NestSessionLifecycleState) -> Result<NestEviden
         .clone()
         .ok_or_else(|| "Cannot export bundle before session is finalized".to_string())?;
 
+    // Format 1.1 lists payloads only; manifest.json is bound externally by manifest.sha256.
     let mut manifest_files = vec![
-        NestManifestFile {
-            name: "manifest.json".to_string(),
-            required: true,
-            sha256: state.binary_sha256.clone(),
-            bytes: 0,
-            schema_name: "nest.manifest".to_string(),
-            schema_version: LIFECYCLE_SCHEMA_VERSION.to_string(),
-        },
         NestManifestFile {
             name: "binary_identity.json".to_string(),
             required: true,
@@ -547,9 +709,82 @@ fn build_evidence_bundle(state: &NestSessionLifecycleState) -> Result<NestEviden
     })
 }
 
-fn write_bundle_files(bundle: &mut NestEvidenceBundle, output_dir: &Path) -> Result<Vec<String>, String> {
-    std::fs::create_dir_all(output_dir)
-        .map_err(|e| format!("Failed to create export directory {}: {e}", output_dir.display()))?;
+fn verify_written_file(path: &Path, expected_bytes: u64, expected_sha256: &str) -> Result<(), String> {
+    let mut file = File::open(path).map_err(|e| format!("Export readback failed for {}: {e}", path.display()))?;
+    let metadata = file.metadata().map_err(|e| format!("Export readback stat failed: {e}"))?;
+    if !metadata.is_file() || metadata.len() != expected_bytes {
+        return Err(format!("Export readback size mismatch: {}", path.display()));
+    }
+    let limit = expected_bytes.checked_add(1).ok_or("Export readback size overflow")?;
+    let mut reader = Read::by_ref(&mut file).take(limit);
+    let mut buffer = [0u8; 32 * 1024];
+    let mut count = 0u64;
+    let mut hash = Sha256::new();
+    loop {
+        let read = reader.read(&mut buffer).map_err(|e| format!("Export readback failed: {e}"))?;
+        if read == 0 { break; }
+        count += read as u64;
+        hash.update(&buffer[..read]);
+    }
+    if count != expected_bytes || format!("{:x}", hash.finalize()) != expected_sha256 {
+        return Err(format!("Export readback checksum mismatch: {}", path.display()));
+    }
+    Ok(())
+}
+
+// Evidence exports never use the replace-existing primitive required by mutable
+// lifecycle state. Retain incomplete destinations on error; never call them complete.
+fn write_new_export_file(path: &Path, body: &[u8]) -> Result<(), String> {
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new().write(true).create_new(true).open(path)
+        .map_err(|e| format!("Cannot create new evidence file {}: {e}", path.display()))?;
+    file.write_all(body).map_err(|e| format!("Evidence write failed: {e}"))?;
+    file.sync_all().map_err(|e| format!("Evidence flush failed: {e}"))?;
+    drop(file);
+    verify_written_file(path, body.len() as u64, &format!("{:x}", Sha256::digest(body)))
+}
+
+fn verify_exported_bundle(bundle: &NestEvidenceBundle, output_dir: &Path) -> Result<(), String> {
+    let mut expected: std::collections::BTreeSet<String> = ["binary_identity.json", "session.json",
+        "iterations.json", "deltas.json", "final_verdict_snapshot.json", "audit_refs.json"]
+        .into_iter().map(str::to_string).collect();
+    if bundle.runtime_proof.is_some() { expected.insert("runtime_proof.json".into()); }
+    let listed: std::collections::BTreeSet<_> = bundle.manifest.files.iter().map(|f| f.name.clone()).collect();
+    if listed != expected || listed.len() != bundle.manifest.files.len() {
+        return Err("Export readback payload coverage mismatch".into());
+    }
+    for entry in &bundle.manifest.files {
+        verify_written_file(&output_dir.join(&entry.name), entry.bytes, &entry.sha256)?;
+    }
+    let manifest = serde_json::to_value(&bundle.manifest).map_err(|e| format!("Manifest encode failed: {e}"))?;
+    let body = serde_json::to_vec_pretty(&manifest).map_err(|e| format!("Manifest encode failed: {e}"))?;
+    let hash = format!("{:x}", Sha256::digest(&body));
+    verify_written_file(&output_dir.join("manifest.json"), body.len() as u64, &hash)?;
+    let sidecar = format!("{hash}  manifest.json\n");
+    verify_written_file(&output_dir.join("manifest.sha256"), sidecar.len() as u64,
+        &format!("{:x}", Sha256::digest(sidecar.as_bytes())))?;
+    expected.extend(["manifest.json".into(), "manifest.sha256".into()]);
+    let actual: std::collections::BTreeSet<_> = std::fs::read_dir(output_dir)
+        .map_err(|e| format!("Export inventory failed: {e}"))?
+        .map(|entry| entry.map(|e| e.file_name().to_string_lossy().into_owned()))
+        .collect::<Result<_, _>>().map_err(|e| format!("Export inventory failed: {e}"))?;
+    if actual != expected { return Err("Export readback contains missing or unmanifested files".into()); }
+    Ok(())
+}
+
+fn write_bundle_files(
+    bundle: &mut NestEvidenceBundle,
+    output_dir: &Path,
+) -> Result<Vec<String>, String> {
+    if let Some(parent) = output_dir.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create export parent: {e}"))?;
+    }
+    std::fs::create_dir(output_dir).map_err(|e| {
+        format!(
+            "Failed to reserve new export directory {} (existing destinations are never replaced): {e}",
+            output_dir.display()
+        )
+    })?;
 
     let mut written = Vec::new();
 
@@ -557,7 +792,7 @@ fn write_bundle_files(bundle: &mut NestEvidenceBundle, output_dir: &Path) -> Res
         let file_path = output_dir.join(name);
         let body = serde_json::to_vec_pretty(value)
             .map_err(|e| format!("Failed to serialize {name}: {e}"))?;
-        std::fs::write(&file_path, &body)
+        write_new_export_file(&file_path, &body)
             .map_err(|e| format!("Failed to write {}: {e}", file_path.display()))?;
         written.push(file_path.to_string_lossy().to_string());
         let mut hasher = Sha256::new();
@@ -579,7 +814,8 @@ fn write_bundle_files(bundle: &mut NestEvidenceBundle, output_dir: &Path) -> Res
     let audit_refs_json = serde_json::to_value(&bundle.audit_refs)
         .map_err(|e| format!("Failed to encode audit_refs.json: {e}"))?;
 
-    let (binary_identity_bytes, binary_identity_hash) = write_json("binary_identity.json", &binary_identity_json)?;
+    let (binary_identity_bytes, binary_identity_hash) =
+        write_json("binary_identity.json", &binary_identity_json)?;
     let (session_bytes, session_hash) = write_json("session.json", &session_json)?;
     let (iterations_bytes, iterations_hash) = write_json("iterations.json", &iterations_json)?;
     let (deltas_bytes, deltas_hash) = write_json("deltas.json", &deltas_json)?;
@@ -635,17 +871,15 @@ fn write_bundle_files(bundle: &mut NestEvidenceBundle, output_dir: &Path) -> Res
 
     let manifest_json = serde_json::to_value(&bundle.manifest)
         .map_err(|e| format!("Failed to encode manifest.json: {e}"))?;
-    let (manifest_bytes, manifest_hash) = write_json("manifest.json", &manifest_json)?;
-    if let Some(manifest_entry) = bundle
-        .manifest
-        .files
-        .iter_mut()
-        .find(|f| f.name == "manifest.json")
-    {
-        manifest_entry.bytes = manifest_bytes;
-        manifest_entry.sha256 = manifest_hash;
-    }
+    let (_, manifest_hash) = write_json("manifest.json", &manifest_json)?;
+    // No self-entry or rewrite: this checksum binds the exact final manifest bytes.
+    let sidecar_path = output_dir.join("manifest.sha256");
+    let sidecar = format!("{manifest_hash}  manifest.json\n");
+    write_new_export_file(&sidecar_path, sidecar.as_bytes())
+        .map_err(|e| format!("Failed to write {}: {e}", sidecar_path.display()))?;
+    written.push(sidecar_path.to_string_lossy().to_string());
 
+    verify_exported_bundle(bundle, output_dir)?;
     Ok(written)
 }
 
@@ -655,6 +889,9 @@ pub fn nest_create_session(
     request: NestSessionCreateRequest,
 ) -> Result<NestSessionLifecycleSummary, String> {
     ensure_valid_sha256(&request.binary_sha256, "binary_sha256")?;
+    let config = request.config.clone().ok_or("Actual session config is required")?;
+    super::nest_evidence::validate_session_config(&config)?;
+    let (verified_sha1, verified_md5) = verify_create_request_file(&request)?;
     let ulid = next_ulid_like();
     let session_id = format!("nestsession_{ulid}");
     let bundle_id = format!("nestbundle_{ulid}");
@@ -662,7 +899,9 @@ pub fn nest_create_session(
     let created_at = now_iso();
 
     let actor = NestActor {
-        id: request.actor_id.unwrap_or_else(|| "system:nest-lifecycle".to_string()),
+        id: request
+            .actor_id
+            .unwrap_or_else(|| "system:nest-lifecycle".to_string()),
         actor_type: request.actor_type.unwrap_or(ActorType::System),
         display_name: request
             .actor_display_name
@@ -679,12 +918,8 @@ pub fn nest_create_session(
         binary_id,
         binary_path: request.binary_path,
         binary_sha256: request.binary_sha256,
-        binary_sha1: request
-            .binary_sha1
-            .unwrap_or_else(|| pseudo_hash("sha1-default", 20)),
-        binary_md5: request
-            .binary_md5
-            .unwrap_or_else(|| pseudo_hash("md5-default", 16)),
+        binary_sha1: verified_sha1,
+        binary_md5: verified_md5,
         file_size_bytes: request.file_size_bytes,
         format: request.format,
         architecture: request.architecture,
@@ -703,11 +938,14 @@ pub fn nest_create_session(
             .unwrap_or_else(|| LIFECYCLE_SCHEMA_VERSION.to_string()),
         execution_mode: request.execution_mode.unwrap_or(ExecutionMode::LocalTauri),
         export_mode: request.export_mode.unwrap_or(ExportMode::LocalTauri),
+        config: Some(config),
+        finalization_request: None,
         created_at,
         completed_at: None,
         status: SessionStatus::Pending,
         notes: Vec::new(),
         iterations: Vec::new(),
+        iteration_append_records: HashMap::new(),
         deltas: Vec::new(),
         final_verdict_snapshot: None,
         runtime_proof: None,
@@ -739,20 +977,68 @@ pub fn nest_create_session(
     Ok(to_summary(&state))
 }
 
-#[tauri::command]
-pub fn nest_append_iteration(
-    app: tauri::AppHandle,
-    request: NestSessionAppendIterationRequest,
-) -> Result<NestSessionLifecycleSummary, String> {
-    let mut state = get_or_load_state(&app, &request.session_id)?;
+const MAX_CLIENT_ITERATION_KEY_BYTES: usize = 128;
 
-    if matches!(state.status, SessionStatus::Completed | SessionStatus::Cancelled | SessionStatus::Failed) {
+fn validate_client_iteration_key(value: &str) -> Result<(), String> {
+    if value.is_empty()
+        || value.len() > MAX_CLIENT_ITERATION_KEY_BYTES
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+    {
+        return Err(format!(
+            "client_iteration_key must be 1..={MAX_CLIENT_ITERATION_KEY_BYTES} ASCII letters, digits, '_' or '-'"
+        ));
+    }
+    Ok(())
+}
+
+fn append_iteration_to_state(
+    state: &mut NestSessionLifecycleState,
+    request: NestSessionAppendIterationRequest,
+) -> Result<NestSessionAppendIterationResponse, String> {
+    validate_client_iteration_key(&request.client_iteration_key)?;
+    if request.session_id != state.session_id {
+        return Err("Append request session_id does not match lifecycle session".to_string());
+    }
+
+    super::nest_evidence::validate_iteration_domain(
+        request.confidence,
+        request.threat_score,
+        request.stability_score,
+        request.started_at.as_deref(),
+        request.completed_at.as_deref(),
+        &request.reasoning_chain_hash,
+    )?;
+
+    if let Some(existing) = state
+        .iteration_append_records
+        .get(&request.client_iteration_key)
+    {
+        if existing.request != request {
+            return Err(
+                "client_iteration_key conflicts with a different persisted iteration payload"
+                    .to_string(),
+            );
+        }
+        return Ok(NestSessionAppendIterationResponse {
+            session_id: state.session_id.clone(),
+            iteration_count: state.iterations.len() as u32,
+            iteration_id: existing.iteration_id.clone(),
+            replayed: true,
+        });
+    }
+
+    if matches!(
+        state.status,
+        SessionStatus::Completed | SessionStatus::Cancelled | SessionStatus::Failed
+    ) {
         return Err("Cannot append iteration to a finalized session".to_string());
     }
 
     let idx = state.iterations.len() as u32 + 1;
-    let started_at = request.started_at.unwrap_or_else(now_iso);
-    let completed_at = request.completed_at.unwrap_or_else(now_iso);
+    let started_at = request.started_at.clone().unwrap_or_else(now_iso);
+    let completed_at = request.completed_at.clone().unwrap_or_else(now_iso);
     let iteration_id = format!("nestiter_{}_{idx:04}", state.ulid);
 
     let iteration = NestIterationItem {
@@ -787,23 +1073,31 @@ pub fn nest_append_iteration(
         file_identity_locked: request.file_identity_locked.unwrap_or(true),
     };
 
+    super::nest_evidence::validate_iteration_evidence(&iteration)?;
+
     if let Some(prev) = state.iterations.last() {
         let delta = NestDeltaItem {
             delta_id: format!("nestdelta_{}_{:04}_{:04}", state.ulid, idx - 1, idx),
             from_iteration_id: prev.iteration_id.clone(),
-            to_iteration_id: iteration_id,
+            to_iteration_id: iteration_id.clone(),
             from_iteration_index: prev.iteration_index,
             to_iteration_index: idx,
             binary_sha256: state.binary_sha256.clone(),
             confidence_delta: request.confidence as i64 - prev.verdict_snapshot.confidence as i64,
             classification_changed: prev.verdict_snapshot.classification != request.classification,
             signal_delta_summary: Some(NestSignalDeltaSummary {
-                added_count: request.signal_count.saturating_sub(prev.verdict_snapshot.signal_count),
-                removed_count: prev.verdict_snapshot.signal_count.saturating_sub(request.signal_count),
+                added_count: request
+                    .signal_count
+                    .saturating_sub(prev.verdict_snapshot.signal_count),
+                removed_count: prev
+                    .verdict_snapshot
+                    .signal_count
+                    .saturating_sub(request.signal_count),
                 unchanged_count: request.signal_count.min(prev.verdict_snapshot.signal_count),
             }),
             contradiction_delta: Some(
-                request.contradiction_count as i64 - prev.verdict_snapshot.contradiction_count as i64,
+                request.contradiction_count as i64
+                    - prev.verdict_snapshot.contradiction_count as i64,
             ),
             refinement_execution: Some(NestRefinementExecution {
                 action_types: request.executed_action_types.clone().unwrap_or_default(),
@@ -826,71 +1120,152 @@ pub fn nest_append_iteration(
 
     state.status = SessionStatus::Running;
     state.iterations.push(iteration);
+    state.iteration_append_records.insert(
+        request.client_iteration_key.clone(),
+        NestIterationAppendRecord {
+            iteration_id: iteration_id.clone(),
+            request,
+        },
+    );
 
-    upsert_state(&app, state.clone())?;
-    Ok(to_summary(&state))
+    Ok(NestSessionAppendIterationResponse {
+        session_id: state.session_id.clone(),
+        iteration_count: state.iterations.len() as u32,
+        iteration_id,
+        replayed: false,
+    })
 }
 
 #[tauri::command]
-pub fn nest_finalize_session(
+pub fn nest_append_iteration(
     app: tauri::AppHandle,
-    request: NestSessionFinalizeRequest,
-) -> Result<NestSessionLifecycleSummary, String> {
+    request: NestSessionAppendIterationRequest,
+) -> Result<NestSessionAppendIterationResponse, String> {
+    let _mutation = LIFECYCLE_MUTATIONS.lock().map_err(|_| "NEST lifecycle mutation lock poisoned")?;
     let mut state = get_or_load_state(&app, &request.session_id)?;
-
-    if request.source_engine != "gyre" {
-        return Err("source_engine must be 'gyre' to preserve GYRE as sole verdict source".to_string());
+    let response = append_iteration_to_state(&mut state, request)?;
+    if !response.replayed {
+        upsert_state(&app, state)?;
     }
-    if !request.gyre_is_sole_verdict_source {
-        return Err("gyre_is_sole_verdict_source must be true".to_string());
-    }
-    if state.iterations.is_empty() {
-        return Err("Cannot finalize session before at least one iteration exists".to_string());
-    }
+    Ok(response)
+}
 
-    let linked_iteration_id = request
-        .linked_iteration_id
-        .unwrap_or_else(|| state.iterations.last().unwrap().iteration_id.clone());
-
-    if !state
-        .iterations
-        .iter()
-        .any(|it| it.iteration_id == linked_iteration_id)
-    {
-        return Err("linked_iteration_id does not exist in this session".to_string());
-    }
-
-    let verdict_snapshot_id = request
-        .verdict_snapshot_id
-        .unwrap_or_else(|| format!("gyresnap_{}", state.ulid));
-
-    let final_verdict = NestFinalVerdictSnapshot {
+fn build_final_verdict_snapshot(
+    state: &NestSessionLifecycleState,
+    request: &NestSessionFinalizeRequest,
+    gyre_snapshot: &GyreRecordedVerdictSnapshot,
+    linked_iteration_id: String,
+) -> NestFinalVerdictSnapshot {
+    NestFinalVerdictSnapshot {
         schema_name: "nest.final_verdict_snapshot".to_string(),
         schema_version: LIFECYCLE_SCHEMA_VERSION.to_string(),
         bundle_id: state.bundle_id.clone(),
         session_id: state.session_id.clone(),
         binary_id: state.binary_id.clone(),
         binary_sha256: state.binary_sha256.clone(),
-        verdict_snapshot_id,
+        verdict_snapshot_id: gyre_snapshot.snapshot_id.clone(),
         source_engine: "gyre".to_string(),
-        gyre_build_id: state.gyre_build_id.clone(),
-        gyre_schema_version: state.gyre_schema_version.clone(),
-        classification: request.classification,
-        confidence: request.confidence,
-        threat_score: request.threat_score,
-        summary: request.summary,
-        signal_count: request.signal_count,
-        contradiction_count: request.contradiction_count,
-        reasoning_chain_hash: request.reasoning_chain_hash,
+        gyre_build_id: gyre_snapshot.gyre_build_id.clone(),
+        gyre_schema_version: gyre_snapshot.gyre_schema_version.clone(),
+        classification: gyre_snapshot.classification.clone(),
+        confidence: gyre_snapshot.base_confidence,
+        threat_score: gyre_snapshot.threat_score,
+        summary: gyre_snapshot.summary.clone(),
+        signal_count: gyre_snapshot.signal_count,
+        contradiction_count: gyre_snapshot.contradiction_count,
+        reasoning_chain_hash: gyre_snapshot.reasoning_chain_hash.clone(),
         linked_iteration_id: linked_iteration_id.clone(),
         nest_linkage: NestFinalVerdictNestLinkage {
             session_id: state.session_id.clone(),
             final_iteration_id: linked_iteration_id,
             nest_enrichment_applied: true,
             gyre_is_sole_verdict_source: true,
-            nest_summary: request.nest_summary,
+            nest_summary: request.nest_summary.clone(),
         },
-    };
+    }
+}
+
+fn validate_gyre_snapshot_for_finalization(
+    state: &NestSessionLifecycleState,
+    gyre_snapshot: &GyreRecordedVerdictSnapshot,
+) -> Result<(), String> {
+    if gyre_snapshot.binary_sha256 != state.binary_sha256 {
+        return Err(
+            "GYRE snapshot binary SHA-256 does not match NEST lifecycle binary".to_string(),
+        );
+    }
+    if gyre_snapshot.schema_name != "gyre.recorded_verdict_snapshot"
+        || gyre_snapshot.schema_version != GYRE_SNAPSHOT_SCHEMA_VERSION
+        || gyre_snapshot.provenance != GYRE_SNAPSHOT_PROVENANCE
+        || gyre_snapshot.gyre_schema_version != SUPPORTED_GYRE_SCHEMA_VERSION
+        || gyre_snapshot.gyre_build_id != SUPPORTED_GYRE_BUILD_ID
+    {
+        return Err("GYRE snapshot metadata is unsupported for NEST finalization".to_string());
+    }
+    Ok(())
+}
+
+fn resolve_gyre_snapshot_for_finalization_at_root(
+    root: &Path,
+    state: &NestSessionLifecycleState,
+    snapshot_id: &str,
+) -> Result<GyreRecordedVerdictSnapshot, String> {
+    let snapshot = resolve_recorded_snapshot_at_root(root, snapshot_id)?;
+    validate_gyre_snapshot_for_finalization(state, &snapshot)?;
+    Ok(snapshot)
+}
+
+fn resolve_linked_iteration_id(
+    state: &NestSessionLifecycleState,
+    requested: Option<&str>,
+) -> Result<String, String> {
+    if state.iterations.is_empty() {
+        return Err("Cannot finalize session before at least one iteration exists".to_string());
+    }
+    let linked_iteration_id = requested
+        .map(str::to_string)
+        .unwrap_or_else(|| state.iterations.last().unwrap().iteration_id.clone());
+    if !state
+        .iterations
+        .iter()
+        .any(|iteration| iteration.iteration_id == linked_iteration_id)
+    {
+        return Err("linked_iteration_id does not exist in this session".to_string());
+    }
+    Ok(linked_iteration_id)
+}
+
+fn finalize_state(
+    state: &mut NestSessionLifecycleState,
+    request: NestSessionFinalizeRequest,
+    gyre_snapshot: &GyreRecordedVerdictSnapshot,
+    linked_iteration_id: String,
+) -> Result<bool, String> {
+    if state.session_id != request.session_id {
+        return Err("Finalize request session_id does not match lifecycle session".into());
+    }
+    if state.final_verdict_snapshot.is_some() || state.status == SessionStatus::Completed {
+        if let Some(previous) = &state.finalization_request {
+            if serde_json::to_value(previous).map_err(|e| e.to_string())?
+                == serde_json::to_value(&request).map_err(|e| e.to_string())? {
+                return Ok(false);
+            }
+        }
+        return Err("Finalization conflicts with an already finalized session (legacy retry custody may be unavailable)".into());
+    }
+    if matches!(state.status, SessionStatus::Cancelled | SessionStatus::Failed) {
+        return Err("Cannot finalize a cancelled or failed session".into());
+    }
+    validate_gyre_snapshot_for_finalization(state, gyre_snapshot)?;
+    if request.gyre_snapshot_id != gyre_snapshot.snapshot_id {
+        return Err("Resolved GYRE snapshot does not match finalize request".into());
+    }
+    let retained_request = request.clone();
+    state.gyre_build_id = gyre_snapshot.gyre_build_id.clone();
+    state.gyre_schema_version = gyre_snapshot.gyre_schema_version.clone();
+
+    let final_verdict =
+        build_final_verdict_snapshot(state, &request, gyre_snapshot, linked_iteration_id);
 
     if let Some(mut runtime) = request.runtime_proof {
         runtime.schema_name = "nest.runtime_proof".to_string();
@@ -900,10 +1275,16 @@ pub fn nest_finalize_session(
         runtime.binary_id = state.binary_id.clone();
         runtime.binary_sha256 = state.binary_sha256.clone();
         if runtime.proof_status == RuntimeProofStatus::Proven && !runtime.has_tauri_runtime {
-            return Err("runtime proof cannot be marked proven when has_tauri_runtime=false".to_string());
+            return Err(
+                "runtime proof cannot be marked proven when has_tauri_runtime=false".to_string(),
+            );
         }
-        if runtime.runtime_mode == RuntimeMode::BrowserRuntime && runtime.proof_status == RuntimeProofStatus::Proven {
-            return Err("browser runtime cannot be marked as proven local runtime proof".to_string());
+        if runtime.runtime_mode == RuntimeMode::BrowserRuntime
+            && runtime.proof_status == RuntimeProofStatus::Proven
+        {
+            return Err(
+                "browser runtime cannot be marked as proven local runtime proof".to_string(),
+            );
         }
         state.runtime_proof = Some(runtime);
     }
@@ -912,6 +1293,7 @@ pub fn nest_finalize_session(
         state.notes.extend(notes);
     }
 
+    state.finalization_request = Some(retained_request);
     state.final_verdict_snapshot = Some(final_verdict);
     state.status = SessionStatus::Completed;
     state.completed_at = Some(now_iso());
@@ -934,6 +1316,29 @@ pub fn nest_finalize_session(
         details: None,
     });
 
+    Ok(true)
+}
+
+#[tauri::command]
+pub fn nest_finalize_session(
+    app: tauri::AppHandle,
+    request: NestSessionFinalizeRequest,
+) -> Result<NestSessionLifecycleSummary, String> {
+    let _mutation = LIFECYCLE_MUTATIONS.lock().map_err(|_| "NEST lifecycle mutation lock poisoned")?;
+    let mut state = get_or_load_state(&app, &request.session_id)?;
+    let linked_iteration_id =
+        resolve_linked_iteration_id(&state, request.linked_iteration_id.as_deref())?;
+
+    let gyre_snapshot = resolve_gyre_snapshot_for_finalization_at_root(
+        &snapshot_root(&app)?,
+        &state,
+        &request.gyre_snapshot_id,
+    )?;
+
+    if !finalize_state(&mut state, request, &gyre_snapshot, linked_iteration_id)? {
+        return Ok(to_summary(&state));
+    }
+
     upsert_state(&app, state.clone())?;
     Ok(to_summary(&state))
 }
@@ -943,6 +1348,7 @@ pub fn nest_export_session_bundle(
     app: tauri::AppHandle,
     request: NestSessionExportRequest,
 ) -> Result<NestSessionExportResult, String> {
+    let _mutation = LIFECYCLE_MUTATIONS.lock().map_err(|_| "NEST lifecycle mutation lock poisoned")?;
     let mut state = get_or_load_state(&app, &request.session_id)?;
     if state.status != SessionStatus::Completed {
         return Err("Session must be completed before export".to_string());
@@ -950,11 +1356,16 @@ pub fn nest_export_session_bundle(
 
     let mut bundle = build_evidence_bundle(&state)?;
     let issues = validate_bundle(&bundle);
-    if issues
-        .iter()
-        .any(|i| matches!(i.code, crate::commands::nest_evidence::NestValidationCode::ReplayCriticalError))
-    {
-        return Err(format!("Replay-critical bundle validation failed: {} issue(s)", issues.len()));
+    if issues.iter().any(|i| {
+        matches!(
+            i.code,
+            crate::commands::nest_evidence::NestValidationCode::ReplayCriticalError
+        )
+    }) {
+        return Err(format!(
+            "Replay-critical bundle validation failed: {} issue(s)",
+            issues.len()
+        ));
     }
 
     let output_dir = if let Some(custom) = request.output_dir {
@@ -963,7 +1374,7 @@ pub fn nest_export_session_bundle(
         app_sessions_root(&app)?
             .join(&state.session_id)
             .join("exports")
-            .join(OffsetDateTime::now_utc().unix_timestamp().to_string())
+            .join(OffsetDateTime::now_utc().unix_timestamp_nanos().to_string())
     };
 
     let files_written = write_bundle_files(&mut bundle, &output_dir)?;
@@ -1029,12 +1440,8 @@ pub fn nest_verify_binary_identity(
 ) -> Result<NestIdentityVerifyResult, String> {
     let state = get_or_load_state(&app, &session_id)?;
 
-    // Re-hash the binary file
-    let bytes = std::fs::read(&binary_path)
-        .map_err(|e| format!("Cannot read binary at '{binary_path}': {e}"))?;
-    let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    let computed = format!("{:x}", hasher.finalize());
+    // The same admitted, bounded owned snapshot is used by creation and verification.
+    let (computed, _, _, _) = nest_identity_hashes(&binary_path)?;
 
     let stored = state.binary_sha256.clone();
     let mismatch = computed != stored;
@@ -1064,6 +1471,78 @@ pub fn nest_verify_binary_identity(
 mod tests {
     use super::*;
 
+    #[test]
+    fn atomic_write_replaces_existing_file() {
+        let path = std::env::temp_dir().join(format!(
+            "hh-nest-atomic-replace-{}",
+            OffsetDateTime::now_utc().unix_timestamp_nanos()
+        ));
+        atomic_write_bytes(&path, b"first").expect("first atomic write");
+        atomic_write_bytes(&path, b"second").expect("replacement atomic write");
+        assert_eq!(std::fs::read(&path).expect("read replacement"), b"second");
+        let _ = std::fs::remove_file(path);
+    }
+
+    fn identity_request(path: &Path, bytes: &[u8]) -> NestSessionCreateRequest {
+        let mut sha256 = Sha256::new();
+        sha256.update(bytes);
+        NestSessionCreateRequest {
+            binary_path: path.to_string_lossy().to_string(),
+            binary_sha256: format!("{:x}", sha256.finalize()),
+            file_size_bytes: bytes.len() as u64,
+            format: "fixture".to_string(),
+            architecture: "unknown".to_string(),
+            binary_sha1: None,
+            binary_md5: None,
+            actor_id: None,
+            actor_type: None,
+            actor_display_name: None,
+            policy_version: None,
+            engine_build_id: None,
+            gyre_build_id: None,
+            gyre_schema_version: None,
+            execution_mode: None,
+            export_mode: None,
+            config: Some(default_session_config()),
+        }
+    }
+
+    #[test]
+    fn create_request_file_verification_rejects_oversized_before_hashing() {
+        let _serial = super::super::analysis_bound::TEST_SERIAL.lock().unwrap();
+        let path = std::env::temp_dir().join(format!("hh-nest-oversize-{}", OffsetDateTime::now_utc().unix_timestamp_nanos()));
+        let length = 64 * 1024 * 1024 + 1;
+        File::create(&path).unwrap().set_len(length).unwrap();
+        let mut request = identity_request(&path, b"");
+        request.file_size_bytes = length;
+        let error = verify_create_request_file(&request).unwrap_err();
+        std::fs::remove_file(path).unwrap();
+        assert!(error.contains("64 MiB"), "oversize was not rejected by the static-input budget: {error}");
+    }
+
+    #[test]
+    fn create_request_file_verification_hashes_real_bytes_and_rejects_mismatch() {
+        let _serial = super::super::analysis_bound::TEST_SERIAL.lock().unwrap();
+        let path = std::env::temp_dir().join(format!(
+            "hh-nest-create-identity-{}",
+            OffsetDateTime::now_utc().unix_timestamp_nanos()
+        ));
+        let bytes = b"hexhawk-nest-identity";
+        std::fs::write(&path, bytes).expect("write identity fixture");
+
+        let request = identity_request(&path, bytes);
+        let (sha1, md5) = verify_create_request_file(&request).expect("real identity verifies");
+        assert_eq!(sha1.len(), 40);
+        assert_eq!(md5.len(), 32);
+
+        let mut mismatched = request;
+        mismatched.binary_sha256 = "0".repeat(64);
+        assert!(verify_create_request_file(&mismatched)
+            .expect_err("mismatched hash rejected")
+            .contains("SHA-256"));
+        let _ = std::fs::remove_file(path);
+    }
+
     fn actor() -> NestActor {
         NestActor {
             id: "system:test".to_string(),
@@ -1078,7 +1557,8 @@ mod tests {
         let ulid = "ABCDE12345FGHJKMNPQRST0123".to_string();
         let session_id = format!("nestsession_{ulid}");
         let bundle_id = format!("nestbundle_{ulid}");
-        let binary_sha256 = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string();
+        let binary_sha256 =
+            "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string();
         NestSessionLifecycleState {
             schema_version: LIFECYCLE_SCHEMA_VERSION.to_string(),
             session_id: session_id.clone(),
@@ -1099,11 +1579,14 @@ mod tests {
             gyre_schema_version: LIFECYCLE_SCHEMA_VERSION.to_string(),
             execution_mode: ExecutionMode::LocalTauri,
             export_mode: ExportMode::LocalTauri,
+            config: Some(default_session_config()),
+            finalization_request: None,
             created_at: "2026-04-29T10:00:00Z".to_string(),
             completed_at: None,
             status: SessionStatus::Pending,
             notes: Vec::new(),
             iterations: Vec::new(),
+            iteration_append_records: HashMap::new(),
             deltas: Vec::new(),
             final_verdict_snapshot: None,
             runtime_proof: None,
@@ -1125,11 +1608,15 @@ mod tests {
             iteration_id: format!("nestiter_ABCDE12345FGHJKMNPQRST0123_{index:04}"),
             iteration_index: index,
             session_id: "nestsession_ABCDE12345FGHJKMNPQRST0123".to_string(),
-            binary_sha256: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
+            binary_sha256: "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+                .to_string(),
             started_at: "2026-04-29T10:00:00Z".to_string(),
             completed_at: Some("2026-04-29T10:00:01Z".to_string()),
             duration_ms: Some(1000),
-            input_window: Some(NestInputWindow { offset: 0, length: 4096 }),
+            input_window: Some(NestInputWindow {
+                offset: 0,
+                length: 4096,
+            }),
             executed_actions: None,
             verdict_snapshot: NestIterationVerdictSnapshot {
                 classification: "suspicious".to_string(),
@@ -1137,7 +1624,8 @@ mod tests {
                 threat_score: confidence,
                 signal_count: 4,
                 contradiction_count: 0,
-                reasoning_chain_hash: "b1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
+                reasoning_chain_hash:
+                    "b1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
             },
             convergence_snapshot: NestConvergenceSnapshot {
                 has_converged: false,
@@ -1149,6 +1637,272 @@ mod tests {
             },
             file_identity_locked: true,
         }
+    }
+
+    fn finalize_request() -> NestSessionFinalizeRequest {
+        NestSessionFinalizeRequest {
+            session_id: "nestsession_ABCDE12345FGHJKMNPQRST0123".to_string(),
+            gyre_snapshot_id: "gyresnap_ABCDE12345FGHJKMNPQRST0123".to_string(),
+            verdict_snapshot_id: Some("gyresnap_ABCDE12345FGHJKMNPQRST0123".to_string()),
+            source_engine: Some("gyre".to_string()),
+            gyre_is_sole_verdict_source: Some(true),
+            classification: Some("suspicious".to_string()),
+            confidence: Some(84),
+            threat_score: Some(91),
+            summary: Some("ordinary final verdict".to_string()),
+            signal_count: Some(6),
+            contradiction_count: Some(1),
+            reasoning_chain_hash: Some("ordinary-reasoning-hash".to_string()),
+            linked_iteration_id: Some("nestiter_ABCDE12345FGHJKMNPQRST0123_0001".to_string()),
+            nest_summary: Some("ordinary nest summary".to_string()),
+            runtime_proof: None,
+            notes: None,
+        }
+    }
+
+    fn recorded_snapshot(state: &NestSessionLifecycleState) -> GyreRecordedVerdictSnapshot {
+        GyreRecordedVerdictSnapshot {
+            schema_name: "gyre.recorded_verdict_snapshot".to_string(),
+            schema_version: GYRE_SNAPSHOT_SCHEMA_VERSION.to_string(),
+            snapshot_id: "gyresnap_ABCDE12345FGHJKMNPQRST0123".to_string(),
+            provenance: GYRE_SNAPSHOT_PROVENANCE.to_string(),
+            binary_sha256: state.binary_sha256.clone(),
+            classification: "suspicious".to_string(),
+            base_confidence: 84,
+            threat_score: 91,
+            summary: "ordinary final verdict".to_string(),
+            signal_count: 6,
+            contradiction_count: 1,
+            reasoning_chain_hash: "recorded-reasoning-hash".to_string(),
+            gyre_build_id: SUPPORTED_GYRE_BUILD_ID.to_string(),
+            gyre_schema_version: SUPPORTED_GYRE_SCHEMA_VERSION.to_string(),
+            created_at: "2026-07-11T00:00:00Z".to_string(),
+        }
+    }
+
+    fn record_request(
+        client_record_key: &str,
+        binary_sha256: String,
+        gyre_build_id: &str,
+        gyre_schema_version: &str,
+    ) -> crate::commands::gyre_snapshot::GyreRecordVerdictSnapshotRequest {
+        crate::commands::gyre_snapshot::GyreRecordVerdictSnapshotRequest {
+            client_record_key: client_record_key.to_string(),
+            binary_sha256,
+            classification: "suspicious".to_string(),
+            base_confidence: 84,
+            threat_score: 91,
+            summary: "recorded production-path verdict".to_string(),
+            signal_count: 6,
+            contradiction_count: 1,
+            reasoning_chain_hash: "e".repeat(64),
+            gyre_build_id: gyre_build_id.to_string(),
+            gyre_schema_version: gyre_schema_version.to_string(),
+        }
+    }
+
+    #[test]
+    fn production_store_resolution_enforces_lifecycle_hash_build_and_schema() {
+        let state = base_state();
+        let root = std::env::temp_dir().join(format!(
+            "hexhawk-nest-finalization-{}",
+            OffsetDateTime::now_utc().unix_timestamp_nanos()
+        ));
+
+        let valid = crate::commands::gyre_snapshot::record_verdict_snapshot_at_root(
+            &root,
+            record_request(
+                "gyrerecord_nest_valid",
+                state.binary_sha256.clone(),
+                SUPPORTED_GYRE_BUILD_ID,
+                SUPPORTED_GYRE_SCHEMA_VERSION,
+            ),
+        )
+        .unwrap();
+        let resolved =
+            resolve_gyre_snapshot_for_finalization_at_root(&root, &state, &valid.snapshot_id)
+                .unwrap();
+        assert_eq!(resolved, valid);
+
+        let mismatch = crate::commands::gyre_snapshot::record_verdict_snapshot_at_root(
+            &root,
+            record_request(
+                "gyrerecord_nest_hash_mismatch",
+                "f".repeat(64),
+                SUPPORTED_GYRE_BUILD_ID,
+                SUPPORTED_GYRE_SCHEMA_VERSION,
+            ),
+        )
+        .unwrap();
+        assert!(resolve_gyre_snapshot_for_finalization_at_root(
+            &root,
+            &state,
+            &mismatch.snapshot_id,
+        )
+        .unwrap_err()
+        .contains("does not match"));
+
+        let unsupported = crate::commands::gyre_snapshot::record_verdict_snapshot_at_root(
+            &root,
+            record_request(
+                "gyrerecord_nest_unsupported",
+                state.binary_sha256.clone(),
+                "unsupported-build",
+                "2.0.0",
+            ),
+        )
+        .unwrap();
+        assert!(resolve_gyre_snapshot_for_finalization_at_root(
+            &root,
+            &state,
+            &unsupported.snapshot_id,
+        )
+        .unwrap_err()
+        .contains("unsupported"));
+
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn final_verdict_helper_preserves_existing_field_provenance() {
+        let mut state = base_state();
+        state.iterations.push(iter(1, 84));
+        let request = finalize_request();
+        let gyre_snapshot = recorded_snapshot(&state);
+        let linked_iteration_id = request.linked_iteration_id.clone().unwrap();
+
+        let snapshot = build_final_verdict_snapshot(
+            &state,
+            &request,
+            &gyre_snapshot,
+            linked_iteration_id.clone(),
+        );
+
+        assert_eq!(snapshot.bundle_id, state.bundle_id);
+        assert_eq!(snapshot.session_id, state.session_id);
+        assert_eq!(snapshot.binary_id, state.binary_id);
+        assert_eq!(snapshot.binary_sha256, state.binary_sha256);
+        assert_eq!(snapshot.gyre_build_id, gyre_snapshot.gyre_build_id);
+        assert_eq!(
+            snapshot.gyre_schema_version,
+            gyre_snapshot.gyre_schema_version
+        );
+        assert_eq!(snapshot.verdict_snapshot_id, gyre_snapshot.snapshot_id);
+        assert_eq!(snapshot.linked_iteration_id, linked_iteration_id);
+        assert_eq!(snapshot.classification, gyre_snapshot.classification);
+        assert_eq!(snapshot.confidence, gyre_snapshot.base_confidence);
+        assert_eq!(snapshot.threat_score, gyre_snapshot.threat_score);
+        assert_eq!(snapshot.summary, gyre_snapshot.summary);
+        assert_eq!(snapshot.signal_count, gyre_snapshot.signal_count);
+        assert_eq!(
+            snapshot.contradiction_count,
+            gyre_snapshot.contradiction_count
+        );
+        assert_eq!(
+            snapshot.reasoning_chain_hash,
+            gyre_snapshot.reasoning_chain_hash
+        );
+        assert_eq!(snapshot.nest_linkage.nest_summary, request.nest_summary);
+        assert_eq!(snapshot.source_engine, "gyre");
+        assert!(snapshot.nest_linkage.gyre_is_sole_verdict_source);
+    }
+
+    #[test]
+    fn nest_finalization_must_not_attribute_request_verdict_content_to_gyre() {
+        let mut state = base_state();
+        state.iterations.push(iter(1, 37));
+        let mut request = finalize_request();
+        request.verdict_snapshot_id = Some("request-supplied-snapshot-id".to_string());
+        request.classification = Some("request-supplied-test-value".to_string());
+        request.confidence = Some(37);
+        request.threat_score = Some(73);
+        request.summary = Some("request-supplied-summary".to_string());
+        request.signal_count = Some(17);
+        request.contradiction_count = Some(3);
+        request.reasoning_chain_hash = Some("request-supplied-reasoning-hash".to_string());
+        let gyre_snapshot = recorded_snapshot(&state);
+        let linked_iteration_id = request.linked_iteration_id.clone().unwrap();
+
+        let snapshot =
+            build_final_verdict_snapshot(&state, &request, &gyre_snapshot, linked_iteration_id);
+
+        assert_eq!(snapshot.source_engine, "gyre");
+        assert_ne!(
+            snapshot.classification,
+            request.classification.unwrap(),
+            "GYRE-attributed finalization mirrored request-supplied classification"
+        );
+    }
+
+    #[test]
+    fn finalization_rejects_hash_mismatch_and_unsupported_metadata() {
+        let state = base_state();
+        let mut hash_mismatch = recorded_snapshot(&state);
+        hash_mismatch.binary_sha256 = "f".repeat(64);
+        assert!(
+            validate_gyre_snapshot_for_finalization(&state, &hash_mismatch)
+                .unwrap_err()
+                .contains("does not match")
+        );
+
+        let mut unsupported_build = recorded_snapshot(&state);
+        unsupported_build.gyre_build_id = "unsupported-build".to_string();
+        assert!(
+            validate_gyre_snapshot_for_finalization(&state, &unsupported_build)
+                .unwrap_err()
+                .contains("unsupported")
+        );
+
+        let mut unsupported_schema = recorded_snapshot(&state);
+        unsupported_schema.gyre_schema_version = "2.0.0".to_string();
+        assert!(
+            validate_gyre_snapshot_for_finalization(&state, &unsupported_schema)
+                .unwrap_err()
+                .contains("unsupported")
+        );
+    }
+
+    #[test]
+    fn finalization_uses_all_recorded_verdict_fields_and_ignores_legacy_request_fields() {
+        let mut state = base_state();
+        state.iterations.push(iter(1, 37));
+        let mut request = finalize_request();
+        request.verdict_snapshot_id = Some("request-supplied-snapshot-id".to_string());
+        request.source_engine = Some("request-engine".to_string());
+        request.gyre_is_sole_verdict_source = Some(false);
+        request.classification = Some("request-classification".to_string());
+        request.confidence = Some(1);
+        request.threat_score = Some(2);
+        request.summary = Some("request-summary".to_string());
+        request.signal_count = Some(3);
+        request.contradiction_count = Some(4);
+        request.reasoning_chain_hash = Some("request-reasoning".to_string());
+        let gyre_snapshot = recorded_snapshot(&state);
+
+        validate_gyre_snapshot_for_finalization(&state, &gyre_snapshot).unwrap();
+        let snapshot = build_final_verdict_snapshot(
+            &state,
+            &request,
+            &gyre_snapshot,
+            request.linked_iteration_id.clone().unwrap(),
+        );
+
+        assert_eq!(snapshot.verdict_snapshot_id, gyre_snapshot.snapshot_id);
+        assert_eq!(snapshot.source_engine, "gyre");
+        assert_eq!(snapshot.classification, gyre_snapshot.classification);
+        assert_eq!(snapshot.confidence, gyre_snapshot.base_confidence);
+        assert_eq!(snapshot.threat_score, gyre_snapshot.threat_score);
+        assert_eq!(snapshot.summary, gyre_snapshot.summary);
+        assert_eq!(snapshot.signal_count, gyre_snapshot.signal_count);
+        assert_eq!(
+            snapshot.contradiction_count,
+            gyre_snapshot.contradiction_count
+        );
+        assert_eq!(
+            snapshot.reasoning_chain_hash,
+            gyre_snapshot.reasoning_chain_hash
+        );
+        assert!(snapshot.nest_linkage.gyre_is_sole_verdict_source);
     }
 
     #[test]
@@ -1206,7 +1960,8 @@ mod tests {
             summary: "final".to_string(),
             signal_count: 6,
             contradiction_count: 0,
-            reasoning_chain_hash: "c1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
+            reasoning_chain_hash:
+                "c1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
             linked_iteration_id: "nestiter_ABCDE12345FGHJKMNPQRST0123_0002".to_string(),
             nest_linkage: NestFinalVerdictNestLinkage {
                 session_id: state.session_id.clone(),
@@ -1222,6 +1977,145 @@ mod tests {
         assert!(issues.is_empty(), "issues: {issues:?}");
         assert_eq!(bundle.session.session_id, state.session_id);
         assert_eq!(bundle.final_verdict_snapshot.source_engine, "gyre");
+    }
+
+    fn append_request(client_iteration_key: &str) -> NestSessionAppendIterationRequest {
+        NestSessionAppendIterationRequest {
+            session_id: "nestsession_ABCDE12345FGHJKMNPQRST0123".to_string(),
+            client_iteration_key: client_iteration_key.to_string(),
+            started_at: Some("2026-04-29T10:00:00Z".to_string()),
+            completed_at: Some("2026-04-29T10:00:01Z".to_string()),
+            duration_ms: Some(1000),
+            input_offset: Some(0),
+            input_length: Some(4096),
+            classification: "suspicious".to_string(),
+            confidence: 65,
+            threat_score: 42,
+            signal_count: 4,
+            contradiction_count: 1,
+            reasoning_chain_hash: "b".repeat(64),
+            convergence_reason: "continue".to_string(),
+            has_converged: false,
+            stability_score: 0.7,
+            classification_stable: false,
+            signal_delta: 1,
+            contradiction_burden: 0,
+            executed_action_types: Some(vec!["deep-echo".to_string()]),
+            primary_action_type: Some("deep-echo".to_string()),
+            file_identity_locked: Some(true),
+        }
+    }
+
+    #[test]
+    fn append_is_idempotent_and_returns_backend_canonical_iteration_id() {
+        let mut state = base_state();
+        let request = append_request("client_iter_0001");
+
+        let first = append_iteration_to_state(&mut state, request.clone()).unwrap();
+        assert!(!first.replayed);
+        assert_eq!(first.iteration_count, 1);
+        assert_eq!(first.iteration_id, state.iterations[0].iteration_id);
+
+        let replay = append_iteration_to_state(&mut state, request).unwrap();
+        assert!(replay.replayed);
+        assert_eq!(replay.iteration_id, first.iteration_id);
+        assert_eq!(replay.iteration_count, 1);
+        assert_eq!(state.iterations.len(), 1);
+    }
+
+    #[test]
+    fn conflicting_key_is_rejected_and_different_key_appends() {
+        let mut state = base_state();
+        let first =
+            append_iteration_to_state(&mut state, append_request("client_iter_0001")).unwrap();
+
+        let mut conflict = append_request("client_iter_0001");
+        conflict.threat_score = 99;
+        let error = append_iteration_to_state(&mut state, conflict).unwrap_err();
+        assert!(error.contains("conflicts"));
+        assert_eq!(state.iterations.len(), 1);
+
+        let second =
+            append_iteration_to_state(&mut state, append_request("client_iter_0002")).unwrap();
+        assert!(!second.replayed);
+        assert_ne!(second.iteration_id, first.iteration_id);
+        assert_eq!(second.iteration_count, 2);
+    }
+
+    #[test]
+    fn client_key_scope_and_validation_are_enforced() {
+        let mut first_session = base_state();
+        let mut second_session = base_state();
+        second_session.ulid = "BCDEF23456GHJKMNPQRST01234".to_string();
+        second_session.session_id = format!("nestsession_{}", second_session.ulid);
+
+        append_iteration_to_state(&mut first_session, append_request("shared_key")).unwrap();
+        let mut second_request = append_request("shared_key");
+        second_request.session_id = second_session.session_id.clone();
+        append_iteration_to_state(&mut second_session, second_request).unwrap();
+        assert_eq!(first_session.iterations.len(), 1);
+        assert_eq!(second_session.iterations.len(), 1);
+
+        for invalid in ["", "has space", "slash/key", "dot.key", "percent%key"] {
+            let error =
+                append_iteration_to_state(&mut base_state(), append_request(invalid)).unwrap_err();
+            assert!(error.contains("client_iteration_key"));
+        }
+        let too_long = "a".repeat(MAX_CLIENT_ITERATION_KEY_BYTES + 1);
+        assert!(
+            append_iteration_to_state(&mut base_state(), append_request(&too_long))
+                .unwrap_err()
+                .contains("client_iteration_key")
+        );
+    }
+
+    #[test]
+    fn persisted_reload_preserves_append_idempotency() {
+        let root = std::env::temp_dir().join(format!(
+            "hh-nest-idempotency-test-{}",
+            OffsetDateTime::now_utc().unix_timestamp_nanos()
+        ));
+        let mut state = base_state();
+        let request = append_request("persisted_key");
+        let first = append_iteration_to_state(&mut state, request.clone()).unwrap();
+        persist_state(&root, &state).unwrap();
+
+        let mut reloaded = load_state_from_disk(&root, &state.session_id).unwrap();
+        let replay = append_iteration_to_state(&mut reloaded, request).unwrap();
+        assert!(replay.replayed);
+        assert_eq!(replay.iteration_id, first.iteration_id);
+        assert_eq!(reloaded.iterations.len(), 1);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn returned_canonical_iteration_id_is_accepted_for_finalization_linkage() {
+        let mut state = base_state();
+        let appended =
+            append_iteration_to_state(&mut state, append_request("terminal_key")).unwrap();
+        let snapshot = recorded_snapshot(&state);
+        let mut request = finalize_request();
+        request.linked_iteration_id = Some(appended.iteration_id.clone());
+
+        let final_verdict = build_final_verdict_snapshot(
+            &state,
+            &request,
+            &snapshot,
+            appended.iteration_id.clone(),
+        );
+        assert_eq!(final_verdict.linked_iteration_id, appended.iteration_id);
+
+        assert_eq!(
+            resolve_linked_iteration_id(&state, request.linked_iteration_id.as_deref()).unwrap(),
+            appended.iteration_id
+        );
+
+        request.linked_iteration_id = Some("nestiter_unknown_9999".to_string());
+        assert!(
+            resolve_linked_iteration_id(&state, request.linked_iteration_id.as_deref())
+                .unwrap_err()
+                .contains("does not exist")
+        );
     }
 
     #[test]
@@ -1247,7 +2141,8 @@ mod tests {
             summary: "final".to_string(),
             signal_count: 4,
             contradiction_count: 0,
-            reasoning_chain_hash: "d1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
+            reasoning_chain_hash:
+                "d1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2".to_string(),
             linked_iteration_id: "nestiter_ABCDE12345FGHJKMNPQRST0123_0001".to_string(),
             nest_linkage: NestFinalVerdictNestLinkage {
                 session_id: state.session_id.clone(),
@@ -1269,7 +2164,209 @@ mod tests {
         assert!(files.iter().any(|p| p.ends_with("manifest.json")));
         assert!(tmp_dir.join("session.json").exists());
         assert!(tmp_dir.join("final_verdict_snapshot.json").exists());
+        // Retain physical-file assertions independently of manifest-listed payloads.
+        for name in ["manifest.json", "binary_identity.json", "session.json", "iterations.json",
+            "deltas.json", "final_verdict_snapshot.json", "audit_refs.json"] {
+            assert!(tmp_dir.join(name).is_file(), "missing physical file {name}");
+        }
+        let manifest_body = std::fs::read(tmp_dir.join("manifest.json")).expect("manifest readback");
+        let disk_manifest: NestManifest = serde_json::from_slice(&manifest_body).expect("manifest decode");
+        // First reproduce the current placeholder self-hash against actual disk bytes.
+        for file in &disk_manifest.files {
+            let body = std::fs::read(tmp_dir.join(&file.name)).expect("listed payload readback");
+            assert_eq!(file.sha256, format!("{:x}", Sha256::digest(&body)), "payload hash {}", file.name);
+            assert_eq!(file.bytes, body.len() as u64, "payload size {}", file.name);
+        }
+        assert!(!disk_manifest.files.iter().any(|f| f.name == "manifest.json" || f.name == "manifest.sha256"));
+        assert_eq!(serde_json::to_value(&disk_manifest).unwrap(), serde_json::to_value(&bundle.manifest).unwrap());
+        let sidecar = std::fs::read_to_string(tmp_dir.join("manifest.sha256")).expect("external manifest checksum");
+        assert_eq!(sidecar, format!("{:x}  manifest.json\n", Sha256::digest(&manifest_body)));
+        assert!(files.iter().any(|p| p.ends_with("manifest.sha256")));
+
+        let preserved: Vec<_> = files.iter().map(|path|
+            (path.clone(), std::fs::read(path).expect("preserved export bytes"))).collect();
+        assert!(write_bundle_files(&mut bundle, &tmp_dir).is_err(),
+            "a second export must never replace a previously locked bundle");
+        for (path, bytes) in preserved {
+            assert_eq!(std::fs::read(&path).unwrap(), bytes, "previous export changed: {path}");
+        }
+        verify_exported_bundle(&bundle, &tmp_dir).expect("complete physical bundle verifies");
+        for path in &files {
+            let original = std::fs::read(path).unwrap();
+            let mut changed = original.clone();
+            changed[0] ^= 1;
+            std::fs::write(path, &changed).unwrap();
+            assert!(verify_exported_bundle(&bundle, &tmp_dir).is_err(), "tampering was ignored: {path}");
+            std::fs::write(path, &original).unwrap();
+            std::fs::remove_file(path).unwrap();
+            assert!(verify_exported_bundle(&bundle, &tmp_dir).is_err(), "missing physical file was ignored: {path}");
+            std::fs::write(path, &original).unwrap();
+        }
+        let unlisted = tmp_dir.join("unlisted.txt");
+        std::fs::write(&unlisted, b"authored negative export fixture").unwrap();
+        assert!(verify_exported_bundle(&bundle, &tmp_dir).unwrap_err().contains("unmanifested"));
+        std::fs::remove_file(unlisted).unwrap();
+        let mut duplicate = bundle.clone();
+        duplicate.manifest.files.push(duplicate.manifest.files[0].clone());
+        assert!(verify_exported_bundle(&duplicate, &tmp_dir).unwrap_err().contains("coverage"));
+        verify_exported_bundle(&bundle, &tmp_dir).expect("restored physical bundle verifies");
+        assert!(validate_bundle(&bundle).is_empty(), "full validator: {:?}", validate_bundle(&bundle));
 
         let _ = std::fs::remove_dir_all(&tmp_dir);
     }
+    fn completed_test_state() -> NestSessionLifecycleState {
+        let mut state = base_state();
+        state.iterations.push(iter(1, 65));
+        let snapshot = recorded_snapshot(&state);
+        let request = finalize_request();
+        let linked = resolve_linked_iteration_id(&state, request.linked_iteration_id.as_deref()).unwrap();
+        finalize_state(&mut state, request, &snapshot, linked).unwrap();
+        state
+    }
+
+    #[test]
+    fn evidence_repair_actual_config_roundtrips_and_missing_legacy_config_fails_closed() {
+        let mut json = serde_json::to_value(completed_test_state()).unwrap();
+        let mut selected = serde_json::to_value(default_session_config()).unwrap();
+        selected["max_iterations"] = 7.into();
+        selected["min_iterations"] = 3.into();
+        selected["confidence_threshold"] = 91.into();
+        selected["auto_advance_delay_ms"] = 750.into();
+        selected["enable_echo"] = false.into();
+        json["config"] = selected.clone();
+        let state: NestSessionLifecycleState = serde_json::from_value(json.clone()).unwrap();
+        assert_eq!(serde_json::to_value(build_session_record(&state).unwrap().config).unwrap(), selected);
+        json.as_object_mut().unwrap().remove("config");
+        let legacy: NestSessionLifecycleState = serde_json::from_value(json).unwrap();
+        assert!(build_evidence_bundle(&legacy).unwrap_err().contains("config"));
+    }
+
+    #[test]
+    fn evidence_repair_terminal_stop_does_not_invent_convergence() {
+        let mut state = completed_test_state();
+        for reason in ["max-iterations", "external-stop", "no-data", "continue"] {
+            state.iterations[0].convergence_snapshot.reason = reason.into();
+            state.iterations[0].convergence_snapshot.has_converged = false;
+            let session = build_session_record(&state).unwrap();
+            assert!(!session.convergence.has_converged, "false convergence for {reason}");
+            assert!(!session.convergence.classification_stable);
+            assert_eq!(session.convergence.confidence, 84, "GYRE owns final confidence");
+        }
+        state.iterations[0].convergence_snapshot.has_converged = true;
+        state.iterations[0].convergence_snapshot.reason = "stable-threat".into();
+        assert!(build_session_record(&state).unwrap().convergence.has_converged);
+    }
+
+    #[test]
+    fn evidence_repair_finalization_exact_retry_preserves_state_and_rejects_rebinding() {
+        let state = completed_test_state();
+        let before = serde_json::to_value(&state).unwrap();
+        let mut reloaded: NestSessionLifecycleState = serde_json::from_value(before.clone()).unwrap();
+        let snapshot = recorded_snapshot(&reloaded);
+        let request = finalize_request();
+        let linked = request.linked_iteration_id.clone().unwrap();
+        assert!(!finalize_state(&mut reloaded, request.clone(), &snapshot, linked.clone()).unwrap(), "retry must be a no-op");
+        assert_eq!(serde_json::to_value(&reloaded).unwrap(), before);
+        let mut alternate = snapshot.clone();
+        alternate.snapshot_id = "gyresnap_BCDEF23456GHJKMNPQRST01234".into();
+        alternate.base_confidence = 22;
+        let mut changed = request.clone();
+        changed.gyre_snapshot_id = alternate.snapshot_id.clone();
+        assert!(finalize_state(&mut reloaded, changed, &alternate, linked.clone()).is_err());
+        let mut changed = request.clone();
+        changed.notes = Some(vec!["replacement note".into()]);
+        assert!(finalize_state(&mut reloaded, changed, &snapshot, linked.clone()).is_err());
+        assert_eq!(serde_json::to_value(&reloaded).unwrap(), before);
+        reloaded.audit_events.push(NestAuditEvent { event_id: "export".into(), event_type: "nest.bundle.exported".into(), timestamp: now_iso(), actor_id: "test".into(), actor_type: "system".into(), session_id: reloaded.session_id.clone(), summary: "exported".into(), details: None });
+        let exported = serde_json::to_value(&reloaded).unwrap();
+        assert!(!finalize_state(&mut reloaded, request, &snapshot, linked).unwrap());
+        assert_eq!(serde_json::to_value(&reloaded).unwrap(), exported);
+    }
+
+    #[test]
+    fn evidence_repair_append_rejects_invalid_domains_without_mutation() {
+        let good = serde_json::to_value(append_request("domain_key")).unwrap();
+        for (field, value) in [
+            ("confidence", serde_json::json!(101)), ("threatScore", serde_json::json!(101)),
+            ("stabilityScore", serde_json::json!(-1)), ("stabilityScore", serde_json::json!(1.01)),
+            ("startedAt", serde_json::json!("2026-99-99T99:99:99Z")),
+            ("completedAt", serde_json::json!("not-a-date")),
+            ("reasoningChainHash", serde_json::json!("")),
+        ] {
+            let mut state = base_state();
+            let before = serde_json::to_value(&state).unwrap();
+            let mut json = good.clone(); json[field] = value;
+            let request = serde_json::from_value(json).unwrap();
+            assert!(append_iteration_to_state(&mut state, request).is_err(), "accepted invalid {field}");
+            assert_eq!(serde_json::to_value(&state).unwrap(), before);
+        }
+    }
+
+    #[test]
+    fn evidence_repair_real_store_reload_export_retry_and_conflict_preserve_bytes() {
+        let root = std::env::temp_dir().join(format!("hh-nest-repair-store-{}", OffsetDateTime::now_utc().unix_timestamp_nanos()));
+        let snapshots = root.join("snapshots");
+        let mut state = base_state();
+        append_iteration_to_state(&mut state, append_request("real_store_iteration")).unwrap();
+        let first = crate::commands::gyre_snapshot::record_verdict_snapshot_at_root(
+            &snapshots, record_request("gyrerecord_first", state.binary_sha256.clone(), SUPPORTED_GYRE_BUILD_ID, SUPPORTED_GYRE_SCHEMA_VERSION)).unwrap();
+        let mut alternate_request = record_request("gyrerecord_second", state.binary_sha256.clone(), SUPPORTED_GYRE_BUILD_ID, SUPPORTED_GYRE_SCHEMA_VERSION);
+        alternate_request.base_confidence = 23;
+        let second = crate::commands::gyre_snapshot::record_verdict_snapshot_at_root(&snapshots, alternate_request).unwrap();
+        let mut request = finalize_request();
+        request.gyre_snapshot_id = first.snapshot_id.clone();
+        request.notes = Some(vec!["retained completion note".into()]);
+        let linked = resolve_linked_iteration_id(&state, request.linked_iteration_id.as_deref()).unwrap();
+        let resolved = resolve_gyre_snapshot_for_finalization_at_root(&snapshots, &state, &first.snapshot_id).unwrap();
+        assert!(finalize_state(&mut state, request.clone(), &resolved, linked.clone()).unwrap());
+        persist_state(&root, &state).unwrap();
+        let original_state = std::fs::read(state_path(&root, &state.session_id)).unwrap();
+        let mut loaded = load_state_from_disk(&root, &state.session_id).unwrap();
+        let mut bundle = build_evidence_bundle(&loaded).unwrap();
+        let export_dir = root.join("export");
+        let files = write_bundle_files(&mut bundle, &export_dir).unwrap();
+        let original_export: Vec<_> = files.iter().map(|path| (path, std::fs::read(path).unwrap())).collect();
+        let completed = serde_json::to_value(&loaded).unwrap();
+        assert!(!finalize_state(&mut loaded, request.clone(), &resolved, linked.clone()).unwrap());
+        assert_eq!(serde_json::to_value(&loaded).unwrap(), completed);
+        let mut conflicting = request.clone(); conflicting.gyre_snapshot_id = second.snapshot_id.clone();
+        let alternate = resolve_gyre_snapshot_for_finalization_at_root(&snapshots, &loaded, &second.snapshot_id).unwrap();
+        assert!(finalize_state(&mut loaded, conflicting, &alternate, linked.clone()).is_err());
+        for variant in 0..2 {
+            let mut conflict = request.clone();
+            if variant == 0 { conflict.nest_summary = Some("changed advisory".into()); }
+            else { conflict.notes = Some(vec!["changed note".into()]); }
+            assert!(finalize_state(&mut loaded, conflict, &resolved, linked.clone()).is_err());
+        }
+        assert_eq!(serde_json::to_value(&loaded).unwrap(), completed);
+        assert_eq!(std::fs::read(state_path(&root, &state.session_id)).unwrap(), original_state);
+        for (path, bytes) in original_export { assert_eq!(std::fs::read(path).unwrap(), bytes); }
+        verify_exported_bundle(&bundle, &export_dir).unwrap();
+        let mut legacy = completed;
+        legacy.as_object_mut().unwrap().remove("finalization_request");
+        let mut legacy: NestSessionLifecycleState = serde_json::from_value(legacy).unwrap();
+        assert!(finalize_state(&mut legacy, request, &resolved, linked).unwrap_err().contains("legacy"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn evidence_repair_append_boundaries_and_nonfinite_values() {
+        for score in [0, 100] {
+            for stability in [0.0, 1.0] {
+                let mut request = append_request("domain_boundaries");
+                request.confidence = score; request.threat_score = score; request.stability_score = stability;
+                // Retain documented legacy opaque reasoning references without inventing SHA semantics.
+                request.reasoning_chain_hash = "reasoning-chain-id".into();
+                append_iteration_to_state(&mut base_state(), request).unwrap();
+            }
+        }
+        for stability in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            let mut state = base_state();
+            let before = serde_json::to_value(&state).unwrap();
+            let mut request = append_request("nonfinite"); request.stability_score = stability;
+            assert!(append_iteration_to_state(&mut state, request).is_err());
+            assert_eq!(serde_json::to_value(&state).unwrap(), before);
+        }
+    }
+
 }

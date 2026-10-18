@@ -23,6 +23,7 @@
 // ── Core runner (iteration loop) ──────────────────────────────────────────────
 import {
   NestSessionRunner as CoreRunner,
+  assertNestRunnerActive,
   type NestIterationResult,
   type NestRunnerOptions as CoreRunnerOptions,
 } from '../../utils/nestRunner';
@@ -143,7 +144,8 @@ export interface NestPostProcessingResult {
 /** Returned by `runner.step()` — one completed iteration. */
 export interface NestStepResult extends NestIterationResult {
   /**
-   * Populated only when `shouldContinue === false`.
+   * Populated only when `shouldContinue === false` and step post-processing
+   * is not deferred for a native lifecycle commit.
    * Contains all persistence and reporting results from the session.
    */
   postProcessing?: NestPostProcessingResult;
@@ -202,8 +204,15 @@ export interface NestSessionRunnerOptions {
    * For CLI: log progress here.
    */
   onIteration?:         (step: NestStepResult) => void;
-  /** Return true to abort the loop. Wire to a stopRef in the UI. */
+  /** Cancel with AbortError after entered backend work settles; never persist a stopped run. */
   shouldStop?:          () => boolean;
+  /**
+   * For native lifecycle callers of step(): defer learning writes until the
+   * owned append/finalize succeeds, then call commitPostProcessing().
+   * Standalone step() keeps its existing automatic commit by default.
+   * run() still commits automatically at valid completion.
+   */
+  deferStepPostProcessing?: boolean;
   /** Delay in ms between iterations (used by `run()` / `runNestSession()`). */
   delay?:               number;
 }
@@ -271,19 +280,23 @@ export class NestSessionRunner {
 
   /**
    * Run one analysis iteration.
-   * When `shouldContinue === false`, all post-processing is executed and
-   * included in `step.postProcessing`.
+   * On natural completion, post-processing is included in step.postProcessing
+   * unless deferStepPostProcessing is enabled. Cancellation rejects with
+   * AbortError after entered backend work settles, without post-processing.
    */
   async step(): Promise<NestStepResult> {
+    assertNestRunnerActive(this.opts.shouldStop);
     const coreResult: NestIterationResult = await this.core.runOne();
+    assertNestRunnerActive(this.opts.shouldStop);
 
     let postProcessing: NestPostProcessingResult | undefined;
-    if (!coreResult.shouldContinue) {
+    if (!coreResult.shouldContinue && !this.opts.deferStepPostProcessing) {
       postProcessing = this.runPostProcessing();
     }
 
     const stepResult: NestStepResult = { ...coreResult, postProcessing };
     this.opts.onIteration?.(stepResult);
+    assertNestRunnerActive(this.opts.shouldStop);
     return stepResult;
   }
 
@@ -298,15 +311,17 @@ export class NestSessionRunner {
     let keepGoing = true;
 
     while (keepGoing) {
-      if (this.opts.shouldStop?.()) break;
+      assertNestRunnerActive(this.opts.shouldStop);
       const step = await this.step();
+      assertNestRunnerActive(this.opts.shouldStop);
       keepGoing = step.shouldContinue;
       if (keepGoing && ms > 0) {
         await new Promise<void>(r => setTimeout(r, ms));
+        assertNestRunnerActive(this.opts.shouldStop);
       }
     }
 
-    // Ensure post-processing ran (e.g. stopped externally before converging)
+    // Only natural completion may commit learning; external stop rejects above.
     const pp = this.runPostProcessing();
     const sess = this.core.session;
 
@@ -333,7 +348,16 @@ export class NestSessionRunner {
 
   // ── Post-processing (idempotent) ──────────────────────────────────────────
 
+  /** Call only after the caller's native lifecycle append/finalize succeeded. */
+  commitPostProcessing(): NestPostProcessingResult {
+    return this.runPostProcessing();
+  }
+
   private runPostProcessing(): NestPostProcessingResult {
+    assertNestRunnerActive(this.opts.shouldStop);
+    if (!['converged', 'plateau', 'max-reached'].includes(this.core.session.status)) {
+      throw new Error('NEST learning requires a completed session.');
+    }
     if (this.cachedPP) return this.cachedPP;
     this.cachedPP = this.postProcess();
     return this.cachedPP;
@@ -478,6 +502,7 @@ export async function runNestSession(
   config:   NestConfig,
   opts:     Partial<NestSessionRunnerOptions> = {},
 ): Promise<NestSessionResult> {
+  assertNestRunnerActive(opts.shouldStop);
   const backend = opts.backend ?? tauriBackend;
 
   // ── Auto-fetch metadata and initial disassembly ───────────────────────────
@@ -488,13 +513,15 @@ export async function runNestSession(
 
   if (!metadata) {
     try { metadata = await backend.inspectMetadata(filePath); } catch { /* proceed without */ }
+    assertNestRunnerActive(opts.shouldStop);
   }
 
   if (initialDisassembly.length === 0) {
     try {
-      const res      = await backend.disassembleRange(filePath, initialOffset, initialLength);
+      const res      = await backend.disassembleRange(filePath, initialOffset, initialLength, metadata?.sha256);
       initialDisassembly = res.instructions;
     } catch { /* proceed with empty */ }
+    assertNestRunnerActive(opts.shouldStop);
   }
 
   const runner = new NestSessionRunner({
@@ -512,6 +539,7 @@ export async function runNestSession(
     strategyReliability: opts.strategyReliability,
     onIteration:         opts.onIteration,
     shouldStop:          opts.shouldStop,
+    deferStepPostProcessing: opts.deferStepPostProcessing,
     delay:               opts.delay,
   });
 

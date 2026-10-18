@@ -2,6 +2,7 @@
 name = "hexhawk-backend"
 version = "1.0.0"
 edition = "2021"
+license = "MIT"
 build = "build.rs"
 default-run = "hexhawk-backend"
 
@@ -11,29 +12,30 @@ tauri-build = { version = "2.5.3", features = [] }
 [dependencies]
 tauri = { version = "2.10.3", features = [] }
 tauri-plugin-dialog = "2"
-tauri-plugin-updater = "2"
 tauri-plugin-stronghold = "2"
 iota_stronghold = "2"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1"
+anyhow = "1.0.103"
 plugin_api = { path = "../plugin-api" }
 log = "0.4"
 tauri-plugin-log = "2"
 libloading = "0.7"
-object = "0.31"
+# Analysis consumes raw section data only; do not compile unused compressed
+# debug-section decoders (including the vulnerable ruzstd 0.3 dependency).
+object = { version = "0.31", default-features = false, features = ["read", "std"] }
 capstone = "0.11"
 once_cell = "1.19"
-memmap2 = "0.9"
+memmap2 = "0.9.11"
 sha2 = "0.10"
 sha1 = "0.10"
-hmac = "0.12"
 md-5 = "0.10"
 tokio = { version = "1", features = ["sync", "rt"] }
 lopdf = { version = "0.42", default-features = false }
 flate2 = "1"
 cfb = "0.10"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.4", default-features = false, features = ["deflate"] }
 walkdir = "2"
 rfd = "0.14"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
@@ -43,7 +45,7 @@ rhai = { version = "1", features = ["serde"] }
 rayon = "1.10"
 base64 = "0.22"
 rand = "0.8"
-time = { version = "0.3", features = ["formatting"] }
+time = { version = "0.3", features = ["formatting", "parsing"] }
 
 [features]
 trial = []
@@ -62,9 +64,12 @@ windows-sys = { version = "0.52", features = [
     "Win32_Foundation",
     "Win32_Security",
     "Win32_System_Diagnostics_Debug",
+    "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_Threading",
     "Win32_System_Kernel",
     "Win32_System_JobObjects",
+    "Win32_System_Memory",
+    "Win32_Storage_FileSystem",
 ] }
 
 [[bin]]

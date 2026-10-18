@@ -5,6 +5,37 @@ import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 
 export { makeHexHawkAdapterContract, makeHexHawkAdapterFrame } from './adapters/hexhawk.js';
+export {
+  loadImprovementCapsuleFile,
+  scoreImprovementCapsule,
+  validateImprovementCapsule,
+  type AetherFrameCapsuleEvidence,
+  type AetherFrameCapsuleEvidenceKind,
+  type AetherFrameCapsuleLoadResult,
+  type AetherFrameCapsuleScore,
+  type AetherFrameCapsuleStatus,
+  type AetherFrameCapsuleValidationResult,
+  type AetherFrameImprovementCapsule,
+} from './improvementCapsule.js';
+export {
+  assertVerifiedRequiresEvidence,
+  createFiniteSetCoverage,
+  createReadinessAccessGate,
+  makeReadinessFinding,
+  summarizeReadinessAudit,
+  validateReadinessFinding,
+  type AetherFrameFiniteSetCoverage,
+  type AetherFrameReadinessAccessGate,
+  type AetherFrameReadinessAccessGateInput,
+  type AetherFrameReadinessAudit,
+  type AetherFrameReadinessFinding,
+  type AetherFrameReadinessFindingInput,
+  type AetherFrameReadinessFindingValidation,
+  type AetherFrameReadinessPhase,
+  type AetherFrameReadinessSeverity,
+  type AetherFrameReadinessSummary,
+  type AetherFrameReadinessVerdict,
+} from './readinessAudit.js';
 
 export type AetherFrameOperatingMode =
   | 'observe_only'
@@ -368,7 +399,7 @@ export type AetherFrameCliResult = {
   stderr: string;
 };
 
-export type AetherFrameSchemaKind = 'frame' | 'evidence_graph' | 'mutation_ledger' | 'replay_bundle' | 'adapter_contract';
+export type AetherFrameSchemaKind = 'frame' | 'evidence_graph' | 'mutation_ledger' | 'replay_bundle' | 'adapter_contract' | 'improvement_capsule';
 
 export type AetherFrameSchemaNegotiationResult = AetherFrameValidationResult & {
   schemaVersion: string;
@@ -553,6 +584,7 @@ const SCHEMA_PREFIX_BY_KIND: Record<AetherFrameSchemaKind, string> = {
   mutation_ledger: 'aetherframe.mutation_ledger',
   replay_bundle: 'aetherframe.replay_bundle',
   adapter_contract: 'aetherframe.adapter_contract',
+  improvement_capsule: 'aetherframe.improvement_capsule',
 };
 
 const SUPPORTED_SCHEMA_MAJOR_BY_KIND: Record<AetherFrameSchemaKind, number> = {
@@ -561,6 +593,7 @@ const SUPPORTED_SCHEMA_MAJOR_BY_KIND: Record<AetherFrameSchemaKind, number> = {
   mutation_ledger: 1,
   replay_bundle: 1,
   adapter_contract: 1,
+  improvement_capsule: 1,
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {

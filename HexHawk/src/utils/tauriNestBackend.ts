@@ -11,19 +11,19 @@ import { invoke } from '@tauri-apps/api/core';
 import type { NestBackend, DisassemblyResult } from './nestBackend';
 import type { FileMetadata } from '../App';
 import type { CfgGraph } from './cfgSignalExtractor';
-import { sanitizeBridgePath, sanitizeRange } from './tauriGuards';
+import { sanitizeBridgePath, sanitizeRange, requireInspectedSha256 } from './tauriGuards';
 
 export class TauriNestBackend implements NestBackend {
-  disassembleRange(path: string, offset: number, length: number): Promise<DisassemblyResult> {
+  disassembleRange(path: string, offset: number, length: number, expectedSha256?: string): Promise<DisassemblyResult> {
     const safePath = sanitizeBridgePath(path);
     const safeRange = sanitizeRange(offset, length);
-    return invoke<DisassemblyResult>('disassemble_file_range', { path: safePath, offset: safeRange.offset, length: safeRange.length });
+    return invoke<DisassemblyResult>('disassemble_file_range', { path: safePath, offset: safeRange.offset, length: safeRange.length, expectedSha256: requireInspectedSha256(expectedSha256) });
   }
 
-  buildCfg(path: string, offset: number, length: number): Promise<CfgGraph> {
+  buildCfg(path: string, offset: number, length: number, expectedSha256?: string): Promise<CfgGraph> {
     const safePath = sanitizeBridgePath(path);
     const safeRange = sanitizeRange(offset, length);
-    return invoke<CfgGraph>('build_cfg', { path: safePath, offset: safeRange.offset, length: safeRange.length });
+    return invoke<CfgGraph>('build_cfg', { path: safePath, offset: safeRange.offset, length: safeRange.length, expectedSha256: requireInspectedSha256(expectedSha256) });
   }
 
   inspectMetadata(path: string): Promise<FileMetadata> {

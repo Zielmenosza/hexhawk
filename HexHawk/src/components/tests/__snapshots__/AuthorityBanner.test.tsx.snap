@@ -7,13 +7,13 @@ exports[`AuthorityBanner > matches the default advisory banner snapshot 1`] = `
   style="border: 1px solid rgba(125, 211, 252, 0.45); border-radius: 12px; padding: 0.85rem 1rem; margin: 0.75rem 1rem; background: rgba(14, 165, 233, 0.08); color: inherit;"
 >
   <strong>
-    Advisory only
+    Helpful review notes
   </strong>
   <span>
-     · Verdict (GYRE) remains the authority.
+     · File assessment is based only on HexHawk’s verified analysis signals.
   </span>
   <span>
-     Runtime evidence (STRIKE) is supporting context.
+     Runtime evidence adds context when available.
   </span>
 </section>
 `;

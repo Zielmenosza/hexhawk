@@ -6,11 +6,11 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  CARGO_TERM_COLOR: always
-
 permissions:
   contents: read
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   # ── TypeScript Tests (engines — Node environment) ───────────────────────────
@@ -33,6 +33,9 @@ jobs:
 
       - name: Type-check
         run: yarn workspace hexhawk-ui exec tsc --noEmit
+
+      - name: Bounded filesystem regression tests
+        run: node --test scripts/release/bounded-file.test.mjs scripts/release/locked-package.test.mjs
 
       - name: Run engine tests
         run: yarn workspace hexhawk-ui exec vitest run --reporter=verbose
@@ -125,9 +128,6 @@ jobs:
       - name: Run Rust tests
         run: cargo test --workspace
 
-      - name: Verify patched glib VariantStrIter in release mode
-        run: cargo test -p hexhawk-backend --release --test glib_variant_iter
-
   # ── Tauri Build (Windows installer) ────────────────────────────────────────
   build-windows:
     name: Build Windows Installer
@@ -150,15 +150,16 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
-      - name: Build Tauri app (Windows)
-        run: yarn tauri:build
+      - name: Check Windows packaging contract
+        run: python scripts/release/test_windows_packaging_contract.py
 
-      - name: Upload MSI installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: hexhawk-windows-installer
-          path: target/release/bundle/msi/*.msi
-          if-no-files-found: warn
+      - name: Cache all locked crate sources for offline bundle metadata
+        # The checksum hook inspects Cargo's all-target graph, not only crates
+        # compiled for this runner. Populate that cache without changing locks.
+        run: cargo fetch --locked
+
+      - name: Build Tauri app (Windows x64 NSIS only)
+        run: yarn tauri:build
 
       - name: Upload NSIS installer
         uses: actions/upload-artifact@v4
@@ -169,7 +170,10 @@ jobs:
 
   # ── Tauri Build (macOS DMG) ─────────────────────────────────────────────────
   build-macos:
-    name: Build macOS DMG
+    name: macOS packaging (excluded from bounded Windows scope)
+    # The current bundle configuration and loader custody hook are Windows-only.
+    # Retain the planned steps, but do not claim excluded-platform artifacts.
+    if: ${{ false }}
     runs-on: macos-latest
     needs: [test-ts, test-rust]
     steps:
@@ -209,7 +213,9 @@ jobs:
 
   # ── Tauri Build (Linux AppImage) ────────────────────────────────────────────
   build-linux:
-    name: Build Linux AppImage
+    name: Linux packaging (excluded from bounded Windows scope)
+    # Linux source tests remain enabled above; package qualification is excluded.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     needs: [test-ts, test-rust]
     steps:

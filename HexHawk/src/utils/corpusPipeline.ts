@@ -112,6 +112,22 @@ export interface BinaryRunRecord {
   errorMessage:          string | null;
 }
 
+export interface VerdictQualityEvaluation {
+  policy: 'labelled-polarity-with-abstention-v1';
+  labelledCount: number;
+  unlabelledCount: number;
+  skippedCount: number;
+  abstainedCount: number;
+  correctCount: number;
+  support: { clean: number; malicious: number };
+  confusion: { truePositive: number; trueNegative: number; falsePositive: number; falseNegative: number };
+  strictAccuracyPct: number | null;
+  definitiveCoveragePct: number | null;
+  falsePositiveRateAmongDefinitivePct: number | null;
+  falseNegativeRateAmongDefinitivePct: number | null;
+  proofLimit: string;
+}
+
 /** Aggregate metrics for a complete corpus benchmark run. */
 export interface CorpusBenchmarkMetrics {
   /** ISO-8601 timestamp of generation. */
@@ -122,6 +138,8 @@ export interface CorpusBenchmarkMetrics {
   /** Binaries whose nestRunFn returned null or threw. */
   skipCount:                number;
   /**
+   * Legacy compatibility diagnostic over pass flags, not release accuracy.
+   * Prefer qualityEvaluation for labelled support and explicit abstentions.
    * Accuracy over non-skipped records:
    *   passCount / (passCount + failCount) × 100
    * Rounded to two decimal places.
@@ -142,6 +160,9 @@ export interface CorpusBenchmarkMetrics {
   /** Mean convergenceIterations across all non-skipped records. */
   avgConvergenceIterations: number;
   records:                  BinaryRunRecord[];
+  /** Present on newly computed results; absent on older saved metrics.
+   * Does not silently change legacy training/regression grading contracts. */
+  qualityEvaluation?:       VerdictQualityEvaluation;
 }
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
@@ -346,6 +367,42 @@ export async function runCorpusBenchmark(
 
 // ── Metrics computation ────────────────────────────────────────────────────────
 
+function computeLabelledQuality(records: readonly BinaryRunRecord[]): VerdictQualityEvaluation {
+  const completed = records.filter(record => record.errorMessage === null);
+  const labelled = completed.filter(record => record.groundTruth === 'clean' || record.groundTruth === 'malicious');
+  // Classifier-family polarity only: this does not establish observed behavior.
+  const positiveLabels = new Set(['packer', 'dropper', 'ransomware-like', 'info-stealer', 'rat', 'loader', 'wiper', 'likely-malware']);
+  const support = { clean: 0, malicious: 0 };
+  const confusion = { truePositive: 0, trueNegative: 0, falsePositive: 0, falseNegative: 0 };
+  let abstainedCount = 0;
+  for (const record of labelled) {
+    const truth = record.groundTruth as 'clean' | 'malicious';
+    support[truth]++;
+    const prediction = record.finalVerdict === 'clean' ? 'clean'
+      : positiveLabels.has(record.finalVerdict) ? 'malicious' : null;
+    if (prediction === null) { abstainedCount++; continue; }
+    if (truth === 'malicious') {
+      if (prediction === 'malicious') confusion.truePositive++;
+      else confusion.falseNegative++;
+    } else if (prediction === 'clean') confusion.trueNegative++;
+    else confusion.falsePositive++;
+  }
+  const percent = (count: number, total: number): number | null => total > 0 ? round2(count / total * 100) : null;
+  const correctCount = confusion.truePositive + confusion.trueNegative;
+  return {
+    policy: 'labelled-polarity-with-abstention-v1',
+    labelledCount: labelled.length,
+    unlabelledCount: completed.length - labelled.length,
+    skippedCount: records.length - completed.length,
+    abstainedCount, correctCount, support, confusion,
+    strictAccuracyPct: percent(correctCount, labelled.length),
+    definitiveCoveragePct: percent(labelled.length - abstainedCount, labelled.length),
+    falsePositiveRateAmongDefinitivePct: percent(confusion.falsePositive, confusion.falsePositive + confusion.trueNegative),
+    falseNegativeRateAmongDefinitivePct: percent(confusion.falseNegative, confusion.falseNegative + confusion.truePositive),
+    proofLimit: 'Per-record diagnostics over supplied labels, not independently adjudicated ground truth or probability calibration. Unknown/challenge labels are excluded; suspicious, unknown and unsupported predictions abstain. Family labels are coarse polarity predictions, not observed malicious intent. Duplicate records are not deduplicated. Legacy pass flags and regression diagnostics remain separate.',
+  };
+}
+
 /**
  * Compute aggregate benchmark metrics from a list of run records.
  * Deterministic: given identical records always produces identical output.
@@ -398,6 +455,7 @@ export function computeCorpusMetrics(records: BinaryRunRecord[]): CorpusBenchmar
     falseNegativeRate,
     avgConvergenceIterations,
     records,
+    qualityEvaluation: computeLabelledQuality(records),
   };
 }
 

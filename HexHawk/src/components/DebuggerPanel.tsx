@@ -20,6 +20,7 @@ import {
   extractCorrelationSignals,
   type StrikeTimeline,
 } from '../utils/strikeEngine';
+import DynamicSessionReplayPanel from './DynamicSessionReplayPanel';
 
 // ── Types mirroring Rust structs ──────────────────────────────────────────────
 
@@ -592,19 +593,22 @@ const DebuggerPanel: React.FC<DebuggerPanelProps> = ({
 
       {/* Platform note when no session */}
       {!isActive && !isLoading && (
-        <div className="dbg-empty-state">
-          <div className="dbg-empty-title">Native Debugger</div>
-          <div className="dbg-empty-body">
-            <p>Launches the binary as a child process under Windows Debug API control.</p>
-            <ul>
-              <li>Starts paused at the system breakpoint (ntdll)</li>
-              <li>Single-step with trap flag (EFLAGS.TF)</li>
-              <li>Software breakpoints via INT3 (0xCC) patching</li>
-              <li>Reads register context after each step</li>
-            </ul>
-            <p className="dbg-note">Windows only. x86-64 PE binaries.</p>
+        <>
+          <DynamicSessionReplayPanel trace={null} />
+          <div className="dbg-empty-state">
+            <div className="dbg-empty-title">Native Debugger</div>
+            <div className="dbg-empty-body">
+              <p>Live launch executes the binary as a child process under Windows Debug API control and requires explicit analyst intent.</p>
+              <ul>
+                <li>Starts paused at the system breakpoint (ntdll)</li>
+                <li>Single-step with trap flag (EFLAGS.TF)</li>
+                <li>Software breakpoints via INT3 (0xCC) patching</li>
+                <li>Reads register context after each step</li>
+              </ul>
+              <p className="dbg-note">Windows only. x86-64 PE binaries. Runtime observations are advisory and do not change GYRE verdicts.</p>
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Main content */}

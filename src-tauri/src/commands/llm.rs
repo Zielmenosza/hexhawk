@@ -157,7 +157,9 @@ impl StrongholdSecretStore {
 
         match entry.get_password() {
             Ok(encoded) => {
-                let bytes = B64.decode(encoded.as_bytes()).map_err(|_| LlmError::SecretStoreFailed)?;
+                let bytes = B64
+                    .decode(encoded.as_bytes())
+                    .map_err(|_| LlmError::SecretStoreFailed)?;
                 if bytes.len() != 32 {
                     return Err(LlmError::SecretStoreFailed);
                 }
@@ -213,7 +215,11 @@ impl SecretStore for StrongholdSecretStore {
         self.with_client(|client| {
             client
                 .store()
-                .insert(Self::key(provider, alias).into_bytes(), key.as_bytes().to_vec(), None)
+                .insert(
+                    Self::key(provider, alias).into_bytes(),
+                    key.as_bytes().to_vec(),
+                    None,
+                )
                 .map_err(|_| LlmError::SecretStoreFailed)?;
             Ok(())
         })
@@ -254,7 +260,9 @@ trait HttpExecutor {
         timeout: Duration,
         headers: reqwest::header::HeaderMap,
         body: Value,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(u16, Value), HttpExecError>> + Send>>;
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<(u16, Value), HttpExecError>> + Send>,
+    >;
 }
 
 #[derive(Debug)]
@@ -272,7 +280,9 @@ impl HttpExecutor for ReqwestExecutor {
         timeout: Duration,
         headers: reqwest::header::HeaderMap,
         body: Value,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(u16, Value), HttpExecError>> + Send>> {
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<(u16, Value), HttpExecError>> + Send>,
+    > {
         Box::pin(async move {
             let client = reqwest::Client::builder()
                 .timeout(timeout)
@@ -284,7 +294,13 @@ impl HttpExecutor for ReqwestExecutor {
                 .json(&body)
                 .send()
                 .await
-                .map_err(|e| if e.is_timeout() { HttpExecError::Timeout } else { HttpExecError::Request })?;
+                .map_err(|e| {
+                    if e.is_timeout() {
+                        HttpExecError::Timeout
+                    } else {
+                        HttpExecError::Request
+                    }
+                })?;
             let status = resp.status().as_u16();
             let json: Value = resp.json().await.map_err(|_| HttpExecError::Request)?;
             Ok((status, json))
@@ -321,7 +337,10 @@ fn redaction_patterns() -> Vec<(Regex, &'static str)> {
             Regex::new(r#"(?i)authorization\s*:\s*bearer\s+[^\s\"]+"#).unwrap(),
             "Authorization: Bearer [REDACTED]",
         ),
-        (Regex::new(r#"\bsk-[A-Za-z0-9_-]{12,}\b"#).unwrap(), "[REDACTED]"),
+        (
+            Regex::new(r#"\bsk-[A-Za-z0-9_-]{12,}\b"#).unwrap(),
+            "[REDACTED]",
+        ),
         (
             Regex::new(r#"(?i)(api[_-]?key\s*[:=]\s*)[^\s\"'`]+"#).unwrap(),
             "$1[REDACTED]",
@@ -362,6 +381,9 @@ fn validate_endpoint(endpoint: &str, allow_remote_endpoint: bool) -> LlmResult<U
     }
 
     let host = parsed.host_str().ok_or(LlmError::InvalidEndpoint)?;
+    if !is_local_host(host) && scheme != "https" {
+        return Err(LlmError::InvalidEndpoint);
+    }
     if !allow_remote_endpoint && !is_local_host(host) {
         return Err(LlmError::RemoteEndpointDisabled);
     }
@@ -391,13 +413,15 @@ fn extract_provider_content(provider: &LlmProvider, body: &Value) -> LlmResult<S
         LlmProvider::Anthropic => body
             .get("content")
             .and_then(|v| v.as_array())
-            .and_then(|items| items.iter().find_map(|it| {
-                if it.get("type").and_then(|t| t.as_str()) == Some("text") {
-                    it.get("text").and_then(|t| t.as_str())
-                } else {
-                    None
-                }
-            }))
+            .and_then(|items| {
+                items.iter().find_map(|it| {
+                    if it.get("type").and_then(|t| t.as_str()) == Some("text") {
+                        it.get("text").and_then(|t| t.as_str())
+                    } else {
+                        None
+                    }
+                })
+            })
             .map(|s| s.to_string())
             .ok_or(LlmError::MalformedProviderResponse),
         LlmProvider::Ollama => body
@@ -549,7 +573,7 @@ async fn llm_query_core<S: SecretStore, E: HttpExecutor>(
         .unwrap_or(DEFAULT_TOKEN_BUDGET)
         .clamp(256, MAX_TOKEN_BUDGET)
         / 2)
-        .clamp(64, 2048) as u64;
+    .clamp(64, 2048) as u64;
 
     let body = match provider {
         LlmProvider::OpenAi => {
@@ -629,7 +653,9 @@ async fn llm_query_core<S: SecretStore, E: HttpExecutor>(
             context_chars,
             token_estimate,
             estimated_cost_usd: None,
-            warnings: vec!["Provider is rate-limiting requests. API key and endpoint are valid.".to_string()],
+            warnings: vec![
+                "Provider is rate-limiting requests. API key and endpoint are valid.".to_string(),
+            ],
         });
     }
 
@@ -643,9 +669,8 @@ async fn llm_query_core<S: SecretStore, E: HttpExecutor>(
         return Err(LlmError::ToolDirectiveBlocked);
     }
 
-    let warnings = vec![
-        "AI output is advisory only and must not directly mutate verdict state.".to_string(),
-    ];
+    let warnings =
+        vec!["AI output is advisory only and must not directly mutate verdict state.".to_string()];
     let estimated_cost_usd = estimate_cost_usd(&provider, token_estimate);
 
     Ok(LlmQueryResponse {
@@ -755,7 +780,10 @@ pub fn has_llm_api_key(app: tauri::AppHandle, key_alias: Option<String>) -> Resu
 }
 
 #[tauri::command]
-pub async fn llm_query(app: tauri::AppHandle, request: LlmQueryRequest) -> Result<LlmQueryResponse, String> {
+pub async fn llm_query(
+    app: tauri::AppHandle,
+    request: LlmQueryRequest,
+) -> Result<LlmQueryResponse, String> {
     let store = StrongholdSecretStore::from_app(&app).map_err(|e| e.to_string())?;
     let executor = ReqwestExecutor;
     llm_query_core(request, &store, &executor)
@@ -776,15 +804,24 @@ mod tests {
     }
 
     impl SecretStore for MemoryStore {
-        fn store_provider_key(&self, provider: &LlmProvider, alias: &str, key: &str) -> LlmResult<()> {
-            self.map
-                .lock()
-                .unwrap()
-                .insert(format!("{}:{}", provider_id(provider), alias), key.to_string());
+        fn store_provider_key(
+            &self,
+            provider: &LlmProvider,
+            alias: &str,
+            key: &str,
+        ) -> LlmResult<()> {
+            self.map.lock().unwrap().insert(
+                format!("{}:{}", provider_id(provider), alias),
+                key.to_string(),
+            );
             Ok(())
         }
 
-        fn load_provider_key(&self, provider: &LlmProvider, alias: &str) -> LlmResult<Option<String>> {
+        fn load_provider_key(
+            &self,
+            provider: &LlmProvider,
+            alias: &str,
+        ) -> LlmResult<Option<String>> {
             if self.fail_load {
                 return Err(LlmError::KeyLookupFailed);
             }
@@ -805,11 +842,11 @@ mod tests {
         }
 
         fn has_provider_key(&self, provider: &LlmProvider, alias: &str) -> LlmResult<bool> {
-            Ok(self
-                .map
-                .lock()
-                .unwrap()
-                .contains_key(&format!("{}:{}", provider_id(provider), alias)))
+            Ok(self.map.lock().unwrap().contains_key(&format!(
+                "{}:{}",
+                provider_id(provider),
+                alias
+            )))
         }
     }
 
@@ -824,7 +861,9 @@ mod tests {
             _timeout: Duration,
             _headers: reqwest::header::HeaderMap,
             _body: Value,
-        ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(u16, Value), HttpExecError>> + Send>> {
+        ) -> std::pin::Pin<
+            Box<dyn std::future::Future<Output = Result<(u16, Value), HttpExecError>> + Send>,
+        > {
             let out = self.outcome.clone();
             Box::pin(async move {
                 match out {
@@ -864,7 +903,10 @@ mod tests {
             ..Default::default()
         };
         let exec = MockExec {
-            outcome: Ok((200, serde_json::json!({"choices":[{"message":{"content":"{}"}}]}))),
+            outcome: Ok((
+                200,
+                serde_json::json!({"choices":[{"message":{"content":"{}"}}]}),
+            )),
         };
         let req = base_request();
 
@@ -913,6 +955,15 @@ mod tests {
 
         let result = rt.block_on(llm_query_core(base_request(), &store, &exec));
         assert!(matches!(result, Err(LlmError::MalformedProviderResponse)));
+    }
+
+    #[test]
+    fn remote_http_endpoint_is_rejected_even_with_remote_approval() {
+        assert!(matches!(
+            validate_endpoint("http://api.example.test/v1/chat", true),
+            Err(LlmError::InvalidEndpoint)
+        ));
+        assert!(validate_endpoint("http://127.0.0.1:11434/api/chat", false).is_ok());
     }
 
     #[test]

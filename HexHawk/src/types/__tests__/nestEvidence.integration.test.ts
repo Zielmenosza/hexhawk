@@ -2,12 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 
 import type { NestSession, NestSummary } from '../../utils/nestEngine';
 import type { BinaryVerdictResult } from '../../utils/correlationEngine';
 import {
   buildNestEvidenceBundleFromSession,
-  toNestEvidenceFileMap,
+  serializeNestEvidenceFileMap,
   parseNestEvidenceFileMap,
   validateBuiltNestEvidenceBundle,
 } from '../../utils/nestEvidenceIntegration';
@@ -216,17 +217,27 @@ function makeSimulatedSession(): { session: NestSession; summary: NestSummary } 
 }
 
 function writeBundleToDir(dir: string, bundle: ReturnType<typeof buildNestEvidenceBundleFromSession>) {
-  const files = toNestEvidenceFileMap(bundle);
+  const files = serializeNestEvidenceFileMap(bundle);
   for (const [name, value] of Object.entries(files)) {
-    writeFileSync(join(dir, name), JSON.stringify(value, null, 2), 'utf8');
+    writeFileSync(join(dir, name), value, 'utf8');
   }
 }
 
 describe('NEST evidence integration', () => {
+  it('does not invent supplementary binary hashes when observed hashes are missing', () => {
+    const { session, summary } = makeSimulatedSession();
+    expect(() => buildNestEvidenceBundleFromSession({
+      binaryPath: session.binaryPath, binarySha256: 'a'.repeat(64),
+      fileSizeBytes: 184320, format: 'PE/MZ', architecture: 'x86_64', session, summary,
+    })).toThrow(/observed SHA-1 and MD5/i);
+  });
   it('generates, validates, writes, and reads back bundle from simulated session', () => {
     const { session, summary } = makeSimulatedSession();
     const bundle = buildNestEvidenceBundleFromSession({
       binaryPath: session.binaryPath,
+      // Explicit modeled input hashes, not invented from SHA-256.
+      binarySha1: 'b'.repeat(40),
+      binaryMd5: 'c'.repeat(32),
       binarySha256: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
       fileSizeBytes: 184320,
       format: 'PE/MZ',
@@ -249,6 +260,13 @@ describe('NEST evidence integration', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'nest-evidence-it-'));
     try {
       writeBundleToDir(tmp, bundle);
+      for (const payload of bundle.manifest.files) {
+        const bytes = readFileSync(join(tmp, payload.name));
+        expect(payload.bytes).toBe(bytes.byteLength);
+        expect(payload.sha256).toBe(createHash('sha256').update(bytes).digest('hex'));
+      }
+      const manifestBytes = readFileSync(join(tmp, 'manifest.json'));
+      expect(readFileSync(join(tmp, 'manifest.sha256'), 'utf8')).toBe(`${createHash('sha256').update(manifestBytes).digest('hex')}  manifest.json\n`);
       const loaded = {
         'manifest.json': JSON.parse(readFileSync(join(tmp, 'manifest.json'), 'utf8')),
         'binary_identity.json': JSON.parse(readFileSync(join(tmp, 'binary_identity.json'), 'utf8')),
@@ -314,6 +332,8 @@ describe('NEST evidence integration', () => {
     const { session, summary } = makeSimulatedSession();
     const bundle = buildNestEvidenceBundleFromSession({
       binaryPath: session.binaryPath,
+      binarySha1: 'b'.repeat(40),
+      binaryMd5: 'c'.repeat(32),
       binarySha256: 'a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2',
       fileSizeBytes: 184320,
       format: 'PE/MZ',

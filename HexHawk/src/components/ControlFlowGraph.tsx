@@ -1,18 +1,18 @@
-import React, { useCallback, useMemo } from 'react';
-import ReactFlow, { Background, Controls, Edge, MarkerType, MiniMap, Node, NodeProps } from 'reactflow';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import ReactFlow, { Background, Controls, Edge, Handle, MarkerType, MiniMap, Node, NodeProps, Position, ReactFlowInstance } from 'reactflow';
 import 'reactflow/dist/style.css';
 
 interface GraphNode {
   id: string;
-  address?: number;
-  size?: number;
+  address?: number | null;
+  size?: number | null;
   label?: string;
-  start?: number;
-  end?: number;
-  instruction_count?: number;
+  start?: number | null;
+  end?: number | null;
+  instruction_count?: number | null;
   block_type?: string;  // "entry", "target", "external"
-  layout_x?: number;
-  layout_y?: number;
+  layout_x?: number | null;
+  layout_y?: number | null;
 }
 
 interface GraphEdge {
@@ -60,6 +60,7 @@ type CfgNodeData = {
 const CfgBlockNode = React.memo(({ data }: NodeProps<CfgNodeData>) => {
   return (
     <div className={`cfg-node cfg-node--${data.level}${data.muted ? ' cfg-node--muted' : ''}`}>
+      <Handle type="target" position={Position.Top} className="cfg-node-handle" />
       <div className="cfg-node-title">{data.title}</div>
       {data.addrLine && <div className="cfg-node-addr">{data.addrLine}</div>}
       {data.metricLine && <div className="cfg-node-metrics">{data.metricLine}</div>}
@@ -73,6 +74,7 @@ const CfgBlockNode = React.memo(({ data }: NodeProps<CfgNodeData>) => {
       {data.loopDepth > 1 && (
         <div className="cfg-node-depth">Loop depth {data.loopDepth}</div>
       )}
+      <Handle type="source" position={Position.Bottom} className="cfg-node-handle" />
     </div>
   );
 });
@@ -90,6 +92,9 @@ export function ControlFlowGraph({
   dispatcherBlocks,
   pathNodes,
 }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const flowRef = useRef<ReactFlowInstance | null>(null);
+
   // Build a map of node id → incoming edge count for metrics display
   const inDegree = useMemo(() => {
     const map = new Map<string, number>();
@@ -138,8 +143,14 @@ export function ControlFlowGraph({
     // Build rich label: id + address range + instruction count + in-degree + loop/exit markers
     const instrCount = node.instruction_count ?? 0;
     const incoming = inDegree.get(node.id) ?? 0;
-    const addrLine = node.start !== undefined
-      ? `0x${node.start.toString(16).toUpperCase()}${node.end !== undefined ? `–0x${node.end.toString(16).toUpperCase()}` : ''}`
+    const startAddress = typeof node.start === 'number' && Number.isFinite(node.start)
+      ? node.start
+      : null;
+    const endAddress = typeof node.end === 'number' && Number.isFinite(node.end)
+      ? node.end
+      : null;
+    const addrLine = startAddress !== null
+      ? `0x${startAddress.toString(16).toUpperCase()}${endAddress !== null ? `–0x${endAddress.toString(16).toUpperCase()}` : ''}`
       : '';
     const metricLine = instrCount > 0
       ? `${instrCount} instr${incoming > 0 ? ` · ${incoming} in` : ''}`
@@ -243,8 +254,28 @@ export function ControlFlowGraph({
     cfgNode: CfgBlockNode,
   }), []);
 
+  const fitGraph = useCallback(() => {
+    if (!flowRef.current || graph.nodes.length === 0) return;
+    window.requestAnimationFrame(() => {
+      void flowRef.current?.fitView({ padding: 0.2, maxZoom: 1.35, duration: 180 });
+    });
+  }, [graph.nodes.length]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (rect && rect.width > 0 && rect.height > 0) fitGraph();
+    });
+    observer.observe(container);
+    fitGraph();
+    return () => observer.disconnect();
+  }, [fitGraph, graph.nodes, graph.edges]);
+
   return (
-    <div className="cfg-view cfg-view--modern">
+    <div ref={containerRef} className="cfg-view cfg-view--modern">
       <ReactFlow
         nodes={nodeList}
         edges={edgeList}
@@ -255,6 +286,10 @@ export function ControlFlowGraph({
         maxZoom={2}
         attributionPosition="bottom-left"
         onNodeClick={handleNodeClick}
+        onInit={(instance) => {
+          flowRef.current = instance;
+          fitGraph();
+        }}
       >
         <Background gap={22} size={1.1} color="rgba(154, 208, 255, 0.18)" />
         <Controls showInteractive={false} />

@@ -15,13 +15,19 @@
 !macro NSIS_HOOK_POSTINSTALL
   ; Keep the NSIS installed payload at parity with the MSI payload: the GUI
   ; executable requires WebView2Loader.dll in the application root directory.
-  ; CI packaging may not materialize WebView2Loader.dll before NSIS generation.
-  ; Keep installer creation nonfatal; exact NSIS runtime-loader parity remains a release gate.
-  File /nonfatal /a "/oname=WebView2Loader.dll" "${HEXHAWK_WEBVIEW2_LOADER_PATH}"
+  ; Fail installer creation if the required runtime payload is missing.
+  File /a "/oname=WebView2Loader.dll" "${HEXHAWK_WEBVIEW2_LOADER_PATH}"
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
   ; The default NSIS template only removes files it knows about. Remove the
   ; parity loader explicitly so silent uninstall leaves no runtime DLL behind.
   Delete "$INSTDIR\WebView2Loader.dll"
+!macroend
+
+!macro NSIS_HOOK_POSTUNINSTALL
+  ; Keep analyst evidence and unknown files by default. The generated Tauri
+  ; uninstaller controls its explicit user-data deletion checkbox; this hook
+  ; must not override that consent or recursively erase the install root.
+  ; Retained non-executable user state is an inventory item, not failed removal.
 !macroend

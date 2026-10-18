@@ -9,13 +9,13 @@
 //! `InferredStruct` whose fields are ordered by offset and annotated with an inferred
 //! C primitive type based on the access size encoded in the mnemonic (byte/word/dword/qword).
 
-use std::collections::{BTreeMap, HashMap};
-use serde::{Deserialize, Serialize};
 use crate::commands::disassemble::{capstone_for_arch, DisassembledInstruction};
-use object::{Architecture, File as ObjectFile, Object, ObjectSection};
 use memmap2::MmapOptions;
-use std::fs;
+use object::{Architecture, File as ObjectFile, Object, ObjectSection};
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, HashMap};
+use std::fs;
 
 // ─── Public API types ────────────────────────────────────────────────────────
 
@@ -60,10 +60,10 @@ pub struct InferStructsRequest {
 
 #[tauri::command]
 pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult, String> {
-    let file = fs::File::open(&request.binary_path)
-        .map_err(|e| format!("Cannot open file: {e}"))?;
-    let mmap = unsafe { MmapOptions::new().map(&file) }
-        .map_err(|e| format!("Cannot mmap file: {e}"))?;
+    let file =
+        fs::File::open(&request.binary_path).map_err(|e| format!("Cannot open file: {e}"))?;
+    let mmap =
+        unsafe { MmapOptions::new().map(&file) }.map_err(|e| format!("Cannot mmap file: {e}"))?;
     let data: &[u8] = &mmap;
 
     let obj = ObjectFile::parse(data).map_err(|e| format!("Cannot parse binary: {e}"))?;
@@ -85,7 +85,9 @@ pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult,
                 func_addr >= start && func_addr < end
             })
             .ok_or_else(|| format!("No section contains address 0x{func_addr:x}"))?;
-        let raw = section.data().map_err(|e| format!("Cannot read section data: {e}"))?;
+        let raw = section
+            .data()
+            .map_err(|e| format!("Cannot read section data: {e}"))?;
         let offset = (func_addr - section.address()) as usize;
         if offset >= raw.len() {
             return Err(format!("Offset 0x{offset:x} exceeds section size"));
@@ -100,7 +102,9 @@ pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult,
                 name == ".text" || name == "CODE" || name == "__text"
             })
             .ok_or_else(|| ".text section not found".to_string())?;
-        section.data().map_err(|e| format!("Cannot read .text: {e}"))?
+        section
+            .data()
+            .map_err(|e| format!("Cannot read .text: {e}"))?
     };
 
     // Disassemble up to max_insn instructions.
@@ -133,11 +137,13 @@ pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult,
     //   src read    → second operand contains the bracket expression → read
 
     let re_x86 = Regex::new(
-        r"(?i)\[(?P<reg>[a-z][a-z0-9]*)(?:\s*(?P<sign>[+\-])\s*(?:0x)?(?P<off>[0-9a-f]+))?\]"
-    ).expect("static regex");
+        r"(?i)\[(?P<reg>[a-z][a-z0-9]*)(?:\s*(?P<sign>[+\-])\s*(?:0x)?(?P<off>[0-9a-f]+))?\]",
+    )
+    .expect("static regex");
     let re_arm = Regex::new(
-        r"(?i)\[(?P<reg>[a-z][a-z0-9]*)(?:,\s*#(?P<sign>-)?(?:0x)?(?P<off>[0-9a-f]+))?\]"
-    ).expect("static regex");
+        r"(?i)\[(?P<reg>[a-z][a-z0-9]*)(?:,\s*#(?P<sign>-)?(?:0x)?(?P<off>[0-9a-f]+))?\]",
+    )
+    .expect("static regex");
 
     // Per base register, map offset → (size, access_count, is_write_count).
     // Key = (base_reg, offset), value = (size_bytes, total_count, write_count)
@@ -162,13 +168,23 @@ pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult,
         for (part, is_write) in &[(dst, true), (src, false)] {
             let caps = re_x86.captures(part).or_else(|| re_arm.captures(part));
             if let Some(c) = caps {
-                let reg = c.name("reg").map(|m| m.as_str().to_lowercase()).unwrap_or_default();
+                let reg = c
+                    .name("reg")
+                    .map(|m| m.as_str().to_lowercase())
+                    .unwrap_or_default();
                 // Filter noise: skip stack-pointer and instruction-pointer relative accesses.
-                if matches!(reg.as_str(), "rsp" | "esp" | "sp" | "rip" | "eip" | "ip" | "pc") {
+                if matches!(
+                    reg.as_str(),
+                    "rsp" | "esp" | "sp" | "rip" | "eip" | "ip" | "pc"
+                ) {
                     continue;
                 }
-                let sign: i64 = c.name("sign").map(|m| if m.as_str() == "-" { -1 } else { 1 }).unwrap_or(1);
-                let off: i64 = c.name("off")
+                let sign: i64 = c
+                    .name("sign")
+                    .map(|m| if m.as_str() == "-" { -1 } else { 1 })
+                    .unwrap_or(1);
+                let off: i64 = c
+                    .name("off")
                     .and_then(|m| i64::from_str_radix(m.as_str(), 16).ok())
                     .unwrap_or(0);
                 let offset = sign * off;
@@ -182,7 +198,9 @@ pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult,
                 // Keep the largest observed size for the field.
                 entry.0 = entry.0.max(size_bytes);
                 entry.1 += 1;
-                if *is_write { entry.2 += 1; }
+                if *is_write {
+                    entry.2 += 1;
+                }
                 gep_patterns_found += 1;
             }
         }
@@ -198,7 +216,10 @@ pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult,
     let mut by_reg: HashMap<String, BTreeMap<i64, (u32, u32, u32)>> = HashMap::new();
     for ((reg, off), (size, count, writes)) in access_map {
         if count >= min_accesses {
-            by_reg.entry(reg).or_default().insert(off, (size, count, writes));
+            by_reg
+                .entry(reg)
+                .or_default()
+                .insert(off, (size, count, writes));
         }
     }
 
@@ -210,14 +231,12 @@ pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult,
         .map(|(reg, fields)| {
             let field_vec: Vec<InferredField> = fields
                 .iter()
-                .map(|(&offset, &(size, count, writes))| {
-                    InferredField {
-                        offset,
-                        size_bytes: size,
-                        inferred_type: infer_c_type(size),
-                        access_count: count,
-                        is_write: writes > 0,
-                    }
+                .map(|(&offset, &(size, count, writes))| InferredField {
+                    offset,
+                    size_bytes: size,
+                    inferred_type: infer_c_type(size),
+                    access_count: count,
+                    is_write: writes > 0,
                 })
                 .collect();
 
@@ -239,7 +258,7 @@ pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult,
         .collect();
 
     // Sort structs by field_count descending (richer structs first).
-    structs.sort_by(|a, b| b.field_count.cmp(&a.field_count));
+    structs.sort_by_key(|item| std::cmp::Reverse(item.field_count));
 
     Ok(InferStructsResult {
         structs,
@@ -255,24 +274,45 @@ pub fn infer_structs(request: InferStructsRequest) -> Result<InferStructsResult,
 fn is_memory_mnemonic(m: &str) -> bool {
     matches!(
         m,
-        "mov" | "movsx" | "movsxd" | "movzx" | "movaps" | "movups"
-        | "movdqu" | "movdqa" | "vmovdqu" | "vmovdqa"
-        | "lea"
-        | "add" | "sub" | "and" | "or" | "xor" | "cmp" | "test"
-        | "push" | "pop"
-        | "ldr" | "ldrb" | "ldrh" | "ldrsb" | "ldrsh" | "ldrd"
-        | "str" | "strb" | "strh" | "strd"
-        | "ld1" | "st1"
+        "mov"
+            | "movsx"
+            | "movsxd"
+            | "movzx"
+            | "movaps"
+            | "movups"
+            | "movdqu"
+            | "movdqa"
+            | "vmovdqu"
+            | "vmovdqa"
+            | "lea"
+            | "add"
+            | "sub"
+            | "and"
+            | "or"
+            | "xor"
+            | "cmp"
+            | "test"
+            | "push"
+            | "pop"
+            | "ldr"
+            | "ldrb"
+            | "ldrh"
+            | "ldrsb"
+            | "ldrsh"
+            | "ldrd"
+            | "str"
+            | "strb"
+            | "strh"
+            | "strd"
+            | "ld1"
+            | "st1"
     )
 }
 
 /// Returns the data size in bytes implied by an x86/ARM mnemonic.
 fn mnemonic_to_size(m: &str, arch: Architecture) -> u32 {
     // ARM
-    if matches!(
-        arch,
-        Architecture::Aarch64 | Architecture::Arm
-    ) {
+    if matches!(arch, Architecture::Aarch64 | Architecture::Arm) {
         return match m {
             "ldrb" | "strb" | "ldrsb" => 1,
             "ldrh" | "strh" | "ldrsh" => 2,
@@ -281,11 +321,21 @@ fn mnemonic_to_size(m: &str, arch: Architecture) -> u32 {
         };
     }
     // x86
-    if m.contains("byte") { return 1; }
-    if m.contains("word") && !m.contains("dword") && !m.contains("qword") { return 2; }
-    if m.contains("dword") { return 4; }
-    if m.contains("qword") { return 8; }
-    if m.contains("xmm") || m.contains("ymm") || m.contains("dqu") || m.contains("dqa") { return 16; }
+    if m.contains("byte") {
+        return 1;
+    }
+    if m.contains("word") && !m.contains("dword") && !m.contains("qword") {
+        return 2;
+    }
+    if m.contains("dword") {
+        return 4;
+    }
+    if m.contains("qword") {
+        return 8;
+    }
+    if m.contains("xmm") || m.contains("ymm") || m.contains("dqu") || m.contains("dqa") {
+        return 16;
+    }
     // Heuristic for plain mov/add/etc. based on register width hints:
     4
 }
