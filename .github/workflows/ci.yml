@@ -150,6 +150,14 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Check Windows packaging contract
+        run: python scripts/release/test_windows_packaging_contract.py
+
+      - name: Cache all locked crate sources for offline bundle metadata
+        # The checksum hook inspects Cargo's all-target graph, not only crates
+        # compiled for this runner. Populate that cache without changing locks.
+        run: cargo fetch --locked
+
       - name: Build Tauri app (Windows x64 NSIS only)
         run: yarn tauri:build
 
