@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { readBoundedFileSync } from './bounded-file.mjs';
+import { lockedPackageChecksum } from './locked-package.mjs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -20,11 +21,7 @@ const bytes = readBoundedFileSync(source, 4 * 1024 * 1024);
 const sha256 = createHash('sha256').update(bytes).digest('hex');
 // Modern Cargo caches need not retain per-file checksum metadata. Verify the
 // registry archive against Cargo.lock, then compare the exact archive member.
-const lockEntries = readFileSync(join(root, 'Cargo.lock'), 'utf8').split('[[package]]')
-  .filter(block => block.includes(`\nname = "${pkg.name}"\n`) && block.includes(`\nversion = "${pkg.version}"\n`));
-if (lockEntries.length !== 1) throw new Error('Ambiguous locked WebView2 package.');
-const packageChecksum = lockEntries[0].match(/\nchecksum = "([a-f0-9]{64})"/u)?.[1];
-if (!packageChecksum) throw new Error('Locked registry archive checksum is missing.');
+const packageChecksum = lockedPackageChecksum(readFileSync(join(root, 'Cargo.lock'), 'utf8'), pkg.name, pkg.version);
 const archivePath = resolve(packageRoot, '../../../cache', basename(dirname(packageRoot)), `${pkg.name}-${pkg.version}.crate`);
 const archive = readBoundedFileSync(archivePath, 16 * 1024 * 1024);
 if (archive.length > 16 * 1024 * 1024 || createHash('sha256').update(archive).digest('hex') !== packageChecksum) throw new Error('Registry archive does not match Cargo.lock.');

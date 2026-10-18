@@ -35,7 +35,7 @@ jobs:
         run: yarn workspace hexhawk-ui exec tsc --noEmit
 
       - name: Bounded filesystem regression tests
-        run: node --test scripts/release/bounded-file.test.mjs
+        run: node --test scripts/release/bounded-file.test.mjs scripts/release/locked-package.test.mjs
 
       - name: Run engine tests
         run: yarn workspace hexhawk-ui exec vitest run --reporter=verbose
