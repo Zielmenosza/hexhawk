@@ -1,7 +1,8 @@
 // Windows x64 packaging only: stage the loader from the exact locked crate.
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readBoundedFileSync } from './bounded-file.mjs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -15,8 +16,7 @@ const pkg = packages[0];
 const packageRoot = dirname(pkg.manifest_path);
 const relative = 'x64/WebView2Loader.dll';
 const source = join(packageRoot, relative);
-if (statSync(source).size > 4 * 1024 * 1024) throw new Error('Loader size exceeds the packaging budget.');
-const bytes = readFileSync(source);
+const bytes = readBoundedFileSync(source, 4 * 1024 * 1024);
 const sha256 = createHash('sha256').update(bytes).digest('hex');
 // Modern Cargo caches need not retain per-file checksum metadata. Verify the
 // registry archive against Cargo.lock, then compare the exact archive member.
@@ -26,8 +26,7 @@ if (lockEntries.length !== 1) throw new Error('Ambiguous locked WebView2 package
 const packageChecksum = lockEntries[0].match(/\nchecksum = "([a-f0-9]{64})"/u)?.[1];
 if (!packageChecksum) throw new Error('Locked registry archive checksum is missing.');
 const archivePath = resolve(packageRoot, '../../../cache', basename(dirname(packageRoot)), `${pkg.name}-${pkg.version}.crate`);
-if (statSync(archivePath).size > 16 * 1024 * 1024) throw new Error('Registry archive exceeds the packaging budget.');
-const archive = readFileSync(archivePath);
+const archive = readBoundedFileSync(archivePath, 16 * 1024 * 1024);
 if (archive.length > 16 * 1024 * 1024 || createHash('sha256').update(archive).digest('hex') !== packageChecksum) throw new Error('Registry archive does not match Cargo.lock.');
 const tar = gunzipSync(archive, { maxOutputLength: 64 * 1024 * 1024 });
 const expectedMember = `${pkg.name}-${pkg.version}/${relative}`;
@@ -54,11 +53,19 @@ if (bytes.subarray(0, 2).toString() !== 'MZ' || pe + 26 > bytes.length
   || bytes.readUInt16LE(pe + 24) !== 0x20b) throw new Error('Expected an AMD64 PE32+ DLL loader.');
 const destination = join(metadata.target_directory, 'release', 'WebView2Loader.dll');
 mkdirSync(dirname(destination), { recursive: true });
-if (existsSync(destination) && createHash('sha256').update(readFileSync(destination)).digest('hex') !== sha256) {
+let existing;
+try {
+  existing = readBoundedFileSync(destination, 4 * 1024 * 1024);
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error;
+  // Publish exactly the bytes validated above; never reopen the source path.
+  // Refuse a concurrently created destination rather than overwriting it.
+  writeFileSync(destination, bytes, { flag: 'wx' });
+}
+if (existing && createHash('sha256').update(existing).digest('hex') !== sha256) {
   throw new Error('A different release loader already exists; preserve it before rebuilding.');
 }
-copyFileSync(source, destination);
-if (createHash('sha256').update(readFileSync(destination)).digest('hex') !== sha256) throw new Error('Staged loader readback failed.');
+if (createHash('sha256').update(readBoundedFileSync(destination, 4 * 1024 * 1024)).digest('hex') !== sha256) throw new Error('Staged loader readback failed.');
 const receipt = { schema: 'hexhawk.loader-custody.v1', package: pkg.name, version: pkg.version, registry_package_sha256: packageChecksum, archivePath, source, destination, sha256, bytes: bytes.length, architecture: 'AMD64', checksum_verified: true };
 writeFileSync(join(dirname(destination), 'WebView2Loader.custody.json'), JSON.stringify(receipt, null, 2));
 console.log(JSON.stringify(receipt));
