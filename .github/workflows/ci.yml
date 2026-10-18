@@ -123,6 +123,7 @@ jobs:
             librsvg2-dev \
             patchelf \
             libssl-dev \
+            libdbus-1-dev \
             pkg-config
 
       - name: Run Rust tests
