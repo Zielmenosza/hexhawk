@@ -469,6 +469,17 @@ fn analyze_ooxml(path: &str) -> OfficeAnalysisResult {
         }
     };
 
+    // zip 9.0.5 keeps legacy permissive reads for compatibility. Opt in
+    // before classification so conflicting local/central headers cannot be
+    // reported as a successfully inspected macro-free document.
+    if let Err(e) = archive.validate_header_consistency() {
+        return OfficeAnalysisResult {
+            modules: vec![],
+            signals: vec![],
+            parse_error: Some(format!("zip header consistency: {e}")),
+        };
+    }
+
     // VBA project bin locations across Word / Excel / PowerPoint
     let vba_paths = [
         "word/vbaProject.bin",
@@ -877,6 +888,57 @@ mod tests {
             "expected PDF stream decompression guard, got parse_error={error:?}, scripts={}",
             result.javascript.len()
         );
+    }
+
+    fn inert_ooxml_fixture() -> Vec<u8> {
+        let mut writer = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored);
+        writer.start_file("word/document.xml", options).unwrap();
+        writer
+            .write_all(b"<document>inert fixture</document>")
+            .unwrap();
+        writer.finish().unwrap().into_inner()
+    }
+
+    fn inspect_ooxml_fixture(bytes: &[u8]) -> OfficeAnalysisResult {
+        let mut fixture = create_private_temp_file().unwrap();
+        fixture.file_mut().write_all(bytes).unwrap();
+        analyze_ooxml(fixture.path.to_str().unwrap())
+    }
+
+    #[test]
+    fn analyze_ooxml_accepts_consistent_macro_free_archive() {
+        let result = inspect_ooxml_fixture(&inert_ooxml_fixture());
+        assert!(result.parse_error.is_none(), "{:?}", result.parse_error);
+        assert!(result.modules.is_empty());
+        assert_eq!(result.signals.len(), 1);
+        assert!(result.signals[0].label.contains("No VBA project"));
+    }
+
+    #[test]
+    fn analyze_ooxml_rejects_dual_header_filename_mismatch() {
+        let mut bytes = inert_ooxml_fixture();
+        let central = bytes.windows(4).position(|w| w == b"PK\x01\x02").unwrap();
+        // Change only CDFH's first filename byte; LFH remains unchanged.
+        bytes[central + 46] = b'x';
+        let result = inspect_ooxml_fixture(&bytes);
+        let error = result.parse_error.unwrap_or_default();
+        assert!(error.starts_with("zip header consistency:"), "{error:?}");
+        assert!(result.signals.is_empty());
+        assert!(result.modules.is_empty());
+    }
+
+    #[test]
+    fn analyze_ooxml_rejects_dual_header_compression_mismatch() {
+        let mut bytes = inert_ooxml_fixture();
+        let central = bytes.windows(4).position(|w| w == b"PK\x01\x02").unwrap();
+        bytes[central + 10..central + 12].copy_from_slice(&8u16.to_le_bytes());
+        let result = inspect_ooxml_fixture(&bytes);
+        let error = result.parse_error.unwrap_or_default();
+        assert!(error.starts_with("zip header consistency:"), "{error:?}");
+        assert!(result.signals.is_empty());
+        assert!(result.modules.is_empty());
     }
 
     #[test]
